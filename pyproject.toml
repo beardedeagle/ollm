@@ -1,6 +1,6 @@
 [build-system]
-requires = ["setuptools>=61.0", "wheel", "psutil"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling>=1.27.0"]
+build-backend = "hatchling.build"
 
 [project]
 name = "ollm"
@@ -11,22 +11,49 @@ authors = [
 ]
 readme = "README.md"
 license = { file="LICENSE" }
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
-    "numpy",
-    "torch>2.6.0", #tested: 2.8.0
-    "transformers>=4.57.0", #tested: 4.55.4, 4.56.1
     "accelerate",
-    "flash-linear-attention",
-    "flash-attn" #tested: 2.7.4.post1
+    "huggingface-hub",
+    "numpy",
+    "prompt-toolkit",
+    "rich",
+    "typer",
+    "torch>2.6.0", #tested: 2.8.0
+    "transformers>=4.57.0" #tested: 4.55.4, 4.56.1
+]
+
+[project.scripts]
+ollm = "ollm.cli.main:main"
+
+[project.optional-dependencies]
+adapters = [
+    "peft"
+]
+audio = [
+    "librosa",
+    "mistral-common[audio]"
+]
+cuda = [
+    "flash-attn", #tested: 2.7.4.post1
+    "triton"
+]
+export = [
+    "safetensors"
 ]
 
 [project.urls]
 "Homepage" = "https://github.com/Mega4alik/ollm"
 "Bug Tracker" = "https://github.com/Mega4alik/ollm/issues"
 
-[tool.setuptools]
-package-dir = {"" = "src"}
+[dependency-groups]
+dev = [
+    "pip-audit",
+    "pytest"
+]
 
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.hatch.build.targets.wheel]
+packages = ["src/ollm"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,9 +1,14 @@
-import os, requests, zipfile
+import os
+
 import torch
+from huggingface_hub import snapshot_download
 from transformers import AutoTokenizer, AutoProcessor, AutoConfig
-from .utils import Stats, file_get_contents
+
+from .utils import Stats
 from .gds_loader import GDSWeights, DenseWeightsLoader, MoEWeightsLoader, SingleDenseWeightsLoader
 from .kvcache import KVCache
+from .runtime.catalog import get_model_catalog_entry, supported_model_ids
+
 
 def get_attn_implementation():
 	try:
@@ -14,6 +19,17 @@ def get_attn_implementation():
 		return None
 
 
+def download_model_snapshot(model_id, model_dir, force_download=False):
+	entry = get_model_catalog_entry(model_id)
+	print(f"Downloading {entry.repo_id} ...")
+	snapshot_download(
+		repo_id=entry.repo_id,
+		local_dir=model_dir,
+		local_dir_use_symlinks=False,
+		force_download=force_download,
+	)
+
+
 class Inference:
 	def __init__(self, model_id, device="cuda:0", logging=True, multimodality=False):
 		self.model_id = model_id
@@ -21,62 +37,18 @@ class Inference:
 		self.multimodality = multimodality
 		self.stats = Stats() if logging else None
 
-	def download_and_unpack(self, models_dir: str):
-		os.makedirs(models_dir, exist_ok=True)
-		urls = {
-			"gpt-oss-20B": "https://ollm.s3.us-east-1.amazonaws.com/models/gpt-oss-20B.zip"
-		}
-		url = urls[self.model_id]
-		
-		# Extract filename from URL
-		filename = url.split("/")[-1]
-		zip_path = os.path.join(models_dir, filename)
-
-		# Download the file
-		print(f"Downloading {url} ...")
-		response = requests.get(url, stream=True)
-		response.raise_for_status()
-		with open(zip_path, "wb") as f:
-			for chunk in response.iter_content(chunk_size=8192):
-				f.write(chunk)
-		print(f"Downloaded to {zip_path}")
-
-		# Unzip
-		print(f"Unpacking {zip_path} ...")
-		with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-			zip_ref.extractall(models_dir)
-		print(f"Unpacked to {models_dir}")
-
-		os.remove(zip_path) # Optional: remove the zip file after extraction
-
-	
 	def hf_download(self, model_dir):
-		from huggingface_hub import snapshot_download
-		urls = {
-			"llama3-1B-chat": "unsloth/Llama-3.2-1B-Instruct", #meta-llama/
-			"llama3-3B-chat": "unsloth/Llama-3.2-3B-Instruct",
-			"llama3-8B-chat": "unsloth/Meta-Llama-3.1-8B-Instruct",
-			"gpt-oss-20B": "AnuarSh/gpt-oss-20B",
-			"qwen3-next-80B": "Qwen/Qwen3-Next-80B-A3B-Instruct",
-			"gemma3-12B": "google/gemma-3-12b-it",
-			"voxtral-small-24B": "mistralai/Voxtral-Small-24B-2507"
-		}
-		url = urls[self.model_id]
-		print(f"Downloading {url} ...")
-		snapshot_download(repo_id=url, local_dir=model_dir, local_dir_use_symlinks=False)
+		download_model_snapshot(self.model_id, model_dir)
 
 	
 	def ini_model(self, models_dir="./models/", force_download=False):
-		models_list = ["llama3-1B-chat", "llama3-3B-chat", "llama3-8B-chat", "gpt-oss-20B", "qwen3-next-80B", "gemma3-12B", "voxtral-small-24B"]
+		models_list = supported_model_ids()
 		if self.model_id not in models_list:
 			raise ValueError("Incorrect model id. It must be one of", models_list)
 		
 		model_dir = os.path.join(models_dir, self.model_id)
 		if os.path.exists(model_dir)==False or force_download==True:
-			if self.model_id in ["model-from-S3-zip"]:
-				self.download_and_unpack(models_dir)
-			else:
-				self.hf_download(model_dir)
+			self.hf_download(model_dir)
 
 		self.load_model(model_dir)
 
@@ -138,7 +110,6 @@ class Inference:
 
 class AutoInference(Inference):
 	def __init__(self, model_dir, adapter_dir=None, device="cuda:0", logging=True, multimodality=False):
-		from peft import PeftModel, LoraConfig, get_peft_model
 		self.device = torch.device(device)
 		self.stats = Stats() if logging else None
 		config = AutoConfig.from_pretrained(model_dir)
@@ -156,6 +127,7 @@ class AutoInference(Inference):
 		self.multimodality = multimodality
 		self.load_model(model_dir) #peft_config.base_model_name_or_path
 		if adapter_dir:
+			from peft import LoraConfig, get_peft_model
 			peft_config = LoraConfig.from_pretrained(adapter_dir)
 			self.model = get_peft_model(self.model, peft_config)   # this creates LoRA modules with grad enabled
 			self.model.load_adapter(adapter_dir, adapter_name="default")
