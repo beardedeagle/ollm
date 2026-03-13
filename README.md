@@ -57,28 +57,73 @@ Typical use cases include:
 
 ## Getting Started
 
-It is recommended to create venv or conda environment first
-```bash
-python3 -m venv ollm_env
-source ollm_env/bin/activate
-```
+oLLM now targets Python 3.12 and newer.
 
-Install oLLM with `pip install --no-build-isolation ollm` or [from source](https://github.com/Mega4alik/ollm):
-
+Use `uv` to create and manage the local environment:
 ```bash
 git clone https://github.com/Mega4alik/ollm.git
 cd ollm
+uv sync
+
+# optional features
+uv sync --extra adapters   # AutoInference with PEFT adapters
+uv sync --extra audio      # voxtral audio example
+uv sync --extra cuda       # flash-attn + triton acceleration
+uv sync --extra export     # export scripts
+uv sync --group dev        # pytest and contributor tooling
+```
+
+If you prefer `pip`, install oLLM from source with editable mode:
+
+```bash
 pip install --no-build-isolation -e .
+pip install --no-build-isolation -e ".[adapters]" # optional extras
 
 # for Nvidia GPUs with cuda (optional): 
 pip install kvikio-cu{cuda_version} Ex, kvikio-cu12 #speeds up the inference
 ```
 > 💡 **Note**  
-> **voxtral-small-24B** requires additional pip dependencies to be installed as `pip install "mistral-common[audio]"` and `pip install librosa`
+> `kvikio` remains a manual install because the package name depends on your CUDA version. For `voxtral-small-24B`, use `uv sync --extra audio` or install `mistral-common[audio]` and `librosa`.
 
 Check out the [Troubleshooting](https://github.com/Mega4alik/ollm/wiki/Troubleshooting) in case of any installation issues 
 
-## Example
+## Terminal Interface
+
+oLLM now ships with a first-party terminal interface in addition to the importable library.
+
+```bash
+ollm                         # interactive terminal chat
+ollm chat                    # explicit alias for interactive chat
+ollm prompt "List planets"   # one-shot prompt
+ollm doctor --json           # environment and runtime diagnostics
+ollm models list             # supported / installed model ids
+```
+
+Use `ollm` or `ollm chat` only from an interactive terminal. For scripts, pipes, and automation use `ollm prompt`:
+
+```bash
+ollm prompt --model llama3-8B-chat "Summarize this file"
+cat notes.txt | ollm prompt --stdin --model llama3-8B-chat
+ollm prompt --multimodal --model gemma3-12B --image ./diagram.png "Describe this image"
+```
+
+`ollm doctor` reports missing optional extras, runtime availability, path issues, and model readiness. `ollm models` provides `list`, `info`, `download`, and `path` subcommands.
+
+Interactive prompt history is in-memory by default. Use `--history-file` only when you explicitly want persistent local history.
+
+Chat also supports queued multimodal attachments for supported models:
+
+```bash
+ollm chat --model gemma3-12B --multimodal
+/image ./diagram.png
+/send Describe this image
+
+ollm chat --model voxtral-small-24B --multimodal
+/audio ./sample.wav
+/send What can you tell me about this audio?
+```
+
+## Library Example
 
 Code snippet sample 
 
@@ -96,11 +141,11 @@ outputs = o.model.generate(input_ids=input_ids,  past_key_values=past_key_values
 answer = o.tokenizer.decode(outputs[0][input_ids.shape[-1]:], skip_special_tokens=False)
 print(answer)
 ```
-or run sample python script as `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True python example.py` 
+or run the sample script as `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True uv run python example.py` 
 
 ```python
 # with AutoInference, you can run any LLama3/gemma3 model with PEFT adapter support
-# pip install peft 
+# uv sync --extra adapters
 from ollm import AutoInference
 o = AutoInference("./models/gemma3-12B", # any llama3 or gemma3 model
   adapter_dir="./myadapter/checkpoint-20", # PEFT adapter checkpoint if available
@@ -111,6 +156,22 @@ o = AutoInference("./models/gemma3-12B", # any llama3 or gemma3 model
 - [gemma3-12B image+text](https://github.com/Mega4alik/ollm/blob/main/example_image.py)
 - [voxtral-small-24B audio+text](https://github.com/Mega4alik/ollm/blob/main/example_audio.py)
 - [AutoInference + SFT](https://github.com/Mega4alik/peftee?tab=readme-ov-file#usage)
+
+## Development
+
+The project now builds with Hatchling and uses `uv` for environment and lock management.
+
+Run the automated test suite with:
+
+```bash
+uv run pytest
+```
+
+Fast syntax-only verification remains:
+
+```bash
+uv run python -m compileall src tests
+```
 
 
 ## Knowledge base
@@ -128,4 +189,3 @@ o = AutoInference("./models/gemma3-12B", # any llama3 or gemma3 model
 
 ## Contact us
 If there’s a model you’d like to see supported, feel free to suggest it in the [discussion](https://github.com/Mega4alik/ollm/discussions/4) — I’ll do my best to make it happen.
-

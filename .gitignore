@@ -4,8 +4,13 @@ gds_export
 gds_export*
 models
 cufile.log
-__pycache__
+__pycache__/
+.venv/
 dist/
 build/
 *.egg-info/
 src/ollm.egg-info
+.omx/
+AGENTS.md
+.pytest_cache/
+OLLM_TERMINAL_INTERFACE_IMPLEMENTATION_SPEC.md

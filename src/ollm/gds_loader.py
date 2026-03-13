@@ -10,7 +10,8 @@ try:
 	import cupy as cp   
 	kvikio_available = True
 except ImportError:
-    print("Warning: kvikio is not imported")
+    kvikio = None
+    cp = None
 
 # shared objects
 stats = None
