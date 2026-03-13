@@ -32,7 +32,7 @@ def test_chat_session_round_trip_and_retry(tmp_path: Path) -> None:
     assert session.messages == []
 
     saved = load_transcript(tmp_path / "session.json")
-    assert saved.model_id == "llama3-1B-chat"
+    assert saved.model_reference == "llama3-1B-chat"
     assert saved.system_prompt == session.system_prompt
 
 
@@ -53,11 +53,11 @@ def test_chat_session_loads_and_switches_model(tmp_path: Path) -> None:
     restored = ChatSession(
         runtime_loader=loader,
         runtime_executor=executor,
-        runtime_config=RuntimeConfig(model_id="llama3-3B-chat"),
+        runtime_config=RuntimeConfig(model_reference="llama3-3B-chat"),
         generation_config=GenerationConfig(stream=False),
     )
     restored.load(path)
     assert restored.session_name == "chat-a"
-    assert restored.runtime_config.model_id == "llama3-1B-chat"
+    assert restored.runtime_config.model_reference == "llama3-1B-chat"
     restored.set_model("llama3-3B-chat")
-    assert restored.runtime_config.model_id == "llama3-3B-chat"
+    assert restored.runtime_config.model_reference == "llama3-3B-chat"

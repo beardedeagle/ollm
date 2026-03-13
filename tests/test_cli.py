@@ -1,5 +1,5 @@
-import stat
 import json
+import stat
 from pathlib import Path
 
 from typer.testing import CliRunner
@@ -10,6 +10,7 @@ from ollm.cli.services import CommandServices
 from tests.fakes import FakeDoctorService, FakeRuntimeExecutor, FakeRuntimeLoader
 
 
+
 def build_test_app():
     loader = FakeRuntimeLoader()
     services = CommandServices(
@@ -18,6 +19,7 @@ def build_test_app():
         doctor_service=FakeDoctorService(),
     )
     return CliRunner(), loader, create_app(services)
+
 
 
 def test_prompt_command_supports_text_and_json_output(tmp_path: Path) -> None:
@@ -46,11 +48,13 @@ def test_prompt_command_supports_text_and_json_output(tmp_path: Path) -> None:
     assert stat.S_IMODE(text_output.stat().st_mode) == 0o600
 
 
+
 def test_prompt_command_supports_stdin() -> None:
     runner, _, app = build_test_app()
     result = runner.invoke(app, ["prompt", "--stdin", "--no-stream", "--no-color"], input="from stdin")
     assert result.exit_code == 0
     assert "echo:from stdin" in result.output
+
 
 
 def test_prompt_command_validates_multimodal_and_json_stream() -> None:
@@ -72,11 +76,24 @@ def test_prompt_command_validates_multimodal_and_json_stream() -> None:
     assert "--format json cannot be combined with --stream" in json_stream_error.output
 
 
+
+def test_prompt_command_accepts_non_catalog_model_reference() -> None:
+    runner, loader, app = build_test_app()
+    result = runner.invoke(
+        app,
+        ["prompt", "hello world", "--model", "Qwen/Qwen2.5-7B-Instruct", "--no-stream", "--no-color"],
+    )
+    assert result.exit_code == 0
+    assert loader.load_calls == ["Qwen/Qwen2.5-7B-Instruct"]
+
+
+
 def test_root_command_requires_interactive_tty() -> None:
     runner, _, app = build_test_app()
     result = runner.invoke(app, [])
     assert result.exit_code != 0
     assert "Use `ollm prompt`" in result.output
+
 
 
 def test_doctor_and_models_commands(tmp_path: Path) -> None:
@@ -91,6 +108,10 @@ def test_doctor_and_models_commands(tmp_path: Path) -> None:
     models_result = runner.invoke(app, ["models", "list", "--json", "--models-dir", str(model_dir), "--no-color"])
     assert models_result.exit_code == 0
     assert "llama3-1B-chat" in models_result.output
+
+    info_result = runner.invoke(app, ["models", "info", "Qwen/Qwen2.5-7B-Instruct", "--json", "--models-dir", str(model_dir), "--no-color"])
+    assert info_result.exit_code == 0
+    assert '"source_kind": "hugging-face"' in info_result.output
 
     download_result = runner.invoke(app, ["models", "download", "llama3-3B-chat", "--models-dir", str(model_dir), "--no-color"])
     assert download_result.exit_code == 0

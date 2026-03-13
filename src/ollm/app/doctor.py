@@ -5,8 +5,8 @@ from pathlib import Path
 import torch
 from transformers import AutoProcessor, AutoTokenizer
 
-from ollm.runtime.catalog import get_model_catalog_entry, list_model_catalog
 from ollm.runtime.config import RuntimeConfig
+from ollm.runtime.resolver import ModelResolver
 
 
 @dataclass(slots=True)
@@ -48,6 +48,9 @@ class DoctorService:
         "export": ("safetensors",),
     }
 
+    def __init__(self, resolver: ModelResolver | None = None):
+        self._resolver = resolver or ModelResolver()
+
     def run(
         self,
         runtime_config: RuntimeConfig,
@@ -63,7 +66,6 @@ class DoctorService:
             checks.extend(self._check_runtime(runtime_config))
         if include_paths:
             checks.extend(self._check_paths(runtime_config))
-        if include_paths and runtime_config.model_id:
             checks.extend(self._check_model(runtime_config))
         if include_download:
             checks.append(self._check_download(runtime_config))
@@ -145,8 +147,8 @@ class DoctorService:
             exists = path.exists()
             writable = False
             if exists and path.is_dir():
-                probe = path / ".doctor-write-check"
-                probe.write_text("ok", encoding="utf-8")
+                probe = path / '.doctor-write-check'
+                probe.write_text('ok', encoding='utf-8')
                 probe.unlink()
                 writable = True
             return DoctorCheck(
@@ -164,23 +166,47 @@ class DoctorService:
             )
 
     def _check_model(self, runtime_config: RuntimeConfig) -> list[DoctorCheck]:
-        checks: list[DoctorCheck] = []
-        entry = get_model_catalog_entry(runtime_config.model_id)
-        model_path = runtime_config.model_path()
-        installed = model_path.exists()
+        resolved_model = self._resolver.resolve(runtime_config.model_reference, runtime_config.resolved_models_dir())
+        checks: list[DoctorCheck] = [
+            DoctorCheck(
+                name="model:resolution",
+                ok=resolved_model.capabilities.support_level.value != 'unsupported',
+                message=resolved_model.resolution_message,
+                details={
+                    "source_kind": resolved_model.source_kind.value,
+                    "support_level": resolved_model.capabilities.support_level.value,
+                },
+            )
+        ]
+
+        if resolved_model.model_path is None:
+            checks.append(
+                DoctorCheck(
+                    name="model:path",
+                    ok=False,
+                    message="Model reference does not resolve to a local path",
+                    details={"model_reference": runtime_config.model_reference},
+                )
+            )
+            return checks
+
+        installed = resolved_model.model_path.exists()
         checks.append(
             DoctorCheck(
                 name="model:path",
                 ok=installed,
                 message=f"Model path {'exists' if installed else 'does not exist'}",
-                details={"path": str(model_path), "model_id": entry.model_id},
+                details={
+                    "path": str(resolved_model.model_path),
+                    "model_reference": runtime_config.model_reference,
+                },
             )
         )
         if not installed:
             return checks
 
         try:
-            AutoTokenizer.from_pretrained(model_path)
+            AutoTokenizer.from_pretrained(resolved_model.model_path)
             checks.append(DoctorCheck(name="model:tokenizer", ok=True, message="Tokenizer loads successfully"))
         except Exception as exc:
             checks.append(
@@ -192,9 +218,9 @@ class DoctorService:
                 )
             )
 
-        if entry.requires_processor:
+        if resolved_model.capabilities.requires_processor:
             try:
-                AutoProcessor.from_pretrained(model_path)
+                AutoProcessor.from_pretrained(resolved_model.model_path)
                 checks.append(DoctorCheck(name="model:processor", ok=True, message="Processor loads successfully"))
             except Exception as exc:
                 checks.append(
@@ -208,28 +234,32 @@ class DoctorService:
         return checks
 
     def _check_download(self, runtime_config: RuntimeConfig) -> DoctorCheck:
-        entry = get_model_catalog_entry(runtime_config.model_id)
+        resolved_model = self._resolver.resolve(runtime_config.model_reference, runtime_config.resolved_models_dir())
+        if not resolved_model.is_downloadable() or resolved_model.repo_id is None or resolved_model.model_path is None:
+            return DoctorCheck(
+                name="download:ready",
+                ok=False,
+                message=f"Model reference '{runtime_config.model_reference}' is not downloadable via the native snapshot flow",
+                details={"source_kind": resolved_model.source_kind.value},
+            )
+
         models_dir = runtime_config.resolved_models_dir()
-        target_path = runtime_config.model_path()
+        target_path = resolved_model.model_path
         try:
             models_dir.mkdir(parents=True, exist_ok=True)
-            probe = models_dir / ".doctor-download-check"
-            probe.write_text("ok", encoding="utf-8")
+            probe = models_dir / '.doctor-download-check'
+            probe.write_text('ok', encoding='utf-8')
             probe.unlink()
             return DoctorCheck(
                 name="download:ready",
                 ok=True,
-                message=f"Download target is writable for {entry.model_id}",
-                details={"repo_id": entry.repo_id, "target": str(target_path)},
+                message=f"Download target is writable for {runtime_config.model_reference}",
+                details={"repo_id": resolved_model.repo_id, "target": str(target_path)},
             )
         except Exception as exc:
             return DoctorCheck(
                 name="download:ready",
                 ok=False,
-                message=f"Download target is not writable for {entry.model_id}",
-                details={"repo_id": entry.repo_id, "target": str(target_path), "reason": str(exc)},
+                message=f"Download target is not writable for {runtime_config.model_reference}",
+                details={"repo_id": resolved_model.repo_id, "target": str(target_path), "reason": str(exc)},
             )
-
-
-def default_model_ids() -> tuple[str, ...]:
-    return tuple(entry.model_id for entry in list_model_catalog())

@@ -4,7 +4,7 @@ from pathlib import Path
 
 from ollm.app.types import Transcript
 
-TRANSCRIPT_VERSION = 1
+TRANSCRIPT_VERSION = 2
 
 
 def write_private_text(path: Path, content: str) -> None:

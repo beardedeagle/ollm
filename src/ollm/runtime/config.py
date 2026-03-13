@@ -1,14 +1,14 @@
 from dataclasses import dataclass, field
 from pathlib import Path
 
-DEFAULT_MODEL_ID = "llama3-1B-chat"
+DEFAULT_MODEL_REFERENCE = "llama3-1B-chat"
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 DEFAULT_MAX_NEW_TOKENS = 500
 
 
 @dataclass(slots=True)
 class RuntimeConfig:
-    model_id: str = DEFAULT_MODEL_ID
+    model_reference: str = DEFAULT_MODEL_REFERENCE
     models_dir: Path = field(default_factory=lambda: Path("models"))
     device: str = "cuda:0"
     adapter_dir: Path | None = None
@@ -33,10 +33,9 @@ class RuntimeConfig:
             return None
         return self.adapter_dir.expanduser().resolve()
 
-    def model_path(self) -> Path:
-        return self.resolved_models_dir() / self.model_id
-
     def validate(self) -> None:
+        if not self.model_reference.strip():
+            raise ValueError("--model cannot be empty")
         if self.verbose and self.quiet:
             raise ValueError("--verbose and --quiet cannot be used together")
         if self.offload_cpu_layers < 0:
@@ -66,4 +65,3 @@ class GenerationConfig:
 
     def sampling_enabled(self) -> bool:
         return self.temperature > 0
-

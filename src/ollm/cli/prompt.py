@@ -35,7 +35,7 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
     @app.command("prompt")
     def prompt_command(
         prompt: str | None = typer.Argument(None, help="Prompt text."),
-        model: str = typer.Option("llama3-1B-chat", "--model", help="Model id to load."),
+        model: str = typer.Option("llama3-1B-chat", "--model", help="Model reference to resolve."),
         models_dir: Path = typer.Option(Path("models"), "--models-dir", help="Directory containing model data."),
         device: str = typer.Option("cuda:0", "--device", help="Torch device string."),
         adapter_dir: Path | None = typer.Option(None, "--adapter-dir", help="Optional PEFT adapter directory."),
@@ -74,7 +74,7 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
             cache_dir=cache_dir,
             no_cache=no_cache,
             offload_cpu_layers=offload_cpu_layers,
-            offload_gpu_layers=offload_gpu_layers,
+            offload_gpu_layers=0 if offload_gpu_layers is None else offload_gpu_layers,
             force_download=force_download,
             stats=stats,
             verbose=verbose,

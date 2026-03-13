@@ -28,7 +28,7 @@ def build_runtime_config(
     quiet: bool,
 ) -> RuntimeConfig:
     config = RuntimeConfig(
-        model_id=model,
+        model_reference=model,
         models_dir=models_dir,
         device=device,
         adapter_dir=adapter_dir,
@@ -80,7 +80,7 @@ def print_json(console: Console, payload: dict[str, object]) -> None:
 def config_as_dict(runtime_config: RuntimeConfig, generation_config: GenerationConfig) -> dict[str, object]:
     return {
         "runtime": {
-            "model_id": runtime_config.model_id,
+            "model_reference": runtime_config.model_reference,
             "models_dir": str(runtime_config.resolved_models_dir()),
             "device": runtime_config.device,
             "adapter_dir": None if runtime_config.resolved_adapter_dir() is None else str(runtime_config.resolved_adapter_dir()),

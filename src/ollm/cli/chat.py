@@ -98,7 +98,7 @@ def register_chat_surfaces(app: typer.Typer, services: CommandServices) -> None:
     @app.command("chat")
     def chat_command(
         ctx: typer.Context,
-        model: str = typer.Option("llama3-1B-chat", "--model", help="Model id to load."),
+        model: str = typer.Option("llama3-1B-chat", "--model", help="Model reference to resolve."),
         models_dir: Path = typer.Option(Path("models"), "--models-dir", help="Directory containing model data."),
         device: str = typer.Option("cuda:0", "--device", help="Torch device string."),
         adapter_dir: Path | None = typer.Option(None, "--adapter-dir", help="Optional PEFT adapter directory."),

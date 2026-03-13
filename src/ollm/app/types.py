@@ -116,7 +116,7 @@ class PromptResponse:
 class Transcript:
     version: int
     session_name: str
-    model_id: str
+    model_reference: str
     system_prompt: str
     messages: list[Message]
 
@@ -124,7 +124,7 @@ class Transcript:
         return {
             "version": self.version,
             "session_name": self.session_name,
-            "model": self.model_id,
+            "model_reference": self.model_reference,
             "system_prompt": self.system_prompt,
             "messages": [message.as_dict() for message in self.messages],
         }
@@ -133,14 +133,13 @@ class Transcript:
     def from_dict(cls, payload: dict[str, object]):
         version = int(payload["version"])
         session_name = str(payload["session_name"])
-        model_id = str(payload["model"])
+        model_reference = str(payload["model_reference"])
         system_prompt = str(payload.get("system_prompt", ""))
         messages = [Message.from_dict(message) for message in payload.get("messages", [])]
         return cls(
             version=version,
             session_name=session_name,
-            model_id=model_id,
+            model_reference=model_reference,
             system_prompt=system_prompt,
             messages=messages,
         )
-

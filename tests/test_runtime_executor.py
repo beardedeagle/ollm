@@ -2,10 +2,13 @@ import pytest
 import torch
 
 from ollm.app.types import ContentPart, Message, MessageRole, PromptRequest
-from ollm.runtime.catalog import ModelCatalogEntry, ModelModality
+from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
+from ollm.runtime.catalog import ModelModality
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
 from ollm.runtime.generation import PromptExecutionError, RuntimeExecutor
 from ollm.runtime.loader import LoadedRuntime
+from ollm.runtime.reference import ModelReference
+from ollm.runtime.resolver import ModelSourceKind, ResolvedModel
 
 
 class FakeTokenizer:
@@ -36,13 +39,27 @@ class FakeBackend:
         return None
 
 
-def build_runtime(entry: ModelCatalogEntry, multimodal: bool = False) -> LoadedRuntime:
-    config = RuntimeConfig(model_id=entry.model_id, device="cpu", multimodal=multimodal, use_cache=False)
+def build_runtime(capabilities: CapabilityProfile) -> LoadedRuntime:
+    config = RuntimeConfig(model_reference="llama3-1B-chat", device="cpu", multimodal=False, use_cache=False)
+    resolved_model = ResolvedModel(
+        reference=ModelReference.parse("llama3-1B-chat"),
+        source_kind=ModelSourceKind.BUILTIN,
+        normalized_name="llama3-1B-chat",
+        model_path=config.resolved_models_dir() / "llama3-1B-chat",
+        repo_id="repo",
+        revision=None,
+        provider_name=None,
+        catalog_entry=None,
+        capabilities=capabilities,
+        native_family=None,
+        resolution_message="built-in alias",
+    )
     return LoadedRuntime(
-        entry=entry,
+        resolved_model=resolved_model,
+        capabilities=capabilities,
         config=config,
         backend=FakeBackend(),
-        model_path=config.model_path(),
+        model_path=resolved_model.model_path,
     )
 
 
@@ -55,13 +72,8 @@ def build_request(runtime_config: RuntimeConfig, message: Message) -> PromptRequ
 
 
 def test_runtime_executor_executes_text_request() -> None:
-    entry = ModelCatalogEntry(
-        model_id="llama3-1B-chat",
-        summary="text",
-        repo_id="repo",
-        modalities=(ModelModality.TEXT,),
-    )
-    runtime = build_runtime(entry)
+    capabilities = CapabilityProfile(support_level=SupportLevel.GENERIC)
+    runtime = build_runtime(capabilities)
     request = build_request(runtime.config, Message(role=MessageRole.USER, content=[ContentPart.text("hello")]))
     response = RuntimeExecutor().execute(runtime, request)
     assert response.text == "decoded-response"
@@ -69,13 +81,11 @@ def test_runtime_executor_executes_text_request() -> None:
 
 
 def test_runtime_executor_rejects_unsupported_image_input() -> None:
-    entry = ModelCatalogEntry(
-        model_id="llama3-1B-chat",
-        summary="text",
-        repo_id="repo",
+    capabilities = CapabilityProfile(
+        support_level=SupportLevel.GENERIC,
         modalities=(ModelModality.TEXT,),
     )
-    runtime = build_runtime(entry)
+    runtime = build_runtime(capabilities)
     request = build_request(runtime.config, Message(role=MessageRole.USER, content=[ContentPart.image("image.png")]))
     with pytest.raises(PromptExecutionError):
         RuntimeExecutor().execute(runtime, request)

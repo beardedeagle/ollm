@@ -14,7 +14,7 @@ oLLM is a lightweight Python library for large-context LLM inference, built on t
 
 <p dir="auto"><em><a href="https://github.com/Mega4alik/ollm/wiki/Releases">Latest updates</a> (1.0.3)</em> 🔥</p>
 <ul dir="auto">
-<li><code>AutoInference</code> with any Llama3 / gemma3 model + <a href="https://github.com/huggingface/peft">PEFT</a> adapter support</li>
+<li><code>AutoInference</code> for compatible local Llama and Gemma3 model directories with optional <a href="https://github.com/huggingface/peft">PEFT</a> adapter support</li>
 <li><code>kvikio</code> and <code>flash-attn</code> are optional now, meaning no hardware restrictions beyond HF transformers</li>
 <li>Multimodal <b>voxtral-small-24B</b> (audio+text) added. <a href="https://github.com/Mega4alik/ollm/blob/main/example_audio.py">[sample with audio]</a> </li>
 <li>Multimodal <b>gemma3-12B</b> (image+text) added. <a href="https://github.com/Mega4alik/ollm/blob/main/example_image.py">[sample with image]</a> </li>
@@ -96,7 +96,7 @@ ollm                         # interactive terminal chat
 ollm chat                    # explicit alias for interactive chat
 ollm prompt "List planets"   # one-shot prompt
 ollm doctor --json           # environment and runtime diagnostics
-ollm models list             # supported / installed model ids
+ollm models list             # known and discovered model references
 ```
 
 Use `ollm` or `ollm chat` only from an interactive terminal. For scripts, pipes, and automation use `ollm prompt`:
@@ -107,11 +107,18 @@ cat notes.txt | ollm prompt --stdin --model llama3-8B-chat
 ollm prompt --multimodal --model gemma3-12B --image ./diagram.png "Describe this image"
 ```
 
-`ollm doctor` reports missing optional extras, runtime availability, path issues, and model readiness. `ollm models` provides `list`, `info`, `download`, and `path` subcommands.
+`ollm doctor` reports missing optional extras, runtime availability, path issues, and model readiness. `ollm models` provides `list`, `info`, `download`, and `path` subcommands for both built-in aliases and arbitrary model references.
+
+`--model` now accepts opaque model references. Today that means:
+- built-in aliases such as `llama3-1B-chat` and `gemma3-12B` load through the optimized native path
+- Hugging Face repo IDs such as `Qwen/Qwen2.5-7B-Instruct` resolve and materialize locally
+- local model directories resolve directly
+
+The current generic execution path is still limited to compatible local or materialized Llama and Gemma3 families; other references resolve cleanly and report their support level without being rejected by an allowlist.
 
 Interactive prompt history is in-memory by default. Use `--history-file` only when you explicitly want persistent local history.
 
-Chat also supports queued multimodal attachments for supported models:
+Chat also supports queued multimodal attachments when the resolved model capabilities include the requested modality:
 
 ```bash
 ollm chat --model gemma3-12B --multimodal
@@ -129,7 +136,7 @@ Code snippet sample
 
 ```python
 from ollm import Inference, file_get_contents, TextStreamer
-o = Inference("llama3-1B-chat", device="cuda:0", logging=True) #llama3-1B/3B/8B-chat, gpt-oss-20B, qwen3-next-80B
+o = Inference("llama3-1B-chat", device="cuda:0", logging=True) # built-in optimized aliases such as llama3-1B-chat or qwen3-next-80B
 o.ini_model(models_dir="./models/", force_download=False)
 o.offload_layers_to_cpu(layers_num=2) #(optional) offload some layers to CPU for speed boost
 past_key_values = o.DiskCache(cache_dir="./kv_cache/") #set None if context is small
@@ -144,10 +151,10 @@ print(answer)
 or run the sample script as `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True uv run python example.py` 
 
 ```python
-# with AutoInference, you can run any LLama3/gemma3 model with PEFT adapter support
+# with AutoInference, you can run compatible local Llama or Gemma3 model directories
 # uv sync --extra adapters
 from ollm import AutoInference
-o = AutoInference("./models/gemma3-12B", # any llama3 or gemma3 model
+o = AutoInference("./models/gemma3-12B", # compatible local Llama or Gemma3 model
   adapter_dir="./myadapter/checkpoint-20", # PEFT adapter checkpoint if available
   device="cuda:0", multimodality=False, logging=True)
 ...
@@ -188,4 +195,4 @@ uv run python -m compileall src tests
 
 
 ## Contact us
-If there’s a model you’d like to see supported, feel free to suggest it in the [discussion](https://github.com/Mega4alik/ollm/discussions/4) — I’ll do my best to make it happen.
+If there’s a model family you’d like to see optimized natively, feel free to suggest it in the [discussion](https://github.com/Mega4alik/ollm/discussions/4) — I’ll do my best to make it happen.

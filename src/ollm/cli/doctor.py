@@ -9,7 +9,7 @@ from ollm.cli.services import CommandServices
 def register_doctor_command(app: typer.Typer, services: CommandServices) -> None:
     @app.command("doctor")
     def doctor_command(
-        model: str = typer.Option("llama3-1B-chat", "--model", help="Model id to inspect."),
+        model: str = typer.Option("llama3-1B-chat", "--model", help="Model reference to inspect."),
         models_dir: Path = typer.Option(Path("models"), "--models-dir", help="Directory containing model data."),
         device: str = typer.Option("cuda:0", "--device", help="Torch device string."),
         adapter_dir: Path | None = typer.Option(None, "--adapter-dir", help="Optional PEFT adapter directory."),
@@ -60,4 +60,3 @@ def register_doctor_command(app: typer.Typer, services: CommandServices) -> None
                 for key, value in check.details.items():
                     console.print(f"  {key}: {value}")
         raise typer.Exit(code=0 if report.ok() else 1)
-

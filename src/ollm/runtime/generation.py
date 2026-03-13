@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import torch
 
-from ollm.app.types import ContentKind, Message, MessageRole, PromptRequest, PromptResponse
+from ollm.app.types import ContentKind, Message, PromptRequest, PromptResponse
 from ollm.runtime.catalog import ModelModality
 from ollm.runtime.loader import LoadedRuntime
 from ollm.runtime.streaming import BufferedTextStreamer, NullStreamSink, StreamSink
@@ -26,12 +26,12 @@ class RuntimeExecutor:
             streamer = BufferedTextStreamer(runtime.tokenizer, stream_sink, skip_prompt=True, skip_special_tokens=False)
 
         generate_kwargs = self._build_generate_kwargs(runtime, request, streamer)
-        stream_sink.on_status(f"Running {runtime.config.model_id} on {runtime.config.device}")
+        stream_sink.on_status(f"Running {runtime.config.model_reference} on {runtime.config.device}")
 
         with torch.inference_mode():
             outputs = runtime.model.generate(**inputs, **generate_kwargs)
 
-        if hasattr(outputs, "detach"):
+        if hasattr(outputs, 'detach'):
             outputs = outputs.detach()
         outputs = outputs.cpu()
         response_text = self._decode_response(runtime, inputs, outputs)
@@ -40,12 +40,12 @@ class RuntimeExecutor:
         assistant_message = Message.assistant_text(response_text)
         metadata = {}
         if runtime.backend.stats is not None:
-            metadata["stats"] = runtime.backend.stats.print_and_clean()
+            metadata['stats'] = runtime.backend.stats.print_and_clean()
         return PromptResponse(text=response_text, assistant_message=assistant_message, metadata=metadata)
 
     def _validate_request(self, runtime: LoadedRuntime, request: PromptRequest) -> None:
         if not request.messages:
-            raise PromptExecutionError("At least one message is required")
+            raise PromptExecutionError('At least one message is required')
 
         contains_image = any(
             part.kind is ContentKind.IMAGE
@@ -58,14 +58,14 @@ class RuntimeExecutor:
             for part in message.content
         )
 
-        if contains_image and not runtime.entry.supports_modality(ModelModality.IMAGE):
-            raise PromptExecutionError(f"{runtime.entry.model_id} does not support image inputs")
-        if contains_audio and not runtime.entry.supports_modality(ModelModality.AUDIO):
-            raise PromptExecutionError(f"{runtime.entry.model_id} does not support audio inputs")
+        if contains_image and not runtime.capabilities.supports_modality(ModelModality.IMAGE):
+            raise PromptExecutionError(f"{runtime.config.model_reference} does not support image inputs")
+        if contains_audio and not runtime.capabilities.supports_modality(ModelModality.AUDIO):
+            raise PromptExecutionError(f"{runtime.config.model_reference} does not support audio inputs")
         if (contains_image or contains_audio) and runtime.processor is None:
             raise PromptExecutionError(
-                "Multimodal inputs require a processor-backed runtime. "
-                "Enable --multimodal with a compatible model."
+                'Multimodal inputs require a processor-backed runtime. '
+                'Enable --multimodal with a compatible model reference.'
             )
 
     def _build_inputs(self, runtime: LoadedRuntime, messages: list[Message]) -> dict[str, object]:
@@ -76,7 +76,7 @@ class RuntimeExecutor:
                 add_generation_prompt=True,
                 tokenize=True,
                 return_dict=True,
-                return_tensors="pt",
+                return_tensors='pt',
             )
             contains_image = any(
                 part.kind is ContentKind.IMAGE
@@ -89,58 +89,58 @@ class RuntimeExecutor:
 
         input_ids = runtime.tokenizer.apply_chat_template(
             transformers_messages,
-            reasoning_effort="minimal",
+            reasoning_effort='minimal',
             tokenize=True,
             add_generation_prompt=True,
-            return_tensors="pt",
+            return_tensors='pt',
             return_dict=False,
         ).to(runtime.device)
-        return {"input_ids": input_ids}
+        return {'input_ids': input_ids}
 
     def _build_generate_kwargs(self, runtime: LoadedRuntime, request: PromptRequest, streamer) -> dict[str, object]:
         config = request.generation_config
         generate_kwargs: dict[str, object] = {
-            "max_new_tokens": config.max_new_tokens,
-            "use_cache": True,
+            'max_new_tokens': config.max_new_tokens,
+            'use_cache': True,
         }
 
         if request.runtime_config.use_cache:
-            generate_kwargs["past_key_values"] = runtime.backend.DiskCache(
+            generate_kwargs['past_key_values'] = runtime.backend.DiskCache(
                 cache_dir=str(request.runtime_config.resolved_cache_dir())
             )
         else:
-            generate_kwargs["past_key_values"] = None
+            generate_kwargs['past_key_values'] = None
 
         if config.sampling_enabled():
-            generate_kwargs["do_sample"] = True
-            generate_kwargs["temperature"] = config.temperature
+            generate_kwargs['do_sample'] = True
+            generate_kwargs['temperature'] = config.temperature
             if config.top_p is not None:
-                generate_kwargs["top_p"] = config.top_p
+                generate_kwargs['top_p'] = config.top_p
             if config.top_k is not None:
-                generate_kwargs["top_k"] = config.top_k
+                generate_kwargs['top_k'] = config.top_k
         else:
-            generate_kwargs["do_sample"] = False
+            generate_kwargs['do_sample'] = False
 
         if streamer is not None:
-            generate_kwargs["streamer"] = streamer
+            generate_kwargs['streamer'] = streamer
 
         if runtime.processor is not None and any(
             part.kind is ContentKind.AUDIO for message in request.messages for part in message.content
         ):
-            generate_kwargs["do_sample"] = False
+            generate_kwargs['do_sample'] = False
 
         return generate_kwargs
 
     def _decode_response(self, runtime: LoadedRuntime, inputs: dict[str, object], outputs) -> str:
         if runtime.processor is not None:
-            input_ids = inputs["input_ids"]
+            input_ids = inputs['input_ids']
             decoded = runtime.processor.batch_decode(
                 outputs[:, input_ids.shape[1]:],
                 skip_special_tokens=False,
             )
             if not decoded:
-                return ""
+                return ''
             return decoded[0]
 
-        input_ids = inputs["input_ids"]
+        input_ids = inputs['input_ids']
         return runtime.tokenizer.decode(outputs[0][input_ids.shape[-1]:], skip_special_tokens=False)

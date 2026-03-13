@@ -4,6 +4,7 @@ from pathlib import Path
 from ollm.app.doctor import DoctorCheck, DoctorReport
 from ollm.app.types import Message, PromptResponse
 from ollm.runtime.config import RuntimeConfig
+from ollm.runtime.resolver import ModelResolver, ResolvedModel
 
 
 @dataclass(slots=True)
@@ -15,16 +16,23 @@ class FakeRuntimeLoader:
     def __init__(self):
         self.load_calls: list[str] = []
         self.download_calls: list[tuple[str, Path, bool]] = []
+        self._resolver = ModelResolver()
 
     def load(self, config: RuntimeConfig) -> FakeLoadedRuntime:
-        self.load_calls.append(config.model_id)
+        self.load_calls.append(config.model_reference)
         return FakeLoadedRuntime(config=config)
 
-    def download(self, model_id: str, models_dir: Path, force_download: bool = False) -> Path:
-        self.download_calls.append((model_id, models_dir, force_download))
-        target = models_dir / model_id
+    def download(self, model_reference: str, models_dir: Path, force_download: bool = False) -> Path:
+        self.download_calls.append((model_reference, models_dir, force_download))
+        target = models_dir / model_reference.replace("/", "--")
         target.mkdir(parents=True, exist_ok=True)
         return target
+
+    def resolve(self, model_reference: str, models_dir: Path) -> ResolvedModel:
+        return self._resolver.resolve(model_reference, models_dir)
+
+    def discover_local_models(self, models_dir: Path) -> tuple[ResolvedModel, ...]:
+        return self._resolver.discover_local_models(models_dir)
 
 
 class FakeRuntimeExecutor:
@@ -47,4 +55,3 @@ class FakeDoctorService:
     def run(self, runtime_config, include_imports=True, include_runtime=True, include_paths=True, include_download=False):
         del runtime_config, include_imports, include_runtime, include_paths, include_download
         return DoctorReport([DoctorCheck(name="doctor:fake", ok=True, message="ok")])
-

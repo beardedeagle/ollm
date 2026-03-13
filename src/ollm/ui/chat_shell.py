@@ -8,7 +8,6 @@ from rich.console import Console
 
 from ollm.app.session import ChatSession
 from ollm.app.types import ContentPart
-from ollm.runtime.catalog import get_model_catalog_entry
 from ollm.runtime.streaming import StreamSink
 
 
@@ -121,17 +120,16 @@ class InteractiveChatShell:
             return False
         if command.name == "model":
             if command.argument:
-                get_model_catalog_entry(command.argument)
                 self._session.set_model(command.argument)
                 self._pending_parts.clear()
                 self._console.print(f"Model switched to {command.argument}.")
             else:
-                self._console.print(self._session.runtime_config.model_id)
+                self._console.print(self._session.runtime_config.model_reference)
             return False
         if command.name == "stats":
             self._console.print(
                 f"stats={self._session.runtime_config.stats} "
-                f"model={self._session.runtime_config.model_id} "
+                f"model={self._session.runtime_config.model_reference} "
                 f"messages={len(self._session.messages)}"
             )
             return False
@@ -196,9 +194,9 @@ class InteractiveChatShell:
 
     def _render_banner(self) -> None:
         if self._plain:
-            self._console.print(f"oLLM chat ({self._session.runtime_config.model_id})")
+            self._console.print(f"oLLM chat ({self._session.runtime_config.model_reference})")
             return
-        self._console.print(f"[bold]oLLM chat[/bold] using [cyan]{self._session.runtime_config.model_id}[/cyan]")
+        self._console.print(f"[bold]oLLM chat[/bold] using [cyan]{self._session.runtime_config.model_reference}[/cyan]")
         self._console.print("Type /help for commands.")
 
     def _render_assistant_message(self, text: str) -> None:
