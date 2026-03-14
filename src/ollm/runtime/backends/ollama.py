@@ -1,7 +1,4 @@
-import base64
 from dataclasses import replace
-from pathlib import Path
-from urllib.parse import urlparse
 
 import torch
 
@@ -9,6 +6,7 @@ from ollm.app.types import ContentKind, Message, PromptRequest, PromptResponse
 from ollm.runtime.backends.base import BackendRuntime, DiscoveredProviderModel, ExecutionBackend
 from ollm.runtime.capabilities import SupportLevel, provider_capabilities
 from ollm.runtime.config import RuntimeConfig
+from ollm.runtime.media_inputs import encode_image_input_base64
 from ollm.runtime.plan import RuntimePlan, SpecializationState
 from ollm.runtime.providers.ollama_client import (
 	OllamaClient,
@@ -229,21 +227,4 @@ def _ollama_message(message: Message) -> dict[str, object]:
 
 
 def _encoded_image_value(value: str) -> str:
-	if value.startswith("data:"):
-		header, _, encoded = value.partition(",")
-		if ";base64" not in header or not encoded:
-			raise ValueError("Data URL image inputs for Ollama must be base64-encoded")
-		return encoded
-	parsed = urlparse(value)
-	if parsed.scheme == "file":
-		return _encode_image_path(Path(parsed.path))
-	image_path = Path(value).expanduser()
-	if image_path.exists() and image_path.is_file():
-		return _encode_image_path(image_path)
-	raise ValueError(
-		"Ollama image inputs currently require a local file path or data URL image value"
-	)
-
-
-def _encode_image_path(path: Path) -> str:
-	return base64.b64encode(path.resolve().read_bytes()).decode("ascii")
+	return encode_image_input_base64(value)

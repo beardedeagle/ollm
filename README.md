@@ -135,7 +135,13 @@ For provider-backed execution, `ollm` currently supports:
 - LM Studio on the default `http://127.0.0.1:1234/v1` OpenAI-compatible endpoint
 - arbitrary OpenAI-compatible servers when `--provider-endpoint` points at the provider API root
 
-`ollm doctor --model <provider-ref>` and `ollm models info <provider-ref>` probe the configured endpoint and report executability truthfully. If an Ollama model advertises `vision` capability, `ollm prompt --multimodal --model ollama:<model>` can send local-file or data-URL image inputs through the Ollama chat API. The OpenAI-compatible backend is intentionally narrower right now: it is text-only, rejects `--top-k`, does not support PEFT adapters or custom layer offload, and requires `--provider-endpoint` for `openai-compatible:<model>` references. Audio provider execution remains unsupported.
+Example Ollama vision prompt with a remote image URL:
+
+```bash
+ollm prompt --multimodal --model ollama:llava --image https://example.com/diagram.png "Describe this image"
+```
+
+`ollm doctor --model <provider-ref>` and `ollm models info <provider-ref>` probe the configured endpoint and report executability truthfully. If an Ollama model advertises `vision` capability, `ollm prompt --multimodal --model ollama:<model>` can now send local-file paths, base64 data URLs, and remote `http`/`https` image URLs through the Ollama chat API. Remote image URLs are fetched client-side with bounded downloads and content-type validation before being base64-forwarded to Ollama. The OpenAI-compatible backend is intentionally narrower right now: it is text-only, rejects `--top-k`, does not support PEFT adapters or custom layer offload, and requires `--provider-endpoint` for `openai-compatible:<model>` references. Audio provider execution remains unsupported.
 
 The optimized GPT-OSS provider is intentionally stricter than before: it only matches when a validated `gds_export/` tree is present beside the model, and that export manifest must stay inside the export directory and avoid torch-serialized or pickle-backed artifacts.
 

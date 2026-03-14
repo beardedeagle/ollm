@@ -16,6 +16,7 @@ from ollm.runtime.providers.ollama_client import OllamaClient
 
 from tests.openai_compatible_server import OpenAICompatibleFixtureServer
 from tests.fakes import FakeDoctorService, FakeRuntimeExecutor, FakeRuntimeLoader
+from tests.media_server import MediaFixtureServer, MediaResponse
 from tests.ollama_server import OllamaFixtureServer
 
 
@@ -173,6 +174,50 @@ def test_provider_backed_models_info_and_doctor_commands(tmp_path: Path) -> None
         assert '"Provider-backed model references for ollama ignore local device' in doctor_result.output
     finally:
         server.stop()
+
+
+def test_prompt_command_executes_ollama_provider_reference_with_remote_image_url(tmp_path: Path) -> None:
+    ollama_server = OllamaFixtureServer(
+        models={"llava": {"capabilities": ["completion", "vision"], "response_text": "remote vision ready"}}
+    )
+    media_server = MediaFixtureServer(
+        responses={
+            "/diagram.png": MediaResponse(body=b"remote-png-bytes", content_type="image/png"),
+        }
+    )
+    ollama_server.start()
+    media_server.start()
+    try:
+        runtime_loader = RuntimeLoader(
+            backends=(OllamaBackend(client=OllamaClient(base_url=ollama_server.base_url)),),
+        )
+        services = CommandServices(
+            runtime_loader=runtime_loader,
+            runtime_executor=RuntimeExecutor(),
+            doctor_service=DoctorService(runtime_loader=runtime_loader),
+        )
+        runner = CliRunner()
+        app = create_app(services)
+
+        result = runner.invoke(
+            app,
+            [
+                "prompt",
+                "describe the image",
+                "--model",
+                "ollama:llava",
+                "--image",
+                f"{media_server.base_url}/diagram.png",
+                "--multimodal",
+                "--no-stream",
+                "--no-color",
+            ],
+        )
+        assert result.exit_code == 0
+        assert "remote vision ready" in result.output
+    finally:
+        media_server.stop()
+        ollama_server.stop()
 
 
 def test_models_list_discovers_provider_models(tmp_path: Path) -> None:
