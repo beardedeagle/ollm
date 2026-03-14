@@ -8,6 +8,7 @@ import torch
 
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.plan import RuntimePlan
+from ollm.runtime.specialization.base import AppliedSpecialization
 
 
 @dataclass(slots=True)
@@ -21,6 +22,7 @@ class BackendRuntime:
     print_suppression_modules: tuple[ModuleType, ...]
     create_cache: Callable[[Path], object | None]
     apply_offload: Callable[[RuntimeConfig], None]
+    applied_specialization: AppliedSpecialization | None = None
 
 
 class ExecutionBackend(ABC):

@@ -1,6 +1,6 @@
 from ollm.runtime.capabilities import SupportLevel
 from ollm.runtime.config import RuntimeConfig
-from ollm.runtime.plan import RuntimePlan
+from ollm.runtime.plan import RuntimePlan, SpecializationState
 from ollm.runtime.resolver import ModelSourceKind, ResolvedModel
 from ollm.runtime.specialization import (
     SpecializationPipeline,
@@ -38,7 +38,9 @@ class BackendSelector:
                 supports_cpu_offload=False,
                 supports_gpu_offload=False,
                 specialization_enabled=False,
+                specialization_applied=False,
                 specialization_provider_id=None,
+                specialization_state=SpecializationState.NOT_PLANNED,
                 specialization_pass_ids=(),
                 reason=f"Provider-backed model references are not executable yet: {resolved_model.reference.raw}",
                 details={"source_kind": resolved_model.source_kind.value},
@@ -77,7 +79,9 @@ class BackendSelector:
                 supports_cpu_offload=planned_specialization.traits.supports_cpu_offload,
                 supports_gpu_offload=planned_specialization.traits.supports_gpu_offload,
                 specialization_enabled=True,
+                specialization_applied=False,
                 specialization_provider_id=specialization_match.provider_id,
+                specialization_state=SpecializationState.PLANNED,
                 specialization_pass_ids=planned_specialization.pass_ids,
                 reason=specialization_match.reason,
                 details=details,
@@ -94,7 +98,9 @@ class BackendSelector:
                 supports_cpu_offload=False,
                 supports_gpu_offload=False,
                 specialization_enabled=False,
+                specialization_applied=False,
                 specialization_provider_id=None,
+                specialization_state=SpecializationState.NOT_PLANNED,
                 specialization_pass_ids=(),
                 reason=(
                     f"Selected transformers-generic backend for {resolved_model.reference.raw} "
@@ -117,7 +123,9 @@ class BackendSelector:
                 supports_cpu_offload=False,
                 supports_gpu_offload=False,
                 specialization_enabled=False,
+                specialization_applied=False,
                 specialization_provider_id=None,
+                specialization_state=SpecializationState.NOT_PLANNED,
                 specialization_pass_ids=(),
                 reason=(
                     f"Selected transformers-generic backend for {resolved_model.reference.raw} "
@@ -140,7 +148,9 @@ class BackendSelector:
             supports_cpu_offload=False,
             supports_gpu_offload=False,
             specialization_enabled=False,
+            specialization_applied=False,
             specialization_provider_id=None,
+            specialization_state=SpecializationState.NOT_PLANNED,
             specialization_pass_ids=(),
             reason=reason,
             details={"source_kind": resolved_model.source_kind.value},

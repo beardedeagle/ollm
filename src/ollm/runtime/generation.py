@@ -43,7 +43,19 @@ class RuntimeExecutor:
         if streamer is not None and not response_text.strip():
             response_text = streamer.text
         assistant_message = Message.assistant_text(response_text)
-        metadata = {"backend_id": runtime.plan.backend_id or "unknown"}
+        metadata = {
+            "backend_id": runtime.plan.backend_id or "unknown",
+            "specialization_state": runtime.plan.specialization_state.value,
+            "specialization_applied": str(runtime.plan.specialization_applied).lower(),
+            "specialization_provider_id": runtime.plan.specialization_provider_id or "",
+            "specialization_pass_ids": ",".join(
+                pass_id.value for pass_id in runtime.plan.specialization_pass_ids
+            ),
+            "applied_specialization_pass_ids": ",".join(
+                pass_id.value for pass_id in runtime.plan.applied_specialization_pass_ids
+            ),
+            "fallback_reason": runtime.plan.fallback_reason or "",
+        }
         if runtime.backend.stats is not None:
             metadata["stats"] = runtime.backend.stats.print_and_clean()
         return PromptResponse(text=response_text, assistant_message=assistant_message, metadata=metadata)

@@ -38,7 +38,10 @@ def _runtime_plan_payload(runtime_plan: RuntimePlan) -> dict[str, object]:
         "supports_cpu_offload": runtime_plan.supports_cpu_offload,
         "supports_gpu_offload": runtime_plan.supports_gpu_offload,
         "specialization_provider_id": runtime_plan.specialization_provider_id,
-        "specialization_pass_ids": [pass_id.value for pass_id in runtime_plan.specialization_pass_ids],
+        "specialization_state": runtime_plan.specialization_state.value,
+        "planned_specialization_pass_ids": [
+            pass_id.value for pass_id in runtime_plan.specialization_pass_ids
+        ],
         "reason": runtime_plan.reason,
     }
 
@@ -162,7 +165,8 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         runtime_plan = payload.get("runtime_plan")
         if runtime_plan is not None:
             console.print(f"backend: {runtime_plan['backend_id']}")
-            console.print(f"planned-passes: {', '.join(runtime_plan['specialization_pass_ids'])}")
+            console.print(f"specialization-state: {runtime_plan['specialization_state']}")
+            console.print(f"planned-passes: {', '.join(runtime_plan['planned_specialization_pass_ids'])}")
         console.print(f"modalities: {', '.join(payload['modalities'])}")
         console.print(payload["resolution_message"])
 

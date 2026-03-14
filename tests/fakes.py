@@ -6,7 +6,7 @@ from ollm.app.types import Message, PromptResponse
 from ollm.runtime.capabilities import SupportLevel
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.config import RuntimeConfig
-from ollm.runtime.plan import RuntimePlan
+from ollm.runtime.plan import RuntimePlan, SpecializationState
 from ollm.runtime.resolver import ModelResolver, ResolvedModel
 from ollm.runtime.specialization.passes.base import SpecializationPassId
 
@@ -50,7 +50,9 @@ class FakeRuntimeLoader:
             supports_cpu_offload=True,
             supports_gpu_offload=False,
             specialization_enabled=True,
+            specialization_applied=False,
             specialization_provider_id="fake-provider",
+            specialization_state=SpecializationState.PLANNED,
             reason="fake planned specialization",
             specialization_pass_ids=(SpecializationPassId.DISK_CACHE,),
         )

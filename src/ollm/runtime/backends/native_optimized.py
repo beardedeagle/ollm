@@ -2,7 +2,14 @@ from ollm.runtime.backends.base import BackendRuntime, ExecutionBackend
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.output_control import suppress_module_prints
 from ollm.runtime.plan import RuntimePlan
-from ollm.runtime.specialization import SpecializationRegistry, build_default_specialization_registry
+from ollm.runtime.specialization import (
+    PlannedSpecialization,
+    SpecializationLoadError,
+    SpecializationRegistry,
+    apply_specialization,
+    build_default_specialization_registry,
+    get_specialization_pass,
+)
 from ollm.runtime.specialization.base import OptimizedModelArtifacts
 from ollm.utils import Stats
 
@@ -22,13 +29,35 @@ class NativeOptimizedBackend(ExecutionBackend):
             raise ValueError("optimized-native backend requires a selected specialization provider")
 
         stats = Stats() if config.stats or config.verbose else None
-        with suppress_module_prints(_modules_for_provider_id(plan.specialization_provider_id)):
-            artifacts = self._specialization_registry.load(
-                plan.specialization_provider_id,
-                plan.resolved_model,
-                config,
-                stats,
-            )
+        try:
+            with suppress_module_prints(_modules_for_provider_id(plan.specialization_provider_id)):
+                artifacts = self._specialization_registry.load(
+                    plan.specialization_provider_id,
+                    plan.resolved_model,
+                    config,
+                    stats,
+                )
+        except (ImportError, OSError, RuntimeError, ValueError) as exc:
+            raise SpecializationLoadError(
+                (
+                    f"Optimized specialization '{plan.specialization_provider_id}' failed to load for "
+                    f"{plan.resolved_model.reference.raw}: {exc}"
+                ),
+                provider_id=plan.specialization_provider_id,
+                details={"reason": str(exc)},
+            ) from exc
+        applied_specialization = apply_specialization(
+            PlannedSpecialization(
+                provider_id=plan.specialization_provider_id,
+                passes=tuple(
+                    get_specialization_pass(pass_id)
+                    for pass_id in plan.specialization_pass_ids
+                ),
+                details=dict(plan.details),
+            ),
+            artifacts,
+            config,
+        )
         return BackendRuntime(
             backend_id=self.backend_id,
             model=artifacts.model,
@@ -39,6 +68,7 @@ class NativeOptimizedBackend(ExecutionBackend):
             print_suppression_modules=artifacts.print_suppression_modules,
             create_cache=artifacts.create_cache,
             apply_offload=lambda runtime_config: _apply_native_offload(artifacts, runtime_config),
+            applied_specialization=applied_specialization,
         )
 
 

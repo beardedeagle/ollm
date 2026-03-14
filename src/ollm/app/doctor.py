@@ -285,7 +285,10 @@ class DoctorService:
                     "specialization_provider_id": (
                         None if runtime_plan is None else runtime_plan.specialization_provider_id
                     ),
-                    "specialization_pass_ids": (
+                    "specialization_state": (
+                        "" if runtime_plan is None else runtime_plan.specialization_state.value
+                    ),
+                    "planned_specialization_pass_ids": (
                         ""
                         if runtime_plan is None
                         else ",".join(pass_id.value for pass_id in runtime_plan.specialization_pass_ids)

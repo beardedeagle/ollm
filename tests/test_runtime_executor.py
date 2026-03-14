@@ -11,7 +11,7 @@ from ollm.runtime.catalog import ModelModality
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
 from ollm.runtime.generation import PromptExecutionError, RuntimeExecutor
 from ollm.runtime.loader import LoadedRuntime
-from ollm.runtime.plan import RuntimePlan
+from ollm.runtime.plan import RuntimePlan, SpecializationState
 from ollm.runtime.reference import ModelReference
 from ollm.runtime.resolver import ModelSourceKind, ResolvedModel
 
@@ -93,7 +93,9 @@ def build_runtime(capabilities: CapabilityProfile, tokenizer=None) -> LoadedRunt
         supports_cpu_offload=False,
         supports_gpu_offload=False,
         specialization_enabled=False,
+        specialization_applied=False,
         specialization_provider_id=None,
+        specialization_state=SpecializationState.NOT_PLANNED,
         reason="test plan",
     )
     backend = BackendRuntime(
@@ -162,7 +164,9 @@ def build_seq2seq_runtime() -> LoadedRuntime:
         supports_cpu_offload=False,
         supports_gpu_offload=False,
         specialization_enabled=False,
+        specialization_applied=False,
         specialization_provider_id=None,
+        specialization_state=SpecializationState.NOT_PLANNED,
         reason="seq2seq plan",
     )
     backend = BackendRuntime(
@@ -200,6 +204,7 @@ def test_runtime_executor_executes_text_request() -> None:
     response = RuntimeExecutor().execute(runtime, request)
     assert response.text == "decoded-response"
     assert response.assistant_message.text_content() == "decoded-response"
+    assert response.metadata["specialization_state"] == "not-planned"
 
 
 def test_runtime_executor_rejects_unsupported_image_input() -> None:

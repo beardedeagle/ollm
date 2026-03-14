@@ -1,10 +1,18 @@
 from dataclasses import dataclass, field
+from enum import Enum
 from pathlib import Path
 
 from ollm.runtime.capabilities import SupportLevel
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.resolver import ResolvedModel
 from ollm.runtime.specialization.passes.base import SpecializationPassId
+
+
+class SpecializationState(str, Enum):
+    NOT_PLANNED = "not-planned"
+    PLANNED = "planned"
+    APPLIED = "applied"
+    FALLBACK = "fallback"
 
 
 @dataclass(frozen=True, slots=True)
@@ -18,9 +26,13 @@ class RuntimePlan:
     supports_cpu_offload: bool
     supports_gpu_offload: bool
     specialization_enabled: bool
+    specialization_applied: bool
     specialization_provider_id: str | None
+    specialization_state: SpecializationState
     reason: str
     specialization_pass_ids: tuple[SpecializationPassId, ...] = ()
+    applied_specialization_pass_ids: tuple[SpecializationPassId, ...] = ()
+    fallback_reason: str | None = None
     details: dict[str, str] = field(default_factory=dict)
 
     def is_executable(self) -> bool:
@@ -36,8 +48,14 @@ class RuntimePlan:
             "supports_cpu_offload": self.supports_cpu_offload,
             "supports_gpu_offload": self.supports_gpu_offload,
             "specialization_enabled": self.specialization_enabled,
+            "specialization_applied": self.specialization_applied,
             "specialization_provider_id": self.specialization_provider_id,
+            "specialization_state": self.specialization_state.value,
             "specialization_pass_ids": [pass_id.value for pass_id in self.specialization_pass_ids],
+            "applied_specialization_pass_ids": [
+                pass_id.value for pass_id in self.applied_specialization_pass_ids
+            ],
+            "fallback_reason": self.fallback_reason,
             "reason": self.reason,
             "details": dict(self.details),
         }

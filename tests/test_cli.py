@@ -121,7 +121,8 @@ def test_doctor_and_models_commands(tmp_path: Path) -> None:
     assert '"support_level": "optimized"' in installed_info_result.output
     assert '"resolved_support_level": "optimized"' in installed_info_result.output
     assert '"resolved_supports_disk_cache": true' in installed_info_result.output
-    assert '"specialization_pass_ids": [' in installed_info_result.output
+    assert '"specialization_state": "planned"' in installed_info_result.output
+    assert '"planned_specialization_pass_ids": [' in installed_info_result.output
 
     download_result = runner.invoke(app, ["models", "download", "llama3-3B-chat", "--models-dir", str(model_dir), "--no-color"])
     assert download_result.exit_code == 0

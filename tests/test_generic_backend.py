@@ -8,7 +8,7 @@ from ollm.runtime.capabilities import CapabilityProfile
 from ollm.runtime.capabilities import SupportLevel
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.config import RuntimeConfig
-from ollm.runtime.plan import RuntimePlan
+from ollm.runtime.plan import RuntimePlan, SpecializationState
 from ollm.runtime.reference import ModelReference
 from ollm.runtime.resolver import ModelSourceKind, ResolvedModel
 
@@ -65,7 +65,9 @@ def build_plan(kind: GenericModelKind, model_path: Path) -> RuntimePlan:
         supports_cpu_offload=False,
         supports_gpu_offload=False,
         specialization_enabled=False,
+        specialization_applied=False,
         specialization_provider_id=None,
+        specialization_state=SpecializationState.NOT_PLANNED,
         reason="generic",
     )
 

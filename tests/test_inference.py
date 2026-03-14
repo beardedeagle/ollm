@@ -55,6 +55,9 @@ class FakeProvider(SpecializationProvider):
             processor=None,
             device=torch.device("cpu"),
             stats=stats,
+            supports_disk_cache=True,
+            supports_cpu_offload=True,
+            supports_gpu_offload=False,
             print_suppression_modules=(),
             create_cache=lambda cache_dir: str(cache_dir),
             apply_cpu_offload=lambda layers_num: None,
@@ -119,6 +122,7 @@ def test_inference_load_model_delegates_to_specialization_registry(tmp_path: Pat
     assert inference.loaded_resolved_model is not None
     assert inference.loaded_resolved_model.reference.raw == "llama3-1B-chat"
     assert inference.loaded_specialization_provider_id == "fake-llama"
+    assert inference.loaded_applied_specialization_pass_ids == ()
 
 
 def test_auto_inference_preserves_local_path_reference_for_optimized_loads(tmp_path: Path) -> None:

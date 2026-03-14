@@ -10,7 +10,12 @@ from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.reference import ModelReference
 from ollm.runtime.resolver import ModelResolver, ModelSourceKind
 from ollm.runtime.safety import validate_safe_adapter_artifacts
-from ollm.runtime.specialization import SpecializationRegistry, build_default_specialization_registry
+from ollm.runtime.specialization import (
+    SpecializationPipeline,
+    SpecializationRegistry,
+    apply_specialization,
+    build_default_specialization_registry,
+)
 from ollm.utils import Stats
 
 LOGGER = logging.getLogger(__name__)
@@ -64,11 +69,13 @@ class Inference:
             else specialization_registry
         )
         self._resolver = resolver or ModelResolver()
+        self._specialization_pipeline = SpecializationPipeline()
         self._cache_factory = None
         self._apply_cpu_offload = None
         self._apply_gpu_offload = None
         self.loaded_resolved_model = None
         self.loaded_specialization_provider_id = None
+        self.loaded_applied_specialization_pass_ids = ()
 
     def hf_download(self, model_dir: str, force_download: bool = False) -> None:
         entry = find_model_catalog_entry(self.optimized_model_id)
@@ -143,14 +150,25 @@ class Inference:
             raise ValueError(
                 f"No optimized specialization provider is available for {self.model_id!r} at {model_path}"
             )
+        planned_specialization = self._specialization_pipeline.plan(
+            resolved_model,
+            runtime_config,
+            specialization_match.provider_id,
+        )
         artifacts = self._specialization_registry.load(
             specialization_match.provider_id,
             resolved_model,
             runtime_config,
             self.stats,
         )
+        applied_specialization = apply_specialization(
+            planned_specialization,
+            artifacts,
+            runtime_config,
+        )
         self.loaded_resolved_model = resolved_model
         self.loaded_specialization_provider_id = specialization_match.provider_id
+        self.loaded_applied_specialization_pass_ids = applied_specialization.applied_pass_ids
         self.model = artifacts.model
         self.tokenizer = artifacts.tokenizer
         if artifacts.processor is None:

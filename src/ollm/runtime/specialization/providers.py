@@ -17,6 +17,7 @@ from ollm.runtime.specialization.base import (
     SpecializationProvider,
     SpecializationTraits,
 )
+from ollm.runtime.specialization.passes.base import SpecializationPassId
 from ollm.runtime.specialization.registry import SpecializationRegistry
 from ollm.utils import Stats
 
@@ -150,10 +151,14 @@ class LlamaSpecializationProvider(SpecializationProvider):
             processor=None,
             device=device,
             stats=stats,
+            supports_disk_cache=True,
+            supports_cpu_offload=True,
+            supports_gpu_offload=False,
             print_suppression_modules=(module,),
             create_cache=lambda cache_dir: KVCache(cache_dir=str(cache_dir), device=device, stats=stats),
             apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(layers_num=layers_num),
             apply_gpu_offload=None,
+            provided_pass_ids=(SpecializationPassId.MLP_CHUNKING,),
         )
 
 
@@ -208,10 +213,14 @@ class Gemma3SpecializationProvider(SpecializationProvider):
             processor=processor,
             device=device,
             stats=stats,
+            supports_disk_cache=True,
+            supports_cpu_offload=True,
+            supports_gpu_offload=False,
             print_suppression_modules=(module,),
             create_cache=lambda cache_dir: KVCache(cache_dir=str(cache_dir), device=device, stats=stats),
             apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(layers_num=layers_num),
             apply_gpu_offload=None,
+            provided_pass_ids=(SpecializationPassId.MLP_CHUNKING,),
         )
 
 
@@ -264,6 +273,9 @@ class Qwen3NextSpecializationProvider(SpecializationProvider):
             processor=None,
             device=device,
             stats=stats,
+            supports_disk_cache=True,
+            supports_cpu_offload=True,
+            supports_gpu_offload=True,
             print_suppression_modules=(module,),
             create_cache=(
                 lambda cache_dir: module.Qwen3NextDiskCache(
@@ -280,6 +292,7 @@ class Qwen3NextSpecializationProvider(SpecializationProvider):
                     cpu_layers_num=cpu_layers_num,
                 )
             ),
+            provided_pass_ids=(SpecializationPassId.MOE_ROUTING,),
         )
 
 
@@ -341,10 +354,18 @@ class GptOssSpecializationProvider(SpecializationProvider):
             processor=None,
             device=device,
             stats=stats,
+            supports_disk_cache=False,
+            supports_cpu_offload=True,
+            supports_gpu_offload=False,
             print_suppression_modules=(module,),
             create_cache=_unsupported_disk_cache_factory(resolved_model.reference.raw),
             apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(layers_num=layers_num),
             apply_gpu_offload=None,
+            provided_pass_ids=(
+                SpecializationPassId.MOE_ROUTING,
+                SpecializationPassId.ATTENTION_REPLACEMENT,
+                SpecializationPassId.GDS_EXPORT_WEIGHTS,
+            ),
         )
 
 
@@ -398,10 +419,14 @@ class VoxtralSpecializationProvider(SpecializationProvider):
             processor=processor,
             device=device,
             stats=stats,
+            supports_disk_cache=True,
+            supports_cpu_offload=True,
+            supports_gpu_offload=False,
             print_suppression_modules=(module,),
             create_cache=lambda cache_dir: KVCache(cache_dir=str(cache_dir), device=device, stats=stats),
             apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(layers_num=layers_num),
             apply_gpu_offload=None,
+            provided_pass_ids=(),
         )
 
 

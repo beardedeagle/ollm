@@ -1,6 +1,10 @@
+from ollm.runtime.specialization.application import apply_specialization
 from ollm.runtime.specialization.base import (
+    AppliedSpecialization,
     OptimizedModelArtifacts,
     PlannedSpecialization,
+    SpecializationApplicationError,
+    SpecializationLoadError,
     SpecializationMatch,
     SpecializationProvider,
     SpecializationTraits,
@@ -17,17 +21,21 @@ from ollm.runtime.specialization.providers import build_default_specialization_r
 from ollm.runtime.specialization.registry import SpecializationRegistry
 
 __all__ = [
+    "AppliedSpecialization",
     "OptimizedModelArtifacts",
     "PlannedSpecialization",
     "SpecializationPass",
     "SpecializationPassId",
     "SpecializationPassMatcher",
     "SpecializationPassTraits",
+    "SpecializationApplicationError",
+    "SpecializationLoadError",
     "SpecializationMatch",
     "SpecializationPipeline",
     "SpecializationProvider",
     "SpecializationRegistry",
     "SpecializationTraits",
+    "apply_specialization",
     "build_default_pass_matchers",
     "build_default_specialization_registry",
     "get_specialization_pass",

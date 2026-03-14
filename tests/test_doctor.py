@@ -75,7 +75,11 @@ def test_doctor_service_reports_planned_specialization_passes_for_optimized_loca
     assert checks["model:resolution"].message.startswith("Selected specialization provider 'llama-native'")
     assert checks["model:resolution"].details["specialization_provider_id"] == "llama-native"
     assert checks["model:resolution"].details["support_level"] == "optimized"
-    assert checks["model:resolution"].details["specialization_pass_ids"] == "disk-cache,cpu-offload,mlp-chunking"
+    assert checks["model:resolution"].details["specialization_state"] == "planned"
+    assert (
+        checks["model:resolution"].details["planned_specialization_pass_ids"]
+        == "disk-cache,cpu-offload,mlp-chunking"
+    )
 
 
 def test_doctor_service_fails_when_requested_cuda_device_is_unavailable(
