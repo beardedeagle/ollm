@@ -59,6 +59,27 @@ def test_backend_selector_routes_catalog_models_with_adapters_to_generic_backend
     assert plan.specialization_provider_id is None
 
 
+def test_backend_selector_honors_explicit_generic_backend_override() -> None:
+    plan = BackendSelector().select(
+        build_catalog_resolved_model(),
+        RuntimeConfig(backend="transformers-generic"),
+    )
+    assert plan.backend_id == "transformers-generic"
+    assert plan.support_level is SupportLevel.GENERIC
+    assert plan.specialization_enabled is False
+    assert plan.details["backend_override"] == "transformers-generic"
+
+
+def test_backend_selector_skips_specialization_when_disabled() -> None:
+    plan = BackendSelector().select(
+        build_catalog_resolved_model(),
+        RuntimeConfig(use_specialization=False),
+    )
+    assert plan.backend_id == "transformers-generic"
+    assert plan.support_level is SupportLevel.GENERIC
+    assert plan.specialization_enabled is False
+
+
 def test_backend_selector_prefers_optimized_native_for_local_native_family() -> None:
     resolved_model = build_catalog_resolved_model()
     resolved_model = ResolvedModel(
@@ -111,3 +132,12 @@ def test_backend_selector_falls_back_to_generic_when_no_specialization_matches()
     plan = BackendSelector().select(resolved_model, RuntimeConfig())
     assert plan.backend_id == "transformers-generic"
     assert plan.support_level is SupportLevel.GENERIC
+
+
+def test_backend_selector_rejects_provider_backend_override_for_local_models() -> None:
+    plan = BackendSelector().select(
+        build_catalog_resolved_model(),
+        RuntimeConfig(backend="openai-compatible"),
+    )
+    assert plan.backend_id is None
+    assert "only supports openai-compatible: or lmstudio:" in plan.reason

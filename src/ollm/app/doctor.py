@@ -320,6 +320,8 @@ class DoctorService:
                         modality.value for modality in runtime_plan.resolved_model.capabilities.modalities
                     ),
                     "audio_input_support": runtime_plan.details.get("audio_input_support", ""),
+                    "backend_override": "" if runtime_config.resolved_backend() is None else runtime_config.resolved_backend(),
+                    "use_specialization": str(runtime_config.use_specialization).lower(),
                     "requires_processor": str(runtime_plan.resolved_model.capabilities.requires_processor),
                     "backend_id": "" if runtime_plan.backend_id is None else runtime_plan.backend_id,
                     "specialization_provider_id": (

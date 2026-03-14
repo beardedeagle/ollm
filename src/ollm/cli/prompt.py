@@ -8,6 +8,7 @@ from ollm.app.history import write_private_text
 from ollm.app.types import ContentKind, ContentPart, Message, MessageRole, PromptRequest
 from ollm.cli.common import build_console, build_generation_config, build_runtime_config, config_as_dict, print_json
 from ollm.cli.services import CommandServices
+from ollm.runtime.inspection import plan_json_payload
 from ollm.runtime.streaming import StreamSink
 
 
@@ -38,9 +39,11 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
         model: str = typer.Option("llama3-1B-chat", "--model", help="Model reference to resolve."),
         models_dir: Path = typer.Option(Path("models"), "--models-dir", help="Directory containing model data."),
         device: str = typer.Option("cuda:0", "--device", help="Torch device string."),
+        backend: str | None = typer.Option(None, "--backend", help="Backend override."),
         provider_endpoint: str | None = typer.Option(None, "--provider-endpoint", help="Provider API root URL."),
         adapter_dir: Path | None = typer.Option(None, "--adapter-dir", help="Optional PEFT adapter directory."),
         multimodal: bool = typer.Option(False, "--multimodal/--no-multimodal", help="Enable multimodal processor support."),
+        no_specialization: bool = typer.Option(False, "--no-specialization", help="Disable optimized specialization selection."),
         cache_dir: Path = typer.Option(Path("kv_cache"), "--cache-dir", help="KV cache directory."),
         no_cache: bool = typer.Option(False, "--no-cache", help="Disable disk KV cache."),
         offload_cpu_layers: int = typer.Option(0, "--offload-cpu-layers", min=0, help="Number of layers to offload to CPU."),
@@ -64,15 +67,18 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
         format: str = typer.Option("text", "--format", help="Output format: text or json."),
         show_prompt: bool = typer.Option(False, "--show-prompt", help="Print the resolved request before execution."),
         print_config_flag: bool = typer.Option(False, "--print-config", help="Print resolved runtime config before running."),
+        plan_json_flag: bool = typer.Option(False, "--plan-json", help="Print the resolved runtime plan as JSON and exit."),
         no_color: bool = typer.Option(False, "--no-color", help="Disable ANSI color output."),
     ) -> None:
         runtime_config = build_runtime_config(
             model=model,
             models_dir=models_dir,
             device=device,
+            backend=backend,
             provider_endpoint=provider_endpoint,
             adapter_dir=adapter_dir,
             multimodal=multimodal,
+            no_specialization=no_specialization,
             cache_dir=cache_dir,
             no_cache=no_cache,
             offload_cpu_layers=offload_cpu_layers,
@@ -91,6 +97,13 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
             stream=stream,
         )
         console = build_console(no_color=no_color)
+        if plan_json_flag:
+            if output is not None:
+                raise typer.BadParameter("--plan-json cannot be combined with --output")
+            if print_config_flag:
+                raise typer.BadParameter("--plan-json cannot be combined with --print-config")
+            print_json(console, plan_json_payload(runtime_config, services.runtime_loader.plan(runtime_config)))
+            return
         if print_config_flag:
             print_json(console, config_as_dict(runtime_config, generation_config))
 

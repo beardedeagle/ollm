@@ -20,11 +20,14 @@ class FakeLoadedRuntime:
 class FakeRuntimeLoader:
     def __init__(self):
         self.load_calls: list[str] = []
+        self.loaded_configs: list[RuntimeConfig] = []
         self.download_calls: list[tuple[str, Path, bool]] = []
+        self.plan_calls: list[RuntimeConfig] = []
         self._resolver = ModelResolver()
 
     def load(self, config: RuntimeConfig) -> FakeLoadedRuntime:
         self.load_calls.append(config.model_reference)
+        self.loaded_configs.append(config)
         return FakeLoadedRuntime(config=config)
 
     def download(self, model_reference: str, models_dir: Path, force_download: bool = False) -> Path:
@@ -51,22 +54,27 @@ class FakeRuntimeLoader:
         return ()
 
     def plan(self, config: RuntimeConfig) -> RuntimePlan:
+        self.plan_calls.append(config)
         resolved_model = self.resolve(config.model_reference, config.resolved_models_dir())
         return RuntimePlan(
             resolved_model=resolved_model,
-            backend_id="optimized-native",
+            backend_id=config.resolved_backend() or "optimized-native",
             model_path=resolved_model.model_path,
-            support_level=SupportLevel.OPTIMIZED,
+            support_level=SupportLevel.GENERIC if not config.use_specialization else SupportLevel.OPTIMIZED,
             generic_model_kind=resolved_model.generic_model_kind or GenericModelKind.CAUSAL_LM,
             supports_disk_cache=True,
             supports_cpu_offload=True,
             supports_gpu_offload=False,
-            specialization_enabled=True,
+            specialization_enabled=config.use_specialization,
             specialization_applied=False,
-            specialization_provider_id="fake-provider",
-            specialization_state=SpecializationState.PLANNED,
-            reason="fake planned specialization",
-            specialization_pass_ids=(SpecializationPassId.DISK_CACHE,),
+            specialization_provider_id="fake-provider" if config.use_specialization else None,
+            specialization_state=SpecializationState.PLANNED if config.use_specialization else SpecializationState.NOT_PLANNED,
+            reason="fake planned specialization" if config.use_specialization else "fake generic plan",
+            specialization_pass_ids=(SpecializationPassId.DISK_CACHE,) if config.use_specialization else (),
+            details={
+                "audio_input_support": "",
+                "backend_override": config.resolved_backend() or "",
+            },
         )
 
 

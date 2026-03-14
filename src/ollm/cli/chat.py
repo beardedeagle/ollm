@@ -5,6 +5,7 @@ import typer
 from ollm.app.session import ChatSession
 from ollm.cli.common import build_console, build_generation_config, build_runtime_config, config_as_dict, ensure_interactive_terminal, print_json
 from ollm.cli.services import CommandServices
+from ollm.runtime.inspection import plan_json_payload
 from ollm.ui.chat_shell import InteractiveChatShell
 
 
@@ -13,9 +14,11 @@ def run_chat_command(
     model: str,
     models_dir: Path,
     device: str,
+    backend: str | None,
     provider_endpoint: str | None,
     adapter_dir: Path | None,
     multimodal: bool,
+    no_specialization: bool,
     cache_dir: Path,
     no_cache: bool,
     offload_cpu_layers: int,
@@ -38,15 +41,17 @@ def run_chat_command(
     plain: bool,
     no_color: bool,
     print_config_flag: bool,
+    plan_json_flag: bool,
 ) -> None:
-    ensure_interactive_terminal()
     runtime_config = build_runtime_config(
         model=model,
         models_dir=models_dir,
         device=device,
+        backend=backend,
         provider_endpoint=provider_endpoint,
         adapter_dir=adapter_dir,
         multimodal=multimodal,
+        no_specialization=no_specialization,
         cache_dir=cache_dir,
         no_cache=no_cache,
         offload_cpu_layers=offload_cpu_layers,
@@ -66,6 +71,12 @@ def run_chat_command(
     )
 
     console = build_console(no_color=no_color)
+    if plan_json_flag:
+        if print_config_flag:
+            raise typer.BadParameter("--plan-json cannot be combined with --print-config")
+        print_json(console, plan_json_payload(runtime_config, services.runtime_loader.plan(runtime_config)))
+        return
+    ensure_interactive_terminal()
     if print_config_flag:
         print_json(console, config_as_dict(runtime_config, generation_config))
 
@@ -103,9 +114,11 @@ def register_chat_surfaces(app: typer.Typer, services: CommandServices) -> None:
         model: str = typer.Option("llama3-1B-chat", "--model", help="Model reference to resolve."),
         models_dir: Path = typer.Option(Path("models"), "--models-dir", help="Directory containing model data."),
         device: str = typer.Option("cuda:0", "--device", help="Torch device string."),
+        backend: str | None = typer.Option(None, "--backend", help="Backend override."),
         provider_endpoint: str | None = typer.Option(None, "--provider-endpoint", help="Provider API root URL."),
         adapter_dir: Path | None = typer.Option(None, "--adapter-dir", help="Optional PEFT adapter directory."),
         multimodal: bool = typer.Option(False, "--multimodal/--no-multimodal", help="Enable multimodal processor support."),
+        no_specialization: bool = typer.Option(False, "--no-specialization", help="Disable optimized specialization selection."),
         cache_dir: Path = typer.Option(Path("kv_cache"), "--cache-dir", help="KV cache directory."),
         no_cache: bool = typer.Option(False, "--no-cache", help="Disable disk KV cache."),
         offload_cpu_layers: int = typer.Option(0, "--offload-cpu-layers", min=0, help="Number of layers to offload to CPU."),
@@ -128,6 +141,7 @@ def register_chat_surfaces(app: typer.Typer, services: CommandServices) -> None:
         plain: bool = typer.Option(False, "--plain", help="Use plain output without styled chrome."),
         no_color: bool = typer.Option(False, "--no-color", help="Disable ANSI color output."),
         print_config_flag: bool = typer.Option(False, "--print-config", help="Print resolved runtime config before starting."),
+        plan_json_flag: bool = typer.Option(False, "--plan-json", help="Print the resolved runtime plan as JSON and exit."),
     ) -> None:
         if ctx.invoked_subcommand is not None and ctx.info_name != "chat":
             return
@@ -136,9 +150,11 @@ def register_chat_surfaces(app: typer.Typer, services: CommandServices) -> None:
             model=model,
             models_dir=models_dir,
             device=device,
+            backend=backend,
             provider_endpoint=provider_endpoint,
             adapter_dir=adapter_dir,
             multimodal=multimodal,
+            no_specialization=no_specialization,
             cache_dir=cache_dir,
             no_cache=no_cache,
             offload_cpu_layers=offload_cpu_layers,
@@ -161,4 +177,5 @@ def register_chat_surfaces(app: typer.Typer, services: CommandServices) -> None:
             plain=plain,
             no_color=no_color,
             print_config_flag=print_config_flag,
+            plan_json_flag=plan_json_flag,
         )

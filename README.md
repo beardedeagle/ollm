@@ -105,9 +105,19 @@ Use `ollm` or `ollm chat` only from an interactive terminal. For scripts, pipes,
 ollm prompt --model llama3-8B-chat "Summarize this file"
 cat notes.txt | ollm prompt --stdin --model llama3-8B-chat
 ollm prompt --multimodal --model gemma3-12B --image ./diagram.png "Describe this image"
+ollm prompt --model llama3-8B-chat --backend transformers-generic --no-specialization "Summarize this file"
+ollm prompt --model llama3-8B-chat --plan-json
 ```
 
 `ollm doctor` reports missing optional extras, runtime availability, path issues, and model readiness. `ollm models` provides `list`, `info`, `download`, and `path` subcommands for both built-in aliases and arbitrary model references. `ollm models list` now acts as a discovery view: it combines built-in aliases, local materialized models, and provider-discovered entries from Ollama and LM Studio by default, and it can also probe `openai-compatible` or `msty` providers when you pass `--discover-provider <name> --provider-endpoint <url>`.
+
+Phase 8 CLI migration is now complete:
+- `--backend` lets you force one of `optimized-native`, `transformers-generic`, `ollama`, or `openai-compatible` when that backend is valid for the resolved model reference
+- `--no-specialization` disables optimized native specialization selection and forces the generic path when one exists
+- `--plan-json` prints the resolved runtime plan as JSON and exits without running generation
+- `--provider-endpoint` must be an absolute `http` or `https` URL and must not embed credentials
+
+`ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` now all honor `--backend` and `--no-specialization`. `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` also support `--plan-json` for script-friendly inspection of the resolver/backend decision.
 
 `--model` now accepts opaque model references. Today that means:
 - built-in aliases such as `llama3-1B-chat` and `gemma3-12B` load through registered optimized specialization providers
@@ -165,33 +175,64 @@ ollm chat --model voxtral-small-24B --multimodal
 
 ## Library Example
 
-Code snippet sample 
+The new high-level library entry path is `RuntimeClient`, which is built directly on the resolver/backend/runtime stack used by the CLI.
 
 ```python
-from ollm import Inference, file_get_contents, TextStreamer
-o = Inference("llama3-1B-chat", device="cuda:0", logging=True) # built-in optimized aliases such as llama3-1B-chat or qwen3-next-80B
+from pathlib import Path
+
+from ollm import GenerationConfig, RuntimeClient, RuntimeConfig
+
+client = RuntimeClient()
+runtime_config = RuntimeConfig(
+    model_reference="Qwen/Qwen2.5-7B-Instruct",
+    models_dir=Path("models"),
+    device="cpu",
+    backend="transformers-generic",
+    use_specialization=False,
+)
+
+plan = client.describe_plan(runtime_config)
+print(plan["runtime_plan"]["backend_id"])
+
+response = client.prompt(
+    "List planets",
+    runtime_config=runtime_config,
+    generation_config=GenerationConfig(stream=False, max_new_tokens=64),
+)
+print(response.text)
+```
+
+`RuntimeClient.session(...)` returns a reusable `ChatSession` built on the same runtime stack when you want conversational state in Python code.
+
+### Low-level optimized-native API
+
+The older low-level optimized-native helpers still exist for direct control of the native specialization path:
+
+```python
+from ollm import Inference, TextStreamer
+
+o = Inference("llama3-1B-chat", device="cuda:0", logging=True)
 o.ini_model(models_dir="./models/", force_download=False)
-o.offload_layers_to_cpu(layers_num=2) #(optional) offload some layers to CPU for speed boost
-past_key_values = o.DiskCache(cache_dir="./kv_cache/") #set None if context is small
+o.offload_layers_to_cpu(layers_num=2)
+past_key_values = o.DiskCache(cache_dir="./kv_cache/")
 text_streamer = TextStreamer(o.tokenizer, skip_prompt=True, skip_special_tokens=False)
-
-messages = [{"role":"system", "content":"You are helpful AI assistant"}, {"role":"user", "content":"List planets"}]
-input_ids = o.tokenizer.apply_chat_template(messages, reasoning_effort="minimal", tokenize=True, add_generation_prompt=True, return_tensors="pt").to(o.device)
-outputs = o.model.generate(input_ids=input_ids,  past_key_values=past_key_values, max_new_tokens=500, streamer=text_streamer).cpu()
-answer = o.tokenizer.decode(outputs[0][input_ids.shape[-1]:], skip_special_tokens=False)
-print(answer)
 ```
-or run the sample script as `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True uv run python example.py` 
+
+For compatible local Llama or Gemma3 directories, `AutoInference` remains the direct optimized-native helper:
 
 ```python
-# with AutoInference, you can run compatible local Llama or Gemma3 model directories
-# uv sync --extra adapters
 from ollm import AutoInference
-o = AutoInference("./models/gemma3-12B", # compatible local Llama or Gemma3 model
-  adapter_dir="./myadapter/checkpoint-20", # PEFT adapter checkpoint if available
-  device="cuda:0", multimodality=False, logging=True)
-...
+
+o = AutoInference(
+    "./models/gemma3-12B",
+    adapter_dir="./myadapter/checkpoint-20",
+    device="cuda:0",
+    multimodality=False,
+    logging=True,
+)
 ```
+
+You can still run the original sample script as `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True uv run python example.py`.
 **More samples**
 - [gemma3-12B image+text](https://github.com/Mega4alik/ollm/blob/main/example_image.py)
 - [voxtral-small-24B audio+text](https://github.com/Mega4alik/ollm/blob/main/example_audio.py)

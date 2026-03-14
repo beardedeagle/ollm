@@ -298,6 +298,8 @@ class RuntimeLoader:
     ) -> RuntimePlan | None:
         if runtime_plan.backend_id != "optimized-native":
             return None
+        if config.resolved_backend() is not None:
+            return None
         if execution_model.generic_model_kind is None:
             return None
         if "transformers-generic" not in self._backends:

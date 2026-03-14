@@ -97,6 +97,85 @@ def test_prompt_command_accepts_non_catalog_model_reference() -> None:
     assert loader.load_calls == ["Qwen/Qwen2.5-7B-Instruct"]
 
 
+def test_prompt_command_honors_backend_override_and_no_specialization() -> None:
+    runner, loader, app = build_test_app()
+    result = runner.invoke(
+        app,
+        [
+            "prompt",
+            "hello world",
+            "--backend",
+            "transformers-generic",
+            "--no-specialization",
+            "--no-stream",
+            "--no-color",
+        ],
+    )
+    assert result.exit_code == 0
+    assert loader.loaded_configs[-1].backend == "transformers-generic"
+    assert loader.loaded_configs[-1].use_specialization is False
+
+
+def test_prompt_command_rejects_optimized_backend_with_no_specialization() -> None:
+    runner, _, app = build_test_app()
+    result = runner.invoke(
+        app,
+        [
+            "prompt",
+            "hello world",
+            "--backend",
+            "optimized-native",
+            "--no-specialization",
+            "--no-stream",
+            "--no-color",
+        ],
+    )
+    assert result.exit_code != 0
+    assert isinstance(result.exception, ValueError)
+    assert "cannot be combined with --no-specialization" in str(result.exception)
+
+
+def test_prompt_command_plan_json_prints_without_loading_runtime() -> None:
+    runner, loader, app = build_test_app()
+    result = runner.invoke(
+        app,
+        [
+            "prompt",
+            "--model",
+            "llama3-1B-chat",
+            "--backend",
+            "transformers-generic",
+            "--no-specialization",
+            "--plan-json",
+            "--no-color",
+        ],
+    )
+    assert result.exit_code == 0
+    assert loader.load_calls == []
+    assert loader.plan_calls[-1].backend == "transformers-generic"
+    assert '"runtime_plan"' in result.output
+    assert '"specialization_enabled": false' in result.output
+
+
+def test_chat_command_plan_json_does_not_require_tty() -> None:
+    runner, loader, app = build_test_app()
+    result = runner.invoke(
+        app,
+        [
+            "chat",
+            "--backend",
+            "transformers-generic",
+            "--no-specialization",
+            "--plan-json",
+            "--no-color",
+        ],
+    )
+    assert result.exit_code == 0
+    assert loader.load_calls == []
+    assert loader.plan_calls[-1].backend == "transformers-generic"
+    assert '"runtime_plan"' in result.output
+
+
 
 def test_root_command_requires_interactive_tty() -> None:
     runner, _, app = build_test_app()
@@ -137,6 +216,71 @@ def test_doctor_and_models_commands(tmp_path: Path) -> None:
     download_result = runner.invoke(app, ["models", "download", "llama3-3B-chat", "--models-dir", str(model_dir), "--no-color"])
     assert download_result.exit_code == 0
     assert loader.download_calls[0][0] == "llama3-3B-chat"
+
+
+def test_doctor_and_models_info_support_plan_json_and_backend_override(tmp_path: Path) -> None:
+    runner, loader, app = build_test_app()
+
+    doctor_result = runner.invoke(
+        app,
+        [
+            "doctor",
+            "--model",
+            "llama3-1B-chat",
+            "--backend",
+            "transformers-generic",
+            "--no-specialization",
+            "--plan-json",
+            "--no-color",
+        ],
+    )
+    assert doctor_result.exit_code == 0
+    assert loader.plan_calls[-1].backend == "transformers-generic"
+    assert '"backend": "transformers-generic"' in doctor_result.output
+    assert '"specialization_enabled": false' in doctor_result.output
+
+    info_result = runner.invoke(
+        app,
+        [
+            "models",
+            "info",
+            "llama3-1B-chat",
+            "--backend",
+            "transformers-generic",
+            "--no-specialization",
+            "--plan-json",
+            "--models-dir",
+            str(tmp_path / "models"),
+            "--no-color",
+        ],
+    )
+    assert info_result.exit_code == 0
+    assert loader.plan_calls[-1].backend == "transformers-generic"
+    assert '"runtime_config"' in info_result.output
+    assert '"backend_id": "transformers-generic"' in info_result.output
+
+
+def test_models_list_applies_backend_override_to_runtime_plans(tmp_path: Path) -> None:
+    runner, _, app = build_test_app()
+    model_dir = tmp_path / "models"
+    (model_dir / "llama3-1B-chat").mkdir(parents=True)
+
+    result = runner.invoke(
+        app,
+        [
+            "models",
+            "list",
+            "--backend",
+            "transformers-generic",
+            "--no-specialization",
+            "--json",
+            "--models-dir",
+            str(model_dir),
+            "--no-color",
+        ],
+    )
+    assert result.exit_code == 0
+    assert '"backend_id": "transformers-generic"' in result.output
 
 
 def test_provider_backed_models_info_and_doctor_commands(tmp_path: Path) -> None:
@@ -423,6 +567,46 @@ def test_models_list_rejects_invalid_provider_endpoint(tmp_path: Path) -> None:
     )
     assert result.exit_code != 0
     assert "absolute http or https URL" in result.output
+
+
+def test_models_list_rejects_provider_endpoint_with_credentials(tmp_path: Path) -> None:
+    runner, _, app = build_test_app()
+    result = runner.invoke(
+        app,
+        [
+            "models",
+            "list",
+            "--discover-provider",
+            "openai-compatible",
+            "--provider-endpoint",
+            "https://user:pass@example.test/v1",
+            "--models-dir",
+            str(tmp_path / "models"),
+            "--no-color",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "must not include credentials" in result.output
+
+
+def test_prompt_command_rejects_provider_endpoint_with_credentials() -> None:
+    runner, _, app = build_test_app()
+    result = runner.invoke(
+        app,
+        [
+            "prompt",
+            "hello world",
+            "--model",
+            "openai-compatible:local-model",
+            "--provider-endpoint",
+            "https://user:pass@example.test/v1",
+            "--no-stream",
+            "--no-color",
+        ],
+    )
+    assert result.exit_code != 0
+    assert isinstance(result.exception, ValueError)
+    assert "must not include credentials" in str(result.exception)
 
 
 def test_openai_compatible_provider_models_info_and_doctor_commands(tmp_path: Path) -> None:

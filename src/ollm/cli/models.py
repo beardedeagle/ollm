@@ -6,72 +6,9 @@ from ollm.cli.common import build_console, print_json
 from ollm.cli.services import CommandServices
 from ollm.runtime.catalog import list_model_catalog
 from ollm.runtime.config import RuntimeConfig, normalize_provider_endpoint
+from ollm.runtime.inspection import merged_runtime_payload, plan_json_payload
 from ollm.runtime.loader import DiscoveredRuntimeModel
-from ollm.runtime.plan import RuntimePlan
-from ollm.runtime.resolver import ModelSourceKind, ResolvedModel
-
-
-def _resolved_model_payload(resolved_model: ResolvedModel) -> dict[str, object]:
-    return {
-        "model_reference": resolved_model.reference.raw,
-        "normalized_name": resolved_model.normalized_name,
-        "source_kind": resolved_model.source_kind.value,
-        "support_level": resolved_model.capabilities.support_level.value,
-        "modalities": [modality.value for modality in resolved_model.capabilities.modalities],
-        "requires_processor": resolved_model.capabilities.requires_processor,
-        "supports_disk_cache": resolved_model.capabilities.supports_disk_cache,
-        "supports_specialization": resolved_model.capabilities.supports_specialization,
-        "repo_id": resolved_model.repo_id,
-        "revision": resolved_model.revision,
-        "path": None if resolved_model.model_path is None else str(resolved_model.model_path),
-        "provider_name": resolved_model.provider_name,
-        "native_family": None if resolved_model.native_family is None else resolved_model.native_family.value,
-        "architecture": resolved_model.architecture,
-        "model_type": resolved_model.model_type,
-        "generic_model_kind": None if resolved_model.generic_model_kind is None else resolved_model.generic_model_kind.value,
-        "resolution_message": resolved_model.resolution_message,
-    }
-
-
-def _runtime_plan_payload(runtime_plan: RuntimePlan) -> dict[str, object]:
-    return {
-        "backend_id": runtime_plan.backend_id,
-        "modalities": [
-            modality.value for modality in runtime_plan.resolved_model.capabilities.modalities
-        ],
-        "requires_processor": runtime_plan.resolved_model.capabilities.requires_processor,
-        "audio_input_support": runtime_plan.details.get("audio_input_support", ""),
-        "supports_disk_cache": runtime_plan.supports_disk_cache,
-        "supports_cpu_offload": runtime_plan.supports_cpu_offload,
-        "supports_gpu_offload": runtime_plan.supports_gpu_offload,
-        "specialization_provider_id": runtime_plan.specialization_provider_id,
-        "specialization_state": runtime_plan.specialization_state.value,
-        "planned_specialization_pass_ids": [
-            pass_id.value for pass_id in runtime_plan.specialization_pass_ids
-        ],
-        "reason": runtime_plan.reason,
-    }
-
-
-def _merge_runtime_plan_payload(
-    payload: dict[str, object],
-    runtime_plan: RuntimePlan,
-) -> dict[str, object]:
-    merged_payload = dict(payload)
-    merged_payload["resolved_support_level"] = payload["support_level"]
-    merged_payload["resolved_modalities"] = list(payload["modalities"])
-    merged_payload["resolved_requires_processor"] = payload["requires_processor"]
-    merged_payload["resolved_supports_disk_cache"] = payload["supports_disk_cache"]
-    merged_payload["resolved_resolution_message"] = payload["resolution_message"]
-    merged_payload["support_level"] = runtime_plan.support_level.value
-    merged_payload["modalities"] = [
-        modality.value for modality in runtime_plan.resolved_model.capabilities.modalities
-    ]
-    merged_payload["requires_processor"] = runtime_plan.resolved_model.capabilities.requires_processor
-    merged_payload["supports_disk_cache"] = runtime_plan.supports_disk_cache
-    merged_payload["resolution_message"] = runtime_plan.reason
-    merged_payload["runtime_plan"] = _runtime_plan_payload(runtime_plan)
-    return merged_payload
+from ollm.runtime.resolver import ModelSourceKind
 
 
 def _availability_label(entry: dict[str, object]) -> str:
@@ -108,11 +45,15 @@ def _provider_discovery_names(
 def _provider_runtime_config(
     discovered_model: DiscoveredRuntimeModel,
     models_dir: Path,
+    backend: str | None = None,
+    no_specialization: bool = False,
 ) -> RuntimeConfig:
     return RuntimeConfig(
         model_reference=discovered_model.model_reference,
         models_dir=models_dir,
+        backend=backend,
         provider_endpoint=discovered_model.provider_endpoint,
+        use_specialization=not no_specialization,
     )
 
 
@@ -122,6 +63,8 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
     @models_app.command("list")
     def list_models(
         installed: bool = typer.Option(False, "--installed", help="Show only materialized local models."),
+        backend: str | None = typer.Option(None, "--backend", help="Backend override for runtime planning output."),
+        no_specialization: bool = typer.Option(False, "--no-specialization", help="Disable optimized specialization selection for runtime planning output."),
         discover_provider: list[str] | None = typer.Option(
             None,
             "--discover-provider",
@@ -149,14 +92,21 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
 
         for entry in list_model_catalog():
             resolved_model = services.runtime_loader.resolve(entry.model_id, model_dir)
-            payload = _resolved_model_payload(resolved_model)
-            payload["discovery_source"] = "built-in"
-            payload["installed"] = bool(resolved_model.model_path is not None and resolved_model.model_path.exists())
-            if payload["installed"]:
-                runtime_plan = services.runtime_loader.plan(
-                    RuntimeConfig(model_reference=entry.model_id, models_dir=model_dir)
+            installed_entry = bool(resolved_model.model_path is not None and resolved_model.model_path.exists())
+            runtime_plan = services.runtime_loader.plan(
+                RuntimeConfig(
+                    model_reference=entry.model_id,
+                    models_dir=model_dir,
+                    backend=backend,
+                    use_specialization=not no_specialization,
                 )
-                payload = _merge_runtime_plan_payload(payload, runtime_plan)
+            )
+            payload = merged_runtime_payload(
+                resolved_model,
+                runtime_plan,
+                installed=installed_entry,
+            )
+            payload["discovery_source"] = "built-in"
             if installed and not payload["installed"]:
                 continue
             entries.append(payload)
@@ -167,14 +117,21 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             path = None if resolved_model.model_path is None else str(resolved_model.model_path)
             if path is not None and path in seen_paths:
                 continue
-            payload = _resolved_model_payload(resolved_model)
-            payload["discovery_source"] = "discovered-local"
-            payload["installed"] = bool(resolved_model.model_path is not None and resolved_model.model_path.exists())
-            if payload["installed"]:
-                runtime_plan = services.runtime_loader.plan(
-                    RuntimeConfig(model_reference=resolved_model.reference.raw, models_dir=model_dir)
+            installed_entry = bool(resolved_model.model_path is not None and resolved_model.model_path.exists())
+            runtime_plan = services.runtime_loader.plan(
+                RuntimeConfig(
+                    model_reference=resolved_model.reference.raw,
+                    models_dir=model_dir,
+                    backend=backend,
+                    use_specialization=not no_specialization,
                 )
-                payload = _merge_runtime_plan_payload(payload, runtime_plan)
+            )
+            payload = merged_runtime_payload(
+                resolved_model,
+                runtime_plan,
+                installed=installed_entry,
+            )
+            payload["discovery_source"] = "discovered-local"
             if installed and not payload["installed"]:
                 continue
             entries.append(payload)
@@ -190,14 +147,21 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             raise typer.BadParameter(str(exc)) from exc
 
         for discovered_model in discovered_provider_models:
-            payload = _resolved_model_payload(discovered_model.resolved_model)
+            runtime_plan = services.runtime_loader.plan(
+                _provider_runtime_config(
+                    discovered_model,
+                    model_dir,
+                    backend=backend,
+                    no_specialization=no_specialization,
+                )
+            )
+            payload = merged_runtime_payload(
+                discovered_model.resolved_model,
+                runtime_plan,
+                installed=runtime_plan.is_executable(),
+            )
             payload["discovery_source"] = "discovered-provider"
             payload["provider_endpoint"] = discovered_model.provider_endpoint
-            runtime_plan = services.runtime_loader.plan(
-                _provider_runtime_config(discovered_model, model_dir)
-            )
-            payload["installed"] = runtime_plan.is_executable()
-            payload = _merge_runtime_plan_payload(payload, runtime_plan)
             if installed and not payload["installed"]:
                 continue
             entries.append(payload)
@@ -220,26 +184,50 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
     def model_info(
         model: str = typer.Argument(..., help="Model reference."),
         models_dir: Path = typer.Option(Path("models"), "--models-dir", help="Directory containing model data."),
+        backend: str | None = typer.Option(None, "--backend", help="Backend override."),
         provider_endpoint: str | None = typer.Option(None, "--provider-endpoint", help="Provider API root URL."),
         multimodal: bool = typer.Option(False, "--multimodal/--no-multimodal", help="Enable multimodal processor support for runtime planning."),
+        no_specialization: bool = typer.Option(False, "--no-specialization", help="Disable optimized specialization selection."),
         json_output: bool = typer.Option(False, "--json", help="Output JSON."),
+        plan_json_flag: bool = typer.Option(False, "--plan-json", help="Output structured runtime plan JSON."),
         no_color: bool = typer.Option(False, "--no-color", help="Disable ANSI color output."),
     ) -> None:
         resolved_model = services.runtime_loader.resolve(model, models_dir.expanduser().resolve())
-        payload = _resolved_model_payload(resolved_model)
-        payload["installed"] = bool(resolved_model.model_path is not None and resolved_model.model_path.exists())
+        installed = bool(resolved_model.model_path is not None and resolved_model.model_path.exists())
         runtime_plan = services.runtime_loader.plan(
             RuntimeConfig(
                 model_reference=model,
                 models_dir=models_dir.expanduser().resolve(),
+                backend=backend,
                 provider_endpoint=provider_endpoint,
                 multimodal=multimodal,
+                use_specialization=not no_specialization,
             )
         )
         if resolved_model.source_kind is ModelSourceKind.PROVIDER and runtime_plan.is_executable():
-            payload["installed"] = True
-        payload = _merge_runtime_plan_payload(payload, runtime_plan)
+            installed = True
+        payload = merged_runtime_payload(
+            resolved_model,
+            runtime_plan,
+            installed=installed,
+        )
         console = build_console(no_color=no_color)
+        if plan_json_flag:
+            print_json(
+                console,
+                plan_json_payload(
+                    RuntimeConfig(
+                        model_reference=model,
+                        models_dir=models_dir.expanduser().resolve(),
+                        backend=backend,
+                        provider_endpoint=provider_endpoint,
+                        multimodal=multimodal,
+                        use_specialization=not no_specialization,
+                    ),
+                    runtime_plan,
+                ),
+            )
+            return
         if json_output:
             print_json(console, payload)
             return

@@ -4,6 +4,7 @@ from pathlib import Path
 import torch
 
 from ollm.runtime.backends.base import BackendRuntime, ExecutionBackend
+from ollm.runtime.capabilities import SupportLevel
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.loader import RuntimeLoader
 
@@ -120,6 +121,49 @@ def test_runtime_loader_routes_built_in_alias_with_adapter_to_generic_backend(tm
     assert runtime.resolved_model.architecture == "LlamaForCausalLM"
 
 
+def test_runtime_loader_routes_built_in_alias_to_generic_when_specialization_is_disabled(tmp_path: Path) -> None:
+    def snapshot_downloader(repo_id: str, model_dir: str, force_download: bool, revision: str | None) -> None:
+        del repo_id, force_download, revision
+        target = Path(model_dir)
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "config.json").write_text(
+            json.dumps({"model_type": "llama", "architectures": ["LlamaForCausalLM"]}),
+            encoding="utf-8",
+        )
+
+    fake_backend = FakeGenericBackend()
+    loader = RuntimeLoader(
+        backends=(fake_backend,),
+        snapshot_downloader=snapshot_downloader,
+    )
+    config = RuntimeConfig(
+        model_reference="llama3-1B-chat",
+        models_dir=tmp_path / "models",
+        device="cpu",
+        use_specialization=False,
+    )
+
+    runtime = loader.load(config)
+
+    assert runtime.plan.backend_id == "transformers-generic"
+    assert runtime.plan.specialization_enabled is False
+
+
+def test_runtime_loader_plan_predicts_generic_backend_when_specialization_is_disabled(tmp_path: Path) -> None:
+    loader = RuntimeLoader()
+    runtime_plan = loader.plan(
+        RuntimeConfig(
+            model_reference="llama3-1B-chat",
+            models_dir=tmp_path / "models",
+            device="cpu",
+            use_specialization=False,
+        )
+    )
+
+    assert runtime_plan.backend_id == "transformers-generic"
+    assert runtime_plan.support_level is SupportLevel.GENERIC
+
+
 def test_runtime_loader_plan_does_not_materialize_missing_model_references(tmp_path: Path) -> None:
     calls: list[tuple[str, str, bool, str | None]] = []
 
@@ -137,5 +181,5 @@ def test_runtime_loader_plan_does_not_materialize_missing_model_references(tmp_p
     )
 
     assert calls == []
-    assert runtime_plan.backend_id is None
-    assert runtime_plan.support_level is not None
+    assert runtime_plan.backend_id == "transformers-generic"
+    assert runtime_plan.support_level is SupportLevel.GENERIC
