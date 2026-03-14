@@ -20,6 +20,9 @@ def _resolved_model_payload(resolved_model) -> dict[str, object]:
         "revision": resolved_model.revision,
         "path": None if resolved_model.model_path is None else str(resolved_model.model_path),
         "native_family": None if resolved_model.native_family is None else resolved_model.native_family.value,
+        "architecture": resolved_model.architecture,
+        "model_type": resolved_model.model_type,
+        "generic_model_kind": None if resolved_model.generic_model_kind is None else resolved_model.generic_model_kind.value,
         "resolution_message": resolved_model.resolution_message,
     }
 
@@ -92,6 +95,12 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         console.print(f"normalized: {payload['normalized_name']}")
         console.print(f"source: {payload['source_kind']}")
         console.print(f"support: {payload['support_level']}")
+        if payload["generic_model_kind"] is not None:
+            console.print(f"generic-kind: {payload['generic_model_kind']}")
+        if payload["architecture"] is not None:
+            console.print(f"architecture: {payload['architecture']}")
+        if payload["model_type"] is not None:
+            console.print(f"model-type: {payload['model_type']}")
         if payload["repo_id"] is not None:
             console.print(f"repo: {payload['repo_id']}")
         if payload["revision"] is not None:

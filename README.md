@@ -114,7 +114,14 @@ ollm prompt --multimodal --model gemma3-12B --image ./diagram.png "Describe this
 - Hugging Face repo IDs such as `Qwen/Qwen2.5-7B-Instruct` resolve and materialize locally
 - local model directories resolve directly
 
-The current generic execution path is still limited to compatible local or materialized Llama and Gemma3 families; other references resolve cleanly and report their support level without being rejected by an allowlist.
+The current generic execution path now covers compatible local or materialized Transformers-backed:
+- causal language models such as Qwen2-family checkpoints
+- encoder-decoder text generation models such as T5-family checkpoints
+- image-text conditional generation models that expose a processor-backed `vision_config`
+
+Built-in aliases still prefer the optimized native backend. Provider-backed execution and audio-focused generic conditional generation remain deferred; those references resolve cleanly and report their support level without being rejected by an allowlist.
+
+For safety, the generic runtime only loads local or materialized model weights from safetensors artifacts. Arbitrary `.bin` or pickle-backed checkpoints are intentionally rejected on that path.
 
 Interactive prompt history is in-memory by default. Use `--history-file` only when you explicitly want persistent local history.
 

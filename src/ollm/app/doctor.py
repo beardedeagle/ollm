@@ -5,8 +5,10 @@ from pathlib import Path
 import torch
 from transformers import AutoProcessor, AutoTokenizer
 
+from ollm.runtime.backend_selector import BackendSelector
+from ollm.runtime.capabilities import SupportLevel
 from ollm.runtime.config import RuntimeConfig
-from ollm.runtime.resolver import ModelResolver
+from ollm.runtime.resolver import ModelResolver, ModelSourceKind
 
 
 @dataclass(slots=True)
@@ -48,8 +50,9 @@ class DoctorService:
         "export": ("safetensors",),
     }
 
-    def __init__(self, resolver: ModelResolver | None = None):
+    def __init__(self, resolver: ModelResolver | None = None, selector: BackendSelector | None = None):
         self._resolver = resolver or ModelResolver()
+        self._selector = selector or BackendSelector()
 
     def run(
         self,
@@ -167,14 +170,41 @@ class DoctorService:
 
     def _check_model(self, runtime_config: RuntimeConfig) -> list[DoctorCheck]:
         resolved_model = self._resolver.resolve(runtime_config.model_reference, runtime_config.resolved_models_dir())
+        execution_model = resolved_model
+        runtime_plan = None
+        if resolved_model.model_path is not None and resolved_model.model_path.exists():
+            execution_model = self._resolver.inspect_materialized_model(
+                resolved_model.reference,
+                resolved_model.model_path,
+                source_kind=resolved_model.source_kind,
+                repo_id=resolved_model.repo_id,
+                revision=resolved_model.revision,
+                provider_name=resolved_model.provider_name,
+                catalog_entry=resolved_model.catalog_entry,
+            )
+            runtime_plan = self._selector.select(execution_model, runtime_config)
+
+        resolution_ok = False
+        resolution_message = resolved_model.resolution_message
+        if resolved_model.source_kind is ModelSourceKind.PROVIDER:
+            resolution_message = f"Provider-backed model references are not executable yet: {resolved_model.reference.raw}"
+        elif runtime_plan is not None:
+            resolution_ok = runtime_plan.is_executable()
+            resolution_message = runtime_plan.reason if not resolution_ok else execution_model.resolution_message
+        elif resolved_model.is_downloadable():
+            resolution_ok = True
+        elif resolved_model.capabilities.support_level is not SupportLevel.UNSUPPORTED:
+            resolution_ok = True
+
         checks: list[DoctorCheck] = [
             DoctorCheck(
                 name="model:resolution",
-                ok=resolved_model.capabilities.support_level.value != 'unsupported',
-                message=resolved_model.resolution_message,
+                ok=resolution_ok,
+                message=resolution_message,
                 details={
                     "source_kind": resolved_model.source_kind.value,
                     "support_level": resolved_model.capabilities.support_level.value,
+                    "backend_id": None if runtime_plan is None else str(runtime_plan.backend_id),
                 },
             )
         ]

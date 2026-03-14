@@ -2,11 +2,14 @@ import pytest
 import torch
 
 from ollm.app.types import ContentPart, Message, MessageRole, PromptRequest
+from ollm.runtime.backends.base import BackendRuntime
+from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
 from ollm.runtime.catalog import ModelModality
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
 from ollm.runtime.generation import PromptExecutionError, RuntimeExecutor
 from ollm.runtime.loader import LoadedRuntime
+from ollm.runtime.plan import RuntimePlan
 from ollm.runtime.reference import ModelReference
 from ollm.runtime.resolver import ModelSourceKind, ResolvedModel
 
@@ -27,19 +30,29 @@ class FakeModel:
         return torch.tensor([[1, 2, 3, 4, 5]])
 
 
-class FakeBackend:
-    def __init__(self):
-        self.model = FakeModel()
-        self.tokenizer = FakeTokenizer()
-        self.device = torch.device("cpu")
-        self.stats = None
+class PlainTokenizer:
+    def __call__(self, text, return_tensors="pt"):
+        del text, return_tensors
+        return {"input_ids": torch.tensor([[1, 2, 3]])}
 
-    def DiskCache(self, cache_dir="./kvcache"):
-        del cache_dir
-        return None
+    def decode(self, tensor, skip_special_tokens=False):
+        del tensor, skip_special_tokens
+        return "plain-decoded"
 
 
-def build_runtime(capabilities: CapabilityProfile) -> LoadedRuntime:
+class InspectingTokenizer(PlainTokenizer):
+    def decode(self, tensor, skip_special_tokens=False):
+        del skip_special_tokens
+        return f"decoded:{tensor.tolist()}"
+
+
+class Seq2SeqModel(FakeModel):
+    def generate(self, **kwargs):
+        del kwargs
+        return torch.tensor([[9, 8]])
+
+
+def build_runtime(capabilities: CapabilityProfile, tokenizer=None) -> LoadedRuntime:
     config = RuntimeConfig(model_reference="llama3-1B-chat", device="cpu", multimodal=False, use_cache=False)
     resolved_model = ResolvedModel(
         reference=ModelReference.parse("llama3-1B-chat"),
@@ -53,12 +66,85 @@ def build_runtime(capabilities: CapabilityProfile) -> LoadedRuntime:
         capabilities=capabilities,
         native_family=None,
         resolution_message="built-in alias",
+        architecture="LlamaForCausalLM",
+        model_type="llama",
+        generic_model_kind=None,
+    )
+    plan = RuntimePlan(
+        resolved_model=resolved_model,
+        backend_id="test-backend",
+        model_path=resolved_model.model_path,
+        support_level=capabilities.support_level,
+        generic_model_kind=None,
+        supports_disk_cache=False,
+        supports_offload=False,
+        specialization_enabled=False,
+        reason="test plan",
+    )
+    backend = BackendRuntime(
+        backend_id="test-backend",
+        model=FakeModel(),
+        tokenizer=FakeTokenizer() if tokenizer is None else tokenizer,
+        processor=None,
+        device=torch.device("cpu"),
+        stats=None,
+        create_cache=lambda cache_dir: None,
+        apply_offload=lambda runtime_config: None,
     )
     return LoadedRuntime(
         resolved_model=resolved_model,
-        capabilities=capabilities,
         config=config,
-        backend=FakeBackend(),
+        plan=plan,
+        backend=backend,
+        model_path=resolved_model.model_path,
+    )
+
+
+def build_seq2seq_runtime() -> LoadedRuntime:
+    config = RuntimeConfig(model_reference="t5-small", device="cpu", multimodal=False, use_cache=False)
+    capabilities = CapabilityProfile(support_level=SupportLevel.GENERIC)
+    resolved_model = ResolvedModel(
+        reference=ModelReference.parse("t5-small"),
+        source_kind=ModelSourceKind.LOCAL_PATH,
+        normalized_name="t5-small",
+        model_path=config.resolved_models_dir() / "t5-small",
+        repo_id=None,
+        revision=None,
+        provider_name=None,
+        catalog_entry=None,
+        capabilities=capabilities,
+        native_family=None,
+        resolution_message="seq2seq",
+        architecture="T5ForConditionalGeneration",
+        model_type="t5",
+        generic_model_kind=GenericModelKind.SEQ2SEQ_LM,
+    )
+    plan = RuntimePlan(
+        resolved_model=resolved_model,
+        backend_id="transformers-generic",
+        model_path=resolved_model.model_path,
+        support_level=SupportLevel.GENERIC,
+        generic_model_kind=GenericModelKind.SEQ2SEQ_LM,
+        supports_disk_cache=False,
+        supports_offload=False,
+        specialization_enabled=False,
+        reason="seq2seq plan",
+    )
+    backend = BackendRuntime(
+        backend_id="transformers-generic",
+        model=Seq2SeqModel(),
+        tokenizer=InspectingTokenizer(),
+        processor=None,
+        device=torch.device("cpu"),
+        stats=None,
+        create_cache=lambda cache_dir: None,
+        apply_offload=lambda runtime_config: None,
+    )
+    return LoadedRuntime(
+        resolved_model=resolved_model,
+        config=config,
+        plan=plan,
+        backend=backend,
         model_path=resolved_model.model_path,
     )
 
@@ -89,3 +175,18 @@ def test_runtime_executor_rejects_unsupported_image_input() -> None:
     request = build_request(runtime.config, Message(role=MessageRole.USER, content=[ContentPart.image("image.png")]))
     with pytest.raises(PromptExecutionError):
         RuntimeExecutor().execute(runtime, request)
+
+
+def test_runtime_executor_falls_back_when_chat_template_is_unavailable() -> None:
+    capabilities = CapabilityProfile(support_level=SupportLevel.GENERIC)
+    runtime = build_runtime(capabilities, tokenizer=PlainTokenizer())
+    request = build_request(runtime.config, Message(role=MessageRole.USER, content=[ContentPart.text("hello")]))
+    response = RuntimeExecutor().execute(runtime, request)
+    assert response.text == "plain-decoded"
+
+
+def test_runtime_executor_decodes_seq2seq_outputs_without_prompt_slicing() -> None:
+    runtime = build_seq2seq_runtime()
+    request = build_request(runtime.config, Message(role=MessageRole.USER, content=[ContentPart.text("hello")]))
+    response = RuntimeExecutor().execute(runtime, request)
+    assert response.text == "decoded:[9, 8]"

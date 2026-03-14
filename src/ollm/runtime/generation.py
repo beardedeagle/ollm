@@ -3,6 +3,7 @@ from dataclasses import dataclass
 import torch
 
 from ollm.app.types import ContentKind, Message, PromptRequest, PromptResponse
+from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.catalog import ModelModality
 from ollm.runtime.loader import LoadedRuntime
 from ollm.runtime.streaming import BufferedTextStreamer, NullStreamSink, StreamSink
@@ -26,26 +27,28 @@ class RuntimeExecutor:
             streamer = BufferedTextStreamer(runtime.tokenizer, stream_sink, skip_prompt=True, skip_special_tokens=False)
 
         generate_kwargs = self._build_generate_kwargs(runtime, request, streamer)
-        stream_sink.on_status(f"Running {runtime.config.model_reference} on {runtime.config.device}")
+        stream_sink.on_status(
+            f"Running {runtime.config.model_reference} on {runtime.config.device} via {runtime.plan.backend_id}"
+        )
 
         with torch.inference_mode():
             outputs = runtime.model.generate(**inputs, **generate_kwargs)
 
-        if hasattr(outputs, 'detach'):
+        if hasattr(outputs, "detach"):
             outputs = outputs.detach()
         outputs = outputs.cpu()
         response_text = self._decode_response(runtime, inputs, outputs)
         if streamer is not None and not response_text.strip():
             response_text = streamer.text
         assistant_message = Message.assistant_text(response_text)
-        metadata = {}
+        metadata = {"backend_id": runtime.plan.backend_id or "unknown"}
         if runtime.backend.stats is not None:
-            metadata['stats'] = runtime.backend.stats.print_and_clean()
+            metadata["stats"] = runtime.backend.stats.print_and_clean()
         return PromptResponse(text=response_text, assistant_message=assistant_message, metadata=metadata)
 
     def _validate_request(self, runtime: LoadedRuntime, request: PromptRequest) -> None:
         if not request.messages:
-            raise PromptExecutionError('At least one message is required')
+            raise PromptExecutionError("At least one message is required")
 
         contains_image = any(
             part.kind is ContentKind.IMAGE
@@ -64,8 +67,8 @@ class RuntimeExecutor:
             raise PromptExecutionError(f"{runtime.config.model_reference} does not support audio inputs")
         if (contains_image or contains_audio) and runtime.processor is None:
             raise PromptExecutionError(
-                'Multimodal inputs require a processor-backed runtime. '
-                'Enable --multimodal with a compatible model reference.'
+                "Multimodal inputs require a processor-backed runtime. "
+                "Enable --multimodal with a compatible model reference."
             )
 
     def _build_inputs(self, runtime: LoadedRuntime, messages: list[Message]) -> dict[str, object]:
@@ -76,7 +79,7 @@ class RuntimeExecutor:
                 add_generation_prompt=True,
                 tokenize=True,
                 return_dict=True,
-                return_tensors='pt',
+                return_tensors="pt",
             )
             contains_image = any(
                 part.kind is ContentKind.IMAGE
@@ -87,60 +90,90 @@ class RuntimeExecutor:
                 return inputs.to(runtime.device, dtype=torch.bfloat16)
             return inputs.to(runtime.device)
 
-        input_ids = runtime.tokenizer.apply_chat_template(
-            transformers_messages,
-            reasoning_effort='minimal',
-            tokenize=True,
-            add_generation_prompt=True,
-            return_tensors='pt',
-            return_dict=False,
-        ).to(runtime.device)
-        return {'input_ids': input_ids}
+        if hasattr(runtime.tokenizer, "apply_chat_template"):
+            try:
+                input_ids = runtime.tokenizer.apply_chat_template(
+                    transformers_messages,
+                    reasoning_effort="minimal",
+                    tokenize=True,
+                    add_generation_prompt=True,
+                    return_tensors="pt",
+                    return_dict=False,
+                ).to(runtime.device)
+                return {"input_ids": input_ids}
+            except (TypeError, ValueError, AttributeError):
+                try:
+                    input_ids = runtime.tokenizer.apply_chat_template(
+                        transformers_messages,
+                        tokenize=True,
+                        add_generation_prompt=True,
+                        return_tensors="pt",
+                        return_dict=False,
+                    ).to(runtime.device)
+                    return {"input_ids": input_ids}
+                except (TypeError, ValueError, AttributeError):
+                    pass
+
+        rendered_prompt = _render_plain_prompt(messages)
+        tokenized = runtime.tokenizer(rendered_prompt, return_tensors="pt")
+        return {key: value.to(runtime.device) for key, value in tokenized.items()}
 
     def _build_generate_kwargs(self, runtime: LoadedRuntime, request: PromptRequest, streamer) -> dict[str, object]:
         config = request.generation_config
         generate_kwargs: dict[str, object] = {
-            'max_new_tokens': config.max_new_tokens,
-            'use_cache': True,
+            "max_new_tokens": config.max_new_tokens,
+            "use_cache": True,
         }
 
         if request.runtime_config.use_cache:
-            generate_kwargs['past_key_values'] = runtime.backend.DiskCache(
-                cache_dir=str(request.runtime_config.resolved_cache_dir())
-            )
-        else:
-            generate_kwargs['past_key_values'] = None
+            cache = runtime.backend.create_cache(request.runtime_config.resolved_cache_dir())
+            if cache is not None:
+                generate_kwargs["past_key_values"] = cache
 
         if config.sampling_enabled():
-            generate_kwargs['do_sample'] = True
-            generate_kwargs['temperature'] = config.temperature
+            generate_kwargs["do_sample"] = True
+            generate_kwargs["temperature"] = config.temperature
             if config.top_p is not None:
-                generate_kwargs['top_p'] = config.top_p
+                generate_kwargs["top_p"] = config.top_p
             if config.top_k is not None:
-                generate_kwargs['top_k'] = config.top_k
+                generate_kwargs["top_k"] = config.top_k
         else:
-            generate_kwargs['do_sample'] = False
+            generate_kwargs["do_sample"] = False
 
         if streamer is not None:
-            generate_kwargs['streamer'] = streamer
+            generate_kwargs["streamer"] = streamer
 
         if runtime.processor is not None and any(
             part.kind is ContentKind.AUDIO for message in request.messages for part in message.content
         ):
-            generate_kwargs['do_sample'] = False
+            generate_kwargs["do_sample"] = False
 
         return generate_kwargs
 
     def _decode_response(self, runtime: LoadedRuntime, inputs: dict[str, object], outputs) -> str:
         if runtime.processor is not None:
-            input_ids = inputs['input_ids']
+            input_ids = inputs["input_ids"]
             decoded = runtime.processor.batch_decode(
                 outputs[:, input_ids.shape[1]:],
                 skip_special_tokens=False,
             )
             if not decoded:
-                return ''
+                return ""
             return decoded[0]
 
-        input_ids = inputs['input_ids']
+        if runtime.plan.generic_model_kind is GenericModelKind.SEQ2SEQ_LM:
+            return runtime.tokenizer.decode(outputs[0], skip_special_tokens=False)
+
+        input_ids = inputs["input_ids"]
         return runtime.tokenizer.decode(outputs[0][input_ids.shape[-1]:], skip_special_tokens=False)
+
+
+def _render_plain_prompt(messages: list[Message]) -> str:
+    rendered_messages: list[str] = []
+    for message in messages:
+        text = message.text_content().strip()
+        if not text:
+            continue
+        rendered_messages.append(f"{message.role.value.upper()}: {text}")
+    rendered_messages.append("ASSISTANT:")
+    return "\n\n".join(rendered_messages)

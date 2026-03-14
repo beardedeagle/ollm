@@ -7,6 +7,7 @@ from transformers import AutoConfig, AutoProcessor, AutoTokenizer
 from ollm.gds_loader import DenseWeightsLoader, GDSWeights, MoEWeightsLoader, SingleDenseWeightsLoader
 from ollm.kvcache import KVCache
 from ollm.runtime.catalog import find_model_catalog_entry
+from ollm.runtime.safety import validate_safe_adapter_artifacts
 from ollm.utils import Stats
 
 
@@ -172,12 +173,15 @@ class AutoInference(Inference):
         self.device = torch.device(device)
         self.stats = Stats() if logging else None
         self.multimodality = multimodality
+        model_path = Path(model_dir).expanduser().resolve()
+        if not model_path.exists() or not model_path.is_dir():
+            raise ValueError(f"Local model directory does not exist: {model_path}")
 
-        config = AutoConfig.from_pretrained(model_dir)
+        config = AutoConfig.from_pretrained(model_path)
         architectures = getattr(config, "architectures", None) or ()
         architecture = architectures[0] if architectures else None
         if architecture == "LlamaForCausalLM":
-            self.model_id = "llama3-8B-chat" if self.is_sharded(model_dir) else "llama3-1B-chat"
+            self.model_id = "llama3-8B-chat" if self.is_sharded(str(model_path)) else "llama3-1B-chat"
         elif architecture in {"Gemma3ForConditionalGeneration", "Gemma3ForCausalLM"}:
             self.model_id = "gemma3-12B"
         else:
@@ -186,13 +190,17 @@ class AutoInference(Inference):
                 "Use a built-in optimized alias or a compatible local Llama/Gemma3 model directory."
             )
 
-        self.load_model(model_dir)
+        self.load_model(str(model_path))
         if adapter_dir:
             from peft import LoraConfig, get_peft_model
 
-            peft_config = LoraConfig.from_pretrained(adapter_dir)
+            adapter_path = Path(adapter_dir).expanduser().resolve()
+            if not adapter_path.exists() or not adapter_path.is_dir():
+                raise ValueError(f"Adapter directory does not exist: {adapter_path}")
+            validate_safe_adapter_artifacts(adapter_path)
+            peft_config = LoraConfig.from_pretrained(str(adapter_path))
             self.model = get_peft_model(self.model, peft_config)
-            self.model.load_adapter(adapter_dir, adapter_name="default")
+            self.model.load_adapter(str(adapter_path), adapter_name="default", use_safetensors=True)
 
     def is_sharded(self, model_dir: str) -> bool:
         return any("index.json" in file.name for file in Path(model_dir).expanduser().resolve().iterdir())

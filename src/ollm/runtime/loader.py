@@ -1,19 +1,28 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from ollm.inference import AutoInference, Inference, download_hf_snapshot
-from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
+from ollm.inference import download_hf_snapshot
+from ollm.runtime.backend_selector import BackendSelector
+from ollm.runtime.backends.base import BackendRuntime, ExecutionBackend
+from ollm.runtime.backends.native_optimized import NativeOptimizedBackend
+from ollm.runtime.backends.transformers_generic import TransformersGenericBackend
 from ollm.runtime.config import RuntimeConfig
+from ollm.runtime.plan import RuntimePlan
 from ollm.runtime.resolver import ModelResolver, ModelSourceKind, ResolvedModel
 
 
 @dataclass(slots=True)
 class LoadedRuntime:
     resolved_model: ResolvedModel
-    capabilities: CapabilityProfile
     config: RuntimeConfig
-    backend: Inference | AutoInference
+    backend: BackendRuntime
     model_path: Path
+    plan: RuntimePlan
+
+    @property
+    def capabilities(self):
+        return self.resolved_model.capabilities
 
     @property
     def model(self):
@@ -25,7 +34,7 @@ class LoadedRuntime:
 
     @property
     def processor(self):
-        return getattr(self.backend, "processor", None)
+        return self.backend.processor
 
     @property
     def device(self):
@@ -33,8 +42,18 @@ class LoadedRuntime:
 
 
 class RuntimeLoader:
-    def __init__(self, resolver: ModelResolver | None = None):
+    def __init__(
+        self,
+        resolver: ModelResolver | None = None,
+        selector: BackendSelector | None = None,
+        backends: tuple[ExecutionBackend, ...] | None = None,
+        snapshot_downloader: Callable[[str, str, bool, str | None], None] | None = None,
+    ):
         self._resolver = resolver or ModelResolver()
+        self._selector = selector or BackendSelector()
+        backend_list = backends or (NativeOptimizedBackend(), TransformersGenericBackend())
+        self._backends = {backend.backend_id: backend for backend in backend_list}
+        self._snapshot_downloader = download_hf_snapshot if snapshot_downloader is None else snapshot_downloader
 
     def resolve(self, model_reference: str, models_dir: Path) -> ResolvedModel:
         return self._resolver.resolve(model_reference, models_dir)
@@ -53,69 +72,49 @@ class RuntimeLoader:
         if resolved_model.model_path.exists() and not force_download:
             return resolved_model.model_path
         resolved_model.model_path.parent.mkdir(parents=True, exist_ok=True)
-        download_hf_snapshot(
+        self._snapshot_downloader(
             resolved_model.repo_id,
             str(resolved_model.model_path),
-            force_download=force_download,
-            revision=resolved_model.revision,
+            force_download,
+            resolved_model.revision,
         )
         return resolved_model.model_path
 
     def load(self, config: RuntimeConfig) -> LoadedRuntime:
         config.validate()
         resolved_model = self.resolve(config.model_reference, config.resolved_models_dir())
-        if resolved_model.capabilities.support_level is SupportLevel.UNSUPPORTED:
-            reason = resolved_model.capabilities.details.get("reason", resolved_model.resolution_message)
-            raise ValueError(reason)
         if resolved_model.source_kind is ModelSourceKind.PROVIDER:
-            raise ValueError(
-                f"Provider-backed model references are not executable yet: {resolved_model.reference.raw}"
-            )
+            raise ValueError(f"Provider-backed model references are not executable yet: {resolved_model.reference.raw}")
 
         model_path = self._ensure_local_model(resolved_model, config.force_download)
-        adapter_dir = config.resolved_adapter_dir()
-        logging_enabled = config.stats or config.verbose
-        use_optimized_runtime = (
-            resolved_model.catalog_entry is not None
-            and resolved_model.source_kind in {ModelSourceKind.BUILTIN, ModelSourceKind.HUGGING_FACE}
-            and adapter_dir is None
-        )
-
-        if use_optimized_runtime:
-            backend = Inference(
-                resolved_model.catalog_entry.model_id,
-                device=config.device,
-                logging=logging_enabled,
-                multimodality=config.multimodal,
-            )
-            backend.load_model(str(model_path))
-        else:
-            backend = AutoInference(
-                str(model_path),
-                adapter_dir=None if adapter_dir is None else str(adapter_dir),
-                device=config.device,
-                logging=logging_enabled,
-                multimodality=config.multimodal,
-            )
-
-        self._apply_offload(backend, config)
+        execution_model = self._refresh_materialized_model(resolved_model, model_path)
+        runtime_plan = self._selector.select(execution_model, config)
+        if not runtime_plan.is_executable():
+            raise ValueError(runtime_plan.reason)
+        self._validate_runtime_plan(runtime_plan, config)
+        backend_impl = self._backends.get(runtime_plan.backend_id)
+        if backend_impl is None:
+            raise ValueError(f"No runtime backend is registered for '{runtime_plan.backend_id}'")
+        backend_runtime = backend_impl.load(runtime_plan, config)
+        backend_runtime.apply_offload(config)
         return LoadedRuntime(
-            resolved_model=resolved_model,
-            capabilities=resolved_model.capabilities,
+            resolved_model=execution_model,
             config=config,
-            backend=backend,
+            backend=backend_runtime,
             model_path=model_path,
+            plan=runtime_plan,
         )
 
-    def _apply_offload(self, backend: Inference | AutoInference, config: RuntimeConfig) -> None:
-        if config.offload_gpu_layers > 0:
-            backend.offload_layers_to_gpu_cpu(
-                gpu_layers_num=config.offload_gpu_layers,
-                cpu_layers_num=config.offload_cpu_layers,
-            )
-            return
-        if config.offload_cpu_layers > 0:
-            backend.offload_layers_to_cpu(layers_num=config.offload_cpu_layers)
+    def _refresh_materialized_model(self, resolved_model: ResolvedModel, model_path: Path) -> ResolvedModel:
+        return self._resolver.inspect_materialized_model(
+            resolved_model.reference,
+            model_path,
+            source_kind=resolved_model.source_kind,
+            repo_id=resolved_model.repo_id,
+            revision=resolved_model.revision,
+            provider_name=resolved_model.provider_name,
+            catalog_entry=resolved_model.catalog_entry,
+        )
 
     def _ensure_local_model(self, resolved_model: ResolvedModel, force_download: bool) -> Path:
         if resolved_model.model_path is None:
@@ -125,10 +124,18 @@ class RuntimeLoader:
         if resolved_model.repo_id is None:
             raise ValueError(f"Local model path does not exist: {resolved_model.model_path}")
         resolved_model.model_path.parent.mkdir(parents=True, exist_ok=True)
-        download_hf_snapshot(
+        self._snapshot_downloader(
             resolved_model.repo_id,
             str(resolved_model.model_path),
-            force_download=force_download,
-            revision=resolved_model.revision,
+            force_download,
+            resolved_model.revision,
         )
         return resolved_model.model_path
+
+    def _validate_runtime_plan(self, runtime_plan: RuntimePlan, config: RuntimeConfig) -> None:
+        if runtime_plan.supports_offload:
+            return
+        if config.offload_cpu_layers > 0 or config.offload_gpu_layers > 0:
+            raise ValueError(
+                f"Selected backend '{runtime_plan.backend_id}' does not support custom layer offload controls"
+            )

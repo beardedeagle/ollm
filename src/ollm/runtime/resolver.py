@@ -2,17 +2,14 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
-from transformers import AutoConfig
-
 from ollm.runtime.capabilities import (
     CapabilityProfile,
-    SupportLevel,
     capabilities_from_catalog_entry,
-    generic_capabilities,
     provider_capabilities,
     unsupported_capabilities,
 )
-from ollm.runtime.catalog import ModelCatalogEntry, ModelModality, find_model_catalog_entry, list_model_catalog
+from ollm.runtime.capability_discovery import CapabilityDiscovery, GenericModelKind
+from ollm.runtime.catalog import ModelCatalogEntry, find_model_catalog_entry, list_model_catalog
 from ollm.runtime.reference import ModelReference
 
 
@@ -45,12 +42,18 @@ class ResolvedModel:
     capabilities: CapabilityProfile
     native_family: NativeFamily | None
     resolution_message: str
+    architecture: str | None
+    model_type: str | None
+    generic_model_kind: GenericModelKind | None
 
     def is_downloadable(self) -> bool:
         return self.repo_id is not None and self.model_path is not None
 
 
 class ModelResolver:
+    def __init__(self, capability_discovery: CapabilityDiscovery | None = None):
+        self._capability_discovery = capability_discovery or CapabilityDiscovery()
+
     def resolve(self, raw_reference: str, models_dir: Path) -> ResolvedModel:
         reference = ModelReference.parse(raw_reference)
         model_root = models_dir.expanduser().resolve()
@@ -69,6 +72,9 @@ class ModelResolver:
                 capabilities=provider_capabilities(provider_name),
                 native_family=None,
                 resolution_message=f"Provider-backed model reference for {provider_name}.",
+                architecture=None,
+                model_type=None,
+                generic_model_kind=None,
             )
 
         if reference.local_path is not None:
@@ -88,6 +94,9 @@ class ModelResolver:
                 capabilities=capabilities_from_catalog_entry(catalog_entry),
                 native_family=_native_family_from_catalog_entry(catalog_entry),
                 resolution_message=f"Built-in optimized alias '{catalog_entry.model_id}'.",
+                architecture=None,
+                model_type=None,
+                generic_model_kind=None,
             )
 
         if reference.is_huggingface_reference():
@@ -120,6 +129,9 @@ class ModelResolver:
             resolution_message=(
                 f"Model reference '{reference.raw}' could not be resolved to a runnable backend or materialization path."
             ),
+            architecture=None,
+            model_type=None,
+            generic_model_kind=None,
         )
 
     def discover_local_models(self, models_dir: Path) -> tuple[ResolvedModel, ...]:
@@ -134,87 +146,115 @@ class ModelResolver:
             discovered.append(self.resolve(str(child), model_root))
         return tuple(discovered)
 
+    def inspect_materialized_model(
+        self,
+        reference: ModelReference,
+        model_path: Path,
+        *,
+        source_kind: ModelSourceKind,
+        repo_id: str | None,
+        revision: str | None,
+        provider_name: str | None,
+        catalog_entry: ModelCatalogEntry | None,
+    ) -> ResolvedModel:
+        inspection = self._capability_discovery.inspect_model_path(model_path)
+        capabilities = inspection.capabilities
+        if catalog_entry is not None and source_kind in {ModelSourceKind.BUILTIN, ModelSourceKind.HUGGING_FACE}:
+            capabilities = capabilities_from_catalog_entry(catalog_entry)
+        native_family = (
+            _native_family_from_catalog_entry(catalog_entry)
+            if catalog_entry is not None
+            else _native_family_from_architecture(inspection.architecture)
+        )
+        normalized_name = catalog_entry.model_id if catalog_entry is not None else model_path.name
+        return ResolvedModel(
+            reference=reference,
+            source_kind=source_kind,
+            normalized_name=normalized_name,
+            model_path=model_path,
+            repo_id=repo_id,
+            revision=revision,
+            provider_name=provider_name,
+            catalog_entry=catalog_entry,
+            capabilities=capabilities,
+            native_family=native_family,
+            resolution_message=inspection.message,
+            architecture=inspection.architecture,
+            model_type=inspection.model_type,
+            generic_model_kind=inspection.generic_model_kind,
+        )
+
     def _resolve_local_path(self, reference: ModelReference) -> ResolvedModel:
         local_path = reference.local_path
         assert local_path is not None
         catalog_entry = find_model_catalog_entry(local_path.name)
-        if not local_path.exists():
-            return ResolvedModel(
-                reference=reference,
-                source_kind=ModelSourceKind.LOCAL_PATH,
-                normalized_name=local_path.name,
-                model_path=local_path,
-                repo_id=None,
-                revision=None,
-                provider_name=None,
-                catalog_entry=catalog_entry,
-                capabilities=unsupported_capabilities(f"Resolved local model path '{local_path}' does not exist."),
-                native_family=_native_family_from_catalog_entry(catalog_entry) if catalog_entry is not None else None,
-                resolution_message=f"Local model path '{local_path}' does not exist.",
-            )
-
-        architecture = _load_architecture(local_path)
-        capabilities = _capabilities_from_local_path(local_path, architecture)
-        native_family = _native_family_from_architecture(architecture)
-        message = f"Local model directory '{local_path}'."
-        if architecture is not None:
-            message = f"Local model directory '{local_path}' with detected architecture '{architecture}'."
-        return ResolvedModel(
-            reference=reference,
+        return self.inspect_materialized_model(
+            reference,
+            local_path,
             source_kind=ModelSourceKind.LOCAL_PATH,
-            normalized_name=local_path.name,
-            model_path=local_path,
             repo_id=None,
             revision=None,
             provider_name=None,
             catalog_entry=catalog_entry,
-            capabilities=capabilities,
-            native_family=native_family,
-            resolution_message=message,
         )
 
     def _resolve_hugging_face(self, reference: ModelReference, model_root: Path) -> ResolvedModel:
         catalog_entry = _find_catalog_entry_by_repo_id(reference.identifier)
-        normalized_name = reference.identifier
         model_path = model_root / reference.materialization_name()
+        if catalog_entry is not None:
+            if reference.revision is None:
+                model_path = model_root / catalog_entry.model_id
+            return ResolvedModel(
+                reference=reference,
+                source_kind=ModelSourceKind.HUGGING_FACE,
+                normalized_name=catalog_entry.model_id,
+                model_path=model_path,
+                repo_id=reference.identifier,
+                revision=reference.revision,
+                provider_name=None,
+                catalog_entry=catalog_entry,
+                capabilities=capabilities_from_catalog_entry(catalog_entry),
+                native_family=_native_family_from_catalog_entry(catalog_entry),
+                resolution_message=(
+                    f"Hugging Face repository '{reference.identifier}' matching built-in optimized alias '{catalog_entry.model_id}'."
+                ),
+                architecture=None,
+                model_type=None,
+                generic_model_kind=None,
+            )
+
+        if model_path.exists() and model_path.is_dir():
+            return self.inspect_materialized_model(
+                reference,
+                model_path,
+                source_kind=ModelSourceKind.HUGGING_FACE,
+                repo_id=reference.identifier,
+                revision=reference.revision,
+                provider_name=None,
+                catalog_entry=None,
+            )
+
         capabilities = unsupported_capabilities(
-            f"Hugging Face repository '{reference.identifier}' is materializable, but the current generic runtime only executes materialized Llama and Gemma3 families."
+            f"Hugging Face repository '{reference.identifier}' must be materialized locally before generic capability discovery can run."
         )
         capabilities.supports_local_materialization = True
         capabilities.details["source"] = "hugging-face"
         capabilities.details["repo_id"] = reference.identifier
-        native_family = None
-        message = f"Hugging Face repository '{reference.identifier}'."
-
-        if catalog_entry is not None:
-            normalized_name = catalog_entry.model_id
-            model_path = model_root / catalog_entry.model_id
-            capabilities = capabilities_from_catalog_entry(catalog_entry)
-            native_family = _native_family_from_catalog_entry(catalog_entry)
-            message = (
-                f"Hugging Face repository '{reference.identifier}' matching built-in optimized alias '{catalog_entry.model_id}'."
-            )
-        elif model_path.exists():
-            architecture = _load_architecture(model_path)
-            capabilities = _capabilities_from_local_path(model_path, architecture)
-            native_family = _native_family_from_architecture(architecture)
-            if architecture is not None:
-                message = (
-                    f"Materialized Hugging Face repository '{reference.identifier}' with detected architecture '{architecture}'."
-                )
-
         return ResolvedModel(
             reference=reference,
             source_kind=ModelSourceKind.HUGGING_FACE,
-            normalized_name=normalized_name,
+            normalized_name=reference.identifier,
             model_path=model_path,
             repo_id=reference.identifier,
             revision=reference.revision,
             provider_name=None,
-            catalog_entry=catalog_entry,
+            catalog_entry=None,
             capabilities=capabilities,
-            native_family=native_family,
-            resolution_message=message,
+            native_family=None,
+            resolution_message=f"Hugging Face repository '{reference.identifier}'.",
+            architecture=None,
+            model_type=None,
+            generic_model_kind=None,
         )
 
 
@@ -223,68 +263,6 @@ def _find_catalog_entry_by_repo_id(repo_id: str) -> ModelCatalogEntry | None:
         if entry.repo_id == repo_id:
             return entry
     return None
-
-
-def _load_architecture(model_path: Path) -> str | None:
-    try:
-        config = AutoConfig.from_pretrained(model_path)
-    except Exception:
-        return None
-    architectures = getattr(config, "architectures", None)
-    if not architectures:
-        return None
-    return str(architectures[0])
-
-
-def _capabilities_from_local_path(model_path: Path, architecture: str | None) -> CapabilityProfile:
-    modalities = (ModelModality.TEXT,)
-    requires_processor = any(
-        (model_path / file_name).exists()
-        for file_name in ("processor_config.json", "preprocessor_config.json")
-    )
-    supports_disk_cache = architecture not in {"GptOssForCausalLM", "OpenAIGptOssForCausalLM"}
-    support_level = SupportLevel.UNSUPPORTED
-
-    if architecture == "LlamaForCausalLM":
-        support_level = SupportLevel.GENERIC
-    elif architecture in {"Gemma3ForConditionalGeneration", "Gemma3ForCausalLM"}:
-        support_level = SupportLevel.GENERIC
-    if architecture == "Gemma3ForConditionalGeneration":
-        modalities = (ModelModality.TEXT, ModelModality.IMAGE)
-        requires_processor = True
-    elif architecture in {"VoxtralForConditionalGeneration", "VoxtralForSpeechSeq2Seq"}:
-        modalities = (ModelModality.TEXT, ModelModality.AUDIO)
-        requires_processor = True
-
-    details = {"source": "local-path"}
-    if architecture is not None:
-        details["architecture"] = architecture
-    if support_level is SupportLevel.UNSUPPORTED:
-        if architecture is None:
-            details["reason"] = "Model architecture could not be determined from the local path."
-        else:
-            details["reason"] = (
-                f"Architecture '{architecture}' is not executable through the current generic runtime."
-            )
-
-    if support_level is SupportLevel.GENERIC:
-        return generic_capabilities(
-            modalities=modalities,
-            requires_processor=requires_processor,
-            supports_disk_cache=supports_disk_cache,
-            details=details,
-        )
-
-    return CapabilityProfile(
-        support_level=SupportLevel.UNSUPPORTED,
-        modalities=modalities,
-        requires_processor=requires_processor,
-        supports_disk_cache=supports_disk_cache,
-        supports_local_materialization=True,
-        supports_provider_execution=False,
-        supports_specialization=False,
-        details=details,
-    )
 
 
 def _native_family_from_architecture(architecture: str | None) -> NativeFamily | None:
