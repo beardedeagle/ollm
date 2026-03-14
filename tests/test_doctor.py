@@ -4,11 +4,13 @@ from pathlib import Path
 import torch
 
 from ollm.app.doctor import DoctorService
+from ollm.runtime.backends.openai_compatible import OpenAICompatibleBackend
 from ollm.runtime.backends.ollama import OllamaBackend
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.loader import RuntimeLoader
 from ollm.runtime.providers.ollama_client import OllamaClient
 
+from tests.openai_compatible_server import OpenAICompatibleFixtureServer
 from tests.ollama_server import OllamaFixtureServer
 
 
@@ -79,6 +81,31 @@ def test_doctor_service_reports_executable_ollama_reference(tmp_path: Path) -> N
     assert checks["runtime:requested-device"].ok is True
     assert checks["model:resolution"].ok is True
     assert checks["model:resolution"].details["backend_id"] == "ollama"
+    assert checks["model:path"].ok is True
+
+
+def test_doctor_service_reports_executable_openai_compatible_reference(tmp_path: Path) -> None:
+    server = OpenAICompatibleFixtureServer(models={"local-model": {"response_text": "ready"}})
+    server.start()
+    try:
+        loader = RuntimeLoader(
+            backends=(OpenAICompatibleBackend(),),
+        )
+        service = DoctorService(runtime_loader=loader)
+        config = RuntimeConfig(
+            model_reference="openai-compatible:local-model",
+            models_dir=tmp_path / "models",
+            device="cpu",
+            provider_endpoint=server.base_url,
+        )
+        report = service.run(config, include_imports=False, include_runtime=True, include_paths=True, include_download=False)
+    finally:
+        server.stop()
+
+    checks = {check.name: check for check in report.checks}
+    assert checks["runtime:requested-device"].ok is True
+    assert checks["model:resolution"].ok is True
+    assert checks["model:resolution"].details["backend_id"] == "openai-compatible"
     assert checks["model:path"].ok is True
 
 

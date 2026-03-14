@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from pathlib import Path
+from urllib.parse import urlparse
 
 DEFAULT_MODEL_REFERENCE = "llama3-1B-chat"
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
@@ -11,6 +12,7 @@ class RuntimeConfig:
     model_reference: str = DEFAULT_MODEL_REFERENCE
     models_dir: Path = field(default_factory=lambda: Path("models"))
     device: str = "cuda:0"
+    provider_endpoint: str | None = None
     adapter_dir: Path | None = None
     multimodal: bool = False
     cache_dir: Path = field(default_factory=lambda: Path("kv_cache"))
@@ -25,6 +27,11 @@ class RuntimeConfig:
     def resolved_models_dir(self) -> Path:
         return self.models_dir.expanduser().resolve()
 
+    def resolved_provider_endpoint(self) -> str | None:
+        if self.provider_endpoint is None:
+            return None
+        return self.provider_endpoint.strip().rstrip("/")
+
     def resolved_cache_dir(self) -> Path:
         return self.cache_dir.expanduser().resolve()
 
@@ -36,6 +43,13 @@ class RuntimeConfig:
     def validate(self) -> None:
         if not self.model_reference.strip():
             raise ValueError("--model cannot be empty")
+        if self.provider_endpoint is not None:
+            provider_endpoint = self.resolved_provider_endpoint()
+            if provider_endpoint is None or not provider_endpoint:
+                raise ValueError("--provider-endpoint cannot be empty")
+            parsed_endpoint = urlparse(provider_endpoint)
+            if parsed_endpoint.scheme not in {"http", "https"} or not parsed_endpoint.netloc:
+                raise ValueError("--provider-endpoint must be an absolute http or https URL")
         if self.verbose and self.quiet:
             raise ValueError("--verbose and --quiet cannot be used together")
         if self.offload_cpu_layers < 0:

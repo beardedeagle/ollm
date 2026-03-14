@@ -7,6 +7,7 @@ from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
 from ollm.runtime.backend_selector import BackendSelector
 from ollm.runtime.backends.base import BackendRuntime, ExecutionBackend
 from ollm.runtime.backends.native_optimized import NativeOptimizedBackend
+from ollm.runtime.backends.openai_compatible import OpenAICompatibleBackend
 from ollm.runtime.backends.ollama import OllamaBackend
 from ollm.runtime.backends.transformers_generic import TransformersGenericBackend
 from ollm.runtime.config import RuntimeConfig
@@ -85,6 +86,7 @@ class RuntimeLoader:
         backend_list = backends or (
             NativeOptimizedBackend(specialization_registry=self._specialization_registry),
             TransformersGenericBackend(),
+            OpenAICompatibleBackend(),
             OllamaBackend(),
         )
         self._backends = {backend.backend_id: backend for backend in backend_list}

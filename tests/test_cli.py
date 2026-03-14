@@ -7,11 +7,13 @@ from typer.testing import CliRunner
 from ollm.app.doctor import DoctorService
 from ollm.cli.services import CommandServices
 from ollm.cli.main import create_app
+from ollm.runtime.backends.openai_compatible import OpenAICompatibleBackend
 from ollm.runtime.backends.ollama import OllamaBackend
 from ollm.runtime.generation import RuntimeExecutor
 from ollm.runtime.loader import RuntimeLoader
 from ollm.runtime.providers.ollama_client import OllamaClient
 
+from tests.openai_compatible_server import OpenAICompatibleFixtureServer
 from tests.fakes import FakeDoctorService, FakeRuntimeExecutor, FakeRuntimeLoader
 from tests.ollama_server import OllamaFixtureServer
 
@@ -168,5 +170,94 @@ def test_provider_backed_models_info_and_doctor_commands(tmp_path: Path) -> None
         assert doctor_result.exit_code == 0
         assert '"runtime:requested-device"' in doctor_result.output
         assert '"Provider-backed model references for ollama ignore local device' in doctor_result.output
+    finally:
+        server.stop()
+
+
+def test_openai_compatible_provider_models_info_and_doctor_commands(tmp_path: Path) -> None:
+    server = OpenAICompatibleFixtureServer(models={"local-model": {"response_text": "ready"}})
+    server.start()
+    try:
+        runtime_loader = RuntimeLoader(
+            backends=(OpenAICompatibleBackend(),),
+        )
+        services = CommandServices(
+            runtime_loader=runtime_loader,
+            runtime_executor=RuntimeExecutor(),
+            doctor_service=DoctorService(runtime_loader=runtime_loader),
+        )
+        runner = CliRunner()
+        app = create_app(services)
+
+        info_result = runner.invoke(
+            app,
+            [
+                "models",
+                "info",
+                "openai-compatible:local-model",
+                "--provider-endpoint",
+                server.base_url,
+                "--json",
+                "--models-dir",
+                str(tmp_path / "models"),
+                "--no-color",
+            ],
+        )
+        assert info_result.exit_code == 0
+        assert '"backend_id": "openai-compatible"' in info_result.output
+        assert '"installed": true' in info_result.output
+        assert '"support_level": "provider-backed"' in info_result.output
+
+        doctor_result = runner.invoke(
+            app,
+            [
+                "doctor",
+                "--json",
+                "--model",
+                "openai-compatible:local-model",
+                "--provider-endpoint",
+                server.base_url,
+                "--models-dir",
+                str(tmp_path / "models"),
+                "--no-color",
+            ],
+        )
+        assert doctor_result.exit_code == 0
+        assert '"runtime:requested-device"' in doctor_result.output
+        assert '"Provider-backed model references for openai-compatible ignore local device' in doctor_result.output
+    finally:
+        server.stop()
+
+
+def test_prompt_command_executes_openai_compatible_provider_reference(tmp_path: Path) -> None:
+    server = OpenAICompatibleFixtureServer(models={"local-model": {"response_text": "ready from provider"}})
+    server.start()
+    try:
+        runtime_loader = RuntimeLoader(
+            backends=(OpenAICompatibleBackend(),),
+        )
+        services = CommandServices(
+            runtime_loader=runtime_loader,
+            runtime_executor=RuntimeExecutor(),
+            doctor_service=DoctorService(runtime_loader=runtime_loader),
+        )
+        runner = CliRunner()
+        app = create_app(services)
+
+        result = runner.invoke(
+            app,
+            [
+                "prompt",
+                "say hi",
+                "--model",
+                "openai-compatible:local-model",
+                "--provider-endpoint",
+                server.base_url,
+                "--no-stream",
+                "--no-color",
+            ],
+        )
+        assert result.exit_code == 0
+        assert "ready from provider" in result.output
     finally:
         server.stop()

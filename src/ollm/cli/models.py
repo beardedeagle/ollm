@@ -125,6 +125,7 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
     def model_info(
         model: str = typer.Argument(..., help="Model reference."),
         models_dir: Path = typer.Option(Path("models"), "--models-dir", help="Directory containing model data."),
+        provider_endpoint: str | None = typer.Option(None, "--provider-endpoint", help="Provider API root URL."),
         multimodal: bool = typer.Option(False, "--multimodal/--no-multimodal", help="Enable multimodal processor support for runtime planning."),
         json_output: bool = typer.Option(False, "--json", help="Output JSON."),
         no_color: bool = typer.Option(False, "--no-color", help="Disable ANSI color output."),
@@ -136,6 +137,7 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             RuntimeConfig(
                 model_reference=model,
                 models_dir=models_dir.expanduser().resolve(),
+                provider_endpoint=provider_endpoint,
                 multimodal=multimodal,
             )
         )

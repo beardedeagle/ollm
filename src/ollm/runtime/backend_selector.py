@@ -70,6 +70,31 @@ class BackendSelector:
                         "provider_name": resolved_model.provider_name,
                     },
                 )
+            if resolved_model.provider_name in {"openai-compatible", "lmstudio"}:
+                provider_name = resolved_model.provider_name
+                return RuntimePlan(
+                    resolved_model=resolved_model,
+                    backend_id="openai-compatible",
+                    model_path=None,
+                    support_level=SupportLevel.PROVIDER_BACKED,
+                    generic_model_kind=resolved_model.generic_model_kind,
+                    supports_disk_cache=False,
+                    supports_cpu_offload=False,
+                    supports_gpu_offload=False,
+                    specialization_enabled=False,
+                    specialization_applied=False,
+                    specialization_provider_id=None,
+                    specialization_state=SpecializationState.NOT_PLANNED,
+                    specialization_pass_ids=(),
+                    reason=(
+                        f"{provider_name} provider-backed model reference for "
+                        f"{resolved_model.reference.raw}."
+                    ),
+                    details={
+                        "source_kind": resolved_model.source_kind.value,
+                        "provider_name": provider_name,
+                    },
+                )
             return RuntimePlan(
                 resolved_model=resolved_model,
                 backend_id=None,
