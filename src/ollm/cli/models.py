@@ -24,6 +24,7 @@ def _resolved_model_payload(resolved_model: ResolvedModel) -> dict[str, object]:
         "repo_id": resolved_model.repo_id,
         "revision": resolved_model.revision,
         "path": None if resolved_model.model_path is None else str(resolved_model.model_path),
+        "provider_name": resolved_model.provider_name,
         "native_family": None if resolved_model.native_family is None else resolved_model.native_family.value,
         "architecture": resolved_model.architecture,
         "model_type": resolved_model.model_type,
@@ -80,13 +81,13 @@ def _provider_discovery_names(
     normalized_providers: list[str] = []
     for provider_name in discover_provider:
         normalized_name = provider_name.strip().lower()
-        if normalized_name not in {"ollama", "lmstudio", "openai-compatible"}:
+        if normalized_name not in {"ollama", "lmstudio", "openai-compatible", "msty"}:
             raise typer.BadParameter(
-                "--discover-provider must be one of: ollama, lmstudio, openai-compatible"
+                "--discover-provider must be one of: ollama, lmstudio, openai-compatible, msty"
             )
-        if normalized_name == "openai-compatible" and provider_endpoint is None:
+        if normalized_name in {"openai-compatible", "msty"} and provider_endpoint is None:
             raise typer.BadParameter(
-                "--discover-provider openai-compatible requires --provider-endpoint"
+                f"--discover-provider {normalized_name} requires --provider-endpoint"
             )
         if normalized_name not in normalized_providers:
             normalized_providers.append(normalized_name)
@@ -121,7 +122,7 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         provider_endpoint: str | None = typer.Option(
             None,
             "--provider-endpoint",
-            help="Provider API root URL for openai-compatible discovery or lmstudio override.",
+            help="Provider API root URL for msty/openai-compatible discovery or lmstudio override.",
         ),
         json_output: bool = typer.Option(False, "--json", help="Output JSON."),
         models_dir: Path = typer.Option(Path("models"), "--models-dir", help="Directory containing model data."),
@@ -234,6 +235,8 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         console.print(f"reference: {payload['model_reference']}")
         console.print(f"normalized: {payload['normalized_name']}")
         console.print(f"source: {payload['source_kind']}")
+        if payload["provider_name"] is not None:
+            console.print(f"provider: {payload['provider_name']}")
         console.print(f"support: {payload['support_level']}")
         console.print(f"specialization: {payload['supports_specialization']}")
         if payload["generic_model_kind"] is not None:

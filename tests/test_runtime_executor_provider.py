@@ -90,6 +90,48 @@ def test_runtime_executor_streams_ollama_provider_output(tmp_path: Path) -> None
 	}
 
 
+def test_runtime_executor_preserves_msty_provider_identity(tmp_path: Path) -> None:
+	server = OllamaFixtureServer(
+		models={
+			"llama3.2": {
+				"capabilities": ["completion"],
+				"response_text": "hello from msty",
+			}
+		}
+	)
+	server.start()
+	try:
+		loader = RuntimeLoader(
+			backends=(OllamaBackend(client_factory=lambda endpoint: OllamaClient(base_url=endpoint)),),
+		)
+		runtime_config = RuntimeConfig(
+			model_reference="msty:llama3.2",
+			models_dir=tmp_path / "models",
+			device="cpu",
+			provider_endpoint=server.base_url,
+		)
+		runtime = loader.load(runtime_config)
+		request = PromptRequest(
+			runtime_config=runtime_config,
+			generation_config=GenerationConfig(max_new_tokens=16, stream=False),
+			messages=[
+				Message.system_text("You are concise."),
+				Message.user_text("Say hello."),
+			],
+		)
+		sink = RecordingSink()
+		response = RuntimeExecutor().execute(runtime, request, sink=sink)
+	finally:
+		server.stop()
+
+	assert response.text == "hello from msty"
+	assert response.metadata["backend_id"] == "ollama"
+	assert response.metadata["provider"] == "msty"
+	assert response.metadata["provider_backend"] == "ollama"
+	assert response.metadata["provider_endpoint"] == server.base_url
+	assert sink.status_messages == ["Running msty:llama3.2 via provider backend ollama"]
+
+
 def test_runtime_executor_sends_base64_image_to_ollama_vision_model(tmp_path: Path) -> None:
 	server = OllamaFixtureServer(
 		models={

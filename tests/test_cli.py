@@ -176,6 +176,63 @@ def test_provider_backed_models_info_and_doctor_commands(tmp_path: Path) -> None
         server.stop()
 
 
+def test_msty_provider_models_info_and_doctor_commands(tmp_path: Path) -> None:
+    server = OllamaFixtureServer(
+        models={"llama3.2": {"capabilities": ["completion"], "response_text": "ready"}}
+    )
+    server.start()
+    try:
+        runtime_loader = RuntimeLoader(
+            backends=(OllamaBackend(client_factory=lambda endpoint: OllamaClient(base_url=endpoint)),),
+        )
+        services = CommandServices(
+            runtime_loader=runtime_loader,
+            runtime_executor=RuntimeExecutor(),
+            doctor_service=DoctorService(runtime_loader=runtime_loader),
+        )
+        runner = CliRunner()
+        app = create_app(services)
+
+        info_result = runner.invoke(
+            app,
+            [
+                "models",
+                "info",
+                "msty:llama3.2",
+                "--provider-endpoint",
+                server.base_url,
+                "--json",
+                "--models-dir",
+                str(tmp_path / "models"),
+                "--no-color",
+            ],
+        )
+        assert info_result.exit_code == 0
+        assert '"backend_id": "ollama"' in info_result.output
+        assert '"installed": true' in info_result.output
+        assert '"provider_name": "msty"' in info_result.output
+
+        doctor_result = runner.invoke(
+            app,
+            [
+                "doctor",
+                "--json",
+                "--model",
+                "msty:llama3.2",
+                "--provider-endpoint",
+                server.base_url,
+                "--models-dir",
+                str(tmp_path / "models"),
+                "--no-color",
+            ],
+        )
+        assert doctor_result.exit_code == 0
+        assert '"runtime:requested-device"' in doctor_result.output
+        assert '"Provider-backed model references for msty ignore local device' in doctor_result.output
+    finally:
+        server.stop()
+
+
 def test_prompt_command_executes_ollama_provider_reference_with_remote_image_url(tmp_path: Path) -> None:
     ollama_server = OllamaFixtureServer(
         models={"llava": {"capabilities": ["completion", "vision"], "response_text": "remote vision ready"}}
@@ -272,6 +329,46 @@ def test_models_list_discovers_provider_models(tmp_path: Path) -> None:
         ollama_server.stop()
 
 
+def test_models_list_discovers_msty_provider_models(tmp_path: Path) -> None:
+    server = OllamaFixtureServer(
+        models={"llama3.2": {"capabilities": ["completion"], "response_text": "ready"}}
+    )
+    server.start()
+    try:
+        runtime_loader = RuntimeLoader(
+            backends=(OllamaBackend(client_factory=lambda endpoint: OllamaClient(base_url=endpoint)),),
+        )
+        services = CommandServices(
+            runtime_loader=runtime_loader,
+            runtime_executor=RuntimeExecutor(),
+            doctor_service=DoctorService(runtime_loader=runtime_loader),
+        )
+        runner = CliRunner()
+        app = create_app(services)
+
+        result = runner.invoke(
+            app,
+            [
+                "models",
+                "list",
+                "--json",
+                "--discover-provider",
+                "msty",
+                "--provider-endpoint",
+                server.base_url,
+                "--models-dir",
+                str(tmp_path / "models"),
+                "--no-color",
+            ],
+        )
+        assert result.exit_code == 0
+        assert '"model_reference": "msty:llama3.2"' in result.output
+        assert '"provider_endpoint": "' + server.base_url + '"' in result.output
+        assert '"discovery_source": "discovered-provider"' in result.output
+    finally:
+        server.stop()
+
+
 def test_models_list_requires_endpoint_for_openai_compatible_discovery(tmp_path: Path) -> None:
     runner, _, app = build_test_app()
     result = runner.invoke(
@@ -281,6 +378,24 @@ def test_models_list_requires_endpoint_for_openai_compatible_discovery(tmp_path:
             "list",
             "--discover-provider",
             "openai-compatible",
+            "--models-dir",
+            str(tmp_path / "models"),
+            "--no-color",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "--provider-endpoint" in result.output
+
+
+def test_models_list_requires_endpoint_for_msty_discovery(tmp_path: Path) -> None:
+    runner, _, app = build_test_app()
+    result = runner.invoke(
+        app,
+        [
+            "models",
+            "list",
+            "--discover-provider",
+            "msty",
             "--models-dir",
             str(tmp_path / "models"),
             "--no-color",
@@ -395,5 +510,39 @@ def test_prompt_command_executes_openai_compatible_provider_reference(tmp_path: 
         )
         assert result.exit_code == 0
         assert "ready from provider" in result.output
+    finally:
+        server.stop()
+
+
+def test_prompt_command_executes_msty_provider_reference(tmp_path: Path) -> None:
+    server = OllamaFixtureServer(models={"llama3.2": {"capabilities": ["completion"], "response_text": "ready from msty"}})
+    server.start()
+    try:
+        runtime_loader = RuntimeLoader(
+            backends=(OllamaBackend(client_factory=lambda endpoint: OllamaClient(base_url=endpoint)),),
+        )
+        services = CommandServices(
+            runtime_loader=runtime_loader,
+            runtime_executor=RuntimeExecutor(),
+            doctor_service=DoctorService(runtime_loader=runtime_loader),
+        )
+        runner = CliRunner()
+        app = create_app(services)
+
+        result = runner.invoke(
+            app,
+            [
+                "prompt",
+                "say hi",
+                "--model",
+                "msty:llama3.2",
+                "--provider-endpoint",
+                server.base_url,
+                "--no-stream",
+                "--no-color",
+            ],
+        )
+        assert result.exit_code == 0
+        assert "ready from msty" in result.output
     finally:
         server.stop()

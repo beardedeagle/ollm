@@ -107,13 +107,14 @@ cat notes.txt | ollm prompt --stdin --model llama3-8B-chat
 ollm prompt --multimodal --model gemma3-12B --image ./diagram.png "Describe this image"
 ```
 
-`ollm doctor` reports missing optional extras, runtime availability, path issues, and model readiness. `ollm models` provides `list`, `info`, `download`, and `path` subcommands for both built-in aliases and arbitrary model references. `ollm models list` now acts as a discovery view: it combines built-in aliases, local materialized models, and provider-discovered entries from Ollama and LM Studio by default, and it can probe generic OpenAI-compatible providers when you pass `--discover-provider openai-compatible --provider-endpoint <url>`.
+`ollm doctor` reports missing optional extras, runtime availability, path issues, and model readiness. `ollm models` provides `list`, `info`, `download`, and `path` subcommands for both built-in aliases and arbitrary model references. `ollm models list` now acts as a discovery view: it combines built-in aliases, local materialized models, and provider-discovered entries from Ollama and LM Studio by default, and it can also probe `openai-compatible` or `msty` providers when you pass `--discover-provider <name> --provider-endpoint <url>`.
 
 `--model` now accepts opaque model references. Today that means:
 - built-in aliases such as `llama3-1B-chat` and `gemma3-12B` load through registered optimized specialization providers
 - Hugging Face repo IDs such as `Qwen/Qwen2.5-7B-Instruct` resolve and materialize locally
 - local model directories resolve directly
 - Ollama provider refs such as `ollama:llama3.2` execute through the local Ollama API
+- Msty provider refs such as `msty:llama3.2` execute through the Msty Local AI service when `--provider-endpoint` is supplied
 - LM Studio provider refs such as `lmstudio:qwen2.5` execute through the local OpenAI-compatible API
 - generic OpenAI-compatible refs such as `openai-compatible:local-model` execute when `--provider-endpoint` is supplied
 
@@ -122,7 +123,7 @@ The current generic execution path now covers compatible local or materialized T
 - encoder-decoder text generation models such as T5-family checkpoints
 - image-text conditional generation models that expose a processor-backed `vision_config`
 
-When the resolved model matches a native family specialization (`llama`, `gemma3`, `qwen3-next`, `gpt-oss`, or `voxtral`), `ollm` now records and selects the matching optimized specialization provider through the runtime plan instead of hard-coding model-family branches inside `Inference.load_model()`. Built-in aliases still prefer the optimized native backend, and compatible local native-family directories can now do the same when a specialization provider matches while preserving the original local-path reference internally for optimized local loads. Provider-backed execution is now live for `ollama:<model>`, `lmstudio:<model>`, and `openai-compatible:<model>` references, while Msty-specific execution and audio-focused generic conditional generation remain deferred.
+When the resolved model matches a native family specialization (`llama`, `gemma3`, `qwen3-next`, `gpt-oss`, or `voxtral`), `ollm` now records and selects the matching optimized specialization provider through the runtime plan instead of hard-coding model-family branches inside `Inference.load_model()`. Built-in aliases still prefer the optimized native backend, and compatible local native-family directories can now do the same when a specialization provider matches while preserving the original local-path reference internally for optimized local loads. Provider-backed execution is now live for `ollama:<model>`, `msty:<model>`, `lmstudio:<model>`, and `openai-compatible:<model>` references, while audio-focused generic conditional generation remains deferred.
 
 Optimized-native planning now also records reusable specialization passes such as `disk-cache`, `cpu-offload`, `gpu-offload`, `mlp-chunking`, `moe-routing`, `attention-replacement`, `multimodal-shell`, and `gds-export-weights`. Those passes are now validated against the assembled optimized runtime before execution proceeds. If an optimized specialization cannot satisfy its planned pass contract and a compatible generic Transformers path exists, `ollm` falls back safely to `transformers-generic` instead of silently pretending the optimized path succeeded.
 
@@ -132,6 +133,7 @@ Actual execution surfaces follow the finalized runtime plan instead. In particul
 
 For provider-backed execution, `ollm` currently supports:
 - the local Ollama API on the default `http://127.0.0.1:11434` endpoint
+- Msty Local AI through the existing Ollama transport when `--provider-endpoint` points at the configured Msty Local AI service endpoint
 - LM Studio on the default `http://127.0.0.1:1234/v1` OpenAI-compatible endpoint
 - arbitrary OpenAI-compatible servers when `--provider-endpoint` points at the provider API root
 
@@ -141,7 +143,7 @@ Example Ollama vision prompt with a remote image URL:
 ollm prompt --multimodal --model ollama:llava --image https://example.com/diagram.png "Describe this image"
 ```
 
-`ollm doctor --model <provider-ref>` and `ollm models info <provider-ref>` probe the configured endpoint and report executability truthfully. If an Ollama model advertises `vision` capability, `ollm prompt --multimodal --model ollama:<model>` can now send local-file paths, base64 data URLs, and remote `http`/`https` image URLs through the Ollama chat API. Remote image URLs are fetched client-side with bounded downloads and content-type validation before being base64-forwarded to Ollama. The OpenAI-compatible backend is intentionally narrower right now: it is text-only, rejects `--top-k`, does not support PEFT adapters or custom layer offload, and requires `--provider-endpoint` for `openai-compatible:<model>` references. Audio provider execution remains unsupported.
+`ollm doctor --model <provider-ref>` and `ollm models info <provider-ref>` probe the configured endpoint and report executability truthfully. If an Ollama-family provider model advertises `vision` capability, `ollm prompt --multimodal --model ollama:<model>` can now send local-file paths, base64 data URLs, and remote `http`/`https` image URLs through the Ollama chat API. Remote image URLs are fetched client-side with bounded downloads and content-type validation before being base64-forwarded to Ollama. `msty:<model>` now reuses the same Ollama transport but intentionally requires an explicit `--provider-endpoint`, because the Msty Local AI service endpoint is user-configurable and `ollm` does not guess it. The OpenAI-compatible backend is intentionally narrower right now: it is text-only, rejects `--top-k`, does not support PEFT adapters or custom layer offload, and requires `--provider-endpoint` for `openai-compatible:<model>` references. Audio provider execution remains unsupported.
 
 The optimized GPT-OSS provider is intentionally stricter than before: it only matches when a validated `gds_export/` tree is present beside the model, and that export manifest must stay inside the export directory and avoid torch-serialized or pickle-backed artifacts.
 

@@ -49,7 +49,8 @@ class BackendSelector:
                     ),
                     details={"source_kind": resolved_model.source_kind.value},
                 )
-            if resolved_model.provider_name == "ollama":
+            if resolved_model.provider_name in {"ollama", "msty"}:
+                provider_name = resolved_model.provider_name
                 return RuntimePlan(
                     resolved_model=resolved_model,
                     backend_id="ollama",
@@ -64,10 +65,13 @@ class BackendSelector:
                     specialization_provider_id=None,
                     specialization_state=SpecializationState.NOT_PLANNED,
                     specialization_pass_ids=(),
-                    reason=f"Ollama provider-backed model reference for {resolved_model.reference.raw}.",
+                    reason=(
+                        f"{provider_name} provider-backed model reference for "
+                        f"{resolved_model.reference.raw}."
+                    ),
                     details={
                         "source_kind": resolved_model.source_kind.value,
-                        "provider_name": resolved_model.provider_name,
+                        "provider_name": provider_name,
                     },
                 )
             if resolved_model.provider_name in {"openai-compatible", "lmstudio"}:
