@@ -6,6 +6,7 @@ from ollm.app.types import ContentKind, Message, PromptRequest, PromptResponse
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.catalog import ModelModality
 from ollm.runtime.loader import LoadedRuntime
+from ollm.runtime.output_control import suppress_module_prints
 from ollm.runtime.streaming import BufferedTextStreamer, NullStreamSink, StreamSink
 
 
@@ -32,7 +33,8 @@ class RuntimeExecutor:
         )
 
         with torch.inference_mode():
-            outputs = runtime.model.generate(**inputs, **generate_kwargs)
+            with suppress_module_prints(runtime.backend.print_suppression_modules):
+                outputs = runtime.model.generate(**inputs, **generate_kwargs)
 
         if hasattr(outputs, "detach"):
             outputs = outputs.detach()

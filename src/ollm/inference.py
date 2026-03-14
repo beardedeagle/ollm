@@ -1,16 +1,19 @@
+import logging
 from pathlib import Path
 
 import torch
 from huggingface_hub import snapshot_download
 from transformers import AutoConfig
 
-from ollm.runtime.catalog import find_model_catalog_entry
+from ollm.runtime.catalog import ModelCatalogEntry, find_model_catalog_entry
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.reference import ModelReference
 from ollm.runtime.resolver import ModelResolver, ModelSourceKind
 from ollm.runtime.safety import validate_safe_adapter_artifacts
 from ollm.runtime.specialization import SpecializationRegistry, build_default_specialization_registry
 from ollm.utils import Stats
+
+LOGGER = logging.getLogger(__name__)
 
 
 def get_attn_implementation() -> str | None:
@@ -19,7 +22,7 @@ def get_attn_implementation() -> str | None:
 
         return "flash_attention_2"
     except ImportError:
-        print("Warning: flash_attention_2 is not imported. The context length will be limited")
+        LOGGER.warning("flash_attention_2 is not imported. The context length will be limited.")
         return None
 
 
@@ -29,7 +32,7 @@ def download_hf_snapshot(
     force_download: bool = False,
     revision: str | None = None,
 ) -> None:
-    print(f"Downloading {repo_id} ...")
+    LOGGER.info("Downloading model snapshot for %s.", repo_id)
     snapshot_download(
         repo_id=repo_id,
         local_dir=model_dir,
@@ -68,18 +71,18 @@ class Inference:
         self.loaded_specialization_provider_id = None
 
     def hf_download(self, model_dir: str, force_download: bool = False) -> None:
-        entry = find_model_catalog_entry(self.model_id)
+        entry = find_model_catalog_entry(self.optimized_model_id)
         if entry is None:
             raise ValueError(
-                f"Inference only supports built-in optimized aliases. Received {self.model_id!r}."
+                f"Inference only supports built-in optimized aliases. Received {self.optimized_model_id!r}."
             )
         download_hf_snapshot(entry.repo_id, model_dir, force_download=force_download)
 
     def ini_model(self, models_dir: str = "./models/", force_download: bool = False) -> None:
-        entry = find_model_catalog_entry(self.model_id)
+        entry = find_model_catalog_entry(self.optimized_model_id)
         if entry is None:
             raise ValueError(
-                f"Inference only supports built-in optimized aliases. Received {self.model_id!r}."
+                f"Inference only supports built-in optimized aliases. Received {self.optimized_model_id!r}."
             )
 
         model_dir = Path(models_dir).expanduser().resolve() / entry.model_id
@@ -92,21 +95,34 @@ class Inference:
         model_path = Path(model_dir).expanduser().resolve()
         if not model_path.exists() or not model_path.is_dir():
             raise ValueError(f"Model directory does not exist: {model_path}")
-        self._load_optimized_model(model_path, ModelSourceKind.BUILTIN, self.model_reference)
+        entry = find_model_catalog_entry(self.optimized_model_id)
+        if entry is None:
+            raise ValueError(
+                f"Inference only supports built-in optimized aliases. Received {self.optimized_model_id!r}."
+            )
+        self._load_optimized_model(
+            model_path,
+            ModelSourceKind.BUILTIN,
+            self.model_reference,
+            catalog_entry=entry,
+        )
 
     def _load_optimized_model(
         self,
         model_path: Path,
         source_kind: ModelSourceKind,
         raw_reference: str,
+        catalog_entry: ModelCatalogEntry | None = None,
     ) -> None:
-        entry = find_model_catalog_entry(self.model_id)
-        if entry is None:
-            raise ValueError(
-                f"Inference only supports built-in optimized aliases. Received {self.model_id!r}."
-            )
+        entry = catalog_entry
+        if source_kind is ModelSourceKind.BUILTIN:
+            entry = find_model_catalog_entry(self.optimized_model_id)
+            if entry is None:
+                raise ValueError(
+                    f"Inference only supports built-in optimized aliases. Received {self.optimized_model_id!r}."
+                )
 
-        print("loading model from", model_path)
+        LOGGER.info("Loading optimized model from %s.", model_path)
         runtime_config = RuntimeConfig(
             model_reference=raw_reference,
             device=str(self.device),
@@ -117,7 +133,7 @@ class Inference:
             ModelReference.parse(raw_reference),
             model_path,
             source_kind=source_kind,
-            repo_id=entry.repo_id,
+            repo_id=None if entry is None else entry.repo_id,
             revision=None,
             provider_name=None,
             catalog_entry=entry,
@@ -183,9 +199,9 @@ class AutoInference(Inference):
         architectures = getattr(config, "architectures", None) or ()
         architecture = architectures[0] if architectures else None
         if architecture == "LlamaForCausalLM":
-            model_id = "llama3-8B-chat" if self.is_sharded(str(model_path)) else "llama3-1B-chat"
+            optimized_model_id = "llama3-1B-chat"
         elif architecture in {"Gemma3ForConditionalGeneration", "Gemma3ForCausalLM"}:
-            model_id = "gemma3-12B"
+            optimized_model_id = "gemma3-12B"
         else:
             raise ValueError(
                 f"The current optimized path cannot run architecture {architecture!r}. "
@@ -193,15 +209,20 @@ class AutoInference(Inference):
             )
 
         super().__init__(
-            model_id,
+            str(model_path),
             device=device,
             logging=logging,
             multimodality=multimodality,
             specialization_registry=specialization_registry,
             resolver=resolver,
         )
+        self.optimized_model_id = optimized_model_id
         self.model_reference = str(model_path)
-        self._load_optimized_model(model_path, ModelSourceKind.LOCAL_PATH, self.model_reference)
+        self._load_optimized_model(
+            model_path,
+            ModelSourceKind.LOCAL_PATH,
+            self.model_reference,
+        )
         if adapter_dir:
             from peft import LoraConfig, get_peft_model
 
@@ -212,6 +233,3 @@ class AutoInference(Inference):
             peft_config = LoraConfig.from_pretrained(str(adapter_path))
             self.model = get_peft_model(self.model, peft_config)
             self.model.load_adapter(str(adapter_path), adapter_name="default", use_safetensors=True)
-
-    def is_sharded(self, model_dir: str) -> bool:
-        return any("index.json" in file.name for file in Path(model_dir).expanduser().resolve().iterdir())

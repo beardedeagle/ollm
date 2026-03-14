@@ -105,23 +105,43 @@ class DoctorService:
     def _check_runtime(self, runtime_config: RuntimeConfig) -> list[DoctorCheck]:
         device_checks: list[DoctorCheck] = []
         cuda_available = torch.cuda.is_available()
-        device_checks.append(
-            DoctorCheck(
-                name="runtime:cuda",
-                ok=True,
-                message=f"CUDA available: {cuda_available}",
-                details={"device": runtime_config.device},
-            )
-        )
+        cuda_device_count = torch.cuda.device_count() if cuda_available else 0
         mps_backend = getattr(torch.backends, "mps", None)
         mps_available = bool(mps_backend is not None and mps_backend.is_available())
-        device_checks.append(
-            DoctorCheck(
-                name="runtime:mps",
-                ok=True,
-                message=f"MPS available: {mps_available}",
+        requested_device = runtime_config.device.strip()
+        requested_backend, _, requested_index = requested_device.partition(":")
+        requested_backend = requested_backend.lower()
+        if requested_backend == "cuda":
+            device_checks.append(
+                self._requested_cuda_check(
+                    requested_device=requested_device,
+                    requested_index=requested_index,
+                    cuda_available=cuda_available,
+                    cuda_device_count=cuda_device_count,
+                )
             )
-        )
+        elif requested_backend == "mps":
+            device_checks.append(
+                DoctorCheck(
+                    name="runtime:requested-device",
+                    ok=mps_available,
+                    message=(
+                        f"Requested device '{requested_device}' is available."
+                        if mps_available
+                        else f"Requested device '{requested_device}' is not available."
+                    ),
+                    details={"mps_available": str(mps_available)},
+                )
+            )
+        else:
+            device_checks.append(
+                DoctorCheck(
+                    name="runtime:requested-device",
+                    ok=True,
+                    message=f"Requested device '{requested_device}' is available.",
+                    details={"backend": requested_backend},
+                )
+            )
         cpu_threads = torch.get_num_threads()
         device_checks.append(
             DoctorCheck(
@@ -132,6 +152,59 @@ class DoctorService:
             )
         )
         return device_checks
+
+    def _requested_cuda_check(
+        self,
+        requested_device: str,
+        requested_index: str,
+        cuda_available: bool,
+        cuda_device_count: int,
+    ) -> DoctorCheck:
+        if not cuda_available:
+            return DoctorCheck(
+                name="runtime:requested-device",
+                ok=False,
+                message=f"Requested device '{requested_device}' is not available.",
+                details={
+                    "cuda_available": str(cuda_available),
+                    "cuda_device_count": str(cuda_device_count),
+                },
+            )
+        if not requested_index:
+            return DoctorCheck(
+                name="runtime:requested-device",
+                ok=True,
+                message=f"Requested device '{requested_device}' is available.",
+                details={
+                    "cuda_available": str(cuda_available),
+                    "cuda_device_count": str(cuda_device_count),
+                },
+            )
+        if not requested_index.isdigit():
+            return DoctorCheck(
+                name="runtime:requested-device",
+                ok=False,
+                message=f"Requested CUDA device '{requested_device}' has an invalid index.",
+                details={
+                    "cuda_available": str(cuda_available),
+                    "cuda_device_count": str(cuda_device_count),
+                },
+            )
+        device_index = int(requested_index)
+        device_available = device_index < cuda_device_count
+        return DoctorCheck(
+            name="runtime:requested-device",
+            ok=device_available,
+            message=(
+                f"Requested device '{requested_device}' is available."
+                if device_available
+                else f"Requested device '{requested_device}' is not available."
+            ),
+            details={
+                "cuda_available": str(cuda_available),
+                "cuda_device_count": str(cuda_device_count),
+            },
+        )
 
     def _check_paths(self, runtime_config: RuntimeConfig) -> list[DoctorCheck]:
         checks: list[DoctorCheck] = []

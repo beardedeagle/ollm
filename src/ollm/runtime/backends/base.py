@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from types import ModuleType
 
 import torch
 
@@ -17,6 +18,7 @@ class BackendRuntime:
     processor: object | None
     device: torch.device
     stats: object | None
+    print_suppression_modules: tuple[ModuleType, ...]
     create_cache: Callable[[Path], object | None]
     apply_offload: Callable[[RuntimeConfig], None]
 

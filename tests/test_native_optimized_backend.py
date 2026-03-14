@@ -1,4 +1,5 @@
 from pathlib import Path
+import types
 
 import torch
 
@@ -24,6 +25,7 @@ class StubProvider(SpecializationProvider):
 
     def __init__(self):
         self.load_count = 0
+        self._module = types.ModuleType("stub_native_module")
 
     def match(self, resolved_model: ResolvedModel, config: RuntimeConfig) -> SpecializationMatch | None:
         del resolved_model, config
@@ -52,8 +54,9 @@ class StubProvider(SpecializationProvider):
             processor=None,
             device=torch.device("cpu"),
             stats=None,
+            print_suppression_modules=(self._module,),
             create_cache=lambda cache_dir: str(cache_dir),
-            apply_cpu_offload=lambda layers_num: None,
+            apply_cpu_offload=lambda layers_num: self._module.print(f"cpu-offload:{layers_num}"),
             apply_gpu_offload=None,
         )
 
@@ -95,3 +98,46 @@ def test_native_optimized_backend_loads_through_specialization_registry(tmp_path
 
     assert runtime.backend_id == "optimized-native"
     assert provider.load_count == 1
+
+
+def test_native_optimized_backend_suppresses_module_prints_during_offload(tmp_path: Path, capfd) -> None:
+    provider = StubProvider()
+    registry = SpecializationRegistry((provider,))
+    resolved_model = ResolvedModel(
+        reference=ModelReference.parse("llama3-1B-chat"),
+        source_kind=ModelSourceKind.BUILTIN,
+        normalized_name="llama3-1B-chat",
+        model_path=tmp_path / "llama3-1B-chat",
+        repo_id="repo",
+        revision=None,
+        provider_name=None,
+        catalog_entry=None,
+        capabilities=CapabilityProfile(support_level=SupportLevel.OPTIMIZED),
+        native_family=NativeFamily.LLAMA,
+        resolution_message="built-in",
+        architecture="LlamaForCausalLM",
+        model_type="llama",
+        generic_model_kind=GenericModelKind.CAUSAL_LM,
+    )
+    plan = RuntimePlan(
+        resolved_model=resolved_model,
+        backend_id="optimized-native",
+        model_path=resolved_model.model_path,
+        support_level=SupportLevel.OPTIMIZED,
+        generic_model_kind=GenericModelKind.CAUSAL_LM,
+        supports_disk_cache=True,
+        supports_cpu_offload=True,
+        supports_gpu_offload=False,
+        specialization_enabled=True,
+        specialization_provider_id="stub-llama",
+        reason="stub",
+    )
+
+    runtime = NativeOptimizedBackend(specialization_registry=registry).load(
+        plan,
+        RuntimeConfig(device="cpu"),
+    )
+    runtime.apply_offload(RuntimeConfig(device="cpu", offload_cpu_layers=1))
+
+    captured = capfd.readouterr()
+    assert captured.out == ""

@@ -122,6 +122,7 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
     def model_info(
         model: str = typer.Argument(..., help="Model reference."),
         models_dir: Path = typer.Option(Path("models"), "--models-dir", help="Directory containing model data."),
+        multimodal: bool = typer.Option(False, "--multimodal/--no-multimodal", help="Enable multimodal processor support for runtime planning."),
         json_output: bool = typer.Option(False, "--json", help="Output JSON."),
         no_color: bool = typer.Option(False, "--no-color", help="Disable ANSI color output."),
     ) -> None:
@@ -130,7 +131,11 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         payload["installed"] = bool(resolved_model.model_path is not None and resolved_model.model_path.exists())
         if payload["installed"]:
             runtime_plan = services.runtime_loader.plan(
-                RuntimeConfig(model_reference=model, models_dir=models_dir.expanduser().resolve())
+                RuntimeConfig(
+                    model_reference=model,
+                    models_dir=models_dir.expanduser().resolve(),
+                    multimodal=multimodal,
+                )
             )
             payload = _merge_runtime_plan_payload(payload, runtime_plan)
         console = build_console(no_color=no_color)

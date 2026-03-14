@@ -1,3 +1,5 @@
+import types
+
 import pytest
 import torch
 
@@ -52,6 +54,17 @@ class Seq2SeqModel(FakeModel):
         return torch.tensor([[9, 8]])
 
 
+class PrintingModel(FakeModel):
+    def __init__(self, module):
+        super().__init__()
+        self._module = module
+
+    def generate(self, **kwargs):
+        del kwargs
+        self._module.print("noisy-generate")
+        return torch.tensor([[1, 2, 3, 4]])
+
+
 def build_runtime(capabilities: CapabilityProfile, tokenizer=None) -> LoadedRuntime:
     config = RuntimeConfig(model_reference="llama3-1B-chat", device="cpu", multimodal=False, use_cache=False)
     resolved_model = ResolvedModel(
@@ -90,6 +103,7 @@ def build_runtime(capabilities: CapabilityProfile, tokenizer=None) -> LoadedRunt
         processor=None,
         device=torch.device("cpu"),
         stats=None,
+        print_suppression_modules=(),
         create_cache=lambda cache_dir: None,
         apply_offload=lambda runtime_config: None,
     )
@@ -100,6 +114,23 @@ def build_runtime(capabilities: CapabilityProfile, tokenizer=None) -> LoadedRunt
         backend=backend,
         model_path=resolved_model.model_path,
     )
+
+
+def build_runtime_with_printing_module(capabilities: CapabilityProfile) -> LoadedRuntime:
+    runtime = build_runtime(capabilities)
+    module = types.ModuleType("fake_runtime_module")
+    runtime.backend = BackendRuntime(
+        backend_id="test-backend",
+        model=PrintingModel(module),
+        tokenizer=PlainTokenizer(),
+        processor=None,
+        device=torch.device("cpu"),
+        stats=None,
+        print_suppression_modules=(module,),
+        create_cache=lambda cache_dir: None,
+        apply_offload=lambda runtime_config: None,
+    )
+    return runtime
 
 
 def build_seq2seq_runtime() -> LoadedRuntime:
@@ -141,6 +172,7 @@ def build_seq2seq_runtime() -> LoadedRuntime:
         processor=None,
         device=torch.device("cpu"),
         stats=None,
+        print_suppression_modules=(),
         create_cache=lambda cache_dir: None,
         apply_offload=lambda runtime_config: None,
     )
@@ -194,3 +226,14 @@ def test_runtime_executor_decodes_seq2seq_outputs_without_prompt_slicing() -> No
     request = build_request(runtime.config, Message(role=MessageRole.USER, content=[ContentPart.text("hello")]))
     response = RuntimeExecutor().execute(runtime, request)
     assert response.text == "decoded:[9, 8]"
+
+
+def test_runtime_executor_suppresses_module_prints_during_generate(capfd) -> None:
+    runtime = build_runtime_with_printing_module(CapabilityProfile(support_level=SupportLevel.GENERIC))
+    request = build_request(runtime.config, Message(role=MessageRole.USER, content=[ContentPart.text("hello")]))
+
+    response = RuntimeExecutor().execute(runtime, request)
+
+    captured = capfd.readouterr()
+    assert response.text == "plain-decoded"
+    assert captured.out == ""

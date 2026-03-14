@@ -1,5 +1,6 @@
 from ollm.runtime.backends.base import BackendRuntime, ExecutionBackend
 from ollm.runtime.config import RuntimeConfig
+from ollm.runtime.output_control import suppress_module_prints
 from ollm.runtime.plan import RuntimePlan
 from ollm.runtime.specialization import SpecializationRegistry, build_default_specialization_registry
 from ollm.runtime.specialization.base import OptimizedModelArtifacts
@@ -21,12 +22,13 @@ class NativeOptimizedBackend(ExecutionBackend):
             raise ValueError("optimized-native backend requires a selected specialization provider")
 
         stats = Stats() if config.stats or config.verbose else None
-        artifacts = self._specialization_registry.load(
-            plan.specialization_provider_id,
-            plan.resolved_model,
-            config,
-            stats,
-        )
+        with suppress_module_prints(_modules_for_provider_id(plan.specialization_provider_id)):
+            artifacts = self._specialization_registry.load(
+                plan.specialization_provider_id,
+                plan.resolved_model,
+                config,
+                stats,
+            )
         return BackendRuntime(
             backend_id=self.backend_id,
             model=artifacts.model,
@@ -34,6 +36,7 @@ class NativeOptimizedBackend(ExecutionBackend):
             processor=artifacts.processor,
             device=artifacts.device,
             stats=artifacts.stats,
+            print_suppression_modules=artifacts.print_suppression_modules,
             create_cache=artifacts.create_cache,
             apply_offload=lambda runtime_config: _apply_native_offload(artifacts, runtime_config),
         )
@@ -43,9 +46,35 @@ def _apply_native_offload(artifacts: OptimizedModelArtifacts, config: RuntimeCon
     if config.offload_gpu_layers > 0:
         if artifacts.apply_gpu_offload is None:
             raise ValueError("The selected optimized specialization does not support GPU layer offload")
-        artifacts.apply_gpu_offload(config.offload_gpu_layers, config.offload_cpu_layers)
+        with suppress_module_prints(artifacts.print_suppression_modules):
+            artifacts.apply_gpu_offload(config.offload_gpu_layers, config.offload_cpu_layers)
         return
     if config.offload_cpu_layers > 0:
         if artifacts.apply_cpu_offload is None:
             raise ValueError("The selected optimized specialization does not support CPU layer offload")
-        artifacts.apply_cpu_offload(config.offload_cpu_layers)
+        with suppress_module_prints(artifacts.print_suppression_modules):
+            artifacts.apply_cpu_offload(config.offload_cpu_layers)
+
+
+def _modules_for_provider_id(provider_id: str) -> tuple:
+    if provider_id == "llama-native":
+        from ollm import llama
+
+        return (llama,)
+    if provider_id == "gemma3-native":
+        from ollm import gemma3
+
+        return (gemma3,)
+    if provider_id == "qwen3-next-native":
+        from ollm import qwen3_next
+
+        return (qwen3_next,)
+    if provider_id == "gpt-oss-native":
+        from ollm import gpt_oss
+
+        return (gpt_oss,)
+    if provider_id == "voxtral-native":
+        from ollm import voxtral
+
+        return (voxtral,)
+    return ()

@@ -65,6 +65,7 @@ class TransformersGenericBackend(ExecutionBackend):
             processor=processor,
             device=device,
             stats=None,
+            print_suppression_modules=(),
             create_cache=lambda cache_dir: None,
             apply_offload=lambda runtime_config: _validate_generic_offload(runtime_config),
         )

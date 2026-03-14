@@ -1,4 +1,5 @@
 import json
+import logging
 import subprocess
 import sys
 from pathlib import Path
@@ -54,6 +55,7 @@ class FakeProvider(SpecializationProvider):
             processor=None,
             device=torch.device("cpu"),
             stats=stats,
+            print_suppression_modules=(),
             create_cache=lambda cache_dir: str(cache_dir),
             apply_cpu_offload=lambda layers_num: None,
             apply_gpu_offload=None,
@@ -67,8 +69,14 @@ def test_auto_inference_rejects_missing_local_model_dir(tmp_path: Path) -> None:
 
 
 class StubAutoInference(AutoInference):
-    def _load_optimized_model(self, model_path: Path, source_kind: ModelSourceKind, raw_reference: str) -> None:
-        del model_path, source_kind, raw_reference
+    def _load_optimized_model(
+        self,
+        model_path: Path,
+        source_kind: ModelSourceKind,
+        raw_reference: str,
+        catalog_entry=None,
+    ) -> None:
+        del model_path, source_kind, raw_reference, catalog_entry
         self.model = object()
 
 
@@ -134,7 +142,23 @@ def test_auto_inference_preserves_local_path_reference_for_optimized_loads(tmp_p
     assert auto_inference.loaded_resolved_model is not None
     assert auto_inference.loaded_resolved_model.reference.raw == str(model_dir)
     assert auto_inference.model_reference == str(model_dir)
-    assert auto_inference.model_id == "llama3-1B-chat"
+    assert auto_inference.model_id == str(model_dir)
+    assert auto_inference.optimized_model_id == "llama3-1B-chat"
+
+
+def test_auto_inference_does_not_claim_sharded_local_llama_is_8b(tmp_path: Path) -> None:
+    model_dir = tmp_path / "llama-local"
+    model_dir.mkdir()
+    (model_dir / "config.json").write_text(
+        json.dumps({"model_type": "llama", "architectures": ["LlamaForCausalLM"]}),
+        encoding="utf-8",
+    )
+    (model_dir / "model.safetensors.index.json").write_text("{}", encoding="utf-8")
+
+    auto_inference = StubAutoInference(str(model_dir), device="cpu", logging=False)
+
+    assert auto_inference.model_id == str(model_dir)
+    assert auto_inference.optimized_model_id == "llama3-1B-chat"
 
 
 def test_importing_ollm_does_not_require_peft() -> None:
@@ -162,3 +186,15 @@ print('ok')
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "ok"
+
+
+def test_get_attn_implementation_does_not_write_to_stdout(capfd) -> None:
+    logging.getLogger("ollm.inference").handlers = []
+
+    result = Inference("llama3-1B-chat", device="cpu", logging=False)
+    del result
+    from ollm.inference import get_attn_implementation
+
+    assert get_attn_implementation() is None
+    captured = capfd.readouterr()
+    assert captured.out == ""

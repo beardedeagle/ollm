@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
+from types import ModuleType
 
 import torch
 
@@ -81,6 +82,7 @@ class OptimizedModelArtifacts:
     processor: object | None
     device: torch.device
     stats: Stats | None
+    print_suppression_modules: tuple[ModuleType, ...]
     create_cache: Callable[[Path], object | None]
     apply_cpu_offload: Callable[[int], None] | None
     apply_gpu_offload: Callable[[int, int], None] | None

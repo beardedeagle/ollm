@@ -1,3 +1,4 @@
+import logging
 from functools import lru_cache
 from importlib import import_module
 from pathlib import Path
@@ -19,6 +20,8 @@ from ollm.runtime.specialization.base import (
 from ollm.runtime.specialization.registry import SpecializationRegistry
 from ollm.utils import Stats
 
+LOGGER = logging.getLogger(__name__)
+
 
 def _get_attention_implementation() -> str | None:
     try:
@@ -26,7 +29,7 @@ def _get_attention_implementation() -> str | None:
 
         return "flash_attention_2"
     except ImportError:
-        print("Warning: flash_attention_2 is not imported. The context length will be limited")
+        LOGGER.warning("flash_attention_2 is not imported. The context length will be limited.")
         return None
 
 
@@ -85,10 +88,17 @@ def _finalize_model(model: object, device: torch.device) -> object:
 def _unsupported_disk_cache_factory(model_reference: str):
     def create_cache(cache_dir: Path) -> None:
         del cache_dir
-        print(f"{model_reference} DiskCache is not supported at the moment. Using default DynamicCache instead")
+        LOGGER.info(
+            "%s DiskCache is not supported at the moment. Using default DynamicCache instead.",
+            model_reference,
+        )
         return None
 
     return create_cache
+
+
+def _is_sharded_model_dir(model_path: Path) -> bool:
+    return any("index.json" in file_path.name for file_path in model_path.iterdir() if file_path.is_file())
 
 
 class LlamaSpecializationProvider(SpecializationProvider):
@@ -119,10 +129,10 @@ class LlamaSpecializationProvider(SpecializationProvider):
         validate_safe_model_artifacts(model_path)
         module = import_module("ollm.llama")
         device = torch.device(config.device)
-        if resolved_model.catalog_entry is not None and resolved_model.catalog_entry.model_id == "llama3-1B-chat":
-            module.loader = SingleDenseWeightsLoader(str(model_path), device=device)
-        else:
+        if _is_sharded_model_dir(model_path):
             module.loader = DenseWeightsLoader(str(model_path), device=device)
+        else:
+            module.loader = SingleDenseWeightsLoader(str(model_path), device=device)
         module.stats = stats
         model = module.MyLlamaForCausalLM.from_pretrained(
             str(model_path),
@@ -132,7 +142,6 @@ class LlamaSpecializationProvider(SpecializationProvider):
             use_safetensors=True,
             attn_implementation=_get_attention_implementation(),
             low_cpu_mem_usage=True,
-            ignore_mismatched_sizes=True,
         )
         tokenizer = AutoTokenizer.from_pretrained(str(model_path), trust_remote_code=False)
         return OptimizedModelArtifacts(
@@ -141,6 +150,7 @@ class LlamaSpecializationProvider(SpecializationProvider):
             processor=None,
             device=device,
             stats=stats,
+            print_suppression_modules=(module,),
             create_cache=lambda cache_dir: KVCache(cache_dir=str(cache_dir), device=device, stats=stats),
             apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(layers_num=layers_num),
             apply_gpu_offload=None,
@@ -189,7 +199,6 @@ class Gemma3SpecializationProvider(SpecializationProvider):
             use_safetensors=True,
             attn_implementation=_get_attention_implementation(),
             low_cpu_mem_usage=True,
-            ignore_mismatched_sizes=True,
         )
         tokenizer = AutoTokenizer.from_pretrained(str(model_path), trust_remote_code=False)
         processor = AutoProcessor.from_pretrained(str(model_path), trust_remote_code=False)
@@ -199,6 +208,7 @@ class Gemma3SpecializationProvider(SpecializationProvider):
             processor=processor,
             device=device,
             stats=stats,
+            print_suppression_modules=(module,),
             create_cache=lambda cache_dir: KVCache(cache_dir=str(cache_dir), device=device, stats=stats),
             apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(layers_num=layers_num),
             apply_gpu_offload=None,
@@ -246,7 +256,6 @@ class Qwen3NextSpecializationProvider(SpecializationProvider):
             use_safetensors=True,
             attn_implementation=_get_attention_implementation(),
             low_cpu_mem_usage=True,
-            ignore_mismatched_sizes=True,
         )
         tokenizer = AutoTokenizer.from_pretrained(str(model_path), trust_remote_code=False)
         return OptimizedModelArtifacts(
@@ -255,6 +264,7 @@ class Qwen3NextSpecializationProvider(SpecializationProvider):
             processor=None,
             device=device,
             stats=stats,
+            print_suppression_modules=(module,),
             create_cache=(
                 lambda cache_dir: module.Qwen3NextDiskCache(
                     model.config,
@@ -323,7 +333,6 @@ class GptOssSpecializationProvider(SpecializationProvider):
             trust_remote_code=False,
             use_safetensors=True,
             low_cpu_mem_usage=True,
-            ignore_mismatched_sizes=True,
         )
         tokenizer = AutoTokenizer.from_pretrained(str(model_path), trust_remote_code=False)
         return OptimizedModelArtifacts(
@@ -332,6 +341,7 @@ class GptOssSpecializationProvider(SpecializationProvider):
             processor=None,
             device=device,
             stats=stats,
+            print_suppression_modules=(module,),
             create_cache=_unsupported_disk_cache_factory(resolved_model.reference.raw),
             apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(layers_num=layers_num),
             apply_gpu_offload=None,
@@ -379,7 +389,6 @@ class VoxtralSpecializationProvider(SpecializationProvider):
             use_safetensors=True,
             attn_implementation=_get_attention_implementation(),
             low_cpu_mem_usage=True,
-            ignore_mismatched_sizes=True,
         )
         processor = AutoProcessor.from_pretrained(str(model_path), trust_remote_code=False)
         tokenizer = processor.tokenizer
@@ -389,6 +398,7 @@ class VoxtralSpecializationProvider(SpecializationProvider):
             processor=processor,
             device=device,
             stats=stats,
+            print_suppression_modules=(module,),
             create_cache=lambda cache_dir: KVCache(cache_dir=str(cache_dir), device=device, stats=stats),
             apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(layers_num=layers_num),
             apply_gpu_offload=None,

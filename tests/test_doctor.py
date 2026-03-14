@@ -1,6 +1,8 @@
 import json
 from pathlib import Path
 
+import torch
+
 from ollm.app.doctor import DoctorService
 from ollm.runtime.config import RuntimeConfig
 
@@ -74,3 +76,17 @@ def test_doctor_service_reports_planned_specialization_passes_for_optimized_loca
     assert checks["model:resolution"].details["specialization_provider_id"] == "llama-native"
     assert checks["model:resolution"].details["support_level"] == "optimized"
     assert checks["model:resolution"].details["specialization_pass_ids"] == "disk-cache,cpu-offload,mlp-chunking"
+
+
+def test_doctor_service_fails_when_requested_cuda_device_is_unavailable(
+    monkeypatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: False)
+    service = DoctorService()
+    config = RuntimeConfig(model_reference="llama3-1B-chat", models_dir=tmp_path / "models", device="cuda:0")
+    report = service.run(config, include_imports=False, include_runtime=True, include_paths=False, include_download=False)
+    checks = {check.name: check for check in report.checks}
+
+    assert checks["runtime:requested-device"].ok is False
+    assert report.ok() is False
