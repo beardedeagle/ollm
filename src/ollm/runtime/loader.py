@@ -7,6 +7,7 @@ from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
 from ollm.runtime.backend_selector import BackendSelector
 from ollm.runtime.backends.base import BackendRuntime, ExecutionBackend
 from ollm.runtime.backends.native_optimized import NativeOptimizedBackend
+from ollm.runtime.backends.ollama import OllamaBackend
 from ollm.runtime.backends.transformers_generic import TransformersGenericBackend
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.plan import RuntimePlan, SpecializationState
@@ -24,7 +25,7 @@ class LoadedRuntime:
     resolved_model: ResolvedModel
     config: RuntimeConfig
     backend: BackendRuntime
-    model_path: Path
+    model_path: Path | None
     plan: RuntimePlan
 
     @property
@@ -84,6 +85,7 @@ class RuntimeLoader:
         backend_list = backends or (
             NativeOptimizedBackend(specialization_registry=self._specialization_registry),
             TransformersGenericBackend(),
+            OllamaBackend(),
         )
         self._backends = {backend.backend_id: backend for backend in backend_list}
         self._snapshot_downloader = download_hf_snapshot if snapshot_downloader is None else snapshot_downloader
@@ -116,12 +118,13 @@ class RuntimeLoader:
     def load(self, config: RuntimeConfig) -> LoadedRuntime:
         config.validate()
         resolved_model = self.resolve(config.model_reference, config.resolved_models_dir())
-        if resolved_model.source_kind is ModelSourceKind.PROVIDER:
-            raise ValueError(f"Provider-backed model references are not executable yet: {resolved_model.reference.raw}")
+        model_path: Path | None = None
+        execution_model = resolved_model
+        if resolved_model.source_kind is not ModelSourceKind.PROVIDER:
+            model_path = self._ensure_local_model(resolved_model, config.force_download)
+            execution_model = self._refresh_materialized_model(resolved_model, model_path)
 
-        model_path = self._ensure_local_model(resolved_model, config.force_download)
-        execution_model = self._refresh_materialized_model(resolved_model, model_path)
-        runtime_plan = self._selector.select(execution_model, config)
+        runtime_plan = self._refine_runtime_plan(self._selector.select(execution_model, config), config)
         if not runtime_plan.is_executable():
             raise ValueError(runtime_plan.reason)
         self._validate_runtime_plan(runtime_plan, config)
@@ -140,10 +143,10 @@ class RuntimeLoader:
             backend_runtime = self._load_backend_runtime(fallback_plan, config)
             runtime_plan = self._finalize_runtime_plan(fallback_plan, backend_runtime)
         return LoadedRuntime(
-            resolved_model=execution_model,
+            resolved_model=runtime_plan.resolved_model,
             config=config,
             backend=backend_runtime,
-            model_path=model_path,
+            model_path=runtime_plan.model_path,
             plan=runtime_plan,
         )
 
@@ -151,11 +154,11 @@ class RuntimeLoader:
         config.validate()
         resolved_model = self.resolve(config.model_reference, config.resolved_models_dir())
         if resolved_model.source_kind is ModelSourceKind.PROVIDER:
-            return self._selector.select(resolved_model, config)
+            return self._refine_runtime_plan(self._selector.select(resolved_model, config), config)
         if resolved_model.model_path is None or not resolved_model.model_path.exists():
-            return self._selector.select(resolved_model, config)
+            return self._refine_runtime_plan(self._selector.select(resolved_model, config), config)
         execution_model = self._refresh_materialized_model(resolved_model, resolved_model.model_path)
-        return self._selector.select(execution_model, config)
+        return self._refine_runtime_plan(self._selector.select(execution_model, config), config)
 
     def _refresh_materialized_model(self, resolved_model: ResolvedModel, model_path: Path) -> ResolvedModel:
         return self._resolver.inspect_materialized_model(
@@ -201,6 +204,14 @@ class RuntimeLoader:
         backend_runtime = backend_impl.load(runtime_plan, config)
         backend_runtime.apply_offload(config)
         return backend_runtime
+
+    def _refine_runtime_plan(self, runtime_plan: RuntimePlan, config: RuntimeConfig) -> RuntimePlan:
+        if runtime_plan.backend_id is None:
+            return runtime_plan
+        backend_impl = self._backends.get(runtime_plan.backend_id)
+        if backend_impl is None:
+            return runtime_plan
+        return backend_impl.refine_plan(runtime_plan, config)
 
     def _finalize_runtime_plan(self, runtime_plan: RuntimePlan, backend_runtime: BackendRuntime) -> RuntimePlan:
         if backend_runtime.applied_specialization is None:

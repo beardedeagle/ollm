@@ -28,6 +28,48 @@ class BackendSelector:
 
     def select(self, resolved_model: ResolvedModel, config: RuntimeConfig) -> RuntimePlan:
         if resolved_model.source_kind is ModelSourceKind.PROVIDER:
+            if config.resolved_adapter_dir() is not None:
+                return RuntimePlan(
+                    resolved_model=resolved_model,
+                    backend_id=None,
+                    model_path=None,
+                    support_level=SupportLevel.PROVIDER_BACKED,
+                    generic_model_kind=resolved_model.generic_model_kind,
+                    supports_disk_cache=False,
+                    supports_cpu_offload=False,
+                    supports_gpu_offload=False,
+                    specialization_enabled=False,
+                    specialization_applied=False,
+                    specialization_provider_id=None,
+                    specialization_state=SpecializationState.NOT_PLANNED,
+                    specialization_pass_ids=(),
+                    reason=(
+                        f"Provider-backed model references do not support PEFT adapters yet: "
+                        f"{resolved_model.reference.raw}"
+                    ),
+                    details={"source_kind": resolved_model.source_kind.value},
+                )
+            if resolved_model.provider_name == "ollama":
+                return RuntimePlan(
+                    resolved_model=resolved_model,
+                    backend_id="ollama",
+                    model_path=None,
+                    support_level=SupportLevel.PROVIDER_BACKED,
+                    generic_model_kind=resolved_model.generic_model_kind,
+                    supports_disk_cache=False,
+                    supports_cpu_offload=False,
+                    supports_gpu_offload=False,
+                    specialization_enabled=False,
+                    specialization_applied=False,
+                    specialization_provider_id=None,
+                    specialization_state=SpecializationState.NOT_PLANNED,
+                    specialization_pass_ids=(),
+                    reason=f"Ollama provider-backed model reference for {resolved_model.reference.raw}.",
+                    details={
+                        "source_kind": resolved_model.source_kind.value,
+                        "provider_name": resolved_model.provider_name,
+                    },
+                )
             return RuntimePlan(
                 resolved_model=resolved_model,
                 backend_id=None,
@@ -42,8 +84,14 @@ class BackendSelector:
                 specialization_provider_id=None,
                 specialization_state=SpecializationState.NOT_PLANNED,
                 specialization_pass_ids=(),
-                reason=f"Provider-backed model references are not executable yet: {resolved_model.reference.raw}",
-                details={"source_kind": resolved_model.source_kind.value},
+                reason=(
+                    f"Provider-backed model references are not executable yet for provider "
+                    f"'{resolved_model.provider_name}': {resolved_model.reference.raw}"
+                ),
+                details={
+                    "source_kind": resolved_model.source_kind.value,
+                    "provider_name": "" if resolved_model.provider_name is None else resolved_model.provider_name,
+                },
             )
 
         if config.resolved_adapter_dir() is None:

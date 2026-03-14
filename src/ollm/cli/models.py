@@ -7,7 +7,7 @@ from ollm.cli.services import CommandServices
 from ollm.runtime.catalog import list_model_catalog
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.plan import RuntimePlan
-from ollm.runtime.resolver import ResolvedModel
+from ollm.runtime.resolver import ModelSourceKind, ResolvedModel
 
 
 def _resolved_model_payload(resolved_model: ResolvedModel) -> dict[str, object]:
@@ -132,15 +132,16 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         resolved_model = services.runtime_loader.resolve(model, models_dir.expanduser().resolve())
         payload = _resolved_model_payload(resolved_model)
         payload["installed"] = bool(resolved_model.model_path is not None and resolved_model.model_path.exists())
-        if payload["installed"]:
-            runtime_plan = services.runtime_loader.plan(
-                RuntimeConfig(
-                    model_reference=model,
-                    models_dir=models_dir.expanduser().resolve(),
-                    multimodal=multimodal,
-                )
+        runtime_plan = services.runtime_loader.plan(
+            RuntimeConfig(
+                model_reference=model,
+                models_dir=models_dir.expanduser().resolve(),
+                multimodal=multimodal,
             )
-            payload = _merge_runtime_plan_payload(payload, runtime_plan)
+        )
+        if resolved_model.source_kind is ModelSourceKind.PROVIDER and runtime_plan.is_executable():
+            payload["installed"] = True
+        payload = _merge_runtime_plan_payload(payload, runtime_plan)
         console = build_console(no_color=no_color)
         if json_output:
             print_json(console, payload)

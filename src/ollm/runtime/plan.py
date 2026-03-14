@@ -36,7 +36,7 @@ class RuntimePlan:
     details: dict[str, str] = field(default_factory=dict)
 
     def is_executable(self) -> bool:
-        return self.backend_id is not None and self.model_path is not None
+        return self.backend_id is not None
 
     def as_dict(self) -> dict[str, object]:
         return {

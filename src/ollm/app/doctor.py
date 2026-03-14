@@ -8,6 +8,7 @@ from transformers import AutoProcessor, AutoTokenizer
 from ollm.runtime.backend_selector import BackendSelector
 from ollm.runtime.capabilities import SupportLevel
 from ollm.runtime.config import RuntimeConfig
+from ollm.runtime.loader import RuntimeLoader
 from ollm.runtime.resolver import ModelResolver, ModelSourceKind
 
 
@@ -50,9 +51,17 @@ class DoctorService:
         "export": ("safetensors",),
     }
 
-    def __init__(self, resolver: ModelResolver | None = None, selector: BackendSelector | None = None):
-        self._resolver = resolver or ModelResolver()
-        self._selector = selector or BackendSelector()
+    def __init__(
+        self,
+        runtime_loader: RuntimeLoader | None = None,
+        resolver: ModelResolver | None = None,
+        selector: BackendSelector | None = None,
+    ):
+        if runtime_loader is None:
+            base_resolver = resolver or ModelResolver()
+            base_selector = selector or BackendSelector()
+            runtime_loader = RuntimeLoader(resolver=base_resolver, selector=base_selector)
+        self._runtime_loader = runtime_loader
 
     def run(
         self,
@@ -104,6 +113,32 @@ class DoctorService:
 
     def _check_runtime(self, runtime_config: RuntimeConfig) -> list[DoctorCheck]:
         device_checks: list[DoctorCheck] = []
+        resolved_model = self._runtime_loader.resolve(
+            runtime_config.model_reference,
+            runtime_config.resolved_models_dir(),
+        )
+        if resolved_model.source_kind is ModelSourceKind.PROVIDER:
+            device_checks.append(
+                DoctorCheck(
+                    name="runtime:requested-device",
+                    ok=True,
+                    message=(
+                        f"Provider-backed model references for {resolved_model.provider_name} ignore "
+                        f"local device '{runtime_config.device}'."
+                    ),
+                    details={"provider": "" if resolved_model.provider_name is None else resolved_model.provider_name},
+                )
+            )
+            device_checks.append(
+                DoctorCheck(
+                    name="runtime:cpu",
+                    ok=True,
+                    message="CPU runtime available",
+                    details={"threads": str(torch.get_num_threads())},
+                )
+            )
+            return device_checks
+
         cuda_available = torch.cuda.is_available()
         cuda_device_count = torch.cuda.device_count() if cuda_available else 0
         mps_backend = getattr(torch.backends, "mps", None)
@@ -207,6 +242,19 @@ class DoctorService:
         )
 
     def _check_paths(self, runtime_config: RuntimeConfig) -> list[DoctorCheck]:
+        resolved_model = self._runtime_loader.resolve(
+            runtime_config.model_reference,
+            runtime_config.resolved_models_dir(),
+        )
+        if resolved_model.source_kind is ModelSourceKind.PROVIDER:
+            return [
+                DoctorCheck(
+                    name="path:models-dir",
+                    ok=True,
+                    message="Provider-backed model references do not use the local models directory",
+                    details={"provider": "" if resolved_model.provider_name is None else resolved_model.provider_name},
+                )
+            ]
         checks: list[DoctorCheck] = []
         checks.append(self._path_check("models-dir", runtime_config.resolved_models_dir(), create=False))
         if runtime_config.use_cache:
@@ -242,31 +290,22 @@ class DoctorService:
             )
 
     def _check_model(self, runtime_config: RuntimeConfig) -> list[DoctorCheck]:
-        resolved_model = self._resolver.resolve(runtime_config.model_reference, runtime_config.resolved_models_dir())
-        execution_model = resolved_model
-        runtime_plan = None
-        if resolved_model.model_path is not None and resolved_model.model_path.exists():
-            execution_model = self._resolver.inspect_materialized_model(
-                resolved_model.reference,
-                resolved_model.model_path,
-                source_kind=resolved_model.source_kind,
-                repo_id=resolved_model.repo_id,
-                revision=resolved_model.revision,
-                provider_name=resolved_model.provider_name,
-                catalog_entry=resolved_model.catalog_entry,
-            )
-            runtime_plan = self._selector.select(execution_model, runtime_config)
+        resolved_model = self._runtime_loader.resolve(
+            runtime_config.model_reference,
+            runtime_config.resolved_models_dir(),
+        )
+        runtime_plan = self._runtime_loader.plan(runtime_config)
+        execution_model = runtime_plan.resolved_model
 
-        resolution_ok = False
-        resolution_message = resolved_model.resolution_message
-        if resolved_model.source_kind is ModelSourceKind.PROVIDER:
-            resolution_message = f"Provider-backed model references are not executable yet: {resolved_model.reference.raw}"
-        elif runtime_plan is not None:
-            resolution_ok = runtime_plan.is_executable()
-            resolution_message = runtime_plan.reason
-        elif resolved_model.is_downloadable():
+        resolution_ok = runtime_plan.is_executable()
+        resolution_message = runtime_plan.reason
+        if not resolution_ok and execution_model.is_downloadable():
             resolution_ok = True
-        elif resolved_model.capabilities.support_level is not SupportLevel.UNSUPPORTED:
+        elif (
+            not resolution_ok
+            and execution_model.source_kind is not ModelSourceKind.PROVIDER
+            and execution_model.capabilities.support_level is not SupportLevel.UNSUPPORTED
+        ):
             resolution_ok = True
 
         checks: list[DoctorCheck] = [
@@ -276,28 +315,34 @@ class DoctorService:
                 message=resolution_message,
                 details={
                     "source_kind": resolved_model.source_kind.value,
-                    "support_level": (
-                        resolved_model.capabilities.support_level.value
-                        if runtime_plan is None
-                        else runtime_plan.support_level.value
-                    ),
-                    "backend_id": None if runtime_plan is None else str(runtime_plan.backend_id),
+                    "support_level": runtime_plan.support_level.value,
+                    "backend_id": "" if runtime_plan.backend_id is None else runtime_plan.backend_id,
                     "specialization_provider_id": (
-                        None if runtime_plan is None else runtime_plan.specialization_provider_id
+                        "" if runtime_plan.specialization_provider_id is None else runtime_plan.specialization_provider_id
                     ),
-                    "specialization_state": (
-                        "" if runtime_plan is None else runtime_plan.specialization_state.value
-                    ),
-                    "planned_specialization_pass_ids": (
-                        ""
-                        if runtime_plan is None
-                        else ",".join(pass_id.value for pass_id in runtime_plan.specialization_pass_ids)
+                    "specialization_state": runtime_plan.specialization_state.value,
+                    "planned_specialization_pass_ids": ",".join(
+                        pass_id.value for pass_id in runtime_plan.specialization_pass_ids
                     ),
                 },
             )
         ]
 
-        if resolved_model.model_path is None:
+        if execution_model.source_kind is ModelSourceKind.PROVIDER:
+            checks.append(
+                DoctorCheck(
+                    name="model:path",
+                    ok=True,
+                    message="Provider-backed model references do not use a local materialization path",
+                    details={
+                        "model_reference": runtime_config.model_reference,
+                        "provider": "" if execution_model.provider_name is None else execution_model.provider_name,
+                    },
+                )
+            )
+            return checks
+
+        if execution_model.model_path is None:
             checks.append(
                 DoctorCheck(
                     name="model:path",
@@ -308,14 +353,14 @@ class DoctorService:
             )
             return checks
 
-        installed = resolved_model.model_path.exists()
+        installed = execution_model.model_path.exists()
         checks.append(
             DoctorCheck(
                 name="model:path",
                 ok=installed,
                 message=f"Model path {'exists' if installed else 'does not exist'}",
                 details={
-                    "path": str(resolved_model.model_path),
+                    "path": str(execution_model.model_path),
                     "model_reference": runtime_config.model_reference,
                 },
             )
@@ -324,7 +369,7 @@ class DoctorService:
             return checks
 
         try:
-            AutoTokenizer.from_pretrained(resolved_model.model_path)
+            AutoTokenizer.from_pretrained(execution_model.model_path)
             checks.append(DoctorCheck(name="model:tokenizer", ok=True, message="Tokenizer loads successfully"))
         except Exception as exc:
             checks.append(
@@ -336,9 +381,9 @@ class DoctorService:
                 )
             )
 
-        if resolved_model.capabilities.requires_processor:
+        if execution_model.capabilities.requires_processor:
             try:
-                AutoProcessor.from_pretrained(resolved_model.model_path)
+                AutoProcessor.from_pretrained(execution_model.model_path)
                 checks.append(DoctorCheck(name="model:processor", ok=True, message="Processor loads successfully"))
             except Exception as exc:
                 checks.append(
@@ -352,7 +397,10 @@ class DoctorService:
         return checks
 
     def _check_download(self, runtime_config: RuntimeConfig) -> DoctorCheck:
-        resolved_model = self._resolver.resolve(runtime_config.model_reference, runtime_config.resolved_models_dir())
+        resolved_model = self._runtime_loader.resolve(
+            runtime_config.model_reference,
+            runtime_config.resolved_models_dir(),
+        )
         if not resolved_model.is_downloadable() or resolved_model.repo_id is None or resolved_model.model_path is None:
             return DoctorCheck(
                 name="download:ready",

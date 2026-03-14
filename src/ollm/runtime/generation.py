@@ -19,6 +19,12 @@ class RuntimeExecutor:
     def execute(self, runtime: LoadedRuntime, request: PromptRequest, sink: StreamSink | None = None) -> PromptResponse:
         stream_sink = sink or NullStreamSink()
         self._validate_request(runtime, request)
+        stream_sink.on_status(self._status_message(runtime))
+
+        if runtime.backend.execute_prompt is not None:
+            response = runtime.backend.execute_prompt(request, stream_sink)
+            return self._finalize_response(runtime, response)
+
         if request.generation_config.seed is not None:
             torch.manual_seed(request.generation_config.seed)
 
@@ -28,9 +34,6 @@ class RuntimeExecutor:
             streamer = BufferedTextStreamer(runtime.tokenizer, stream_sink, skip_prompt=True, skip_special_tokens=False)
 
         generate_kwargs = self._build_generate_kwargs(runtime, request, streamer)
-        stream_sink.on_status(
-            f"Running {runtime.config.model_reference} on {runtime.config.device} via {runtime.plan.backend_id}"
-        )
 
         with torch.inference_mode():
             with suppress_module_prints(runtime.backend.print_suppression_modules):
@@ -43,21 +46,7 @@ class RuntimeExecutor:
         if streamer is not None and not response_text.strip():
             response_text = streamer.text
         assistant_message = Message.assistant_text(response_text)
-        metadata = {
-            "backend_id": runtime.plan.backend_id or "unknown",
-            "specialization_state": runtime.plan.specialization_state.value,
-            "specialization_applied": str(runtime.plan.specialization_applied).lower(),
-            "specialization_provider_id": runtime.plan.specialization_provider_id or "",
-            "specialization_pass_ids": ",".join(
-                pass_id.value for pass_id in runtime.plan.specialization_pass_ids
-            ),
-            "applied_specialization_pass_ids": ",".join(
-                pass_id.value for pass_id in runtime.plan.applied_specialization_pass_ids
-            ),
-            "fallback_reason": runtime.plan.fallback_reason or "",
-        }
-        if runtime.backend.stats is not None:
-            metadata["stats"] = runtime.backend.stats.print_and_clean()
+        metadata = self._plan_metadata(runtime)
         return PromptResponse(text=response_text, assistant_message=assistant_message, metadata=metadata)
 
     def _validate_request(self, runtime: LoadedRuntime, request: PromptRequest) -> None:
@@ -80,6 +69,8 @@ class RuntimeExecutor:
         if contains_audio and not runtime.capabilities.supports_modality(ModelModality.AUDIO):
             raise PromptExecutionError(f"{runtime.config.model_reference} does not support audio inputs")
         if (contains_image or contains_audio) and runtime.processor is None:
+            if runtime.backend.allows_multimodal_without_processor:
+                return
             raise PromptExecutionError(
                 "Multimodal inputs require a processor-backed runtime. "
                 "Enable --multimodal with a compatible model reference."
@@ -180,6 +171,39 @@ class RuntimeExecutor:
 
         input_ids = inputs["input_ids"]
         return runtime.tokenizer.decode(outputs[0][input_ids.shape[-1]:], skip_special_tokens=False)
+
+    def _finalize_response(self, runtime: LoadedRuntime, response: PromptResponse) -> PromptResponse:
+        metadata = dict(response.metadata)
+        metadata.update(self._plan_metadata(runtime))
+        return PromptResponse(
+            text=response.text,
+            assistant_message=response.assistant_message,
+            metadata=metadata,
+        )
+
+    def _plan_metadata(self, runtime: LoadedRuntime) -> dict[str, str]:
+        metadata = {
+            "backend_id": runtime.plan.backend_id or "unknown",
+            "specialization_state": runtime.plan.specialization_state.value,
+            "specialization_applied": str(runtime.plan.specialization_applied).lower(),
+            "specialization_provider_id": runtime.plan.specialization_provider_id or "",
+            "specialization_pass_ids": ",".join(
+                pass_id.value for pass_id in runtime.plan.specialization_pass_ids
+            ),
+            "applied_specialization_pass_ids": ",".join(
+                pass_id.value for pass_id in runtime.plan.applied_specialization_pass_ids
+            ),
+            "fallback_reason": runtime.plan.fallback_reason or "",
+        }
+        if runtime.backend.stats is not None:
+            metadata["stats"] = runtime.backend.stats.print_and_clean()
+        return metadata
+
+    def _status_message(self, runtime: LoadedRuntime) -> str:
+        provider_name = runtime.plan.resolved_model.provider_name
+        if provider_name is not None:
+            return f"Running {runtime.config.model_reference} via provider backend {runtime.plan.backend_id}"
+        return f"Running {runtime.config.model_reference} on {runtime.config.device} via {runtime.plan.backend_id}"
 
 
 def _render_plain_prompt(messages: list[Message]) -> str:

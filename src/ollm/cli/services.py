@@ -16,8 +16,9 @@ class CommandServices:
 
 def build_default_services() -> CommandServices:
     resolver = ModelResolver()
+    runtime_loader = RuntimeLoader(resolver=resolver)
     return CommandServices(
-        runtime_loader=RuntimeLoader(resolver=resolver),
+        runtime_loader=runtime_loader,
         runtime_executor=RuntimeExecutor(),
-        doctor_service=DoctorService(resolver=resolver),
+        doctor_service=DoctorService(runtime_loader=runtime_loader),
     )

@@ -70,16 +70,22 @@ def generic_capabilities(
     )
 
 
-def provider_capabilities(provider_name: str) -> CapabilityProfile:
+def provider_capabilities(
+    provider_name: str,
+    *,
+    modalities: tuple[ModelModality, ...] = (ModelModality.TEXT,),
+    requires_processor: bool = False,
+    details: dict[str, str] | None = None,
+) -> CapabilityProfile:
     return CapabilityProfile(
         support_level=SupportLevel.PROVIDER_BACKED,
-        modalities=(ModelModality.TEXT,),
-        requires_processor=False,
+        modalities=modalities,
+        requires_processor=requires_processor,
         supports_disk_cache=False,
         supports_local_materialization=False,
         supports_provider_execution=True,
         supports_specialization=False,
-        details={"provider": provider_name},
+        details={"provider": provider_name, **({} if details is None else details)},
     )
 
 

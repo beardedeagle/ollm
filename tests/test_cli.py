@@ -4,10 +4,16 @@ from pathlib import Path
 
 from typer.testing import CliRunner
 
-from ollm.cli.main import create_app
+from ollm.app.doctor import DoctorService
 from ollm.cli.services import CommandServices
+from ollm.cli.main import create_app
+from ollm.runtime.backends.ollama import OllamaBackend
+from ollm.runtime.generation import RuntimeExecutor
+from ollm.runtime.loader import RuntimeLoader
+from ollm.runtime.providers.ollama_client import OllamaClient
 
 from tests.fakes import FakeDoctorService, FakeRuntimeExecutor, FakeRuntimeLoader
+from tests.ollama_server import OllamaFixtureServer
 
 
 
@@ -127,3 +133,40 @@ def test_doctor_and_models_commands(tmp_path: Path) -> None:
     download_result = runner.invoke(app, ["models", "download", "llama3-3B-chat", "--models-dir", str(model_dir), "--no-color"])
     assert download_result.exit_code == 0
     assert loader.download_calls[0][0] == "llama3-3B-chat"
+
+
+def test_provider_backed_models_info_and_doctor_commands(tmp_path: Path) -> None:
+    server = OllamaFixtureServer(
+        models={"llama3.2": {"capabilities": ["completion"], "response_text": "ready"}}
+    )
+    server.start()
+    try:
+        runtime_loader = RuntimeLoader(
+            backends=(OllamaBackend(client=OllamaClient(base_url=server.base_url)),),
+        )
+        services = CommandServices(
+            runtime_loader=runtime_loader,
+            runtime_executor=RuntimeExecutor(),
+            doctor_service=DoctorService(runtime_loader=runtime_loader),
+        )
+        runner = CliRunner()
+        app = create_app(services)
+
+        info_result = runner.invoke(
+            app,
+            ["models", "info", "ollama:llama3.2", "--json", "--models-dir", str(tmp_path / "models"), "--no-color"],
+        )
+        assert info_result.exit_code == 0
+        assert '"backend_id": "ollama"' in info_result.output
+        assert '"installed": true' in info_result.output
+        assert '"support_level": "provider-backed"' in info_result.output
+
+        doctor_result = runner.invoke(
+            app,
+            ["doctor", "--json", "--model", "ollama:llama3.2", "--models-dir", str(tmp_path / "models"), "--no-color"],
+        )
+        assert doctor_result.exit_code == 0
+        assert '"runtime:requested-device"' in doctor_result.output
+        assert '"Provider-backed model references for ollama ignore local device' in doctor_result.output
+    finally:
+        server.stop()
