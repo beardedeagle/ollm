@@ -133,6 +133,8 @@ def test_doctor_service_reports_executable_openai_compatible_reference(tmp_path:
     assert checks["runtime:requested-device"].ok is True
     assert checks["model:resolution"].ok is True
     assert checks["model:resolution"].details["backend_id"] == "openai-compatible"
+    assert checks["model:resolution"].details["modalities"] == "text"
+    assert checks["model:resolution"].details["audio_input_support"] == "request-capable"
     assert checks["model:path"].ok is True
 
 

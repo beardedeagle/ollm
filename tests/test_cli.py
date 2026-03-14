@@ -458,6 +458,8 @@ def test_openai_compatible_provider_models_info_and_doctor_commands(tmp_path: Pa
         assert '"backend_id": "openai-compatible"' in info_result.output
         assert '"installed": true' in info_result.output
         assert '"support_level": "provider-backed"' in info_result.output
+        assert '"modalities": [' in info_result.output
+        assert '"audio_input_support": "request-capable"' in info_result.output
 
         doctor_result = runner.invoke(
             app,
@@ -476,6 +478,8 @@ def test_openai_compatible_provider_models_info_and_doctor_commands(tmp_path: Pa
         assert doctor_result.exit_code == 0
         assert '"runtime:requested-device"' in doctor_result.output
         assert '"Provider-backed model references for openai-compatible ignore local device' in doctor_result.output
+        assert '"modalities": "text"' in doctor_result.output
+        assert '"audio_input_support": "request-capable"' in doctor_result.output
     finally:
         server.stop()
 
@@ -512,6 +516,50 @@ def test_prompt_command_executes_openai_compatible_provider_reference(tmp_path: 
         assert "ready from provider" in result.output
     finally:
         server.stop()
+
+
+def test_prompt_command_executes_openai_compatible_provider_audio_reference(tmp_path: Path) -> None:
+    provider_server = OpenAICompatibleFixtureServer(models={"audio-model": {"response_text": "heard audio from cli"}})
+    media_server = MediaFixtureServer(
+        responses={
+            "/sample.wav": MediaResponse(body=b"wav-bytes", content_type="audio/wav"),
+        }
+    )
+    provider_server.start()
+    media_server.start()
+    try:
+        runtime_loader = RuntimeLoader(
+            backends=(OpenAICompatibleBackend(),),
+        )
+        services = CommandServices(
+            runtime_loader=runtime_loader,
+            runtime_executor=RuntimeExecutor(),
+            doctor_service=DoctorService(runtime_loader=runtime_loader),
+        )
+        runner = CliRunner()
+        app = create_app(services)
+
+        result = runner.invoke(
+            app,
+            [
+                "prompt",
+                "describe the clip",
+                "--model",
+                "openai-compatible:audio-model",
+                "--provider-endpoint",
+                provider_server.base_url,
+                "--multimodal",
+                "--audio",
+                f"{media_server.base_url}/sample.wav",
+                "--no-stream",
+                "--no-color",
+            ],
+        )
+        assert result.exit_code == 0
+        assert "heard audio from cli" in result.output
+    finally:
+        media_server.stop()
+        provider_server.stop()
 
 
 def test_prompt_command_executes_msty_provider_reference(tmp_path: Path) -> None:

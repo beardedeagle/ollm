@@ -36,6 +36,11 @@ def _resolved_model_payload(resolved_model: ResolvedModel) -> dict[str, object]:
 def _runtime_plan_payload(runtime_plan: RuntimePlan) -> dict[str, object]:
     return {
         "backend_id": runtime_plan.backend_id,
+        "modalities": [
+            modality.value for modality in runtime_plan.resolved_model.capabilities.modalities
+        ],
+        "requires_processor": runtime_plan.resolved_model.capabilities.requires_processor,
+        "audio_input_support": runtime_plan.details.get("audio_input_support", ""),
         "supports_disk_cache": runtime_plan.supports_disk_cache,
         "supports_cpu_offload": runtime_plan.supports_cpu_offload,
         "supports_gpu_offload": runtime_plan.supports_gpu_offload,
@@ -54,9 +59,15 @@ def _merge_runtime_plan_payload(
 ) -> dict[str, object]:
     merged_payload = dict(payload)
     merged_payload["resolved_support_level"] = payload["support_level"]
+    merged_payload["resolved_modalities"] = list(payload["modalities"])
+    merged_payload["resolved_requires_processor"] = payload["requires_processor"]
     merged_payload["resolved_supports_disk_cache"] = payload["supports_disk_cache"]
     merged_payload["resolved_resolution_message"] = payload["resolution_message"]
     merged_payload["support_level"] = runtime_plan.support_level.value
+    merged_payload["modalities"] = [
+        modality.value for modality in runtime_plan.resolved_model.capabilities.modalities
+    ]
+    merged_payload["requires_processor"] = runtime_plan.resolved_model.capabilities.requires_processor
     merged_payload["supports_disk_cache"] = runtime_plan.supports_disk_cache
     merged_payload["resolution_message"] = runtime_plan.reason
     merged_payload["runtime_plan"] = _runtime_plan_payload(runtime_plan)
@@ -254,6 +265,8 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         runtime_plan = payload.get("runtime_plan")
         if runtime_plan is not None:
             console.print(f"backend: {runtime_plan['backend_id']}")
+            if runtime_plan.get("audio_input_support"):
+                console.print(f"audio-input: {runtime_plan['audio_input_support']}")
             console.print(f"specialization-state: {runtime_plan['specialization_state']}")
             console.print(f"planned-passes: {', '.join(runtime_plan['planned_specialization_pass_ids'])}")
         console.print(f"modalities: {', '.join(payload['modalities'])}")

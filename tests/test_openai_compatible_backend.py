@@ -79,3 +79,45 @@ def test_runtime_loader_requires_endpoint_for_openai_compatible_discovery(tmp_pa
 		raise AssertionError("Expected openai-compatible discovery without endpoint to fail")
 	except ValueError as exc:
 		assert "--provider-endpoint" in str(exc)
+
+
+def test_openai_compatible_backend_reports_audio_capability_for_generic_provider(tmp_path: Path) -> None:
+	server = OpenAICompatibleFixtureServer(models={"audio-model": {"response_text": "hello"}})
+	server.start()
+	try:
+		loader = RuntimeLoader(backends=(OpenAICompatibleBackend(),))
+		runtime_plan = loader.plan(
+			RuntimeConfig(
+				model_reference="openai-compatible:audio-model",
+				models_dir=tmp_path / "models",
+				device="cpu",
+				provider_endpoint=server.base_url,
+			)
+		)
+	finally:
+		server.stop()
+
+	assert runtime_plan.is_executable() is True
+	assert [item.value for item in runtime_plan.resolved_model.capabilities.modalities] == ["text"]
+	assert runtime_plan.details["audio_input_support"] == "request-capable"
+
+
+def test_lmstudio_backend_does_not_report_audio_capability(tmp_path: Path) -> None:
+	server = OpenAICompatibleFixtureServer(models={"local-model": {"response_text": "hello"}})
+	server.start()
+	try:
+		loader = RuntimeLoader(backends=(OpenAICompatibleBackend(),))
+		runtime_plan = loader.plan(
+			RuntimeConfig(
+				model_reference="lmstudio:local-model",
+				models_dir=tmp_path / "models",
+				device="cpu",
+				provider_endpoint=server.base_url,
+			)
+		)
+	finally:
+		server.stop()
+
+	assert runtime_plan.is_executable() is True
+	assert [item.value for item in runtime_plan.resolved_model.capabilities.modalities] == ["text"]
+	assert runtime_plan.details["audio_input_support"] == "unsupported"

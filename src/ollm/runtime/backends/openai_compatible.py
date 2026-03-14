@@ -3,10 +3,13 @@ from dataclasses import replace
 
 import torch
 
-from ollm.app.types import Message, PromptRequest, PromptResponse
+from ollm.app.types import ContentKind, Message, PromptRequest, PromptResponse
 from ollm.runtime.backends.base import BackendRuntime, DiscoveredProviderModel, ExecutionBackend
+from ollm.runtime.catalog import ModelModality
 from ollm.runtime.capabilities import SupportLevel, provider_capabilities
 from ollm.runtime.config import RuntimeConfig, normalize_provider_endpoint
+from ollm.runtime.errors import PromptExecutionError
+from ollm.runtime.media_inputs import resolve_audio_input
 from ollm.runtime.plan import RuntimePlan, SpecializationState
 from ollm.runtime.providers.openai_compatible_client import (
 	DEFAULT_LMSTUDIO_ENDPOINT,
@@ -108,7 +111,9 @@ class OpenAICompatibleBackend(ExecutionBackend):
 			print_suppression_modules=(),
 			create_cache=lambda cache_dir: None,
 			apply_offload=_validate_provider_offload,
+			validate_request=lambda request: self._validate_request(plan, request),
 			execute_prompt=lambda request, sink: self._execute_prompt(client, plan, request, sink),
+			allows_multimodal_without_processor=True,
 		)
 
 	def _provider_success_plan(
@@ -124,11 +129,15 @@ class OpenAICompatibleBackend(ExecutionBackend):
 		)
 		capabilities = provider_capabilities(
 			provider_name,
+			modalities=(ModelModality.TEXT,),
 			details={
 				"provider_endpoint": provider_endpoint,
 				"provider_backend": self.backend_id,
 				"available_model_count": str(available_model_count),
 				"api_style": "openai-compatible",
+				"audio_input_support": (
+					"request-capable" if provider_name == "openai-compatible" else "unsupported"
+				),
 			},
 		)
 		resolved_model = replace(
@@ -210,6 +219,27 @@ class OpenAICompatibleBackend(ExecutionBackend):
 			metadata=metadata,
 		)
 
+	def _validate_request(self, plan: RuntimePlan, request: PromptRequest) -> None:
+		contains_image = any(
+			part.kind is ContentKind.IMAGE
+			for message in request.messages
+			for part in message.content
+		)
+		contains_audio = any(
+			part.kind is ContentKind.AUDIO
+			for message in request.messages
+			for part in message.content
+		)
+		provider_name = plan.resolved_model.provider_name or "openai-compatible"
+		if contains_image:
+			raise PromptExecutionError(
+				f"{plan.resolved_model.reference.raw} does not support image inputs"
+			)
+		if provider_name != "openai-compatible" and contains_audio:
+			raise PromptExecutionError(
+				f"{plan.resolved_model.reference.raw} does not support audio inputs"
+			)
+
 
 def _resolve_provider_endpoint(provider_name: str, config: RuntimeConfig) -> str:
 	resolved_endpoint = config.resolved_provider_endpoint()
@@ -253,11 +283,29 @@ def _openai_options(request: PromptRequest) -> dict[str, object]:
 	return options
 
 
-def _openai_messages(messages: list[Message]) -> list[dict[str, str]]:
+def _openai_messages(messages: list[Message]) -> list[dict[str, object]]:
 	return [_openai_message(message) for message in messages]
 
 
-def _openai_message(message: Message) -> dict[str, str]:
-	if message.contains_non_text():
-		raise ValueError("The openai-compatible backend currently supports text-only inputs")
-	return {"role": message.role.value, "content": message.text_content()}
+def _openai_message(message: Message) -> dict[str, object]:
+	if not message.contains_non_text():
+		return {"role": message.role.value, "content": message.text_content()}
+	return {
+		"role": message.role.value,
+		"content": [_openai_content_part(part.kind, part.value) for part in message.content],
+	}
+
+
+def _openai_content_part(kind: ContentKind, value: str) -> dict[str, object]:
+	if kind is ContentKind.TEXT:
+		return {"type": "text", "text": value}
+	if kind is ContentKind.IMAGE:
+		raise ValueError("The openai-compatible backend currently supports text and audio inputs only")
+	resolved_audio = resolve_audio_input(value)
+	return {
+		"type": "input_audio",
+		"input_audio": {
+			"data": resolved_audio.base64_data,
+			"format": resolved_audio.audio_format,
+		},
+	}

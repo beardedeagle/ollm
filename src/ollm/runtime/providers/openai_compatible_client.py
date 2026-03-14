@@ -64,7 +64,7 @@ class OpenAICompatibleClient:
 		self,
 		provider_name: str,
 		model_name: str,
-		messages: list[dict[str, str]],
+		messages: list[dict[str, object]],
 		options: dict[str, object],
 		stream: bool,
 		on_text: Callable[[str], None] | None = None,

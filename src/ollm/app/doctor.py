@@ -316,6 +316,11 @@ class DoctorService:
                 details={
                     "source_kind": resolved_model.source_kind.value,
                     "support_level": runtime_plan.support_level.value,
+                    "modalities": ",".join(
+                        modality.value for modality in runtime_plan.resolved_model.capabilities.modalities
+                    ),
+                    "audio_input_support": runtime_plan.details.get("audio_input_support", ""),
+                    "requires_processor": str(runtime_plan.resolved_model.capabilities.requires_processor),
                     "backend_id": "" if runtime_plan.backend_id is None else runtime_plan.backend_id,
                     "specialization_provider_id": (
                         "" if runtime_plan.specialization_provider_id is None else runtime_plan.specialization_provider_id

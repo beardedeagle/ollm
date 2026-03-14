@@ -1,13 +1,14 @@
 from pathlib import Path
 
-from ollm.app.types import Message, PromptRequest
+from ollm.app.types import ContentPart, Message, MessageRole, PromptRequest
 from ollm.runtime.backends.openai_compatible import OpenAICompatibleBackend
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
-from ollm.runtime.generation import RuntimeExecutor
+from ollm.runtime.generation import PromptExecutionError, RuntimeExecutor
 from ollm.runtime.loader import RuntimeLoader
 from ollm.runtime.streaming import StreamSink
 
 from tests.openai_compatible_server import OpenAICompatibleFixtureServer
+from tests.media_server import MediaFixtureServer, MediaResponse
 
 
 class RecordingSink(StreamSink):
@@ -154,3 +155,108 @@ def test_runtime_executor_preserves_lmstudio_provider_identity(tmp_path: Path) -
 	assert response.metadata["provider_backend"] == "openai-compatible"
 	assert response.metadata["provider_endpoint"] == server.base_url
 	assert response.metadata["backend_id"] == "openai-compatible"
+
+
+def test_runtime_executor_sends_audio_input_to_openai_compatible_provider(tmp_path: Path) -> None:
+	provider_server = OpenAICompatibleFixtureServer(models={"audio-model": {"response_text": "heard audio"}})
+	media_server = MediaFixtureServer(
+		responses={
+			"/sample.wav": MediaResponse(body=b"wav-bytes", content_type="audio/wav"),
+		}
+	)
+	provider_server.start()
+	media_server.start()
+	try:
+		loader = RuntimeLoader(backends=(OpenAICompatibleBackend(),))
+		runtime_config = RuntimeConfig(
+			model_reference="openai-compatible:audio-model",
+			models_dir=tmp_path / "models",
+			device="cpu",
+			provider_endpoint=provider_server.base_url,
+			multimodal=True,
+		)
+		runtime = loader.load(runtime_config)
+		request = PromptRequest(
+			runtime_config=runtime_config,
+			generation_config=GenerationConfig(max_new_tokens=32, stream=False),
+			messages=[
+				Message.system_text("You are concise."),
+				Message(
+					role=MessageRole.USER,
+					content=[
+						ContentPart.text("Describe this audio."),
+						ContentPart.audio(f"{media_server.base_url}/sample.wav"),
+					],
+				),
+			],
+		)
+		response = RuntimeExecutor().execute(runtime, request)
+	finally:
+		media_server.stop()
+		provider_server.stop()
+
+	assert response.text == "heard audio"
+	assert provider_server.requests[1].payload == {
+		"model": "audio-model",
+		"messages": [
+			{"role": "system", "content": "You are concise."},
+			{
+				"role": "user",
+				"content": [
+					{"type": "text", "text": "Describe this audio."},
+					{
+						"type": "input_audio",
+						"input_audio": {
+							"data": "d2F2LWJ5dGVz",
+							"format": "wav",
+						},
+					},
+				],
+			},
+		],
+		"stream": False,
+		"max_tokens": 32,
+		"temperature": 0.0,
+	}
+
+
+def test_runtime_executor_rejects_audio_for_lmstudio_provider(tmp_path: Path) -> None:
+	server = OpenAICompatibleFixtureServer(models={"local-model": {"response_text": "hello"}})
+	media_server = MediaFixtureServer(
+		responses={
+			"/sample.wav": MediaResponse(body=b"wav-bytes", content_type="audio/wav"),
+		}
+	)
+	server.start()
+	media_server.start()
+	try:
+		loader = RuntimeLoader(backends=(OpenAICompatibleBackend(),))
+		runtime_config = RuntimeConfig(
+			model_reference="lmstudio:local-model",
+			models_dir=tmp_path / "models",
+			device="cpu",
+			provider_endpoint=server.base_url,
+			multimodal=True,
+		)
+		runtime = loader.load(runtime_config)
+		request = PromptRequest(
+			runtime_config=runtime_config,
+			generation_config=GenerationConfig(max_new_tokens=16, stream=False),
+			messages=[
+				Message(
+					role=MessageRole.USER,
+					content=[
+						ContentPart.text("Describe this audio."),
+						ContentPart.audio(f"{media_server.base_url}/sample.wav"),
+					],
+				),
+			],
+		)
+		try:
+			RuntimeExecutor().execute(runtime, request)
+			raise AssertionError("Expected LM Studio audio execution to fail")
+		except PromptExecutionError as exc:
+			assert "does not support audio inputs" in str(exc)
+	finally:
+		media_server.stop()
+		server.stop()

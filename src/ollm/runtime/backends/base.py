@@ -24,6 +24,7 @@ class BackendRuntime:
     print_suppression_modules: tuple[ModuleType, ...]
     create_cache: Callable[[Path], object | None]
     apply_offload: Callable[[RuntimeConfig], None]
+    validate_request: Callable[[PromptRequest], None] | None = None
     execute_prompt: Callable[[PromptRequest, StreamSink], PromptResponse] | None = None
     allows_multimodal_without_processor: bool = False
     applied_specialization: AppliedSpecialization | None = None

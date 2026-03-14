@@ -5,13 +5,10 @@ import torch
 from ollm.app.types import ContentKind, Message, PromptRequest, PromptResponse
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.catalog import ModelModality
+from ollm.runtime.errors import PromptExecutionError
 from ollm.runtime.loader import LoadedRuntime
 from ollm.runtime.output_control import suppress_module_prints
 from ollm.runtime.streaming import BufferedTextStreamer, NullStreamSink, StreamSink
-
-
-class PromptExecutionError(RuntimeError):
-    """Raised when a prompt cannot be executed safely."""
 
 
 @dataclass(slots=True)
@@ -52,6 +49,9 @@ class RuntimeExecutor:
     def _validate_request(self, runtime: LoadedRuntime, request: PromptRequest) -> None:
         if not request.messages:
             raise PromptExecutionError("At least one message is required")
+        if runtime.backend.validate_request is not None:
+            runtime.backend.validate_request(request)
+            return
 
         contains_image = any(
             part.kind is ContentKind.IMAGE
