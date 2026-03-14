@@ -60,3 +60,30 @@ def test_runtime_loader_marks_missing_ollama_model_as_not_executable(tmp_path: P
 	assert plan.is_executable() is False
 	assert plan.support_level is SupportLevel.PROVIDER_BACKED
 	assert "not found" in plan.reason
+
+
+def test_runtime_loader_discovers_ollama_models(tmp_path: Path) -> None:
+	server = OllamaFixtureServer(
+		models={
+			"llama3.2": {"capabilities": ["completion"], "response_text": "ready"},
+			"llava": {"capabilities": ["completion", "vision"], "response_text": "vision"},
+		}
+	)
+	server.start()
+	try:
+		loader = RuntimeLoader(
+			backends=(OllamaBackend(client=OllamaClient(base_url=server.base_url)),),
+		)
+		discovered_models = loader.discover_provider_models(
+			tmp_path / "models",
+			("ollama",),
+			strict=True,
+		)
+	finally:
+		server.stop()
+
+	assert [item.model_reference for item in discovered_models] == [
+		"ollama:llama3.2",
+		"ollama:llava",
+	]
+	assert all(item.provider_endpoint == server.base_url for item in discovered_models)

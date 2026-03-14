@@ -11,6 +11,7 @@ from ollm.runtime.backends.openai_compatible import OpenAICompatibleBackend
 from ollm.runtime.backends.ollama import OllamaBackend
 from ollm.runtime.generation import RuntimeExecutor
 from ollm.runtime.loader import RuntimeLoader
+from ollm.runtime.providers.openai_compatible_client import OpenAICompatibleClient
 from ollm.runtime.providers.ollama_client import OllamaClient
 
 from tests.openai_compatible_server import OpenAICompatibleFixtureServer
@@ -172,6 +173,96 @@ def test_provider_backed_models_info_and_doctor_commands(tmp_path: Path) -> None
         assert '"Provider-backed model references for ollama ignore local device' in doctor_result.output
     finally:
         server.stop()
+
+
+def test_models_list_discovers_provider_models(tmp_path: Path) -> None:
+    ollama_server = OllamaFixtureServer(
+        models={"llama3.2": {"capabilities": ["completion"], "response_text": "ready"}}
+    )
+    lmstudio_server = OpenAICompatibleFixtureServer(
+        models={"local-model": {"response_text": "ready"}}
+    )
+    ollama_server.start()
+    lmstudio_server.start()
+    try:
+        runtime_loader = RuntimeLoader(
+            backends=(
+                OllamaBackend(client=OllamaClient(base_url=ollama_server.base_url)),
+                OpenAICompatibleBackend(
+                    client_factory=lambda endpoint: OpenAICompatibleClient(base_url=endpoint)
+                ),
+            ),
+        )
+        services = CommandServices(
+            runtime_loader=runtime_loader,
+            runtime_executor=RuntimeExecutor(),
+            doctor_service=DoctorService(runtime_loader=runtime_loader),
+        )
+        runner = CliRunner()
+        app = create_app(services)
+
+        result = runner.invoke(
+            app,
+            [
+                "models",
+                "list",
+                "--json",
+                "--discover-provider",
+                "ollama",
+                "--discover-provider",
+                "lmstudio",
+                "--provider-endpoint",
+                lmstudio_server.base_url,
+                "--models-dir",
+                str(tmp_path / "models"),
+                "--no-color",
+            ],
+        )
+        assert result.exit_code == 0
+        assert '"model_reference": "ollama:llama3.2"' in result.output
+        assert '"model_reference": "lmstudio:local-model"' in result.output
+        assert '"discovery_source": "discovered-provider"' in result.output
+    finally:
+        lmstudio_server.stop()
+        ollama_server.stop()
+
+
+def test_models_list_requires_endpoint_for_openai_compatible_discovery(tmp_path: Path) -> None:
+    runner, _, app = build_test_app()
+    result = runner.invoke(
+        app,
+        [
+            "models",
+            "list",
+            "--discover-provider",
+            "openai-compatible",
+            "--models-dir",
+            str(tmp_path / "models"),
+            "--no-color",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "--provider-endpoint" in result.output
+
+
+def test_models_list_rejects_invalid_provider_endpoint(tmp_path: Path) -> None:
+    runner, _, app = build_test_app()
+    result = runner.invoke(
+        app,
+        [
+            "models",
+            "list",
+            "--discover-provider",
+            "openai-compatible",
+            "--provider-endpoint",
+            "not-a-url",
+            "--models-dir",
+            str(tmp_path / "models"),
+            "--no-color",
+        ],
+    )
+    assert result.exit_code != 0
+    assert "absolute http or https URL" in result.output
 
 
 def test_openai_compatible_provider_models_info_and_doctor_commands(tmp_path: Path) -> None:

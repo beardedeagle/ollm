@@ -96,7 +96,7 @@ ollm                         # interactive terminal chat
 ollm chat                    # explicit alias for interactive chat
 ollm prompt "List planets"   # one-shot prompt
 ollm doctor --json           # environment and runtime diagnostics
-ollm models list             # known and discovered model references
+ollm models list             # known, local, and provider-discovered model references
 ```
 
 Use `ollm` or `ollm chat` only from an interactive terminal. For scripts, pipes, and automation use `ollm prompt`:
@@ -107,7 +107,7 @@ cat notes.txt | ollm prompt --stdin --model llama3-8B-chat
 ollm prompt --multimodal --model gemma3-12B --image ./diagram.png "Describe this image"
 ```
 
-`ollm doctor` reports missing optional extras, runtime availability, path issues, and model readiness. `ollm models` provides `list`, `info`, `download`, and `path` subcommands for both built-in aliases and arbitrary model references.
+`ollm doctor` reports missing optional extras, runtime availability, path issues, and model readiness. `ollm models` provides `list`, `info`, `download`, and `path` subcommands for both built-in aliases and arbitrary model references. `ollm models list` now acts as a discovery view: it combines built-in aliases, local materialized models, and provider-discovered entries from Ollama and LM Studio by default, and it can probe generic OpenAI-compatible providers when you pass `--discover-provider openai-compatible --provider-endpoint <url>`.
 
 `--model` now accepts opaque model references. Today that means:
 - built-in aliases such as `llama3-1B-chat` and `gemma3-12B` load through registered optimized specialization providers

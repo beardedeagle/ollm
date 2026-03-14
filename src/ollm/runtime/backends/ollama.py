@@ -6,7 +6,7 @@ from urllib.parse import urlparse
 import torch
 
 from ollm.app.types import ContentKind, Message, PromptRequest, PromptResponse
-from ollm.runtime.backends.base import BackendRuntime, ExecutionBackend
+from ollm.runtime.backends.base import BackendRuntime, DiscoveredProviderModel, ExecutionBackend
 from ollm.runtime.capabilities import SupportLevel, provider_capabilities
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.plan import RuntimePlan, SpecializationState
@@ -25,6 +25,27 @@ class OllamaBackend(ExecutionBackend):
 
 	def __init__(self, client: OllamaClient | None = None):
 		self._client = OllamaClient() if client is None else client
+
+	def supports_provider_discovery(self, provider_name: str) -> bool:
+		return provider_name == "ollama"
+
+	def discover_provider_models(
+		self,
+		provider_name: str,
+		provider_endpoint: str | None = None,
+	) -> tuple[DiscoveredProviderModel, ...]:
+		del provider_endpoint
+		if provider_name != "ollama":
+			return ()
+		model_names = self._client.list_models()
+		return tuple(
+			DiscoveredProviderModel(
+				model_reference=f"ollama:{model_name}",
+				provider_name="ollama",
+				provider_endpoint=self._client.base_url,
+			)
+			for model_name in model_names
+		)
 
 	def refine_plan(self, plan: RuntimePlan, config: RuntimeConfig) -> RuntimePlan:
 		if plan.resolved_model.source_kind is not ModelSourceKind.PROVIDER:

@@ -51,6 +51,20 @@ class OllamaClient:
 	def base_url(self) -> str:
 		return self._base_url
 
+	def list_models(self) -> tuple[str, ...]:
+		payload = self._request_json("/api/tags", None)
+		raw_models = payload.get("models")
+		if not isinstance(raw_models, list):
+			raise OllamaClientError("Expected 'models' list from Ollama /api/tags response")
+		model_names: list[str] = []
+		for item in raw_models:
+			if not isinstance(item, dict):
+				continue
+			model_name = item.get("name")
+			if isinstance(model_name, str) and model_name:
+				model_names.append(model_name)
+		return tuple(model_names)
+
 	def show_model(self, model_name: str) -> OllamaModelDetails:
 		payload = self._request_json("/api/show", {"model": model_name})
 		raw_capabilities = tuple(str(item) for item in _payload_list(payload, "capabilities"))
@@ -104,12 +118,12 @@ class OllamaClient:
 			metadata=_chat_metadata(final_payload, self._base_url, model_name),
 		)
 
-	def _request_json(self, path: str, payload: dict[str, object]) -> dict[str, object]:
+	def _request_json(self, path: str, payload: dict[str, object] | None) -> dict[str, object]:
 		request = Request(
 			url=f"{self._base_url}{path}",
-			data=json.dumps(payload).encode("utf-8"),
+			data=None if payload is None else json.dumps(payload).encode("utf-8"),
 			headers={"Content-Type": "application/json"},
-			method="POST",
+			method="GET" if payload is None else "POST",
 		)
 		try:
 			with urlopen(request, timeout=self._timeout_seconds) as response:

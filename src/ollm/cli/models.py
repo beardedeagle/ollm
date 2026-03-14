@@ -5,7 +5,8 @@ import typer
 from ollm.cli.common import build_console, print_json
 from ollm.cli.services import CommandServices
 from ollm.runtime.catalog import list_model_catalog
-from ollm.runtime.config import RuntimeConfig
+from ollm.runtime.config import RuntimeConfig, normalize_provider_endpoint
+from ollm.runtime.loader import DiscoveredRuntimeModel
 from ollm.runtime.plan import RuntimePlan
 from ollm.runtime.resolver import ModelSourceKind, ResolvedModel
 
@@ -61,12 +62,67 @@ def _merge_runtime_plan_payload(
     return merged_payload
 
 
+def _availability_label(entry: dict[str, object]) -> str:
+    if entry["source_kind"] == ModelSourceKind.PROVIDER.value:
+        return "available" if entry["installed"] else "unavailable"
+    return "installed" if entry["installed"] else "not-installed"
+
+
+def _provider_discovery_names(
+    discover_provider: list[str] | None,
+    provider_endpoint: str | None,
+) -> tuple[str, ...]:
+    if provider_endpoint is not None:
+        normalize_provider_endpoint(provider_endpoint)
+    if not discover_provider:
+        return ("ollama", "lmstudio")
+
+    normalized_providers: list[str] = []
+    for provider_name in discover_provider:
+        normalized_name = provider_name.strip().lower()
+        if normalized_name not in {"ollama", "lmstudio", "openai-compatible"}:
+            raise typer.BadParameter(
+                "--discover-provider must be one of: ollama, lmstudio, openai-compatible"
+            )
+        if normalized_name == "openai-compatible" and provider_endpoint is None:
+            raise typer.BadParameter(
+                "--discover-provider openai-compatible requires --provider-endpoint"
+            )
+        if normalized_name not in normalized_providers:
+            normalized_providers.append(normalized_name)
+    return tuple(normalized_providers)
+
+
+def _provider_runtime_config(
+    discovered_model: DiscoveredRuntimeModel,
+    models_dir: Path,
+) -> RuntimeConfig:
+    return RuntimeConfig(
+        model_reference=discovered_model.model_reference,
+        models_dir=models_dir,
+        provider_endpoint=discovered_model.provider_endpoint,
+    )
+
+
 def register_models_command(app: typer.Typer, services: CommandServices) -> None:
     models_app = typer.Typer(help="Inspect built-in aliases and discovered model references.")
 
     @models_app.command("list")
     def list_models(
         installed: bool = typer.Option(False, "--installed", help="Show only materialized local models."),
+        discover_provider: list[str] | None = typer.Option(
+            None,
+            "--discover-provider",
+            help=(
+                "Provider to probe for discovered models. Repeatable. "
+                "Defaults to ollama and lmstudio."
+            ),
+        ),
+        provider_endpoint: str | None = typer.Option(
+            None,
+            "--provider-endpoint",
+            help="Provider API root URL for openai-compatible discovery or lmstudio override.",
+        ),
         json_output: bool = typer.Option(False, "--json", help="Output JSON."),
         models_dir: Path = typer.Option(Path("models"), "--models-dir", help="Directory containing model data."),
         no_color: bool = typer.Option(False, "--no-color", help="Disable ANSI color output."),
@@ -74,11 +130,15 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         model_dir = models_dir.expanduser().resolve()
         entries: list[dict[str, object]] = []
         seen_paths: set[str] = set()
+        try:
+            provider_names = _provider_discovery_names(discover_provider, provider_endpoint)
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from exc
 
         for entry in list_model_catalog():
             resolved_model = services.runtime_loader.resolve(entry.model_id, model_dir)
             payload = _resolved_model_payload(resolved_model)
-            payload["known"] = True
+            payload["discovery_source"] = "built-in"
             payload["installed"] = bool(resolved_model.model_path is not None and resolved_model.model_path.exists())
             if payload["installed"]:
                 runtime_plan = services.runtime_loader.plan(
@@ -96,13 +156,36 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             if path is not None and path in seen_paths:
                 continue
             payload = _resolved_model_payload(resolved_model)
-            payload["known"] = False
+            payload["discovery_source"] = "discovered-local"
             payload["installed"] = bool(resolved_model.model_path is not None and resolved_model.model_path.exists())
             if payload["installed"]:
                 runtime_plan = services.runtime_loader.plan(
                     RuntimeConfig(model_reference=resolved_model.reference.raw, models_dir=model_dir)
                 )
                 payload = _merge_runtime_plan_payload(payload, runtime_plan)
+            if installed and not payload["installed"]:
+                continue
+            entries.append(payload)
+
+        try:
+            discovered_provider_models = services.runtime_loader.discover_provider_models(
+                model_dir,
+                provider_names,
+                provider_endpoint,
+                strict=bool(discover_provider),
+            )
+        except ValueError as exc:
+            raise typer.BadParameter(str(exc)) from exc
+
+        for discovered_model in discovered_provider_models:
+            payload = _resolved_model_payload(discovered_model.resolved_model)
+            payload["discovery_source"] = "discovered-provider"
+            payload["provider_endpoint"] = discovered_model.provider_endpoint
+            runtime_plan = services.runtime_loader.plan(
+                _provider_runtime_config(discovered_model, model_dir)
+            )
+            payload["installed"] = runtime_plan.is_executable()
+            payload = _merge_runtime_plan_payload(payload, runtime_plan)
             if installed and not payload["installed"]:
                 continue
             entries.append(payload)
@@ -114,8 +197,8 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             return
 
         for entry in entries:
-            status = "installed" if entry["installed"] else "not-installed"
-            known = "built-in" if entry["known"] else "discovered"
+            status = _availability_label(entry)
+            known = entry["discovery_source"]
             console.print(
                 f"{entry['model_reference']} [{known} / {status}] - "
                 f"{entry['support_level']} - {entry['resolution_message']}"

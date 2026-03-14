@@ -47,3 +47,35 @@ def test_lmstudio_endpoint_resolution_defaults_without_override() -> None:
 	config = RuntimeConfig(model_reference="lmstudio:demo", models_dir=Path("models"), device="cpu")
 
 	assert _resolve_provider_endpoint("lmstudio", config) == "http://127.0.0.1:1234/v1"
+
+
+def test_runtime_loader_discovers_lmstudio_models(tmp_path: Path) -> None:
+	server = OpenAICompatibleFixtureServer(models={"local-model": {"response_text": "hello"}})
+	server.start()
+	try:
+		loader = RuntimeLoader(backends=(OpenAICompatibleBackend(),))
+		discovered_models = loader.discover_provider_models(
+			tmp_path / "models",
+			("lmstudio",),
+			server.base_url,
+			strict=True,
+		)
+	finally:
+		server.stop()
+
+	assert [item.model_reference for item in discovered_models] == ["lmstudio:local-model"]
+	assert discovered_models[0].provider_endpoint == server.base_url
+
+
+def test_runtime_loader_requires_endpoint_for_openai_compatible_discovery(tmp_path: Path) -> None:
+	loader = RuntimeLoader(backends=(OpenAICompatibleBackend(),))
+
+	try:
+		loader.discover_provider_models(
+			tmp_path / "models",
+			("openai-compatible",),
+			strict=True,
+		)
+		raise AssertionError("Expected openai-compatible discovery without endpoint to fail")
+	except ValueError as exc:
+		assert "--provider-endpoint" in str(exc)

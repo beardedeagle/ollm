@@ -4,9 +4,9 @@ from dataclasses import replace
 import torch
 
 from ollm.app.types import Message, PromptRequest, PromptResponse
-from ollm.runtime.backends.base import BackendRuntime, ExecutionBackend
+from ollm.runtime.backends.base import BackendRuntime, DiscoveredProviderModel, ExecutionBackend
 from ollm.runtime.capabilities import SupportLevel, provider_capabilities
-from ollm.runtime.config import RuntimeConfig
+from ollm.runtime.config import RuntimeConfig, normalize_provider_endpoint
 from ollm.runtime.plan import RuntimePlan, SpecializationState
 from ollm.runtime.providers.openai_compatible_client import (
 	DEFAULT_LMSTUDIO_ENDPOINT,
@@ -26,6 +26,28 @@ class OpenAICompatibleBackend(ExecutionBackend):
 		client_factory: Callable[[str], OpenAICompatibleClient] | None = None,
 	):
 		self._client_factory = OpenAICompatibleClient if client_factory is None else client_factory
+
+	def supports_provider_discovery(self, provider_name: str) -> bool:
+		return provider_name in {"openai-compatible", "lmstudio"}
+
+	def discover_provider_models(
+		self,
+		provider_name: str,
+		provider_endpoint: str | None = None,
+	) -> tuple[DiscoveredProviderModel, ...]:
+		if provider_name not in {"openai-compatible", "lmstudio"}:
+			return ()
+		resolved_endpoint = _resolve_discovery_endpoint(provider_name, provider_endpoint)
+		client = self._client_factory(resolved_endpoint)
+		model_names = client.list_models()
+		return tuple(
+			DiscoveredProviderModel(
+				model_reference=f"{provider_name}:{model_name}",
+				provider_name=provider_name,
+				provider_endpoint=resolved_endpoint,
+			)
+			for model_name in model_names
+		)
 
 	def refine_plan(self, plan: RuntimePlan, config: RuntimeConfig) -> RuntimePlan:
 		if plan.resolved_model.source_kind is not ModelSourceKind.PROVIDER:
@@ -197,6 +219,19 @@ def _resolve_provider_endpoint(provider_name: str, config: RuntimeConfig) -> str
 		return DEFAULT_LMSTUDIO_ENDPOINT
 	raise ValueError(
 		f"Provider-backed model reference '{config.model_reference}' requires --provider-endpoint."
+	)
+
+
+def _resolve_discovery_endpoint(provider_name: str, provider_endpoint: str | None) -> str:
+	if provider_endpoint is not None:
+		normalized_endpoint = normalize_provider_endpoint(provider_endpoint)
+		if normalized_endpoint is None:
+			raise ValueError("Provider discovery requires a valid provider endpoint.")
+		return normalized_endpoint
+	if provider_name == "lmstudio":
+		return DEFAULT_LMSTUDIO_ENDPOINT
+	raise ValueError(
+		"OpenAI-compatible provider discovery requires --provider-endpoint."
 	)
 
 

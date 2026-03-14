@@ -7,6 +7,18 @@ DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 DEFAULT_MAX_NEW_TOKENS = 500
 
 
+def normalize_provider_endpoint(provider_endpoint: str | None) -> str | None:
+    if provider_endpoint is None:
+        return None
+    normalized_endpoint = provider_endpoint.strip().rstrip("/")
+    if not normalized_endpoint:
+        raise ValueError("--provider-endpoint cannot be empty")
+    parsed_endpoint = urlparse(normalized_endpoint)
+    if parsed_endpoint.scheme not in {"http", "https"} or not parsed_endpoint.netloc:
+        raise ValueError("--provider-endpoint must be an absolute http or https URL")
+    return normalized_endpoint
+
+
 @dataclass(slots=True)
 class RuntimeConfig:
     model_reference: str = DEFAULT_MODEL_REFERENCE
@@ -28,9 +40,7 @@ class RuntimeConfig:
         return self.models_dir.expanduser().resolve()
 
     def resolved_provider_endpoint(self) -> str | None:
-        if self.provider_endpoint is None:
-            return None
-        return self.provider_endpoint.strip().rstrip("/")
+        return normalize_provider_endpoint(self.provider_endpoint)
 
     def resolved_cache_dir(self) -> Path:
         return self.cache_dir.expanduser().resolve()
@@ -44,12 +54,7 @@ class RuntimeConfig:
         if not self.model_reference.strip():
             raise ValueError("--model cannot be empty")
         if self.provider_endpoint is not None:
-            provider_endpoint = self.resolved_provider_endpoint()
-            if provider_endpoint is None or not provider_endpoint:
-                raise ValueError("--provider-endpoint cannot be empty")
-            parsed_endpoint = urlparse(provider_endpoint)
-            if parsed_endpoint.scheme not in {"http", "https"} or not parsed_endpoint.netloc:
-                raise ValueError("--provider-endpoint must be an absolute http or https URL")
+            normalize_provider_endpoint(self.provider_endpoint)
         if self.verbose and self.quiet:
             raise ValueError("--verbose and --quiet cannot be used together")
         if self.offload_cpu_layers < 0:

@@ -6,6 +6,7 @@ from ollm.app.types import Message, PromptResponse
 from ollm.runtime.capabilities import SupportLevel
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.config import RuntimeConfig
+from ollm.runtime.loader import DiscoveredRuntimeModel
 from ollm.runtime.plan import RuntimePlan, SpecializationState
 from ollm.runtime.resolver import ModelResolver, ResolvedModel
 from ollm.runtime.specialization.passes.base import SpecializationPassId
@@ -37,6 +38,17 @@ class FakeRuntimeLoader:
 
     def discover_local_models(self, models_dir: Path) -> tuple[ResolvedModel, ...]:
         return self._resolver.discover_local_models(models_dir)
+
+    def discover_provider_models(
+        self,
+        models_dir: Path,
+        provider_names: tuple[str, ...],
+        provider_endpoint: str | None = None,
+        *,
+        strict: bool = False,
+    ) -> tuple[DiscoveredRuntimeModel, ...]:
+        del models_dir, provider_names, provider_endpoint, strict
+        return ()
 
     def plan(self, config: RuntimeConfig) -> RuntimePlan:
         resolved_model = self.resolve(config.model_reference, config.resolved_models_dir())

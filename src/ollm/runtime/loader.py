@@ -67,6 +67,14 @@ class LoadedRuntime:
         return self.backend.device
 
 
+@dataclass(frozen=True, slots=True)
+class DiscoveredRuntimeModel:
+    model_reference: str
+    provider_name: str
+    provider_endpoint: str | None
+    resolved_model: ResolvedModel
+
+
 class RuntimeLoader:
     def __init__(
         self,
@@ -97,6 +105,54 @@ class RuntimeLoader:
 
     def discover_local_models(self, models_dir: Path) -> tuple[ResolvedModel, ...]:
         return self._resolver.discover_local_models(models_dir)
+
+    def discover_provider_models(
+        self,
+        models_dir: Path,
+        provider_names: tuple[str, ...],
+        provider_endpoint: str | None = None,
+        *,
+        strict: bool = False,
+    ) -> tuple[DiscoveredRuntimeModel, ...]:
+        model_root = models_dir.expanduser().resolve()
+        discovered_models: list[DiscoveredRuntimeModel] = []
+        seen_references: set[str] = set()
+        discovery_errors: list[str] = []
+
+        for provider_name in provider_names:
+            provider_discovered = False
+            provider_handled = False
+            for backend in self._backends.values():
+                if backend.supports_provider_discovery(provider_name):
+                    provider_handled = True
+                try:
+                    discovered_entries = backend.discover_provider_models(provider_name, provider_endpoint)
+                except (RuntimeError, ValueError) as exc:
+                    if strict:
+                        discovery_errors.append(f"{provider_name}: {exc}")
+                    discovered_entries = ()
+                if not discovered_entries:
+                    continue
+                provider_discovered = True
+                for discovered_entry in discovered_entries:
+                    if discovered_entry.model_reference in seen_references:
+                        continue
+                    seen_references.add(discovered_entry.model_reference)
+                    discovered_models.append(
+                        DiscoveredRuntimeModel(
+                            model_reference=discovered_entry.model_reference,
+                            provider_name=discovered_entry.provider_name,
+                            provider_endpoint=discovered_entry.provider_endpoint,
+                            resolved_model=self.resolve(discovered_entry.model_reference, model_root),
+                        )
+                    )
+                break
+            if strict and not provider_discovered and not provider_handled:
+                discovery_errors.append(f"{provider_name}: no discovery backend is registered")
+
+        if discovery_errors:
+            raise ValueError("; ".join(discovery_errors))
+        return tuple(discovered_models)
 
     def download(self, model_reference: str, models_dir: Path, force_download: bool = False) -> Path:
         resolved_model = self.resolve(model_reference, models_dir)

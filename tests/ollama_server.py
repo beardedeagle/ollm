@@ -40,6 +40,22 @@ class OllamaFixtureServer:
 		fixture = self
 
 		class OllamaHandler(BaseHTTPRequestHandler):
+			def do_GET(self) -> None:  # noqa: N802
+				fixture.requests.append(RecordedRequest(path=self.path, payload={}))
+				if self.path == "/api/tags":
+					_write_json(
+						self,
+						200,
+						{
+							"models": [
+								{"name": model_name}
+								for model_name in fixture.models
+							]
+						},
+					)
+					return
+				_write_json(self, 404, {"error": f"unknown path: {self.path}"})
+
 			def do_POST(self) -> None:  # noqa: N802
 				payload = _read_json_body(self)
 				fixture.requests.append(RecordedRequest(path=self.path, payload=payload))
