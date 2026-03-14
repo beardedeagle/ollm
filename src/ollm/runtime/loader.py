@@ -10,6 +10,7 @@ from ollm.runtime.backends.transformers_generic import TransformersGenericBacken
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.plan import RuntimePlan
 from ollm.runtime.resolver import ModelResolver, ModelSourceKind, ResolvedModel
+from ollm.runtime.specialization import SpecializationRegistry, build_default_specialization_registry
 
 
 @dataclass(slots=True)
@@ -48,10 +49,19 @@ class RuntimeLoader:
         selector: BackendSelector | None = None,
         backends: tuple[ExecutionBackend, ...] | None = None,
         snapshot_downloader: Callable[[str, str, bool, str | None], None] | None = None,
+        specialization_registry: SpecializationRegistry | None = None,
     ):
         self._resolver = resolver or ModelResolver()
-        self._selector = selector or BackendSelector()
-        backend_list = backends or (NativeOptimizedBackend(), TransformersGenericBackend())
+        self._specialization_registry = (
+            build_default_specialization_registry()
+            if specialization_registry is None
+            else specialization_registry
+        )
+        self._selector = selector or BackendSelector(specialization_registry=self._specialization_registry)
+        backend_list = backends or (
+            NativeOptimizedBackend(specialization_registry=self._specialization_registry),
+            TransformersGenericBackend(),
+        )
         self._backends = {backend.backend_id: backend for backend in backend_list}
         self._snapshot_downloader = download_hf_snapshot if snapshot_downloader is None else snapshot_downloader
 
@@ -133,9 +143,11 @@ class RuntimeLoader:
         return resolved_model.model_path
 
     def _validate_runtime_plan(self, runtime_plan: RuntimePlan, config: RuntimeConfig) -> None:
-        if runtime_plan.supports_offload:
-            return
-        if config.offload_cpu_layers > 0 or config.offload_gpu_layers > 0:
+        if config.offload_gpu_layers > 0 and not runtime_plan.supports_gpu_offload:
             raise ValueError(
-                f"Selected backend '{runtime_plan.backend_id}' does not support custom layer offload controls"
+                f"Selected backend '{runtime_plan.backend_id}' does not support GPU layer offload controls"
+            )
+        if config.offload_cpu_layers > 0 and not runtime_plan.supports_cpu_offload:
+            raise ValueError(
+                f"Selected backend '{runtime_plan.backend_id}' does not support CPU layer offload controls"
             )

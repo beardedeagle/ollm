@@ -205,6 +205,9 @@ class DoctorService:
                     "source_kind": resolved_model.source_kind.value,
                     "support_level": resolved_model.capabilities.support_level.value,
                     "backend_id": None if runtime_plan is None else str(runtime_plan.backend_id),
+                    "specialization_provider_id": (
+                        None if runtime_plan is None else runtime_plan.specialization_provider_id
+                    ),
                 },
             )
         ]

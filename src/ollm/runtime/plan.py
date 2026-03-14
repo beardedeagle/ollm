@@ -14,8 +14,10 @@ class RuntimePlan:
     support_level: SupportLevel
     generic_model_kind: GenericModelKind | None
     supports_disk_cache: bool
-    supports_offload: bool
+    supports_cpu_offload: bool
+    supports_gpu_offload: bool
     specialization_enabled: bool
+    specialization_provider_id: str | None
     reason: str
     details: dict[str, str] = field(default_factory=dict)
 
@@ -29,8 +31,10 @@ class RuntimePlan:
             "support_level": self.support_level.value,
             "generic_model_kind": None if self.generic_model_kind is None else self.generic_model_kind.value,
             "supports_disk_cache": self.supports_disk_cache,
-            "supports_offload": self.supports_offload,
+            "supports_cpu_offload": self.supports_cpu_offload,
+            "supports_gpu_offload": self.supports_gpu_offload,
             "specialization_enabled": self.specialization_enabled,
+            "specialization_provider_id": self.specialization_provider_id,
             "reason": self.reason,
             "details": dict(self.details),
         }

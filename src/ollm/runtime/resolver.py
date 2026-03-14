@@ -166,6 +166,9 @@ class ModelResolver:
             if catalog_entry is not None
             else _native_family_from_architecture(inspection.architecture)
         )
+        if native_family is not None:
+            capabilities.supports_specialization = True
+            capabilities.details["native_family"] = native_family.value
         normalized_name = catalog_entry.model_id if catalog_entry is not None else model_path.name
         return ResolvedModel(
             reference=reference,

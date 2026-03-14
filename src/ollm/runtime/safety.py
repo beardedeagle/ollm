@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from transformers.utils import SAFE_WEIGHTS_INDEX_NAME, SAFE_WEIGHTS_NAME
@@ -28,6 +29,47 @@ def validate_safe_adapter_artifacts(adapter_dir: Path) -> None:
         )
     if SAFE_ADAPTER_WEIGHTS_NAME not in present_files:
         raise ValueError(f"The runtime requires {SAFE_ADAPTER_WEIGHTS_NAME} in {adapter_dir}.")
+
+
+def validate_safe_gds_export_artifacts(export_dir: Path) -> None:
+    export_root = export_dir.expanduser().resolve()
+    manifest_path = export_root / "manifest.json"
+    if not manifest_path.exists() or not manifest_path.is_file():
+        raise ValueError(f"The optimized gpt-oss specialization requires {manifest_path}.")
+
+    with manifest_path.open(encoding="utf-8") as handle:
+        manifest = json.load(handle)
+
+    if not isinstance(manifest, dict):
+        raise ValueError(f"The optimized gpt-oss specialization requires a JSON object manifest in {manifest_path}.")
+
+    for parameter_name, metadata in manifest.items():
+        if not isinstance(metadata, dict):
+            raise ValueError(f"Invalid gds_export metadata for {parameter_name!r} in {manifest_path}.")
+        relative_path = metadata.get("path")
+        dtype = metadata.get("dtype")
+        packed = metadata.get("packed")
+        if not isinstance(relative_path, str) or not relative_path:
+            raise ValueError(f"Invalid gds_export path for {parameter_name!r} in {manifest_path}.")
+
+        file_path = (export_root / relative_path).resolve()
+        if export_root not in file_path.parents:
+            raise ValueError(f"gds_export entry {relative_path!r} escapes {export_root}.")
+        if not file_path.exists() or not file_path.is_file():
+            raise ValueError(f"gds_export entry {relative_path!r} does not exist in {export_root}.")
+        if file_path.suffix in {".bin", ".pt", ".pth", ".ckpt", ".pkl", ".pickle"}:
+            raise ValueError(
+                f"The optimized gpt-oss specialization refuses unsafe gds_export artifacts in {export_root}. "
+                "Use raw tensor exports instead of pickle-backed files."
+            )
+        if isinstance(dtype, str) and dtype.startswith("torch"):
+            raise ValueError(
+                f"The optimized gpt-oss specialization refuses torch-serialized gds_export artifacts in {export_root}."
+            )
+        if packed == "mxfp4":
+            raise ValueError(
+                f"The optimized gpt-oss specialization refuses packed torch gds_export artifacts in {export_root}."
+            )
 
 
 def _contains_unsafe_weight_files(model_path: Path) -> bool:

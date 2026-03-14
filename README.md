@@ -110,7 +110,7 @@ ollm prompt --multimodal --model gemma3-12B --image ./diagram.png "Describe this
 `ollm doctor` reports missing optional extras, runtime availability, path issues, and model readiness. `ollm models` provides `list`, `info`, `download`, and `path` subcommands for both built-in aliases and arbitrary model references.
 
 `--model` now accepts opaque model references. Today that means:
-- built-in aliases such as `llama3-1B-chat` and `gemma3-12B` load through the optimized native path
+- built-in aliases such as `llama3-1B-chat` and `gemma3-12B` load through registered optimized specialization providers
 - Hugging Face repo IDs such as `Qwen/Qwen2.5-7B-Instruct` resolve and materialize locally
 - local model directories resolve directly
 
@@ -119,7 +119,9 @@ The current generic execution path now covers compatible local or materialized T
 - encoder-decoder text generation models such as T5-family checkpoints
 - image-text conditional generation models that expose a processor-backed `vision_config`
 
-Built-in aliases still prefer the optimized native backend. Provider-backed execution and audio-focused generic conditional generation remain deferred; those references resolve cleanly and report their support level without being rejected by an allowlist.
+When the resolved model matches a native family specialization (`llama`, `gemma3`, `qwen3-next`, `gpt-oss`, or `voxtral`), `ollm` now records and selects the matching optimized specialization provider through the runtime plan instead of hard-coding model-family branches inside `Inference.load_model()`. Built-in aliases still prefer the optimized native backend, and compatible local native-family directories can now do the same when a specialization provider matches while preserving the original local-path reference internally for optimized local loads. Provider-backed execution and audio-focused generic conditional generation remain deferred; those references resolve cleanly and report their support level without being rejected by an allowlist.
+
+The optimized GPT-OSS provider is intentionally stricter than before: it only matches when a validated `gds_export/` tree is present beside the model, and that export manifest must stay inside the export directory and avoid torch-serialized or pickle-backed artifacts.
 
 For safety, the generic runtime only loads local or materialized model weights from safetensors artifacts. Arbitrary `.bin` or pickle-backed checkpoints are intentionally rejected on that path.
 

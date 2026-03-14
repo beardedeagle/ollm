@@ -16,6 +16,7 @@ def _resolved_model_payload(resolved_model) -> dict[str, object]:
         "modalities": [modality.value for modality in resolved_model.capabilities.modalities],
         "requires_processor": resolved_model.capabilities.requires_processor,
         "supports_disk_cache": resolved_model.capabilities.supports_disk_cache,
+        "supports_specialization": resolved_model.capabilities.supports_specialization,
         "repo_id": resolved_model.repo_id,
         "revision": resolved_model.revision,
         "path": None if resolved_model.model_path is None else str(resolved_model.model_path),
@@ -95,6 +96,7 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         console.print(f"normalized: {payload['normalized_name']}")
         console.print(f"source: {payload['source_kind']}")
         console.print(f"support: {payload['support_level']}")
+        console.print(f"specialization: {payload['supports_specialization']}")
         if payload["generic_model_kind"] is not None:
             console.print(f"generic-kind: {payload['generic_model_kind']}")
         if payload["architecture"] is not None:

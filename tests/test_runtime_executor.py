@@ -77,8 +77,10 @@ def build_runtime(capabilities: CapabilityProfile, tokenizer=None) -> LoadedRunt
         support_level=capabilities.support_level,
         generic_model_kind=None,
         supports_disk_cache=False,
-        supports_offload=False,
+        supports_cpu_offload=False,
+        supports_gpu_offload=False,
         specialization_enabled=False,
+        specialization_provider_id=None,
         reason="test plan",
     )
     backend = BackendRuntime(
@@ -126,8 +128,10 @@ def build_seq2seq_runtime() -> LoadedRuntime:
         support_level=SupportLevel.GENERIC,
         generic_model_kind=GenericModelKind.SEQ2SEQ_LM,
         supports_disk_cache=False,
-        supports_offload=False,
+        supports_cpu_offload=False,
+        supports_gpu_offload=False,
         specialization_enabled=False,
+        specialization_provider_id=None,
         reason="seq2seq plan",
     )
     backend = BackendRuntime(

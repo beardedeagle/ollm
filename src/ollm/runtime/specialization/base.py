@@ -1,0 +1,72 @@
+from abc import ABC, abstractmethod
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from pathlib import Path
+
+import torch
+
+from ollm.runtime.config import RuntimeConfig
+from ollm.runtime.resolver import NativeFamily, ResolvedModel
+from ollm.utils import Stats
+
+
+@dataclass(frozen=True, slots=True)
+class SpecializationTraits:
+    supports_disk_cache: bool
+    supports_cpu_offload: bool
+    supports_gpu_offload: bool
+    details: dict[str, str] = field(default_factory=dict)
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "supports_disk_cache": self.supports_disk_cache,
+            "supports_cpu_offload": self.supports_cpu_offload,
+            "supports_gpu_offload": self.supports_gpu_offload,
+            "details": dict(self.details),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class SpecializationMatch:
+    provider_id: str
+    native_family: NativeFamily
+    reason: str
+    traits: SpecializationTraits
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "provider_id": self.provider_id,
+            "native_family": self.native_family.value,
+            "reason": self.reason,
+            "traits": self.traits.as_dict(),
+        }
+
+
+@dataclass(slots=True)
+class OptimizedModelArtifacts:
+    model: object
+    tokenizer: object
+    processor: object | None
+    device: torch.device
+    stats: Stats | None
+    create_cache: Callable[[Path], object | None]
+    apply_cpu_offload: Callable[[int], None] | None
+    apply_gpu_offload: Callable[[int, int], None] | None
+
+
+class SpecializationProvider(ABC):
+    provider_id: str
+    native_family: NativeFamily
+
+    @abstractmethod
+    def match(self, resolved_model: ResolvedModel, config: RuntimeConfig) -> SpecializationMatch | None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def load(
+        self,
+        resolved_model: ResolvedModel,
+        config: RuntimeConfig,
+        stats: Stats | None,
+    ) -> OptimizedModelArtifacts:
+        raise NotImplementedError

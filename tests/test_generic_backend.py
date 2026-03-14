@@ -62,8 +62,10 @@ def build_plan(kind: GenericModelKind, model_path: Path) -> RuntimePlan:
         support_level=SupportLevel.GENERIC,
         generic_model_kind=kind,
         supports_disk_cache=False,
-        supports_offload=False,
+        supports_cpu_offload=False,
+        supports_gpu_offload=False,
         specialization_enabled=False,
+        specialization_provider_id=None,
         reason="generic",
     )
 

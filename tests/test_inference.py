@@ -4,8 +4,60 @@ import sys
 from pathlib import Path
 
 import pytest
+import torch
 
-from ollm.inference import AutoInference
+from ollm.inference import AutoInference, Inference
+from ollm.runtime.config import RuntimeConfig
+from ollm.runtime.resolver import ModelSourceKind, NativeFamily, ResolvedModel
+from ollm.runtime.specialization import SpecializationRegistry
+from ollm.runtime.specialization.base import (
+    OptimizedModelArtifacts,
+    SpecializationMatch,
+    SpecializationProvider,
+    SpecializationTraits,
+)
+
+
+class FakeProvider(SpecializationProvider):
+    provider_id = "fake-llama"
+    native_family = NativeFamily.LLAMA
+
+    def __init__(self):
+        self.load_calls: list[str] = []
+
+    def match(self, resolved_model: ResolvedModel, config: RuntimeConfig) -> SpecializationMatch | None:
+        del config
+        if resolved_model.native_family is not NativeFamily.LLAMA:
+            return None
+        return SpecializationMatch(
+            provider_id=self.provider_id,
+            native_family=self.native_family,
+            reason="matched fake llama specialization",
+            traits=SpecializationTraits(
+                supports_disk_cache=True,
+                supports_cpu_offload=True,
+                supports_gpu_offload=False,
+            ),
+        )
+
+    def load(
+        self,
+        resolved_model: ResolvedModel,
+        config: RuntimeConfig,
+        stats,
+    ) -> OptimizedModelArtifacts:
+        del config
+        self.load_calls.append(resolved_model.reference.raw)
+        return OptimizedModelArtifacts(
+            model=object(),
+            tokenizer=object(),
+            processor=None,
+            device=torch.device("cpu"),
+            stats=stats,
+            create_cache=lambda cache_dir: str(cache_dir),
+            apply_cpu_offload=lambda layers_num: None,
+            apply_gpu_offload=None,
+        )
 
 
 def test_auto_inference_rejects_missing_local_model_dir(tmp_path: Path) -> None:
@@ -15,8 +67,8 @@ def test_auto_inference_rejects_missing_local_model_dir(tmp_path: Path) -> None:
 
 
 class StubAutoInference(AutoInference):
-    def load_model(self, model_dir: str) -> None:
-        del model_dir
+    def _load_optimized_model(self, model_path: Path, source_kind: ModelSourceKind, raw_reference: str) -> None:
+        del model_path, source_kind, raw_reference
         self.model = object()
 
 
@@ -33,6 +85,56 @@ def test_auto_inference_rejects_unsafe_adapter_artifacts(tmp_path: Path) -> None
 
     with pytest.raises(ValueError, match="safetensors"):
         StubAutoInference(str(model_dir), adapter_dir=str(adapter_dir), device="cpu", logging=False)
+
+
+def test_inference_load_model_delegates_to_specialization_registry(tmp_path: Path) -> None:
+    model_dir = tmp_path / "llama3-1B-chat"
+    model_dir.mkdir()
+    (model_dir / "config.json").write_text(
+        json.dumps({"model_type": "llama", "architectures": ["LlamaForCausalLM"]}),
+        encoding="utf-8",
+    )
+    provider = FakeProvider()
+    registry = SpecializationRegistry((provider,))
+
+    inference = Inference(
+        "llama3-1B-chat",
+        device="cpu",
+        logging=False,
+        specialization_registry=registry,
+    )
+    inference.load_model(str(model_dir))
+
+    assert provider.load_calls == ["llama3-1B-chat"]
+    assert inference.model is not None
+    assert inference.tokenizer is not None
+    assert inference.loaded_resolved_model is not None
+    assert inference.loaded_resolved_model.reference.raw == "llama3-1B-chat"
+    assert inference.loaded_specialization_provider_id == "fake-llama"
+
+
+def test_auto_inference_preserves_local_path_reference_for_optimized_loads(tmp_path: Path) -> None:
+    model_dir = tmp_path / "llama-local"
+    model_dir.mkdir()
+    (model_dir / "config.json").write_text(
+        json.dumps({"model_type": "llama", "architectures": ["LlamaForCausalLM"]}),
+        encoding="utf-8",
+    )
+    provider = FakeProvider()
+    registry = SpecializationRegistry((provider,))
+
+    auto_inference = AutoInference(
+        str(model_dir),
+        device="cpu",
+        logging=False,
+        specialization_registry=registry,
+    )
+
+    assert provider.load_calls == [str(model_dir)]
+    assert auto_inference.loaded_resolved_model is not None
+    assert auto_inference.loaded_resolved_model.reference.raw == str(model_dir)
+    assert auto_inference.model_reference == str(model_dir)
+    assert auto_inference.model_id == "llama3-1B-chat"
 
 
 def test_importing_ollm_does_not_require_peft() -> None:
