@@ -115,6 +115,16 @@ class RuntimeLoader:
             plan=runtime_plan,
         )
 
+    def plan(self, config: RuntimeConfig) -> RuntimePlan:
+        config.validate()
+        resolved_model = self.resolve(config.model_reference, config.resolved_models_dir())
+        if resolved_model.source_kind is ModelSourceKind.PROVIDER:
+            return self._selector.select(resolved_model, config)
+        if resolved_model.model_path is None or not resolved_model.model_path.exists():
+            return self._selector.select(resolved_model, config)
+        execution_model = self._refresh_materialized_model(resolved_model, resolved_model.model_path)
+        return self._selector.select(execution_model, config)
+
     def _refresh_materialized_model(self, resolved_model: ResolvedModel, model_path: Path) -> ResolvedModel:
         return self._resolver.inspect_materialized_model(
             resolved_model.reference,

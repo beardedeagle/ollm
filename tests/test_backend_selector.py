@@ -7,6 +7,7 @@ from ollm.runtime.catalog import ModelCatalogEntry, ModelModality
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.reference import ModelReference
 from ollm.runtime.resolver import ModelSourceKind, NativeFamily, ResolvedModel
+from ollm.runtime.specialization.passes.base import SpecializationPassId
 
 
 def build_catalog_resolved_model() -> ResolvedModel:
@@ -39,6 +40,11 @@ def test_backend_selector_prefers_optimized_native_for_built_in_aliases() -> Non
     assert plan.backend_id == "optimized-native"
     assert plan.support_level is SupportLevel.OPTIMIZED
     assert plan.specialization_provider_id == "llama-native"
+    assert plan.specialization_pass_ids == (
+        SpecializationPassId.DISK_CACHE,
+        SpecializationPassId.CPU_OFFLOAD,
+        SpecializationPassId.MLP_CHUNKING,
+    )
     assert plan.supports_cpu_offload is True
     assert plan.supports_gpu_offload is False
 
@@ -77,6 +83,11 @@ def test_backend_selector_prefers_optimized_native_for_local_native_family() -> 
     plan = BackendSelector().select(resolved_model, RuntimeConfig())
     assert plan.backend_id == "optimized-native"
     assert plan.specialization_provider_id == "llama-native"
+    assert plan.specialization_pass_ids == (
+        SpecializationPassId.DISK_CACHE,
+        SpecializationPassId.CPU_OFFLOAD,
+        SpecializationPassId.MLP_CHUNKING,
+    )
 
 
 def test_backend_selector_falls_back_to_generic_when_no_specialization_matches() -> None:

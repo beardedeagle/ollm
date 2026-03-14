@@ -3,8 +3,12 @@ from pathlib import Path
 
 from ollm.app.doctor import DoctorCheck, DoctorReport
 from ollm.app.types import Message, PromptResponse
+from ollm.runtime.capabilities import SupportLevel
+from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.config import RuntimeConfig
+from ollm.runtime.plan import RuntimePlan
 from ollm.runtime.resolver import ModelResolver, ResolvedModel
+from ollm.runtime.specialization.passes.base import SpecializationPassId
 
 
 @dataclass(slots=True)
@@ -33,6 +37,23 @@ class FakeRuntimeLoader:
 
     def discover_local_models(self, models_dir: Path) -> tuple[ResolvedModel, ...]:
         return self._resolver.discover_local_models(models_dir)
+
+    def plan(self, config: RuntimeConfig) -> RuntimePlan:
+        resolved_model = self.resolve(config.model_reference, config.resolved_models_dir())
+        return RuntimePlan(
+            resolved_model=resolved_model,
+            backend_id="optimized-native",
+            model_path=resolved_model.model_path,
+            support_level=SupportLevel.OPTIMIZED,
+            generic_model_kind=resolved_model.generic_model_kind or GenericModelKind.CAUSAL_LM,
+            supports_disk_cache=True,
+            supports_cpu_offload=True,
+            supports_gpu_offload=False,
+            specialization_enabled=True,
+            specialization_provider_id="fake-provider",
+            reason="fake planned specialization",
+            specialization_pass_ids=(SpecializationPassId.DISK_CACHE,),
+        )
 
 
 class FakeRuntimeExecutor:

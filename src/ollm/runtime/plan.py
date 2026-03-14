@@ -4,6 +4,7 @@ from pathlib import Path
 from ollm.runtime.capabilities import SupportLevel
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.resolver import ResolvedModel
+from ollm.runtime.specialization.passes.base import SpecializationPassId
 
 
 @dataclass(frozen=True, slots=True)
@@ -19,6 +20,7 @@ class RuntimePlan:
     specialization_enabled: bool
     specialization_provider_id: str | None
     reason: str
+    specialization_pass_ids: tuple[SpecializationPassId, ...] = ()
     details: dict[str, str] = field(default_factory=dict)
 
     def is_executable(self) -> bool:
@@ -35,6 +37,7 @@ class RuntimePlan:
             "supports_gpu_offload": self.supports_gpu_offload,
             "specialization_enabled": self.specialization_enabled,
             "specialization_provider_id": self.specialization_provider_id,
+            "specialization_pass_ids": [pass_id.value for pass_id in self.specialization_pass_ids],
             "reason": self.reason,
             "details": dict(self.details),
         }

@@ -7,6 +7,11 @@ import torch
 
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.resolver import NativeFamily, ResolvedModel
+from ollm.runtime.specialization.passes.base import (
+    SpecializationPass,
+    SpecializationPassId,
+    SpecializationPassTraits,
+)
 from ollm.utils import Stats
 
 
@@ -39,6 +44,33 @@ class SpecializationMatch:
             "native_family": self.native_family.value,
             "reason": self.reason,
             "traits": self.traits.as_dict(),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class PlannedSpecialization:
+    provider_id: str | None
+    passes: tuple[SpecializationPass, ...] = ()
+    details: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def pass_ids(self) -> tuple[SpecializationPassId, ...]:
+        return tuple(specialization_pass.pass_id for specialization_pass in self.passes)
+
+    @property
+    def traits(self) -> SpecializationPassTraits:
+        merged_traits = SpecializationPassTraits()
+        for specialization_pass in self.passes:
+            merged_traits = merged_traits.merge(specialization_pass.traits)
+        return merged_traits
+
+    def as_dict(self) -> dict[str, object]:
+        return {
+            "provider_id": self.provider_id,
+            "pass_ids": [pass_id.value for pass_id in self.pass_ids],
+            "passes": [specialization_pass.as_dict() for specialization_pass in self.passes],
+            "traits": self.traits.as_dict(),
+            "details": dict(self.details),
         }
 
 

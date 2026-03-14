@@ -117,3 +117,24 @@ def test_runtime_loader_routes_built_in_alias_with_adapter_to_generic_backend(tm
 
     assert runtime.plan.backend_id == "transformers-generic"
     assert runtime.resolved_model.architecture == "LlamaForCausalLM"
+
+
+def test_runtime_loader_plan_does_not_materialize_missing_model_references(tmp_path: Path) -> None:
+    calls: list[tuple[str, str, bool, str | None]] = []
+
+    def snapshot_downloader(repo_id: str, model_dir: str, force_download: bool, revision: str | None) -> None:
+        calls.append((repo_id, model_dir, force_download, revision))
+
+    loader = RuntimeLoader(snapshot_downloader=snapshot_downloader)
+    runtime_plan = loader.plan(
+        RuntimeConfig(
+            model_reference="hf://Qwen/Qwen2.5-7B-Instruct@main",
+            models_dir=tmp_path / "models",
+            device="cpu",
+            use_cache=False,
+        )
+    )
+
+    assert calls == []
+    assert runtime_plan.backend_id is None
+    assert runtime_plan.support_level is not None

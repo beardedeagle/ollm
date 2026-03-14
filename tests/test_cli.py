@@ -113,6 +113,16 @@ def test_doctor_and_models_commands(tmp_path: Path) -> None:
     assert info_result.exit_code == 0
     assert '"source_kind": "hugging-face"' in info_result.output
 
+    installed_info_result = runner.invoke(
+        app,
+        ["models", "info", "llama3-1B-chat", "--json", "--models-dir", str(model_dir), "--no-color"],
+    )
+    assert installed_info_result.exit_code == 0
+    assert '"support_level": "optimized"' in installed_info_result.output
+    assert '"resolved_support_level": "optimized"' in installed_info_result.output
+    assert '"resolved_supports_disk_cache": true' in installed_info_result.output
+    assert '"specialization_pass_ids": [' in installed_info_result.output
+
     download_result = runner.invoke(app, ["models", "download", "llama3-3B-chat", "--models-dir", str(model_dir), "--no-color"])
     assert download_result.exit_code == 0
     assert loader.download_calls[0][0] == "llama3-3B-chat"

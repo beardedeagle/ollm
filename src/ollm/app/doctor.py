@@ -190,7 +190,7 @@ class DoctorService:
             resolution_message = f"Provider-backed model references are not executable yet: {resolved_model.reference.raw}"
         elif runtime_plan is not None:
             resolution_ok = runtime_plan.is_executable()
-            resolution_message = runtime_plan.reason if not resolution_ok else execution_model.resolution_message
+            resolution_message = runtime_plan.reason
         elif resolved_model.is_downloadable():
             resolution_ok = True
         elif resolved_model.capabilities.support_level is not SupportLevel.UNSUPPORTED:
@@ -203,10 +203,19 @@ class DoctorService:
                 message=resolution_message,
                 details={
                     "source_kind": resolved_model.source_kind.value,
-                    "support_level": resolved_model.capabilities.support_level.value,
+                    "support_level": (
+                        resolved_model.capabilities.support_level.value
+                        if runtime_plan is None
+                        else runtime_plan.support_level.value
+                    ),
                     "backend_id": None if runtime_plan is None else str(runtime_plan.backend_id),
                     "specialization_provider_id": (
                         None if runtime_plan is None else runtime_plan.specialization_provider_id
+                    ),
+                    "specialization_pass_ids": (
+                        ""
+                        if runtime_plan is None
+                        else ",".join(pass_id.value for pass_id in runtime_plan.specialization_pass_ids)
                     ),
                 },
             )

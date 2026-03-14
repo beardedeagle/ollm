@@ -5,9 +5,12 @@ import typer
 from ollm.cli.common import build_console, print_json
 from ollm.cli.services import CommandServices
 from ollm.runtime.catalog import list_model_catalog
+from ollm.runtime.config import RuntimeConfig
+from ollm.runtime.plan import RuntimePlan
+from ollm.runtime.resolver import ResolvedModel
 
 
-def _resolved_model_payload(resolved_model) -> dict[str, object]:
+def _resolved_model_payload(resolved_model: ResolvedModel) -> dict[str, object]:
     return {
         "model_reference": resolved_model.reference.raw,
         "normalized_name": resolved_model.normalized_name,
@@ -26,6 +29,33 @@ def _resolved_model_payload(resolved_model) -> dict[str, object]:
         "generic_model_kind": None if resolved_model.generic_model_kind is None else resolved_model.generic_model_kind.value,
         "resolution_message": resolved_model.resolution_message,
     }
+
+
+def _runtime_plan_payload(runtime_plan: RuntimePlan) -> dict[str, object]:
+    return {
+        "backend_id": runtime_plan.backend_id,
+        "supports_disk_cache": runtime_plan.supports_disk_cache,
+        "supports_cpu_offload": runtime_plan.supports_cpu_offload,
+        "supports_gpu_offload": runtime_plan.supports_gpu_offload,
+        "specialization_provider_id": runtime_plan.specialization_provider_id,
+        "specialization_pass_ids": [pass_id.value for pass_id in runtime_plan.specialization_pass_ids],
+        "reason": runtime_plan.reason,
+    }
+
+
+def _merge_runtime_plan_payload(
+    payload: dict[str, object],
+    runtime_plan: RuntimePlan,
+) -> dict[str, object]:
+    merged_payload = dict(payload)
+    merged_payload["resolved_support_level"] = payload["support_level"]
+    merged_payload["resolved_supports_disk_cache"] = payload["supports_disk_cache"]
+    merged_payload["resolved_resolution_message"] = payload["resolution_message"]
+    merged_payload["support_level"] = runtime_plan.support_level.value
+    merged_payload["supports_disk_cache"] = runtime_plan.supports_disk_cache
+    merged_payload["resolution_message"] = runtime_plan.reason
+    merged_payload["runtime_plan"] = _runtime_plan_payload(runtime_plan)
+    return merged_payload
 
 
 def register_models_command(app: typer.Typer, services: CommandServices) -> None:
@@ -47,6 +77,11 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             payload = _resolved_model_payload(resolved_model)
             payload["known"] = True
             payload["installed"] = bool(resolved_model.model_path is not None and resolved_model.model_path.exists())
+            if payload["installed"]:
+                runtime_plan = services.runtime_loader.plan(
+                    RuntimeConfig(model_reference=entry.model_id, models_dir=model_dir)
+                )
+                payload = _merge_runtime_plan_payload(payload, runtime_plan)
             if installed and not payload["installed"]:
                 continue
             entries.append(payload)
@@ -60,6 +95,11 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             payload = _resolved_model_payload(resolved_model)
             payload["known"] = False
             payload["installed"] = bool(resolved_model.model_path is not None and resolved_model.model_path.exists())
+            if payload["installed"]:
+                runtime_plan = services.runtime_loader.plan(
+                    RuntimeConfig(model_reference=resolved_model.reference.raw, models_dir=model_dir)
+                )
+                payload = _merge_runtime_plan_payload(payload, runtime_plan)
             if installed and not payload["installed"]:
                 continue
             entries.append(payload)
@@ -88,6 +128,11 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         resolved_model = services.runtime_loader.resolve(model, models_dir.expanduser().resolve())
         payload = _resolved_model_payload(resolved_model)
         payload["installed"] = bool(resolved_model.model_path is not None and resolved_model.model_path.exists())
+        if payload["installed"]:
+            runtime_plan = services.runtime_loader.plan(
+                RuntimeConfig(model_reference=model, models_dir=models_dir.expanduser().resolve())
+            )
+            payload = _merge_runtime_plan_payload(payload, runtime_plan)
         console = build_console(no_color=no_color)
         if json_output:
             print_json(console, payload)
@@ -109,6 +154,10 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             console.print(f"revision: {payload['revision']}")
         if payload["path"] is not None:
             console.print(f"path: {payload['path']}")
+        runtime_plan = payload.get("runtime_plan")
+        if runtime_plan is not None:
+            console.print(f"backend: {runtime_plan['backend_id']}")
+            console.print(f"planned-passes: {', '.join(runtime_plan['specialization_pass_ids'])}")
         console.print(f"modalities: {', '.join(payload['modalities'])}")
         console.print(payload["resolution_message"])
 
