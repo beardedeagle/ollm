@@ -39,7 +39,8 @@ class LoadedRuntime:
         resolved_capabilities = self.resolved_model.capabilities
         if (
             resolved_capabilities.support_level is self.plan.support_level
-            and resolved_capabilities.supports_disk_cache is self.plan.supports_disk_cache
+            and resolved_capabilities.supports_disk_cache
+            is self.plan.supports_disk_cache
         ):
             return resolved_capabilities
         details = dict(resolved_capabilities.details)
@@ -103,15 +104,21 @@ class RuntimeLoader:
             if specialization_registry is None
             else specialization_registry
         )
-        self._selector = selector or BackendSelector(specialization_registry=self._specialization_registry)
+        self._selector = selector or BackendSelector(
+            specialization_registry=self._specialization_registry
+        )
         backend_list = backends or (
-            NativeOptimizedBackend(specialization_registry=self._specialization_registry),
+            NativeOptimizedBackend(
+                specialization_registry=self._specialization_registry
+            ),
             TransformersGenericBackend(),
             OpenAICompatibleBackend(),
             OllamaBackend(),
         )
         self._backends = {backend.backend_id: backend for backend in backend_list}
-        self._snapshot_downloader = download_hf_snapshot if snapshot_downloader is None else snapshot_downloader
+        self._snapshot_downloader = (
+            download_hf_snapshot if snapshot_downloader is None else snapshot_downloader
+        )
 
     def resolve(self, model_reference: str, models_dir: Path) -> ResolvedModel:
         """Resolve a model reference without planning or loading."""
@@ -142,7 +149,9 @@ class RuntimeLoader:
                 if backend.supports_provider_discovery(provider_name):
                     provider_handled = True
                 try:
-                    discovered_entries = backend.discover_provider_models(provider_name, provider_endpoint)
+                    discovered_entries = backend.discover_provider_models(
+                        provider_name, provider_endpoint
+                    )
                 except (RuntimeError, ValueError) as exc:
                     if strict:
                         discovery_errors.append(f"{provider_name}: {exc}")
@@ -159,26 +168,41 @@ class RuntimeLoader:
                             model_reference=discovered_entry.model_reference,
                             provider_name=discovered_entry.provider_name,
                             provider_endpoint=discovered_entry.provider_endpoint,
-                            resolved_model=self.resolve(discovered_entry.model_reference, model_root),
+                            resolved_model=self.resolve(
+                                discovered_entry.model_reference, model_root
+                            ),
                         )
                     )
                 break
             if strict and not provider_discovered and not provider_handled:
-                discovery_errors.append(f"{provider_name}: no discovery backend is registered")
+                discovery_errors.append(
+                    f"{provider_name}: no discovery backend is registered"
+                )
 
         if discovery_errors:
             raise ValueError("; ".join(discovery_errors))
         return tuple(discovered_models)
 
-    def download(self, model_reference: str, models_dir: Path, force_download: bool = False) -> Path:
+    def download(
+        self, model_reference: str, models_dir: Path, force_download: bool = False
+    ) -> Path:
         """Materialize a downloadable model reference locally and return its path."""
         resolved_model = self.resolve(model_reference, models_dir)
         if resolved_model.source_kind is ModelSourceKind.LOCAL_PATH:
-            if resolved_model.model_path is None or not resolved_model.model_path.exists():
+            if (
+                resolved_model.model_path is None
+                or not resolved_model.model_path.exists()
+            ):
                 raise ValueError(f"Local model path does not exist: {model_reference}")
             return resolved_model.model_path
-        if not resolved_model.is_downloadable() or resolved_model.repo_id is None or resolved_model.model_path is None:
-            raise ValueError(f"Model reference '{model_reference}' does not support snapshot download")
+        if (
+            not resolved_model.is_downloadable()
+            or resolved_model.repo_id is None
+            or resolved_model.model_path is None
+        ):
+            raise ValueError(
+                f"Model reference '{model_reference}' does not support snapshot download"
+            )
         if resolved_model.model_path.exists() and not force_download:
             return resolved_model.model_path
         resolved_model.model_path.parent.mkdir(parents=True, exist_ok=True)
@@ -193,14 +217,20 @@ class RuntimeLoader:
     def load(self, config: RuntimeConfig) -> LoadedRuntime:
         """Validate, plan, and load a runtime backend for execution."""
         config.validate()
-        resolved_model = self.resolve(config.model_reference, config.resolved_models_dir())
+        resolved_model = self.resolve(
+            config.model_reference, config.resolved_models_dir()
+        )
         model_path: Path | None = None
         execution_model = resolved_model
         if resolved_model.source_kind is not ModelSourceKind.PROVIDER:
             model_path = self._ensure_local_model(resolved_model, config.force_download)
-            execution_model = self._refresh_materialized_model(resolved_model, model_path)
+            execution_model = self._refresh_materialized_model(
+                resolved_model, model_path
+            )
 
-        runtime_plan = self._refine_runtime_plan(self._selector.select(execution_model, config), config)
+        runtime_plan = self._refine_runtime_plan(
+            self._selector.select(execution_model, config), config
+        )
         if not runtime_plan.is_executable():
             raise ValueError(runtime_plan.reason)
         self._validate_runtime_plan(runtime_plan, config)
@@ -229,15 +259,27 @@ class RuntimeLoader:
     def plan(self, config: RuntimeConfig) -> RuntimePlan:
         """Build a runtime plan without loading a backend."""
         config.validate()
-        resolved_model = self.resolve(config.model_reference, config.resolved_models_dir())
+        resolved_model = self.resolve(
+            config.model_reference, config.resolved_models_dir()
+        )
         if resolved_model.source_kind is ModelSourceKind.PROVIDER:
-            return self._refine_runtime_plan(self._selector.select(resolved_model, config), config)
+            return self._refine_runtime_plan(
+                self._selector.select(resolved_model, config), config
+            )
         if resolved_model.model_path is None or not resolved_model.model_path.exists():
-            return self._refine_runtime_plan(self._selector.select(resolved_model, config), config)
-        execution_model = self._refresh_materialized_model(resolved_model, resolved_model.model_path)
-        return self._refine_runtime_plan(self._selector.select(execution_model, config), config)
+            return self._refine_runtime_plan(
+                self._selector.select(resolved_model, config), config
+            )
+        execution_model = self._refresh_materialized_model(
+            resolved_model, resolved_model.model_path
+        )
+        return self._refine_runtime_plan(
+            self._selector.select(execution_model, config), config
+        )
 
-    def _refresh_materialized_model(self, resolved_model: ResolvedModel, model_path: Path) -> ResolvedModel:
+    def _refresh_materialized_model(
+        self, resolved_model: ResolvedModel, model_path: Path
+    ) -> ResolvedModel:
         return self._resolver.inspect_materialized_model(
             resolved_model.reference,
             model_path,
@@ -248,13 +290,19 @@ class RuntimeLoader:
             catalog_entry=resolved_model.catalog_entry,
         )
 
-    def _ensure_local_model(self, resolved_model: ResolvedModel, force_download: bool) -> Path:
+    def _ensure_local_model(
+        self, resolved_model: ResolvedModel, force_download: bool
+    ) -> Path:
         if resolved_model.model_path is None:
-            raise ValueError(f"Model reference '{resolved_model.reference.raw}' does not resolve to a local model path")
+            raise ValueError(
+                f"Model reference '{resolved_model.reference.raw}' does not resolve to a local model path"
+            )
         if resolved_model.model_path.exists() and not force_download:
             return resolved_model.model_path
         if resolved_model.repo_id is None:
-            raise ValueError(f"Local model path does not exist: {resolved_model.model_path}")
+            raise ValueError(
+                f"Local model path does not exist: {resolved_model.model_path}"
+            )
         resolved_model.model_path.parent.mkdir(parents=True, exist_ok=True)
         self._snapshot_downloader(
             resolved_model.repo_id,
@@ -264,7 +312,9 @@ class RuntimeLoader:
         )
         return resolved_model.model_path
 
-    def _validate_runtime_plan(self, runtime_plan: RuntimePlan, config: RuntimeConfig) -> None:
+    def _validate_runtime_plan(
+        self, runtime_plan: RuntimePlan, config: RuntimeConfig
+    ) -> None:
         if config.offload_gpu_layers > 0 and not runtime_plan.supports_gpu_offload:
             raise ValueError(
                 f"Selected backend '{runtime_plan.backend_id}' does not support GPU layer offload controls"
@@ -274,7 +324,9 @@ class RuntimeLoader:
                 f"Selected backend '{runtime_plan.backend_id}' does not support CPU layer offload controls"
             )
 
-    def _load_backend_runtime(self, runtime_plan: RuntimePlan, config: RuntimeConfig) -> BackendRuntime:
+    def _load_backend_runtime(
+        self, runtime_plan: RuntimePlan, config: RuntimeConfig
+    ) -> BackendRuntime:
         backend_id = runtime_plan.backend_id
         if backend_id is None:
             raise ValueError("Runtime plan did not select a backend")
@@ -285,7 +337,9 @@ class RuntimeLoader:
         backend_runtime.apply_offload(config)
         return backend_runtime
 
-    def _refine_runtime_plan(self, runtime_plan: RuntimePlan, config: RuntimeConfig) -> RuntimePlan:
+    def _refine_runtime_plan(
+        self, runtime_plan: RuntimePlan, config: RuntimeConfig
+    ) -> RuntimePlan:
         if runtime_plan.backend_id is None:
             return runtime_plan
         backend_impl = self._backends.get(runtime_plan.backend_id)
@@ -293,7 +347,9 @@ class RuntimeLoader:
             return runtime_plan
         return backend_impl.refine_plan(runtime_plan, config)
 
-    def _finalize_runtime_plan(self, runtime_plan: RuntimePlan, backend_runtime: BackendRuntime) -> RuntimePlan:
+    def _finalize_runtime_plan(
+        self, runtime_plan: RuntimePlan, backend_runtime: BackendRuntime
+    ) -> RuntimePlan:
         if backend_runtime.applied_specialization is None:
             return runtime_plan
         applied_specialization = backend_runtime.applied_specialization
@@ -333,7 +389,8 @@ class RuntimeLoader:
         details["fallback_from_backend_id"] = runtime_plan.backend_id or "unknown"
         details["fallback_error_type"] = type(error).__name__
         details["fallback_provider_id"] = (
-            runtime_plan.specialization_provider_id or getattr(error, "provider_id", "unknown")
+            runtime_plan.specialization_provider_id
+            or getattr(error, "provider_id", "unknown")
         )
         reason = (
             f"Fell back to transformers-generic for {execution_model.reference.raw} after optimized "

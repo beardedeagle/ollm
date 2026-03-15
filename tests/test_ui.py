@@ -36,10 +36,15 @@ def test_shell_queues_attachments_and_send_clears_queue() -> None:
         generation_config=GenerationConfig(stream=False),
     )
     output = io.StringIO()
-    shell = InteractiveChatShell(session=session, console=Console(file=output, force_terminal=False))
+    shell = InteractiveChatShell(
+        session=session, console=Console(file=output, force_terminal=False)
+    )
     shell._handle_command(SlashCommand(name="image", argument="diagram.png"))
     shell._handle_command(SlashCommand(name="send", argument="describe this"))
-    assert [part.kind.value for part in session.messages[0].content] == ["image", "text"]
+    assert [part.kind.value for part in session.messages[0].content] == [
+        "image",
+        "text",
+    ]
     assert shell._pending_parts == []
 
 
@@ -52,7 +57,9 @@ def test_retry_prints_text_in_non_stream_mode() -> None:
     )
     session.prompt_text("hello")
     output = io.StringIO()
-    shell = InteractiveChatShell(session=session, console=Console(file=output, force_terminal=False))
+    shell = InteractiveChatShell(
+        session=session, console=Console(file=output, force_terminal=False)
+    )
     shell._handle_command(SlashCommand(name="retry", argument=""))
     assert "echo:hello" in output.getvalue()
 

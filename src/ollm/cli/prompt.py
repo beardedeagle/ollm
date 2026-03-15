@@ -6,7 +6,13 @@ import typer
 
 from ollm.app.history import write_private_text
 from ollm.app.types import ContentKind, ContentPart, Message, MessageRole, PromptRequest
-from ollm.cli.common import build_console, build_generation_config, build_runtime_config, config_as_dict, print_json
+from ollm.cli.common import (
+    build_console,
+    build_generation_config,
+    build_runtime_config,
+    config_as_dict,
+    print_json,
+)
 from ollm.cli.services import CommandServices
 from ollm.runtime.inspection import plan_json_payload
 from ollm.runtime.streaming import StreamSink
@@ -36,39 +42,116 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
     @app.command("prompt")
     def prompt_command(
         prompt: str | None = typer.Argument(None, help="Prompt text."),
-        model: str = typer.Option("llama3-1B-chat", "--model", help="Model reference to resolve."),
-        models_dir: Path = typer.Option(Path("models"), "--models-dir", help="Directory containing model data."),
+        model: str = typer.Option(
+            "llama3-1B-chat", "--model", help="Model reference to resolve."
+        ),
+        models_dir: Path = typer.Option(
+            Path("models"), "--models-dir", help="Directory containing model data."
+        ),
         device: str = typer.Option("cuda:0", "--device", help="Torch device string."),
         backend: str | None = typer.Option(None, "--backend", help="Backend override."),
-        provider_endpoint: str | None = typer.Option(None, "--provider-endpoint", help="Provider API root URL."),
-        adapter_dir: Path | None = typer.Option(None, "--adapter-dir", help="Optional PEFT adapter directory."),
-        multimodal: bool = typer.Option(False, "--multimodal/--no-multimodal", help="Enable multimodal processor support."),
-        no_specialization: bool = typer.Option(False, "--no-specialization", help="Disable optimized specialization selection."),
-        cache_dir: Path = typer.Option(Path("kv_cache"), "--cache-dir", help="KV cache directory."),
-        no_cache: bool = typer.Option(False, "--no-cache", help="Disable disk KV cache."),
-        offload_cpu_layers: int = typer.Option(0, "--offload-cpu-layers", min=0, help="Number of layers to offload to CPU."),
-        offload_gpu_layers: int = typer.Option(0, "--offload-gpu-layers", min=0, help="Number of layers to keep on GPU when using mixed offload."),
-        force_download: bool = typer.Option(False, "--force-download", help="Force redownload of the selected model."),
-        max_new_tokens: int = typer.Option(500, "--max-new-tokens", min=1, help="Maximum generated tokens."),
-        temperature: float = typer.Option(0.0, "--temperature", min=0.0, help="Sampling temperature."),
-        top_p: float | None = typer.Option(None, "--top-p", min=0.0, max=1.0, help="Top-p sampling cutoff."),
-        top_k: int | None = typer.Option(None, "--top-k", min=1, help="Top-k sampling cutoff."),
-        seed: int | None = typer.Option(None, "--seed", help="Random seed for sampling."),
-        stats: bool = typer.Option(False, "--stats", help="Enable runtime stats collection."),
-        verbose: bool = typer.Option(False, "--verbose", help="Enable verbose runtime logging."),
-        quiet: bool = typer.Option(False, "--quiet", help="Suppress non-essential runtime output."),
-        system: str = typer.Option("You are a helpful assistant.", "--system", help="System prompt for the request."),
-        file: Path | None = typer.Option(None, "--file", help="Read prompt text from a file."),
-        stdin: bool = typer.Option(False, "--stdin", help="Read prompt text from stdin."),
-        image: list[str] | None = typer.Option(None, "--image", help="Image path or URL. Repeatable."),
-        audio: list[str] | None = typer.Option(None, "--audio", help="Audio path or URL. Repeatable."),
-        stream: bool = typer.Option(True, "--stream/--no-stream", help="Stream assistant output while generating."),
-        output: Path | None = typer.Option(None, "--output", help="Write the final response to a file."),
-        format: str = typer.Option("text", "--format", help="Output format: text or json."),
-        show_prompt: bool = typer.Option(False, "--show-prompt", help="Print the resolved request before execution."),
-        print_config_flag: bool = typer.Option(False, "--print-config", help="Print resolved runtime config before running."),
-        plan_json_flag: bool = typer.Option(False, "--plan-json", help="Print the resolved runtime plan as JSON and exit."),
-        no_color: bool = typer.Option(False, "--no-color", help="Disable ANSI color output."),
+        provider_endpoint: str | None = typer.Option(
+            None, "--provider-endpoint", help="Provider API root URL."
+        ),
+        adapter_dir: Path | None = typer.Option(
+            None, "--adapter-dir", help="Optional PEFT adapter directory."
+        ),
+        multimodal: bool = typer.Option(
+            False,
+            "--multimodal/--no-multimodal",
+            help="Enable multimodal processor support.",
+        ),
+        no_specialization: bool = typer.Option(
+            False,
+            "--no-specialization",
+            help="Disable optimized specialization selection.",
+        ),
+        cache_dir: Path = typer.Option(
+            Path("kv_cache"), "--cache-dir", help="KV cache directory."
+        ),
+        no_cache: bool = typer.Option(
+            False, "--no-cache", help="Disable disk KV cache."
+        ),
+        offload_cpu_layers: int = typer.Option(
+            0, "--offload-cpu-layers", min=0, help="Number of layers to offload to CPU."
+        ),
+        offload_gpu_layers: int = typer.Option(
+            0,
+            "--offload-gpu-layers",
+            min=0,
+            help="Number of layers to keep on GPU when using mixed offload.",
+        ),
+        force_download: bool = typer.Option(
+            False, "--force-download", help="Force redownload of the selected model."
+        ),
+        max_new_tokens: int = typer.Option(
+            500, "--max-new-tokens", min=1, help="Maximum generated tokens."
+        ),
+        temperature: float = typer.Option(
+            0.0, "--temperature", min=0.0, help="Sampling temperature."
+        ),
+        top_p: float | None = typer.Option(
+            None, "--top-p", min=0.0, max=1.0, help="Top-p sampling cutoff."
+        ),
+        top_k: int | None = typer.Option(
+            None, "--top-k", min=1, help="Top-k sampling cutoff."
+        ),
+        seed: int | None = typer.Option(
+            None, "--seed", help="Random seed for sampling."
+        ),
+        stats: bool = typer.Option(
+            False, "--stats", help="Enable runtime stats collection."
+        ),
+        verbose: bool = typer.Option(
+            False, "--verbose", help="Enable verbose runtime logging."
+        ),
+        quiet: bool = typer.Option(
+            False, "--quiet", help="Suppress non-essential runtime output."
+        ),
+        system: str = typer.Option(
+            "You are a helpful assistant.",
+            "--system",
+            help="System prompt for the request.",
+        ),
+        file: Path | None = typer.Option(
+            None, "--file", help="Read prompt text from a file."
+        ),
+        stdin: bool = typer.Option(
+            False, "--stdin", help="Read prompt text from stdin."
+        ),
+        image: list[str] | None = typer.Option(
+            None, "--image", help="Image path or URL. Repeatable."
+        ),
+        audio: list[str] | None = typer.Option(
+            None, "--audio", help="Audio path or URL. Repeatable."
+        ),
+        stream: bool = typer.Option(
+            True,
+            "--stream/--no-stream",
+            help="Stream assistant output while generating.",
+        ),
+        output: Path | None = typer.Option(
+            None, "--output", help="Write the final response to a file."
+        ),
+        format: str = typer.Option(
+            "text", "--format", help="Output format: text or json."
+        ),
+        show_prompt: bool = typer.Option(
+            False, "--show-prompt", help="Print the resolved request before execution."
+        ),
+        print_config_flag: bool = typer.Option(
+            False,
+            "--print-config",
+            help="Print resolved runtime config before running.",
+        ),
+        plan_json_flag: bool = typer.Option(
+            False,
+            "--plan-json",
+            help="Print the resolved runtime plan as JSON and exit.",
+        ),
+        no_color: bool = typer.Option(
+            False, "--no-color", help="Disable ANSI color output."
+        ),
     ) -> None:
         runtime_config = build_runtime_config(
             model=model,
@@ -101,8 +184,15 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
             if output is not None:
                 raise typer.BadParameter("--plan-json cannot be combined with --output")
             if print_config_flag:
-                raise typer.BadParameter("--plan-json cannot be combined with --print-config")
-            print_json(console, plan_json_payload(runtime_config, services.runtime_loader.plan(runtime_config)))
+                raise typer.BadParameter(
+                    "--plan-json cannot be combined with --print-config"
+                )
+            print_json(
+                console,
+                plan_json_payload(
+                    runtime_config, services.runtime_loader.plan(runtime_config)
+                ),
+            )
             return
         if print_config_flag:
             print_json(console, config_as_dict(runtime_config, generation_config))
@@ -114,7 +204,10 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
         if audio:
             parts.extend(ContentPart.audio(item) for item in audio)
 
-        if any(part.kind is not ContentKind.TEXT for part in parts[1:]) and not runtime_config.multimodal:
+        if (
+            any(part.kind is not ContentKind.TEXT for part in parts[1:])
+            and not runtime_config.multimodal
+        ):
             raise typer.BadParameter("--image and --audio require --multimodal")
         if format not in {"text", "json"}:
             raise typer.BadParameter("--format must be either 'text' or 'json'")
@@ -130,7 +223,10 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
 
         try:
             runtime = services.runtime_loader.load(runtime_config)
-            request_messages = [Message(role=MessageRole.SYSTEM, content=[ContentPart.text(system)]), Message(role=MessageRole.USER, content=parts)]
+            request_messages = [
+                Message(role=MessageRole.SYSTEM, content=[ContentPart.text(system)]),
+                Message(role=MessageRole.USER, content=parts),
+            ]
             request = PromptRequest(
                 runtime_config=runtime_config,
                 generation_config=generation_config,
@@ -162,7 +258,9 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
             console.print(f"[dim]{response.metadata['stats']}[/dim]")
 
 
-def _resolve_prompt_text(prompt: str | None, file: Path | None, stdin_flag: bool) -> str:
+def _resolve_prompt_text(
+    prompt: str | None, file: Path | None, stdin_flag: bool
+) -> str:
     provided_sources = 0
     if prompt is not None:
         provided_sources += 1

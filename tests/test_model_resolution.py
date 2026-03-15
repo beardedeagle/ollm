@@ -21,17 +21,30 @@ def test_resolver_accepts_hugging_face_repo_id() -> None:
 
 
 def test_resolver_preserves_hugging_face_revision() -> None:
-    resolved = ModelResolver().resolve("hf://Qwen/Qwen2.5-7B-Instruct@main", Path("models"))
+    resolved = ModelResolver().resolve(
+        "hf://Qwen/Qwen2.5-7B-Instruct@main", Path("models")
+    )
     assert resolved.source_kind is ModelSourceKind.HUGGING_FACE
     assert resolved.revision == "main"
-    assert resolved.model_path == Path("models").expanduser().resolve() / "Qwen--Qwen2.5-7B-Instruct--main"
+    assert (
+        resolved.model_path
+        == Path("models").expanduser().resolve() / "Qwen--Qwen2.5-7B-Instruct--main"
+    )
 
 
-def test_resolver_preserves_catalog_backed_hugging_face_revision_in_materialization_path() -> None:
-    resolved = ModelResolver().resolve("hf://unsloth/Llama-3.2-1B-Instruct@main", Path("models"))
+def test_resolver_preserves_catalog_backed_hugging_face_revision_in_materialization_path() -> (
+    None
+):
+    resolved = ModelResolver().resolve(
+        "hf://unsloth/Llama-3.2-1B-Instruct@main", Path("models")
+    )
     assert resolved.source_kind is ModelSourceKind.HUGGING_FACE
     assert resolved.revision == "main"
-    assert resolved.model_path == Path("models").expanduser().resolve() / "unsloth--Llama-3.2-1B-Instruct--main"
+    assert (
+        resolved.model_path
+        == Path("models").expanduser().resolve()
+        / "unsloth--Llama-3.2-1B-Instruct--main"
+    )
     assert resolved.normalized_name == "llama3-1B-chat"
 
 
@@ -73,7 +86,9 @@ def test_resolver_detects_generic_seq2seq_local_model(tmp_path: Path) -> None:
     assert resolved.generic_model_kind is GenericModelKind.SEQ2SEQ_LM
 
 
-def test_resolver_marks_audio_conditional_generation_as_unsupported_for_generic_backend(tmp_path: Path) -> None:
+def test_resolver_marks_audio_conditional_generation_as_unsupported_for_generic_backend(
+    tmp_path: Path,
+) -> None:
     model_dir = tmp_path / "voxtral"
     model_dir.mkdir()
     (model_dir / "config.json").write_text(

@@ -51,7 +51,9 @@ class RuntimePlan:
             "backend_id": self.backend_id,
             "model_path": None if self.model_path is None else str(self.model_path),
             "support_level": self.support_level.value,
-            "generic_model_kind": None if self.generic_model_kind is None else self.generic_model_kind.value,
+            "generic_model_kind": None
+            if self.generic_model_kind is None
+            else self.generic_model_kind.value,
             "supports_disk_cache": self.supports_disk_cache,
             "supports_cpu_offload": self.supports_cpu_offload,
             "supports_gpu_offload": self.supports_gpu_offload,
@@ -59,7 +61,9 @@ class RuntimePlan:
             "specialization_applied": self.specialization_applied,
             "specialization_provider_id": self.specialization_provider_id,
             "specialization_state": self.specialization_state.value,
-            "specialization_pass_ids": [pass_id.value for pass_id in self.specialization_pass_ids],
+            "specialization_pass_ids": [
+                pass_id.value for pass_id in self.specialization_pass_ids
+            ],
             "applied_specialization_pass_ids": [
                 pass_id.value for pass_id in self.applied_specialization_pass_ids
             ],

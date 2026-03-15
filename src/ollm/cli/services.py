@@ -13,7 +13,6 @@ class CommandServices:
     doctor_service: DoctorService
 
 
-
 def build_default_services() -> CommandServices:
     resolver = ModelResolver()
     runtime_loader = RuntimeLoader(resolver=resolver)

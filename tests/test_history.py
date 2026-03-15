@@ -5,7 +5,6 @@ from ollm.app.history import TRANSCRIPT_VERSION, load_transcript, save_transcrip
 from ollm.app.types import Message, Transcript
 
 
-
 def test_transcript_save_and_load_round_trip(tmp_path: Path) -> None:
     path = tmp_path / "transcript.json"
     transcript = Transcript(

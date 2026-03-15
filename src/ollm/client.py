@@ -4,7 +4,14 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from ollm.app.session import ChatSession
-from ollm.app.types import ContentKind, ContentPart, Message, MessageRole, PromptRequest, PromptResponse
+from ollm.app.types import (
+    ContentKind,
+    ContentPart,
+    Message,
+    MessageRole,
+    PromptRequest,
+    PromptResponse,
+)
 from ollm.runtime.config import DEFAULT_SYSTEM_PROMPT, GenerationConfig, RuntimeConfig
 from ollm.runtime.generation import RuntimeExecutor
 from ollm.runtime.inspection import PlanJsonPayload, plan_json_payload
@@ -21,13 +28,21 @@ class RuntimeClient:
     runtime_loader: RuntimeLoader = field(default_factory=RuntimeLoader)
     runtime_executor: RuntimeExecutor = field(default_factory=RuntimeExecutor)
 
-    def resolve(self, model_reference: str, models_dir: Path = Path("models")) -> ResolvedModel:
+    def resolve(
+        self, model_reference: str, models_dir: Path = Path("models")
+    ) -> ResolvedModel:
         """Resolve a model reference without loading a runtime."""
-        return self.runtime_loader.resolve(model_reference, models_dir.expanduser().resolve())
+        return self.runtime_loader.resolve(
+            model_reference, models_dir.expanduser().resolve()
+        )
 
-    def discover_local_models(self, models_dir: Path = Path("models")) -> tuple[ResolvedModel, ...]:
+    def discover_local_models(
+        self, models_dir: Path = Path("models")
+    ) -> tuple[ResolvedModel, ...]:
         """Discover local materialized models under a models directory."""
-        return self.runtime_loader.discover_local_models(models_dir.expanduser().resolve())
+        return self.runtime_loader.discover_local_models(
+            models_dir.expanduser().resolve()
+        )
 
     def discover_provider_models(
         self,
@@ -94,7 +109,9 @@ class RuntimeClient:
         if not parts:
             raise ValueError("A prompt requires at least one content part")
         effective_runtime_config = self._runtime_config_for_parts(runtime_config, parts)
-        effective_generation_config = GenerationConfig() if generation_config is None else generation_config
+        effective_generation_config = (
+            GenerationConfig() if generation_config is None else generation_config
+        )
         effective_runtime_config.validate()
         effective_generation_config.validate()
         runtime = self.runtime_loader.load(effective_runtime_config)
@@ -126,7 +143,9 @@ class RuntimeClient:
             runtime_loader=self.runtime_loader,
             runtime_executor=self.runtime_executor,
             runtime_config=runtime_config,
-            generation_config=GenerationConfig() if generation_config is None else generation_config,
+            generation_config=GenerationConfig()
+            if generation_config is None
+            else generation_config,
             session_name=session_name,
             system_prompt=system_prompt,
             autosave_path=autosave_path,

@@ -15,7 +15,9 @@ class SpecializationRegistry:
         provider_map: dict[str, SpecializationProvider] = {}
         for provider in providers:
             if provider.provider_id in provider_map:
-                raise ValueError(f"Duplicate specialization provider id: {provider.provider_id}")
+                raise ValueError(
+                    f"Duplicate specialization provider id: {provider.provider_id}"
+                )
             provider_map[provider.provider_id] = provider
         self._providers = providers
         self._provider_map = provider_map
@@ -23,7 +25,9 @@ class SpecializationRegistry:
     def provider_ids(self) -> tuple[str, ...]:
         return tuple(provider.provider_id for provider in self._providers)
 
-    def select(self, resolved_model: ResolvedModel, config: RuntimeConfig) -> SpecializationMatch | None:
+    def select(
+        self, resolved_model: ResolvedModel, config: RuntimeConfig
+    ) -> SpecializationMatch | None:
         matches: list[SpecializationMatch] = []
         for provider in self._providers:
             match = provider.match(resolved_model, config)

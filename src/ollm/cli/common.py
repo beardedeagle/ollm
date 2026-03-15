@@ -76,7 +76,9 @@ def build_generation_config(
 def ensure_interactive_terminal() -> None:
     if sys.stdin.isatty() and sys.stdout.isatty():
         return
-    raise typer.BadParameter("Interactive chat requires a TTY. Use `ollm prompt` for non-interactive usage.")
+    raise typer.BadParameter(
+        "Interactive chat requires a TTY. Use `ollm prompt` for non-interactive usage."
+    )
 
 
 def print_json(console: Console, payload: object) -> None:
@@ -84,7 +86,9 @@ def print_json(console: Console, payload: object) -> None:
     typer.echo(json.dumps(payload, indent=2))
 
 
-def config_as_dict(runtime_config: RuntimeConfig, generation_config: GenerationConfig) -> dict[str, object]:
+def config_as_dict(
+    runtime_config: RuntimeConfig, generation_config: GenerationConfig
+) -> dict[str, object]:
     return {
         "runtime": runtime_config_payload(runtime_config),
         "generation": {

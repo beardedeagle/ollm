@@ -5,7 +5,10 @@ from ollm.runtime.specialization.base import (
     PlannedSpecialization,
     SpecializationApplicationError,
 )
-from ollm.runtime.specialization.passes.base import SpecializationPass, SpecializationPassId
+from ollm.runtime.specialization.passes.base import (
+    SpecializationPass,
+    SpecializationPassId,
+)
 
 
 def apply_specialization(
@@ -114,7 +117,9 @@ def _specialization_application_error(
         ),
         provider_id=resolved_provider_id,
         planned_pass_ids=planned_specialization.pass_ids,
-        applied_pass_ids=tuple(specialization_pass.pass_id for specialization_pass in applied_passes),
+        applied_pass_ids=tuple(
+            specialization_pass.pass_id for specialization_pass in applied_passes
+        ),
         failed_pass_id=failed_pass_id,
         details={"reason": reason},
     )

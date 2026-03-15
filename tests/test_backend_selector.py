@@ -49,7 +49,9 @@ def test_backend_selector_prefers_optimized_native_for_built_in_aliases() -> Non
     assert plan.supports_gpu_offload is False
 
 
-def test_backend_selector_routes_catalog_models_with_adapters_to_generic_backend() -> None:
+def test_backend_selector_routes_catalog_models_with_adapters_to_generic_backend() -> (
+    None
+):
     plan = BackendSelector().select(
         build_catalog_resolved_model(),
         RuntimeConfig(adapter_dir=Path("/tmp/adapter")),
@@ -111,7 +113,9 @@ def test_backend_selector_prefers_optimized_native_for_local_native_family() -> 
     )
 
 
-def test_backend_selector_falls_back_to_generic_when_no_specialization_matches() -> None:
+def test_backend_selector_falls_back_to_generic_when_no_specialization_matches() -> (
+    None
+):
     resolved_model = build_catalog_resolved_model()
     resolved_model = ResolvedModel(
         reference=resolved_model.reference,

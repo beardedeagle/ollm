@@ -60,7 +60,9 @@ class DoctorService:
         if runtime_loader is None:
             base_resolver = resolver or ModelResolver()
             base_selector = selector or BackendSelector()
-            runtime_loader = RuntimeLoader(resolver=base_resolver, selector=base_selector)
+            runtime_loader = RuntimeLoader(
+                resolver=base_resolver, selector=base_selector
+            )
         self._runtime_loader = runtime_loader
 
     def run(
@@ -89,10 +91,16 @@ class DoctorService:
             checks.append(self._import_check(module_name, optional=False))
         for extra_name, module_names in self.OPTIONAL_IMPORTS.items():
             for module_name in module_names:
-                checks.append(self._import_check(module_name, optional=True, extra_name=extra_name))
+                checks.append(
+                    self._import_check(
+                        module_name, optional=True, extra_name=extra_name
+                    )
+                )
         return checks
 
-    def _import_check(self, module_name: str, optional: bool, extra_name: str = "") -> DoctorCheck:
+    def _import_check(
+        self, module_name: str, optional: bool, extra_name: str = ""
+    ) -> DoctorCheck:
         try:
             import_module(module_name)
         except Exception as exc:
@@ -109,7 +117,9 @@ class DoctorService:
                 message=f"Failed to import {module_name}",
                 details={"reason": str(exc)},
             )
-        return DoctorCheck(name=f"import:{module_name}", ok=True, message=f"Imported {module_name}")
+        return DoctorCheck(
+            name=f"import:{module_name}", ok=True, message=f"Imported {module_name}"
+        )
 
     def _check_runtime(self, runtime_config: RuntimeConfig) -> list[DoctorCheck]:
         device_checks: list[DoctorCheck] = []
@@ -126,7 +136,11 @@ class DoctorService:
                         f"Provider-backed model references for {resolved_model.provider_name} ignore "
                         f"local device '{runtime_config.device}'."
                     ),
-                    details={"provider": "" if resolved_model.provider_name is None else resolved_model.provider_name},
+                    details={
+                        "provider": ""
+                        if resolved_model.provider_name is None
+                        else resolved_model.provider_name
+                    },
                 )
             )
             device_checks.append(
@@ -252,13 +266,25 @@ class DoctorService:
                     name="path:models-dir",
                     ok=True,
                     message="Provider-backed model references do not use the local models directory",
-                    details={"provider": "" if resolved_model.provider_name is None else resolved_model.provider_name},
+                    details={
+                        "provider": ""
+                        if resolved_model.provider_name is None
+                        else resolved_model.provider_name
+                    },
                 )
             ]
         checks: list[DoctorCheck] = []
-        checks.append(self._path_check("models-dir", runtime_config.resolved_models_dir(), create=False))
+        checks.append(
+            self._path_check(
+                "models-dir", runtime_config.resolved_models_dir(), create=False
+            )
+        )
         if runtime_config.use_cache:
-            checks.append(self._path_check("cache-dir", runtime_config.resolved_cache_dir(), create=True))
+            checks.append(
+                self._path_check(
+                    "cache-dir", runtime_config.resolved_cache_dir(), create=True
+                )
+            )
         adapter_dir = runtime_config.resolved_adapter_dir()
         if adapter_dir is not None:
             checks.append(self._path_check("adapter-dir", adapter_dir, create=False))
@@ -271,8 +297,8 @@ class DoctorService:
             exists = path.exists()
             writable = False
             if exists and path.is_dir():
-                probe = path / '.doctor-write-check'
-                probe.write_text('ok', encoding='utf-8')
+                probe = path / ".doctor-write-check"
+                probe.write_text("ok", encoding="utf-8")
                 probe.unlink()
                 writable = True
             return DoctorCheck(
@@ -304,7 +330,8 @@ class DoctorService:
         elif (
             not resolution_ok
             and execution_model.source_kind is not ModelSourceKind.PROVIDER
-            and execution_model.capabilities.support_level is not SupportLevel.UNSUPPORTED
+            and execution_model.capabilities.support_level
+            is not SupportLevel.UNSUPPORTED
         ):
             resolution_ok = True
         audio_input_support = runtime_plan.details.get("audio_input_support", "")
@@ -323,17 +350,23 @@ class DoctorService:
                     "source_kind": resolved_model.source_kind.value,
                     "support_level": runtime_plan.support_level.value,
                     "modalities": ",".join(
-                        modality.value for modality in runtime_plan.resolved_model.capabilities.modalities
+                        modality.value
+                        for modality in runtime_plan.resolved_model.capabilities.modalities
                     ),
                     "audio_input_support": audio_input_support,
                     "backend_override": backend_override,
-                    "use_specialization": str(runtime_config.use_specialization).lower(),
-                    "requires_processor": str(runtime_plan.resolved_model.capabilities.requires_processor),
+                    "use_specialization": str(
+                        runtime_config.use_specialization
+                    ).lower(),
+                    "requires_processor": str(
+                        runtime_plan.resolved_model.capabilities.requires_processor
+                    ),
                     "backend_id": backend_id,
                     "specialization_provider_id": specialization_provider_id,
                     "specialization_state": runtime_plan.specialization_state.value,
                     "planned_specialization_pass_ids": ",".join(
-                        pass_id.value for pass_id in runtime_plan.specialization_pass_ids
+                        pass_id.value
+                        for pass_id in runtime_plan.specialization_pass_ids
                     ),
                 },
             )
@@ -347,7 +380,9 @@ class DoctorService:
                     message="Provider-backed model references do not use a local materialization path",
                     details={
                         "model_reference": runtime_config.model_reference,
-                        "provider": "" if execution_model.provider_name is None else execution_model.provider_name,
+                        "provider": ""
+                        if execution_model.provider_name is None
+                        else execution_model.provider_name,
                     },
                 )
             )
@@ -381,7 +416,13 @@ class DoctorService:
 
         try:
             AutoTokenizer.from_pretrained(execution_model.model_path)
-            checks.append(DoctorCheck(name="model:tokenizer", ok=True, message="Tokenizer loads successfully"))
+            checks.append(
+                DoctorCheck(
+                    name="model:tokenizer",
+                    ok=True,
+                    message="Tokenizer loads successfully",
+                )
+            )
         except Exception as exc:
             checks.append(
                 DoctorCheck(
@@ -395,7 +436,13 @@ class DoctorService:
         if execution_model.capabilities.requires_processor:
             try:
                 AutoProcessor.from_pretrained(execution_model.model_path)
-                checks.append(DoctorCheck(name="model:processor", ok=True, message="Processor loads successfully"))
+                checks.append(
+                    DoctorCheck(
+                        name="model:processor",
+                        ok=True,
+                        message="Processor loads successfully",
+                    )
+                )
             except Exception as exc:
                 checks.append(
                     DoctorCheck(
@@ -412,7 +459,11 @@ class DoctorService:
             runtime_config.model_reference,
             runtime_config.resolved_models_dir(),
         )
-        if not resolved_model.is_downloadable() or resolved_model.repo_id is None or resolved_model.model_path is None:
+        if (
+            not resolved_model.is_downloadable()
+            or resolved_model.repo_id is None
+            or resolved_model.model_path is None
+        ):
             return DoctorCheck(
                 name="download:ready",
                 ok=False,
@@ -424,8 +475,8 @@ class DoctorService:
         target_path = resolved_model.model_path
         try:
             models_dir.mkdir(parents=True, exist_ok=True)
-            probe = models_dir / '.doctor-download-check'
-            probe.write_text('ok', encoding='utf-8')
+            probe = models_dir / ".doctor-download-check"
+            probe.write_text("ok", encoding="utf-8")
             probe.unlink()
             return DoctorCheck(
                 name="download:ready",
@@ -438,5 +489,9 @@ class DoctorService:
                 name="download:ready",
                 ok=False,
                 message=f"Download target is not writable for {runtime_config.model_reference}",
-                details={"repo_id": resolved_model.repo_id, "target": str(target_path), "reason": str(exc)},
+                details={
+                    "repo_id": resolved_model.repo_id,
+                    "target": str(target_path),
+                    "reason": str(exc),
+                },
             )

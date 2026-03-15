@@ -50,10 +50,14 @@ class FakeGenericBackend(ExecutionBackend):
         )
 
 
-def test_runtime_loader_materializes_non_catalog_hf_reference_and_routes_to_generic_backend(tmp_path: Path) -> None:
+def test_runtime_loader_materializes_non_catalog_hf_reference_and_routes_to_generic_backend(
+    tmp_path: Path,
+) -> None:
     calls: list[tuple[str, str, bool, str | None]] = []
 
-    def snapshot_downloader(repo_id: str, model_dir: str, force_download: bool, revision: str | None) -> None:
+    def snapshot_downloader(
+        repo_id: str, model_dir: str, force_download: bool, revision: str | None
+    ) -> None:
         calls.append((repo_id, model_dir, force_download, revision))
         target = Path(model_dir)
         target.mkdir(parents=True, exist_ok=True)
@@ -90,8 +94,12 @@ def test_runtime_loader_materializes_non_catalog_hf_reference_and_routes_to_gene
     assert fake_backend.loaded_backend_ids == ["transformers-generic"]
 
 
-def test_runtime_loader_routes_built_in_alias_with_adapter_to_generic_backend(tmp_path: Path) -> None:
-    def snapshot_downloader(repo_id: str, model_dir: str, force_download: bool, revision: str | None) -> None:
+def test_runtime_loader_routes_built_in_alias_with_adapter_to_generic_backend(
+    tmp_path: Path,
+) -> None:
+    def snapshot_downloader(
+        repo_id: str, model_dir: str, force_download: bool, revision: str | None
+    ) -> None:
         del repo_id, force_download, revision
         target = Path(model_dir)
         target.mkdir(parents=True, exist_ok=True)
@@ -121,8 +129,12 @@ def test_runtime_loader_routes_built_in_alias_with_adapter_to_generic_backend(tm
     assert runtime.resolved_model.architecture == "LlamaForCausalLM"
 
 
-def test_runtime_loader_routes_built_in_alias_to_generic_when_specialization_is_disabled(tmp_path: Path) -> None:
-    def snapshot_downloader(repo_id: str, model_dir: str, force_download: bool, revision: str | None) -> None:
+def test_runtime_loader_routes_built_in_alias_to_generic_when_specialization_is_disabled(
+    tmp_path: Path,
+) -> None:
+    def snapshot_downloader(
+        repo_id: str, model_dir: str, force_download: bool, revision: str | None
+    ) -> None:
         del repo_id, force_download, revision
         target = Path(model_dir)
         target.mkdir(parents=True, exist_ok=True)
@@ -149,7 +161,9 @@ def test_runtime_loader_routes_built_in_alias_to_generic_when_specialization_is_
     assert runtime.plan.specialization_enabled is False
 
 
-def test_runtime_loader_plan_predicts_generic_backend_when_specialization_is_disabled(tmp_path: Path) -> None:
+def test_runtime_loader_plan_predicts_generic_backend_when_specialization_is_disabled(
+    tmp_path: Path,
+) -> None:
     loader = RuntimeLoader()
     runtime_plan = loader.plan(
         RuntimeConfig(
@@ -164,10 +178,14 @@ def test_runtime_loader_plan_predicts_generic_backend_when_specialization_is_dis
     assert runtime_plan.support_level is SupportLevel.GENERIC
 
 
-def test_runtime_loader_plan_does_not_materialize_missing_model_references(tmp_path: Path) -> None:
+def test_runtime_loader_plan_does_not_materialize_missing_model_references(
+    tmp_path: Path,
+) -> None:
     calls: list[tuple[str, str, bool, str | None]] = []
 
-    def snapshot_downloader(repo_id: str, model_dir: str, force_download: bool, revision: str | None) -> None:
+    def snapshot_downloader(
+        repo_id: str, model_dir: str, force_download: bool, revision: str | None
+    ) -> None:
         calls.append((repo_id, model_dir, force_download, revision))
 
     loader = RuntimeLoader(snapshot_downloader=snapshot_downloader)

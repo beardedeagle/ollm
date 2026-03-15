@@ -30,7 +30,9 @@ class FakeRuntimeLoader:
         self.loaded_configs.append(config)
         return FakeLoadedRuntime(config=config)
 
-    def download(self, model_reference: str, models_dir: Path, force_download: bool = False) -> Path:
+    def download(
+        self, model_reference: str, models_dir: Path, force_download: bool = False
+    ) -> Path:
         self.download_calls.append((model_reference, models_dir, force_download))
         target = models_dir / model_reference.replace("/", "--")
         target.mkdir(parents=True, exist_ok=True)
@@ -55,22 +57,35 @@ class FakeRuntimeLoader:
 
     def plan(self, config: RuntimeConfig) -> RuntimePlan:
         self.plan_calls.append(config)
-        resolved_model = self.resolve(config.model_reference, config.resolved_models_dir())
+        resolved_model = self.resolve(
+            config.model_reference, config.resolved_models_dir()
+        )
         return RuntimePlan(
             resolved_model=resolved_model,
             backend_id=config.resolved_backend() or "optimized-native",
             model_path=resolved_model.model_path,
-            support_level=SupportLevel.GENERIC if not config.use_specialization else SupportLevel.OPTIMIZED,
-            generic_model_kind=resolved_model.generic_model_kind or GenericModelKind.CAUSAL_LM,
+            support_level=SupportLevel.GENERIC
+            if not config.use_specialization
+            else SupportLevel.OPTIMIZED,
+            generic_model_kind=resolved_model.generic_model_kind
+            or GenericModelKind.CAUSAL_LM,
             supports_disk_cache=True,
             supports_cpu_offload=True,
             supports_gpu_offload=False,
             specialization_enabled=config.use_specialization,
             specialization_applied=False,
-            specialization_provider_id="fake-provider" if config.use_specialization else None,
-            specialization_state=SpecializationState.PLANNED if config.use_specialization else SpecializationState.NOT_PLANNED,
-            reason="fake planned specialization" if config.use_specialization else "fake generic plan",
-            specialization_pass_ids=(SpecializationPassId.DISK_CACHE,) if config.use_specialization else (),
+            specialization_provider_id="fake-provider"
+            if config.use_specialization
+            else None,
+            specialization_state=SpecializationState.PLANNED
+            if config.use_specialization
+            else SpecializationState.NOT_PLANNED,
+            reason="fake planned specialization"
+            if config.use_specialization
+            else "fake generic plan",
+            specialization_pass_ids=(SpecializationPassId.DISK_CACHE,)
+            if config.use_specialization
+            else (),
             details={
                 "audio_input_support": "",
                 "backend_override": config.resolved_backend() or "",
@@ -91,10 +106,25 @@ class FakeRuntimeExecutor:
             sink.on_status("fake")
             sink.on_text(text)
             sink.on_complete(text)
-        return PromptResponse(text=text, assistant_message=Message.assistant_text(text), metadata={})
+        return PromptResponse(
+            text=text, assistant_message=Message.assistant_text(text), metadata={}
+        )
 
 
 class FakeDoctorService:
-    def run(self, runtime_config, include_imports=True, include_runtime=True, include_paths=True, include_download=False):
-        del runtime_config, include_imports, include_runtime, include_paths, include_download
+    def run(
+        self,
+        runtime_config,
+        include_imports=True,
+        include_runtime=True,
+        include_paths=True,
+        include_download=False,
+    ):
+        del (
+            runtime_config,
+            include_imports,
+            include_runtime,
+            include_paths,
+            include_download,
+        )
         return DoctorReport([DoctorCheck(name="doctor:fake", ok=True, message="ok")])

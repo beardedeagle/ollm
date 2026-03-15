@@ -26,11 +26,15 @@ class NativeOptimizedBackend(ExecutionBackend):
 
     def load(self, plan: RuntimePlan, config: RuntimeConfig) -> BackendRuntime:
         if plan.model_path is None or plan.specialization_provider_id is None:
-            raise ValueError("optimized-native backend requires a selected specialization provider")
+            raise ValueError(
+                "optimized-native backend requires a selected specialization provider"
+            )
 
         stats = Stats() if config.stats or config.verbose else None
         try:
-            with suppress_module_prints(_modules_for_provider_id(plan.specialization_provider_id)):
+            with suppress_module_prints(
+                _modules_for_provider_id(plan.specialization_provider_id)
+            ):
                 artifacts = self._specialization_registry.load(
                     plan.specialization_provider_id,
                     plan.resolved_model,
@@ -67,21 +71,31 @@ class NativeOptimizedBackend(ExecutionBackend):
             stats=artifacts.stats,
             print_suppression_modules=artifacts.print_suppression_modules,
             create_cache=artifacts.create_cache,
-            apply_offload=lambda runtime_config: _apply_native_offload(artifacts, runtime_config),
+            apply_offload=lambda runtime_config: _apply_native_offload(
+                artifacts, runtime_config
+            ),
             applied_specialization=applied_specialization,
         )
 
 
-def _apply_native_offload(artifacts: OptimizedModelArtifacts, config: RuntimeConfig) -> None:
+def _apply_native_offload(
+    artifacts: OptimizedModelArtifacts, config: RuntimeConfig
+) -> None:
     if config.offload_gpu_layers > 0:
         if artifacts.apply_gpu_offload is None:
-            raise ValueError("The selected optimized specialization does not support GPU layer offload")
+            raise ValueError(
+                "The selected optimized specialization does not support GPU layer offload"
+            )
         with suppress_module_prints(artifacts.print_suppression_modules):
-            artifacts.apply_gpu_offload(config.offload_gpu_layers, config.offload_cpu_layers)
+            artifacts.apply_gpu_offload(
+                config.offload_gpu_layers, config.offload_cpu_layers
+            )
         return
     if config.offload_cpu_layers > 0:
         if artifacts.apply_cpu_offload is None:
-            raise ValueError("The selected optimized specialization does not support CPU layer offload")
+            raise ValueError(
+                "The selected optimized specialization does not support CPU layer offload"
+            )
         with suppress_module_prints(artifacts.print_suppression_modules):
             artifacts.apply_cpu_offload(config.offload_cpu_layers)
 

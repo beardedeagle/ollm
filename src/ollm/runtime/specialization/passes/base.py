@@ -24,9 +24,12 @@ class SpecializationPassTraits:
         return cast(
             Self,
             SpecializationPassTraits(
-                supports_disk_cache=self.supports_disk_cache or other.supports_disk_cache,
-                supports_cpu_offload=self.supports_cpu_offload or other.supports_cpu_offload,
-                supports_gpu_offload=self.supports_gpu_offload or other.supports_gpu_offload,
+                supports_disk_cache=self.supports_disk_cache
+                or other.supports_disk_cache,
+                supports_cpu_offload=self.supports_cpu_offload
+                or other.supports_cpu_offload,
+                supports_gpu_offload=self.supports_gpu_offload
+                or other.supports_gpu_offload,
             ),
         )
 

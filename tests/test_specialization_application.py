@@ -38,7 +38,9 @@ def _build_artifacts(
         print_suppression_modules=(module,),
         create_cache=lambda cache_dir: str(cache_dir),
         apply_cpu_offload=(lambda layers_num: None) if supports_cpu_offload else None,
-        apply_gpu_offload=(lambda gpu_layers_num, cpu_layers_num: None) if supports_gpu_offload else None,
+        apply_gpu_offload=(lambda gpu_layers_num, cpu_layers_num: None)
+        if supports_gpu_offload
+        else None,
         provided_pass_ids=provided_pass_ids,
     )
 

@@ -21,7 +21,9 @@ def build_client() -> tuple[RuntimeClient, FakeRuntimeLoader, FakeRuntimeExecuto
     )
 
 
-def test_runtime_client_describe_plan_reports_backend_override_and_specialization_choice(tmp_path: Path) -> None:
+def test_runtime_client_describe_plan_reports_backend_override_and_specialization_choice(
+    tmp_path: Path,
+) -> None:
     client, loader, _ = build_client()
     runtime_config = RuntimeConfig(
         model_reference="llama3-1B-chat",
@@ -39,7 +41,9 @@ def test_runtime_client_describe_plan_reports_backend_override_and_specializatio
     assert payload["runtime_plan"]["specialization_enabled"] is False
 
 
-def test_runtime_client_prompt_loads_runtime_and_executes_request(tmp_path: Path) -> None:
+def test_runtime_client_prompt_loads_runtime_and_executes_request(
+    tmp_path: Path,
+) -> None:
     client, loader, executor = build_client()
     runtime_config = RuntimeConfig(
         model_reference="Qwen/Qwen2.5-7B-Instruct",
@@ -58,7 +62,9 @@ def test_runtime_client_prompt_loads_runtime_and_executes_request(tmp_path: Path
     assert executor.prompts == ["hello from client"]
 
 
-def test_runtime_client_prompt_enables_multimodal_when_parts_require_it(tmp_path: Path) -> None:
+def test_runtime_client_prompt_enables_multimodal_when_parts_require_it(
+    tmp_path: Path,
+) -> None:
     client, loader, _ = build_client()
     runtime_config = RuntimeConfig(
         model_reference="openai-compatible:local-model",

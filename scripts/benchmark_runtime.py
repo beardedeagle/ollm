@@ -2,7 +2,11 @@ import argparse
 from pathlib import Path
 import sys
 
-from ollm.runtime.benchmarks import build_runtime_benchmark_report, choose_default_device, render_report_json
+from ollm.runtime.benchmarks import (
+    build_runtime_benchmark_report,
+    choose_default_device,
+    render_report_json,
+)
 
 
 def positive_int(value: str) -> int:
@@ -20,18 +24,39 @@ def non_negative_int(value: str) -> int:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run the oLLM runtime benchmark and perf-report suite.")
-    parser.add_argument("--model-reference", default="llama3-1B-chat", help="Model reference used for runtime comparison.")
-    parser.add_argument("--models-dir", default="models", help="Models directory for resolver/runtime benchmarks.")
-    parser.add_argument("--device", default=None, help="Runtime device for comparisons. Defaults to the best local device.")
-    parser.add_argument("--iterations", type=positive_int, default=5, help="Measured iterations per benchmark.")
+    parser = argparse.ArgumentParser(
+        description="Run the oLLM runtime benchmark and perf-report suite."
+    )
+    parser.add_argument(
+        "--model-reference",
+        default="llama3-1B-chat",
+        help="Model reference used for runtime comparison.",
+    )
+    parser.add_argument(
+        "--models-dir",
+        default="models",
+        help="Models directory for resolver/runtime benchmarks.",
+    )
+    parser.add_argument(
+        "--device",
+        default=None,
+        help="Runtime device for comparisons. Defaults to the best local device.",
+    )
+    parser.add_argument(
+        "--iterations",
+        type=positive_int,
+        default=5,
+        help="Measured iterations per benchmark.",
+    )
     parser.add_argument(
         "--warmup-iterations",
         type=non_negative_int,
         default=1,
         help="Warmup iterations per benchmark.",
     )
-    parser.add_argument("--output", default=None, help="Optional path to write the JSON report.")
+    parser.add_argument(
+        "--output", default=None, help="Optional path to write the JSON report."
+    )
     return parser.parse_args()
 
 

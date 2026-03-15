@@ -194,9 +194,13 @@ class InteractiveChatShell:
 
     def _render_banner(self) -> None:
         if self._plain:
-            self._console.print(f"oLLM chat ({self._session.runtime_config.model_reference})")
+            self._console.print(
+                f"oLLM chat ({self._session.runtime_config.model_reference})"
+            )
             return
-        self._console.print(f"[bold]oLLM chat[/bold] using [cyan]{self._session.runtime_config.model_reference}[/cyan]")
+        self._console.print(
+            f"[bold]oLLM chat[/bold] using [cyan]{self._session.runtime_config.model_reference}[/cyan]"
+        )
         self._console.print("Type /help for commands.")
 
     def _render_assistant_message(self, text: str) -> None:

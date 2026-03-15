@@ -8,7 +8,7 @@ which can be found at https://triton-lang.org/main/getting-started/tutorials/06-
 This version has been extended to support banded attention and learned attention sinks.
 """
 
-#import pytest
+# import pytest
 import torch
 
 import triton
@@ -60,7 +60,10 @@ def _attn_fwd(
     q = Q.load([off_z, off_h, start_m * BLOCK_M, 0]).reshape([BLOCK_M, HEAD_DIM])
 
     if BANDWIDTH:
-        lo, hi = tl.maximum(start_q, start_q + start_m * BLOCK_M - BANDWIDTH), start_q + (start_m + 1) * BLOCK_M
+        lo, hi = (
+            tl.maximum(start_q, start_q + start_m * BLOCK_M - BANDWIDTH),
+            start_q + (start_m + 1) * BLOCK_M,
+        )
     else:
         lo, hi = start_q, start_q + (start_m + 1) * BLOCK_M
 
@@ -70,7 +73,9 @@ def _attn_fwd(
         mask = (start_n + offs_n)[None, :] > (start_q + offs_m)[:, None]
 
         if BANDWIDTH:
-            too_old = (start_n + offs_n[None, :]) < (start_q + offs_m[:, None] - BANDWIDTH + 1)
+            too_old = (start_n + offs_n[None, :]) < (
+                start_q + offs_m[:, None] - BANDWIDTH + 1
+            )
             mask = mask | too_old
 
         k = K.load([off_z, off_h, start_n, 0]).reshape([BLOCK_N, HEAD_DIM]).T
@@ -120,10 +125,16 @@ class _attention(torch.autograd.Function):
         k = k.repeat_interleave(repeat_kv, dim=2).transpose(1, 2).contiguous()
         v = v.repeat_interleave(repeat_kv, dim=2).transpose(1, 2).contiguous()
         """
-        #meine
-        bs, n_ctx, n_kv_ctx, n_heads, HEAD_DIM_K = q.shape[0], q.shape[2], k.shape[2], 64, 64
-        #print("n_ctx:", n_ctx, "n_kv_ctx:", n_kv_ctx)
-        #=====
+        # meine
+        bs, n_ctx, n_kv_ctx, n_heads, HEAD_DIM_K = (
+            q.shape[0],
+            q.shape[2],
+            k.shape[2],
+            64,
+            64,
+        )
+        # print("n_ctx:", n_ctx, "n_kv_ctx:", n_kv_ctx)
+        # =====
 
         BLOCK_M = 64
         BLOCK_N = 64
@@ -136,7 +147,9 @@ class _attention(torch.autograd.Function):
         v = torch.nn.functional.pad(v, (0, 0, 0, n_pad_size))
 
         o = torch.empty_like(q)
-        M = torch.empty((bs, n_heads, n_ctx + m_pad_size), device=q.device, dtype=torch.float32)
+        M = torch.empty(
+            (bs, n_heads, n_ctx + m_pad_size), device=q.device, dtype=torch.float32
+        )
         grid = (triton.cdiv(n_ctx, BLOCK_M), bs * n_heads, 1)
         _attn_fwd[grid](
             TensorDescriptor.from_tensor(q, [1, 1, BLOCK_M, HEAD_DIM_K]),
@@ -162,7 +175,7 @@ class _attention(torch.autograd.Function):
         ctx.bandwidth = bandwidth
 
         o = o[:, :, :n_ctx, :].transpose(1, 2).contiguous()
-        #o = o.view(bs, n_ctx, n_heads * HEAD_DIM_V) #will make it in AttentionBlock
+        # o = o.view(bs, n_ctx, n_heads * HEAD_DIM_V) #will make it in AttentionBlock
         return o
 
 
@@ -178,7 +191,9 @@ def attention_ref(
     sliding_window: int | None = None,
     start_q: torch.LongTensor = 0,
 ):
-    batch_size, num_queries, num_key_value_heads, num_key_value_groups, head_dim = query.shape
+    batch_size, num_queries, num_key_value_heads, num_key_value_groups, head_dim = (
+        query.shape
+    )
     batch_size, num_keys, num_key_value_heads, head_dim = key.shape
 
     sinks = sinks.view(1, num_key_value_heads, num_key_value_groups, 1, 1).float()
@@ -206,5 +221,7 @@ def attention_ref(
 
     output = torch.einsum("bhmqk,bkhmd->bqhmd", scores, value.float())
 
-    output = output.reshape(batch_size, num_queries, num_key_value_heads * num_key_value_groups * head_dim).bfloat16()
+    output = output.reshape(
+        batch_size, num_queries, num_key_value_heads * num_key_value_groups * head_dim
+    ).bfloat16()
     return output

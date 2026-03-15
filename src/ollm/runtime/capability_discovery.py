@@ -4,7 +4,11 @@ from pathlib import Path
 
 from transformers import AutoConfig
 
-from ollm.runtime.capabilities import CapabilityProfile, SupportLevel, generic_capabilities
+from ollm.runtime.capabilities import (
+    CapabilityProfile,
+    SupportLevel,
+    generic_capabilities,
+)
 from ollm.runtime.catalog import ModelModality
 
 
@@ -72,7 +76,9 @@ class CapabilityDiscovery:
         has_processor = _has_processor_files(resolved_path)
         has_vision = _has_config_section(config, "vision_config")
         has_audio = _has_config_section(config, "audio_config")
-        generic_model_kind = _infer_generic_model_kind(config, architecture, has_processor, has_vision, has_audio)
+        generic_model_kind = _infer_generic_model_kind(
+            config, architecture, has_processor, has_vision, has_audio
+        )
         capabilities = _build_capabilities(
             architecture=architecture,
             model_type=model_type,
@@ -81,7 +87,9 @@ class CapabilityDiscovery:
             has_vision=has_vision,
             has_audio=has_audio,
         )
-        message = _build_message(resolved_path, architecture, generic_model_kind, capabilities)
+        message = _build_message(
+            resolved_path, architecture, generic_model_kind, capabilities
+        )
         return ModelInspection(
             architecture=architecture,
             model_type=model_type,
@@ -207,7 +215,9 @@ def _build_capabilities(
     )
 
 
-def _unsupported_modalities(has_vision: bool, has_audio: bool) -> tuple[ModelModality, ...]:
+def _unsupported_modalities(
+    has_vision: bool, has_audio: bool
+) -> tuple[ModelModality, ...]:
     modalities = [ModelModality.TEXT]
     if has_vision:
         modalities.append(ModelModality.IMAGE)
@@ -236,7 +246,9 @@ def _build_message(
     capabilities: CapabilityProfile,
 ) -> str:
     if capabilities.support_level is SupportLevel.UNSUPPORTED:
-        reason = capabilities.details.get("reason", "The model is not executable through the current backend set.")
+        reason = capabilities.details.get(
+            "reason", "The model is not executable through the current backend set."
+        )
         return f"Local model directory '{model_path}' is unsupported: {reason}"
     if architecture is None:
         return f"Local model directory '{model_path}' is executable through the generic backend."

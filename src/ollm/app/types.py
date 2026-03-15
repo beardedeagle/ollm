@@ -82,7 +82,9 @@ class Message:
         }
 
     def text_content(self) -> str:
-        return "".join(part.value for part in self.content if part.kind is ContentKind.TEXT)
+        return "".join(
+            part.value for part in self.content if part.kind is ContentKind.TEXT
+        )
 
     def contains_non_text(self) -> bool:
         return any(part.kind is not ContentKind.TEXT for part in self.content)
@@ -142,7 +144,9 @@ class Transcript:
         system_prompt = _optional_string(payload.get("system_prompt"), default="")
         messages = [
             Message.from_dict(_require_mapping(message, f"messages[{index}]"))
-            for index, message in enumerate(_optional_sequence(payload.get("messages"), default=()))
+            for index, message in enumerate(
+                _optional_sequence(payload.get("messages"), default=())
+            )
         ]
         return cls(
             version=version,
@@ -159,7 +163,9 @@ def _require_mapping(value: object, field_name: str) -> Mapping[str, object]:
     return cast(Mapping[str, object], value)
 
 
-def _require_sequence(payload: Mapping[str, object], field_name: str) -> Sequence[object]:
+def _require_sequence(
+    payload: Mapping[str, object], field_name: str
+) -> Sequence[object]:
     value = payload.get(field_name)
     if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
         raise ValueError(f"{field_name} must be a list")

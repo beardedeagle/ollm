@@ -10,22 +10,52 @@ from ollm.runtime.inspection import plan_json_payload
 def register_doctor_command(app: typer.Typer, services: CommandServices) -> None:
     @app.command("doctor")
     def doctor_command(
-        model: str = typer.Option("llama3-1B-chat", "--model", help="Model reference to inspect."),
-        models_dir: Path = typer.Option(Path("models"), "--models-dir", help="Directory containing model data."),
+        model: str = typer.Option(
+            "llama3-1B-chat", "--model", help="Model reference to inspect."
+        ),
+        models_dir: Path = typer.Option(
+            Path("models"), "--models-dir", help="Directory containing model data."
+        ),
         device: str = typer.Option("cuda:0", "--device", help="Torch device string."),
         backend: str | None = typer.Option(None, "--backend", help="Backend override."),
-        provider_endpoint: str | None = typer.Option(None, "--provider-endpoint", help="Provider API root URL."),
-        adapter_dir: Path | None = typer.Option(None, "--adapter-dir", help="Optional PEFT adapter directory."),
-        multimodal: bool = typer.Option(False, "--multimodal/--no-multimodal", help="Enable multimodal processor support for plan checks."),
-        no_specialization: bool = typer.Option(False, "--no-specialization", help="Disable optimized specialization selection."),
+        provider_endpoint: str | None = typer.Option(
+            None, "--provider-endpoint", help="Provider API root URL."
+        ),
+        adapter_dir: Path | None = typer.Option(
+            None, "--adapter-dir", help="Optional PEFT adapter directory."
+        ),
+        multimodal: bool = typer.Option(
+            False,
+            "--multimodal/--no-multimodal",
+            help="Enable multimodal processor support for plan checks.",
+        ),
+        no_specialization: bool = typer.Option(
+            False,
+            "--no-specialization",
+            help="Disable optimized specialization selection.",
+        ),
         imports: bool = typer.Option(False, "--imports", help="Run import checks."),
-        runtime: bool = typer.Option(False, "--runtime", help="Run runtime availability checks."),
-        paths: bool = typer.Option(False, "--paths", help="Run path and writability checks."),
-        download: bool = typer.Option(False, "--download", help="Include download-readiness details."),
+        runtime: bool = typer.Option(
+            False, "--runtime", help="Run runtime availability checks."
+        ),
+        paths: bool = typer.Option(
+            False, "--paths", help="Run path and writability checks."
+        ),
+        download: bool = typer.Option(
+            False, "--download", help="Include download-readiness details."
+        ),
         json_output: bool = typer.Option(False, "--json", help="Output JSON."),
-        plan_json_flag: bool = typer.Option(False, "--plan-json", help="Print the resolved runtime plan as JSON and exit."),
-        verbose: bool = typer.Option(False, "--verbose", help="Include verbose output."),
-        no_color: bool = typer.Option(False, "--no-color", help="Disable ANSI color output."),
+        plan_json_flag: bool = typer.Option(
+            False,
+            "--plan-json",
+            help="Print the resolved runtime plan as JSON and exit.",
+        ),
+        verbose: bool = typer.Option(
+            False, "--verbose", help="Include verbose output."
+        ),
+        no_color: bool = typer.Option(
+            False, "--no-color", help="Disable ANSI color output."
+        ),
     ) -> None:
         if not any((imports, runtime, paths, download)):
             imports = True
@@ -52,7 +82,12 @@ def register_doctor_command(app: typer.Typer, services: CommandServices) -> None
         )
         console = build_console(no_color=no_color)
         if plan_json_flag:
-            print_json(console, plan_json_payload(runtime_config, services.runtime_loader.plan(runtime_config)))
+            print_json(
+                console,
+                plan_json_payload(
+                    runtime_config, services.runtime_loader.plan(runtime_config)
+                ),
+            )
             raise typer.Exit(code=0)
         report = services.doctor_service.run(
             runtime_config=runtime_config,

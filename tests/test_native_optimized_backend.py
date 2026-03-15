@@ -30,7 +30,9 @@ class StubProvider(SpecializationProvider):
         self.load_count = 0
         self._module = types.ModuleType("stub_native_module")
 
-    def match(self, resolved_model: ResolvedModel, config: RuntimeConfig) -> SpecializationMatch | None:
+    def match(
+        self, resolved_model: ResolvedModel, config: RuntimeConfig
+    ) -> SpecializationMatch | None:
         del resolved_model, config
         return SpecializationMatch(
             provider_id=self.provider_id,
@@ -62,7 +64,9 @@ class StubProvider(SpecializationProvider):
             supports_gpu_offload=False,
             print_suppression_modules=(self._module,),
             create_cache=lambda cache_dir: str(cache_dir),
-            apply_cpu_offload=lambda layers_num: self._module.print(f"cpu-offload:{layers_num}"),
+            apply_cpu_offload=lambda layers_num: self._module.print(
+                f"cpu-offload:{layers_num}"
+            ),
             apply_gpu_offload=None,
         )
 
@@ -71,7 +75,9 @@ class RuntimeErrorProvider(SpecializationProvider):
     provider_id = "runtime-error-llama"
     native_family = NativeFamily.LLAMA
 
-    def match(self, resolved_model: ResolvedModel, config: RuntimeConfig) -> SpecializationMatch | None:
+    def match(
+        self, resolved_model: ResolvedModel, config: RuntimeConfig
+    ) -> SpecializationMatch | None:
         del resolved_model, config
         return SpecializationMatch(
             provider_id=self.provider_id,
@@ -94,7 +100,9 @@ class RuntimeErrorProvider(SpecializationProvider):
         raise RuntimeError("simulated optimized load failure")
 
 
-def test_native_optimized_backend_loads_through_specialization_registry(tmp_path: Path) -> None:
+def test_native_optimized_backend_loads_through_specialization_registry(
+    tmp_path: Path,
+) -> None:
     provider = StubProvider()
     registry = SpecializationRegistry((provider,))
     resolved_model = ResolvedModel(
@@ -133,7 +141,9 @@ def test_native_optimized_backend_loads_through_specialization_registry(tmp_path
         ),
     )
 
-    runtime = NativeOptimizedBackend(specialization_registry=registry).load(plan, RuntimeConfig(device="cpu"))
+    runtime = NativeOptimizedBackend(specialization_registry=registry).load(
+        plan, RuntimeConfig(device="cpu")
+    )
 
     assert runtime.backend_id == "optimized-native"
     assert provider.load_count == 1
@@ -144,7 +154,9 @@ def test_native_optimized_backend_loads_through_specialization_registry(tmp_path
     )
 
 
-def test_native_optimized_backend_suppresses_module_prints_during_offload(tmp_path: Path, capfd) -> None:
+def test_native_optimized_backend_suppresses_module_prints_during_offload(
+    tmp_path: Path, capfd
+) -> None:
     provider = StubProvider()
     registry = SpecializationRegistry((provider,))
     resolved_model = ResolvedModel(
@@ -190,7 +202,9 @@ def test_native_optimized_backend_suppresses_module_prints_during_offload(tmp_pa
     assert captured.out == ""
 
 
-def test_native_optimized_backend_wraps_runtime_error_load_failures(tmp_path: Path) -> None:
+def test_native_optimized_backend_wraps_runtime_error_load_failures(
+    tmp_path: Path,
+) -> None:
     registry = SpecializationRegistry((RuntimeErrorProvider(),))
     resolved_model = ResolvedModel(
         reference=ModelReference.parse("llama3-1B-chat"),
@@ -225,5 +239,9 @@ def test_native_optimized_backend_wraps_runtime_error_load_failures(tmp_path: Pa
         specialization_pass_ids=(SpecializationPassId.DISK_CACHE,),
     )
 
-    with pytest.raises(SpecializationLoadError, match="simulated optimized load failure"):
-        NativeOptimizedBackend(specialization_registry=registry).load(plan, RuntimeConfig(device="cpu"))
+    with pytest.raises(
+        SpecializationLoadError, match="simulated optimized load failure"
+    ):
+        NativeOptimizedBackend(specialization_registry=registry).load(
+            plan, RuntimeConfig(device="cpu")
+        )

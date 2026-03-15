@@ -9,7 +9,10 @@ from ollm.runtime.specialization.base import (
     SpecializationProvider,
     SpecializationTraits,
 )
-from ollm.runtime.specialization.matchers import SpecializationPassMatcher, build_default_pass_matchers
+from ollm.runtime.specialization.matchers import (
+    SpecializationPassMatcher,
+    build_default_pass_matchers,
+)
 from ollm.runtime.specialization.passes.base import (
     SpecializationPass,
     SpecializationPassId,

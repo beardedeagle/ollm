@@ -11,7 +11,11 @@ from ollm.runtime.capabilities import (
     unsupported_capabilities,
 )
 from ollm.runtime.capability_discovery import CapabilityDiscovery, GenericModelKind
-from ollm.runtime.catalog import ModelCatalogEntry, find_model_catalog_entry, list_model_catalog
+from ollm.runtime.catalog import (
+    ModelCatalogEntry,
+    find_model_catalog_entry,
+    list_model_catalog,
+)
 from ollm.runtime.reference import ModelReference
 
 
@@ -173,7 +177,10 @@ class ModelResolver:
         """Inspect a materialized local model directory and derive runtime capabilities."""
         inspection = self._capability_discovery.inspect_model_path(model_path)
         capabilities = inspection.capabilities
-        if catalog_entry is not None and source_kind in {ModelSourceKind.BUILTIN, ModelSourceKind.HUGGING_FACE}:
+        if catalog_entry is not None and source_kind in {
+            ModelSourceKind.BUILTIN,
+            ModelSourceKind.HUGGING_FACE,
+        }:
             capabilities = capabilities_from_catalog_entry(catalog_entry)
         native_family = (
             _native_family_from_catalog_entry(catalog_entry)
@@ -183,7 +190,9 @@ class ModelResolver:
         if native_family is not None:
             capabilities.supports_specialization = True
             capabilities.details["native_family"] = native_family.value
-        normalized_name = catalog_entry.model_id if catalog_entry is not None else model_path.name
+        normalized_name = (
+            catalog_entry.model_id if catalog_entry is not None else model_path.name
+        )
         return ResolvedModel(
             reference=reference,
             source_kind=source_kind,
@@ -215,7 +224,9 @@ class ModelResolver:
             catalog_entry=catalog_entry,
         )
 
-    def _resolve_hugging_face(self, reference: ModelReference, model_root: Path) -> ResolvedModel:
+    def _resolve_hugging_face(
+        self, reference: ModelReference, model_root: Path
+    ) -> ResolvedModel:
         catalog_entry = _find_catalog_entry_by_repo_id(reference.identifier)
         model_path = model_root / reference.materialization_name()
         if catalog_entry is not None:

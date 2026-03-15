@@ -17,8 +17,23 @@ from ollm.runtime.resolver import ModelSourceKind, ResolvedModel
 
 
 class FakeTokenizer:
-    def apply_chat_template(self, messages, reasoning_effort, tokenize, add_generation_prompt, return_tensors, return_dict):
-        del messages, reasoning_effort, tokenize, add_generation_prompt, return_tensors, return_dict
+    def apply_chat_template(
+        self,
+        messages,
+        reasoning_effort,
+        tokenize,
+        add_generation_prompt,
+        return_tensors,
+        return_dict,
+    ):
+        del (
+            messages,
+            reasoning_effort,
+            tokenize,
+            add_generation_prompt,
+            return_tensors,
+            return_dict,
+        )
         return torch.tensor([[1, 2, 3]])
 
     def decode(self, tensor, skip_special_tokens=False):
@@ -66,7 +81,12 @@ class PrintingModel(FakeModel):
 
 
 def build_runtime(capabilities: CapabilityProfile, tokenizer=None) -> LoadedRuntime:
-    config = RuntimeConfig(model_reference="llama3-1B-chat", device="cpu", multimodal=False, use_cache=False)
+    config = RuntimeConfig(
+        model_reference="llama3-1B-chat",
+        device="cpu",
+        multimodal=False,
+        use_cache=False,
+    )
     resolved_model = ResolvedModel(
         reference=ModelReference.parse("llama3-1B-chat"),
         source_kind=ModelSourceKind.BUILTIN,
@@ -118,7 +138,9 @@ def build_runtime(capabilities: CapabilityProfile, tokenizer=None) -> LoadedRunt
     )
 
 
-def build_runtime_with_printing_module(capabilities: CapabilityProfile) -> LoadedRuntime:
+def build_runtime_with_printing_module(
+    capabilities: CapabilityProfile,
+) -> LoadedRuntime:
     runtime = build_runtime(capabilities)
     module = types.ModuleType("fake_runtime_module")
     runtime.backend = BackendRuntime(
@@ -136,7 +158,9 @@ def build_runtime_with_printing_module(capabilities: CapabilityProfile) -> Loade
 
 
 def build_seq2seq_runtime() -> LoadedRuntime:
-    config = RuntimeConfig(model_reference="t5-small", device="cpu", multimodal=False, use_cache=False)
+    config = RuntimeConfig(
+        model_reference="t5-small", device="cpu", multimodal=False, use_cache=False
+    )
     capabilities = CapabilityProfile(support_level=SupportLevel.GENERIC)
     resolved_model = ResolvedModel(
         reference=ModelReference.parse("t5-small"),
@@ -200,7 +224,10 @@ def build_request(runtime_config: RuntimeConfig, message: Message) -> PromptRequ
 def test_runtime_executor_executes_text_request() -> None:
     capabilities = CapabilityProfile(support_level=SupportLevel.GENERIC)
     runtime = build_runtime(capabilities)
-    request = build_request(runtime.config, Message(role=MessageRole.USER, content=[ContentPart.text("hello")]))
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("hello")]),
+    )
     response = RuntimeExecutor().execute(runtime, request)
     assert response.text == "decoded-response"
     assert response.assistant_message.text_content() == "decoded-response"
@@ -213,7 +240,10 @@ def test_runtime_executor_rejects_unsupported_image_input() -> None:
         modalities=(ModelModality.TEXT,),
     )
     runtime = build_runtime(capabilities)
-    request = build_request(runtime.config, Message(role=MessageRole.USER, content=[ContentPart.image("image.png")]))
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.image("image.png")]),
+    )
     with pytest.raises(PromptExecutionError):
         RuntimeExecutor().execute(runtime, request)
 
@@ -221,21 +251,32 @@ def test_runtime_executor_rejects_unsupported_image_input() -> None:
 def test_runtime_executor_falls_back_when_chat_template_is_unavailable() -> None:
     capabilities = CapabilityProfile(support_level=SupportLevel.GENERIC)
     runtime = build_runtime(capabilities, tokenizer=PlainTokenizer())
-    request = build_request(runtime.config, Message(role=MessageRole.USER, content=[ContentPart.text("hello")]))
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("hello")]),
+    )
     response = RuntimeExecutor().execute(runtime, request)
     assert response.text == "plain-decoded"
 
 
 def test_runtime_executor_decodes_seq2seq_outputs_without_prompt_slicing() -> None:
     runtime = build_seq2seq_runtime()
-    request = build_request(runtime.config, Message(role=MessageRole.USER, content=[ContentPart.text("hello")]))
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("hello")]),
+    )
     response = RuntimeExecutor().execute(runtime, request)
     assert response.text == "decoded:[9, 8]"
 
 
 def test_runtime_executor_suppresses_module_prints_during_generate(capfd) -> None:
-    runtime = build_runtime_with_printing_module(CapabilityProfile(support_level=SupportLevel.GENERIC))
-    request = build_request(runtime.config, Message(role=MessageRole.USER, content=[ContentPart.text("hello")]))
+    runtime = build_runtime_with_printing_module(
+        CapabilityProfile(support_level=SupportLevel.GENERIC)
+    )
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("hello")]),
+    )
 
     response = RuntimeExecutor().execute(runtime, request)
 

@@ -16,7 +16,10 @@ from ollm.runtime.backends.base import BackendRuntime, ExecutionBackend
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.plan import RuntimePlan
-from ollm.runtime.safety import validate_safe_adapter_artifacts, validate_safe_model_artifacts
+from ollm.runtime.safety import (
+    validate_safe_adapter_artifacts,
+    validate_safe_model_artifacts,
+)
 
 
 class TransformersGenericBackend(ExecutionBackend):
@@ -31,29 +34,53 @@ class TransformersGenericBackend(ExecutionBackend):
         tokenizer_loader: Callable[..., Any] | None = None,
         processor_loader: Callable[..., Any] | None = None,
     ):
-        self._causal_loader = AutoModelForCausalLM.from_pretrained if causal_loader is None else causal_loader
-        self._image_text_loader = (
-            AutoModelForImageTextToText.from_pretrained if image_text_loader is None else image_text_loader
+        self._causal_loader = (
+            AutoModelForCausalLM.from_pretrained
+            if causal_loader is None
+            else causal_loader
         )
-        self._seq2seq_loader = AutoModelForSeq2SeqLM.from_pretrained if seq2seq_loader is None else seq2seq_loader
-        self._tokenizer_loader = AutoTokenizer.from_pretrained if tokenizer_loader is None else tokenizer_loader
-        self._processor_loader = AutoProcessor.from_pretrained if processor_loader is None else processor_loader
+        self._image_text_loader = (
+            AutoModelForImageTextToText.from_pretrained
+            if image_text_loader is None
+            else image_text_loader
+        )
+        self._seq2seq_loader = (
+            AutoModelForSeq2SeqLM.from_pretrained
+            if seq2seq_loader is None
+            else seq2seq_loader
+        )
+        self._tokenizer_loader = (
+            AutoTokenizer.from_pretrained
+            if tokenizer_loader is None
+            else tokenizer_loader
+        )
+        self._processor_loader = (
+            AutoProcessor.from_pretrained
+            if processor_loader is None
+            else processor_loader
+        )
 
     def load(self, plan: RuntimePlan, config: RuntimeConfig) -> BackendRuntime:
         if plan.model_path is None or plan.generic_model_kind is None:
-            raise ValueError("transformers-generic backend requires a materialized generic model path")
+            raise ValueError(
+                "transformers-generic backend requires a materialized generic model path"
+            )
 
         validate_safe_model_artifacts(plan.model_path)
         model = self._load_model(plan.model_path, plan.generic_model_kind)
         processor = self._load_processor(plan.model_path, plan.generic_model_kind)
-        tokenizer = self._load_tokenizer(plan.model_path, plan.generic_model_kind, processor)
+        tokenizer = self._load_tokenizer(
+            plan.model_path, plan.generic_model_kind, processor
+        )
         model.eval()
         device = torch.device(config.device)
         model.to(device)
         if tokenizer is None and processor is not None:
             tokenizer = getattr(processor, "tokenizer", None)
         if tokenizer is None:
-            raise ValueError(f"No tokenizer could be loaded for generic model at {plan.model_path}")
+            raise ValueError(
+                f"No tokenizer could be loaded for generic model at {plan.model_path}"
+            )
         _configure_padding(tokenizer, model)
         adapter_dir = config.resolved_adapter_dir()
         if adapter_dir is not None:
@@ -68,7 +95,9 @@ class TransformersGenericBackend(ExecutionBackend):
             stats=None,
             print_suppression_modules=(),
             create_cache=lambda cache_dir: None,
-            apply_offload=lambda runtime_config: _validate_generic_offload(runtime_config),
+            apply_offload=lambda runtime_config: _validate_generic_offload(
+                runtime_config
+            ),
         )
 
     def _load_model(self, model_path: Path, generic_model_kind: GenericModelKind):
@@ -90,9 +119,14 @@ class TransformersGenericBackend(ExecutionBackend):
             return _load_with_fallbacks(self._seq2seq_loader, base_kwargs)
         raise ValueError(f"Unsupported generic model kind: {generic_model_kind.value}")
 
-    def _load_tokenizer(self, model_path: Path, generic_model_kind: GenericModelKind, processor):
+    def _load_tokenizer(
+        self, model_path: Path, generic_model_kind: GenericModelKind, processor
+    ):
         if generic_model_kind is GenericModelKind.IMAGE_TEXT_TO_TEXT:
-            if processor is not None and getattr(processor, "tokenizer", None) is not None:
+            if (
+                processor is not None
+                and getattr(processor, "tokenizer", None) is not None
+            ):
                 return processor.tokenizer
         return self._tokenizer_loader(str(model_path), trust_remote_code=False)
 
@@ -117,12 +151,18 @@ def _load_with_fallbacks(loader: Callable[..., Any], base_kwargs: dict[str, Any]
 
 
 def _configure_padding(tokenizer, model) -> None:
-    if getattr(tokenizer, "pad_token", None) is None and getattr(tokenizer, "eos_token", None) is not None:
+    if (
+        getattr(tokenizer, "pad_token", None) is None
+        and getattr(tokenizer, "eos_token", None) is not None
+    ):
         tokenizer.pad_token = tokenizer.eos_token
     generation_config = getattr(model, "generation_config", None)
     if generation_config is None:
         return
-    if getattr(generation_config, "pad_token_id", None) is None and getattr(tokenizer, "pad_token_id", None) is not None:
+    if (
+        getattr(generation_config, "pad_token_id", None) is None
+        and getattr(tokenizer, "pad_token_id", None) is not None
+    ):
         generation_config.pad_token_id = tokenizer.pad_token_id
 
 
@@ -133,10 +173,14 @@ def _apply_peft_adapter(model, adapter_dir: Path):
 
     peft_config = LoraConfig.from_pretrained(str(adapter_dir))
     adapted_model = get_peft_model(model, peft_config)
-    adapted_model.load_adapter(str(adapter_dir), adapter_name="default", use_safetensors=True)
+    adapted_model.load_adapter(
+        str(adapter_dir), adapter_name="default", use_safetensors=True
+    )
     return adapted_model
 
 
 def _validate_generic_offload(config: RuntimeConfig) -> None:
     if config.offload_cpu_layers > 0 or config.offload_gpu_layers > 0:
-        raise ValueError("The transformers-generic backend does not support custom layer offload controls")
+        raise ValueError(
+            "The transformers-generic backend does not support custom layer offload controls"
+        )

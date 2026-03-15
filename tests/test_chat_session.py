@@ -23,13 +23,19 @@ def test_chat_session_round_trip_and_retry(tmp_path: Path) -> None:
 
     first = session.prompt_text("hello")
     assert first.text == "echo:hello"
-    assert [message.text_content() for message in session.messages] == ["hello", "echo:hello"]
+    assert [message.text_content() for message in session.messages] == [
+        "hello",
+        "echo:hello",
+    ]
     assert loader.load_calls == ["llama3-1B-chat"]
 
     retried = session.retry_last()
     assert retried.text == "echo:hello"
     assert executor.prompts == ["hello", "hello"]
-    assert [message.text_content() for message in session.messages] == ["hello", "echo:hello"]
+    assert [message.text_content() for message in session.messages] == [
+        "hello",
+        "echo:hello",
+    ]
 
     session.undo_last_exchange()
     assert session.messages == []

@@ -18,7 +18,9 @@ class RegistryProvider(SpecializationProvider):
     provider_id = "registry-llama"
     native_family = NativeFamily.LLAMA
 
-    def match(self, resolved_model: ResolvedModel, config: RuntimeConfig) -> SpecializationMatch | None:
+    def match(
+        self, resolved_model: ResolvedModel, config: RuntimeConfig
+    ) -> SpecializationMatch | None:
         del config
         if resolved_model.native_family is not NativeFamily.LLAMA:
             return None

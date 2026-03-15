@@ -66,7 +66,9 @@ class FakeGenericBackend(ExecutionBackend):
         )
 
 
-def _snapshot_downloader(repo_id: str, model_dir: str, force_download: bool, revision: str | None) -> None:
+def _snapshot_downloader(
+    repo_id: str, model_dir: str, force_download: bool, revision: str | None
+) -> None:
     del repo_id, force_download, revision
     target = Path(model_dir)
     target.mkdir(parents=True, exist_ok=True)
@@ -77,7 +79,9 @@ def _snapshot_downloader(repo_id: str, model_dir: str, force_download: bool, rev
     (target / "model.safetensors").write_text("safe", encoding="utf-8")
 
 
-def test_runtime_loader_falls_back_to_generic_when_optimized_application_fails(tmp_path: Path) -> None:
+def test_runtime_loader_falls_back_to_generic_when_optimized_application_fails(
+    tmp_path: Path,
+) -> None:
     generic_backend = FakeGenericBackend()
     loader = RuntimeLoader(
         backends=(FailingOptimizedBackend(), generic_backend),
@@ -106,7 +110,9 @@ def test_runtime_loader_falls_back_to_generic_when_optimized_application_fails(t
     assert runtime.capabilities.supports_disk_cache is runtime.plan.supports_disk_cache
 
 
-def test_runtime_loader_raises_when_no_safe_generic_fallback_exists(tmp_path: Path) -> None:
+def test_runtime_loader_raises_when_no_safe_generic_fallback_exists(
+    tmp_path: Path,
+) -> None:
     loader = RuntimeLoader(
         backends=(FailingOptimizedBackend(),),
         snapshot_downloader=_snapshot_downloader,

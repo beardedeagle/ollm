@@ -18,7 +18,12 @@ class _StatsProtocol(Protocol):
 
 @dataclass(slots=True)
 class RuntimeExecutor:
-    def execute(self, runtime: LoadedRuntime, request: PromptRequest, sink: StreamSink | None = None) -> PromptResponse:
+    def execute(
+        self,
+        runtime: LoadedRuntime,
+        request: PromptRequest,
+        sink: StreamSink | None = None,
+    ) -> PromptResponse:
         stream_sink = sink or NullStreamSink()
         self._validate_request(runtime, request)
         stream_sink.on_status(self._status_message(runtime))
@@ -33,7 +38,12 @@ class RuntimeExecutor:
         inputs = self._build_inputs(runtime, request.messages)
         streamer = None
         if request.generation_config.stream:
-            streamer = BufferedTextStreamer(runtime.tokenizer, stream_sink, skip_prompt=True, skip_special_tokens=False)
+            streamer = BufferedTextStreamer(
+                runtime.tokenizer,
+                stream_sink,
+                skip_prompt=True,
+                skip_special_tokens=False,
+            )
 
         generate_kwargs = self._build_generate_kwargs(runtime, request, streamer)
 
@@ -49,7 +59,9 @@ class RuntimeExecutor:
             response_text = streamer.text
         assistant_message = Message.assistant_text(response_text)
         metadata = self._plan_metadata(runtime)
-        return PromptResponse(text=response_text, assistant_message=assistant_message, metadata=metadata)
+        return PromptResponse(
+            text=response_text, assistant_message=assistant_message, metadata=metadata
+        )
 
     def _validate_request(self, runtime: LoadedRuntime, request: PromptRequest) -> None:
         if not request.messages:
@@ -69,10 +81,18 @@ class RuntimeExecutor:
             for part in message.content
         )
 
-        if contains_image and not runtime.capabilities.supports_modality(ModelModality.IMAGE):
-            raise PromptExecutionError(f"{runtime.config.model_reference} does not support image inputs")
-        if contains_audio and not runtime.capabilities.supports_modality(ModelModality.AUDIO):
-            raise PromptExecutionError(f"{runtime.config.model_reference} does not support audio inputs")
+        if contains_image and not runtime.capabilities.supports_modality(
+            ModelModality.IMAGE
+        ):
+            raise PromptExecutionError(
+                f"{runtime.config.model_reference} does not support image inputs"
+            )
+        if contains_audio and not runtime.capabilities.supports_modality(
+            ModelModality.AUDIO
+        ):
+            raise PromptExecutionError(
+                f"{runtime.config.model_reference} does not support audio inputs"
+            )
         if (contains_image or contains_audio) and runtime.processor is None:
             if runtime.backend.allows_multimodal_without_processor:
                 return
@@ -81,8 +101,12 @@ class RuntimeExecutor:
                 "Enable --multimodal with a compatible model reference."
             )
 
-    def _build_inputs(self, runtime: LoadedRuntime, messages: list[Message]) -> dict[str, object]:
-        transformers_messages = [message.as_transformers_message() for message in messages]
+    def _build_inputs(
+        self, runtime: LoadedRuntime, messages: list[Message]
+    ) -> dict[str, object]:
+        transformers_messages = [
+            message.as_transformers_message() for message in messages
+        ]
         if runtime.processor is not None:
             inputs = runtime.processor.apply_chat_template(
                 transformers_messages,
@@ -128,7 +152,9 @@ class RuntimeExecutor:
         tokenized = runtime.tokenizer(rendered_prompt, return_tensors="pt")
         return {key: value.to(runtime.device) for key, value in tokenized.items()}
 
-    def _build_generate_kwargs(self, runtime: LoadedRuntime, request: PromptRequest, streamer) -> dict[str, object]:
+    def _build_generate_kwargs(
+        self, runtime: LoadedRuntime, request: PromptRequest, streamer
+    ) -> dict[str, object]:
         config = request.generation_config
         generate_kwargs: dict[str, object] = {
             "max_new_tokens": config.max_new_tokens,
@@ -136,7 +162,9 @@ class RuntimeExecutor:
         }
 
         if request.runtime_config.use_cache:
-            cache = runtime.backend.create_cache(request.runtime_config.resolved_cache_dir())
+            cache = runtime.backend.create_cache(
+                request.runtime_config.resolved_cache_dir()
+            )
             if cache is not None:
                 generate_kwargs["past_key_values"] = cache
 
@@ -154,17 +182,21 @@ class RuntimeExecutor:
             generate_kwargs["streamer"] = streamer
 
         if runtime.processor is not None and any(
-            part.kind is ContentKind.AUDIO for message in request.messages for part in message.content
+            part.kind is ContentKind.AUDIO
+            for message in request.messages
+            for part in message.content
         ):
             generate_kwargs["do_sample"] = False
 
         return generate_kwargs
 
-    def _decode_response(self, runtime: LoadedRuntime, inputs: dict[str, object], outputs) -> str:
+    def _decode_response(
+        self, runtime: LoadedRuntime, inputs: dict[str, object], outputs
+    ) -> str:
         if runtime.processor is not None:
             input_ids = _require_tensor(inputs["input_ids"])
             decoded = runtime.processor.batch_decode(
-                outputs[:, input_ids.shape[1]:],
+                outputs[:, input_ids.shape[1] :],
                 skip_special_tokens=False,
             )
             if not decoded:
@@ -175,9 +207,13 @@ class RuntimeExecutor:
             return runtime.tokenizer.decode(outputs[0], skip_special_tokens=False)
 
         input_ids = _require_tensor(inputs["input_ids"])
-        return runtime.tokenizer.decode(outputs[0][input_ids.shape[-1]:], skip_special_tokens=False)
+        return runtime.tokenizer.decode(
+            outputs[0][input_ids.shape[-1] :], skip_special_tokens=False
+        )
 
-    def _finalize_response(self, runtime: LoadedRuntime, response: PromptResponse) -> PromptResponse:
+    def _finalize_response(
+        self, runtime: LoadedRuntime, response: PromptResponse
+    ) -> PromptResponse:
         metadata = dict(response.metadata)
         metadata.update(self._plan_metadata(runtime))
         return PromptResponse(
@@ -196,7 +232,8 @@ class RuntimeExecutor:
                 pass_id.value for pass_id in runtime.plan.specialization_pass_ids
             ),
             "applied_specialization_pass_ids": ",".join(
-                pass_id.value for pass_id in runtime.plan.applied_specialization_pass_ids
+                pass_id.value
+                for pass_id in runtime.plan.applied_specialization_pass_ids
             ),
             "fallback_reason": runtime.plan.fallback_reason or "",
         }

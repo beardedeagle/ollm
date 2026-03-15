@@ -12,8 +12,8 @@ os.makedirs(OUT_DIR, exist_ok=True)
 state_dict = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
     device_map=None,
-    torch_dtype=torch.float16, #"auto" same as original torch.bfloat16,
-    low_cpu_mem_usage=True
+    torch_dtype=torch.float16,  # "auto" same as original torch.bfloat16,
+    low_cpu_mem_usage=True,
 ).state_dict()
 
 manifest = {}

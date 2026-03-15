@@ -36,14 +36,32 @@ class ModelReference:
         scheme, value = _split_reference(raw)
         if scheme == "path":
             path = Path(value).expanduser().resolve()
-            return cls(raw=raw, scheme=scheme, identifier=str(path), revision=None, local_path=path)
+            return cls(
+                raw=raw,
+                scheme=scheme,
+                identifier=str(path),
+                revision=None,
+                local_path=path,
+            )
 
         if scheme is None and _looks_like_local_path(raw):
             path = Path(raw).expanduser().resolve()
-            return cls(raw=raw, scheme=None, identifier=str(path), revision=None, local_path=path)
+            return cls(
+                raw=raw,
+                scheme=None,
+                identifier=str(path),
+                revision=None,
+                local_path=path,
+            )
 
         identifier, revision = _split_revision(value)
-        return cls(raw=raw, scheme=scheme, identifier=identifier, revision=revision, local_path=None)
+        return cls(
+            raw=raw,
+            scheme=scheme,
+            identifier=identifier,
+            revision=revision,
+            local_path=None,
+        )
 
     def has_provider_scheme(self) -> bool:
         """Return whether the reference points at a provider-backed model."""
@@ -76,7 +94,11 @@ def _split_reference(raw_reference: str) -> tuple[str | None, str]:
         return scheme.lower(), remainder
 
     scheme, separator, remainder = raw_reference.partition(":")
-    if separator and scheme.lower() in KNOWN_REFERENCE_SCHEMES and not _WINDOWS_PATH_RE.match(raw_reference):
+    if (
+        separator
+        and scheme.lower() in KNOWN_REFERENCE_SCHEMES
+        and not _WINDOWS_PATH_RE.match(raw_reference)
+    ):
         return scheme.lower(), remainder
     return None, raw_reference
 
@@ -95,5 +117,7 @@ def _split_revision(value: str) -> tuple[str, str | None]:
     if not separator:
         return value, None
     if not identifier or not revision:
-        raise ValueError(f"Invalid model reference '{value}'. Revisions must use <reference>@<revision>.")
+        raise ValueError(
+            f"Invalid model reference '{value}'. Revisions must use <reference>@<revision>."
+        )
     return identifier, revision

@@ -6,7 +6,9 @@ import pytest
 from ollm.runtime.safety import validate_safe_gds_export_artifacts
 
 
-def test_validate_safe_gds_export_artifacts_rejects_torch_serialized_entries(tmp_path: Path) -> None:
+def test_validate_safe_gds_export_artifacts_rejects_torch_serialized_entries(
+    tmp_path: Path,
+) -> None:
     export_dir = tmp_path / "gds_export"
     export_dir.mkdir()
     (export_dir / "tensor.pt").write_text("unsafe", encoding="utf-8")
@@ -27,7 +29,9 @@ def test_validate_safe_gds_export_artifacts_rejects_torch_serialized_entries(tmp
         validate_safe_gds_export_artifacts(export_dir)
 
 
-def test_validate_safe_gds_export_artifacts_rejects_path_traversal(tmp_path: Path) -> None:
+def test_validate_safe_gds_export_artifacts_rejects_path_traversal(
+    tmp_path: Path,
+) -> None:
     export_dir = tmp_path / "gds_export"
     export_dir.mkdir()
     outside_file = tmp_path / "tensor.bin"

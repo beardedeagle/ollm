@@ -140,17 +140,25 @@ def measure_command(
 ) -> BenchmarkMeasurement:
     last_result: CommandExecutionResult | None = None
     for _ in range(warmup_iterations):
-        last_result = run_command(spec.command, cwd=cwd, timeout_seconds=spec.timeout_seconds)
+        last_result = run_command(
+            spec.command, cwd=cwd, timeout_seconds=spec.timeout_seconds
+        )
         if last_result.returncode != 0:
-            return _command_failure_measurement(spec, last_result, warmup_iterations, warmup_only=True)
+            return _command_failure_measurement(
+                spec, last_result, warmup_iterations, warmup_only=True
+            )
 
     samples_ms: list[float] = []
     for _ in range(iterations):
         started = time.perf_counter()
-        last_result = run_command(spec.command, cwd=cwd, timeout_seconds=spec.timeout_seconds)
+        last_result = run_command(
+            spec.command, cwd=cwd, timeout_seconds=spec.timeout_seconds
+        )
         duration_ms = (time.perf_counter() - started) * 1000.0
         if last_result.returncode != 0:
-            failure = _command_failure_measurement(spec, last_result, warmup_iterations, warmup_only=False)
+            failure = _command_failure_measurement(
+                spec, last_result, warmup_iterations, warmup_only=False
+            )
             failure_details = dict(failure.details)
             failure_details["failed_after_ms"] = round(duration_ms, 3)
             return BenchmarkMeasurement(
@@ -163,8 +171,12 @@ def measure_command(
 
     details: dict[str, object] = {
         "command": list(spec.command),
-        "stdout_excerpt": _clip_text(last_result.stdout if last_result is not None else ""),
-        "stderr_excerpt": _clip_text(last_result.stderr if last_result is not None else ""),
+        "stdout_excerpt": _clip_text(
+            last_result.stdout if last_result is not None else ""
+        ),
+        "stderr_excerpt": _clip_text(
+            last_result.stderr if last_result is not None else ""
+        ),
     }
     return BenchmarkMeasurement(
         name=spec.name,
@@ -174,7 +186,9 @@ def measure_command(
     )
 
 
-def run_command(command: tuple[str, ...], *, cwd: Path, timeout_seconds: float) -> CommandExecutionResult:
+def run_command(
+    command: tuple[str, ...], *, cwd: Path, timeout_seconds: float
+) -> CommandExecutionResult:
     try:
         completed = subprocess.run(
             command,
@@ -291,7 +305,9 @@ def build_host_summary() -> dict[str, object]:
         "platform": platform.platform(),
         "torch": torch.__version__,
         "cuda_available": torch.cuda.is_available(),
-        "mps_available": bool(hasattr(torch.backends, "mps") and torch.backends.mps.is_available()),
+        "mps_available": bool(
+            hasattr(torch.backends, "mps") and torch.backends.mps.is_available()
+        ),
     }
 
 
@@ -309,7 +325,9 @@ def measure_no_specialization_fallback_cost(
     iterations: int,
     warmup_iterations: int,
 ) -> dict[str, object]:
-    with tempfile.TemporaryDirectory(prefix="ollm-runtime-benchmark-tiny-t5-") as temp_dir:
+    with tempfile.TemporaryDirectory(
+        prefix="ollm-runtime-benchmark-tiny-t5-"
+    ) as temp_dir:
         temp_root = Path(temp_dir)
         model_dir = create_tiny_t5_fixture(temp_root)
         client = RuntimeClient()
@@ -351,7 +369,9 @@ def measure_no_specialization_fallback_cost(
         return {
             "specialization_enabled": specialization_enabled.to_dict(),
             "specialization_disabled": specialization_disabled.to_dict(),
-            "mean_delta_ms": _mean_delta_ms(specialization_enabled, specialization_disabled),
+            "mean_delta_ms": _mean_delta_ms(
+                specialization_enabled, specialization_disabled
+            ),
         }
 
 
@@ -433,8 +453,9 @@ def build_prompt_command(
     return tuple(command)
 
 
-
-def build_current_supported_family_targets(models_dir: Path) -> tuple[RuntimeComparisonTarget, ...]:
+def build_current_supported_family_targets(
+    models_dir: Path,
+) -> tuple[RuntimeComparisonTarget, ...]:
     client = RuntimeClient()
     models_root = models_dir.expanduser().resolve()
     targets: list[RuntimeComparisonTarget] = []
@@ -531,7 +552,10 @@ def resolve_ollm_executable() -> Path:
     discovered = shutil.which("ollm")
     if discovered is not None:
         return Path(discovered).resolve()
-    raise FileNotFoundError("Could not locate the ollm console executable for benchmark commands")
+    raise FileNotFoundError(
+        "Could not locate the ollm console executable for benchmark commands"
+    )
+
 
 def create_tiny_t5_fixture(root: Path) -> Path:
     model_dir = root / "tiny-t5"
@@ -564,7 +588,9 @@ def create_tiny_t5_fixture(root: Path) -> Path:
         eos_token_id=1,
         pad_token_id=0,
     )
-    T5ForConditionalGeneration(config).save_pretrained(model_dir, safe_serialization=True)
+    T5ForConditionalGeneration(config).save_pretrained(
+        model_dir, safe_serialization=True
+    )
     return model_dir
 
 
@@ -572,8 +598,12 @@ def render_report_json(report: RuntimeBenchmarkReport) -> str:
     return json.dumps(report.to_dict(), indent=2, sort_keys=True)
 
 
-def unavailable_measurement(name: str, *, details: dict[str, object]) -> BenchmarkMeasurement:
-    return BenchmarkMeasurement(name=name, status="unavailable", stats=None, details=details)
+def unavailable_measurement(
+    name: str, *, details: dict[str, object]
+) -> BenchmarkMeasurement:
+    return BenchmarkMeasurement(
+        name=name, status="unavailable", stats=None, details=details
+    )
 
 
 def _command_failure_measurement(
@@ -591,10 +621,14 @@ def _command_failure_measurement(
         "timed_out": result.timed_out,
         "warmup_only": warmup_only,
     }
-    return BenchmarkMeasurement(name=spec.name, status="unavailable", stats=None, details=details)
+    return BenchmarkMeasurement(
+        name=spec.name, status="unavailable", stats=None, details=details
+    )
 
 
-def _summarize_samples(samples_ms: list[float], iterations: int, warmup_iterations: int) -> BenchmarkStats:
+def _summarize_samples(
+    samples_ms: list[float], iterations: int, warmup_iterations: int
+) -> BenchmarkStats:
     sorted_samples = sorted(samples_ms)
     p95_index = max(0, int(round((len(sorted_samples) - 1) * 0.95)))
     return BenchmarkStats(
@@ -608,7 +642,9 @@ def _summarize_samples(samples_ms: list[float], iterations: int, warmup_iteratio
     )
 
 
-def _mean_delta_ms(left: BenchmarkMeasurement, right: BenchmarkMeasurement) -> float | None:
+def _mean_delta_ms(
+    left: BenchmarkMeasurement, right: BenchmarkMeasurement
+) -> float | None:
     if left.stats is None or right.stats is None:
         return None
     return round(left.stats.mean_ms - right.stats.mean_ms, 6)
@@ -630,7 +666,9 @@ def _runtime_target_payload(
     generic: BenchmarkMeasurement,
     optimized: BenchmarkMeasurement,
 ) -> dict[str, object]:
-    comparison_available = generic.status == "measured" and optimized.status == "measured"
+    comparison_available = (
+        generic.status == "measured" and optimized.status == "measured"
+    )
     speedup_ratio = None
     reason = None
     if comparison_available:

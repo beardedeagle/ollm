@@ -29,7 +29,9 @@ def get_attn_implementation() -> str | None:
     """Return the preferred attention implementation identifier when available."""
     if importlib.util.find_spec("flash_attn") is not None:
         return "flash_attention_2"
-    LOGGER.warning("flash_attention_2 is not imported. The context length will be limited.")
+    LOGGER.warning(
+        "flash_attention_2 is not imported. The context length will be limited."
+    )
     return None
 
 
@@ -92,7 +94,9 @@ class Inference:
             )
         download_hf_snapshot(entry.repo_id, model_dir, force_download=force_download)
 
-    def ini_model(self, models_dir: str = "./models/", force_download: bool = False) -> None:
+    def ini_model(
+        self, models_dir: str = "./models/", force_download: bool = False
+    ) -> None:
         """Download if needed and then load the optimized-native runtime."""
         entry = find_model_catalog_entry(self.optimized_model_id)
         if entry is None:
@@ -154,7 +158,9 @@ class Inference:
             provider_name=None,
             catalog_entry=entry,
         )
-        specialization_match = self._specialization_registry.select(resolved_model, runtime_config)
+        specialization_match = self._specialization_registry.select(
+            resolved_model, runtime_config
+        )
         if specialization_match is None:
             raise ValueError(
                 f"No optimized specialization provider is available for {self.model_id!r} at {model_path}"
@@ -177,7 +183,9 @@ class Inference:
         )
         self.loaded_resolved_model = resolved_model
         self.loaded_specialization_provider_id = specialization_match.provider_id
-        self.loaded_applied_specialization_pass_ids = applied_specialization.applied_pass_ids
+        self.loaded_applied_specialization_pass_ids = (
+            applied_specialization.applied_pass_ids
+        )
         self.model = artifacts.model
         self.tokenizer = artifacts.tokenizer
         if artifacts.processor is None:
@@ -195,7 +203,9 @@ class Inference:
             raise ValueError(f"{self.model_id} does not support CPU layer offload")
         self._apply_cpu_offload(layers_num)
 
-    def offload_layers_to_gpu_cpu(self, gpu_layers_num: int = 0, cpu_layers_num: int = 0) -> None:
+    def offload_layers_to_gpu_cpu(
+        self, gpu_layers_num: int = 0, cpu_layers_num: int = 0
+    ) -> None:
         """Apply mixed GPU/CPU layer placement when the specialization exposes it."""
         if gpu_layers_num == 0 and cpu_layers_num == 0:
             return
@@ -264,4 +274,6 @@ class AutoInference(Inference):
             validate_safe_adapter_artifacts(adapter_path)
             peft_config = LoraConfig.from_pretrained(str(adapter_path))
             self.model = get_peft_model(self.model, peft_config)
-            self.model.load_adapter(str(adapter_path), adapter_name="default", use_safetensors=True)
+            self.model.load_adapter(
+                str(adapter_path), adapter_name="default", use_safetensors=True
+            )

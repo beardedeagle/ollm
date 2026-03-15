@@ -27,16 +27,25 @@ class SpecializationPassMatcher:
         if self.provider_ids and provider_id not in self.provider_ids:
             return False
         if self.native_families:
-            if resolved_model.native_family is None or resolved_model.native_family not in self.native_families:
+            if (
+                resolved_model.native_family is None
+                or resolved_model.native_family not in self.native_families
+            ):
                 return False
         if self.architectures:
-            if resolved_model.architecture is None or resolved_model.architecture not in self.architectures:
+            if (
+                resolved_model.architecture is None
+                or resolved_model.architecture not in self.architectures
+            ):
                 return False
         if self.required_modalities:
             modalities = set(resolved_model.capabilities.modalities)
             if not set(self.required_modalities).issubset(modalities):
                 return False
-        if self.require_multimodal_config is not None and config.multimodal is not self.require_multimodal_config:
+        if (
+            self.require_multimodal_config is not None
+            and config.multimodal is not self.require_multimodal_config
+        ):
             return False
         if self.require_gds_export is not None:
             has_gds_export = _has_gds_export(resolved_model)

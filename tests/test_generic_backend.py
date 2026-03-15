@@ -79,14 +79,18 @@ def _create_safe_model_dir(tmp_path: Path, name: str) -> Path:
     return model_path
 
 
-def test_transformers_generic_backend_loads_causal_models_via_injected_callables(tmp_path: Path) -> None:
+def test_transformers_generic_backend_loads_causal_models_via_injected_callables(
+    tmp_path: Path,
+) -> None:
     fake_model = FakeModel()
     model_path = _create_safe_model_dir(tmp_path, "causal")
     backend = TransformersGenericBackend(
         causal_loader=lambda **kwargs: fake_model,
         tokenizer_loader=lambda path, trust_remote_code=False: FakeTokenizer(),
     )
-    runtime = backend.load(build_plan(GenericModelKind.CAUSAL_LM, model_path), RuntimeConfig(device="cpu"))
+    runtime = backend.load(
+        build_plan(GenericModelKind.CAUSAL_LM, model_path), RuntimeConfig(device="cpu")
+    )
     tokenizer = runtime.tokenizer
     assert runtime.backend_id == "transformers-generic"
     assert runtime.model is fake_model
@@ -96,7 +100,9 @@ def test_transformers_generic_backend_loads_causal_models_via_injected_callables
     assert runtime.model.generation_config.pad_token_id == 7
 
 
-def test_transformers_generic_backend_uses_processor_tokenizer_for_image_text_models(tmp_path: Path) -> None:
+def test_transformers_generic_backend_uses_processor_tokenizer_for_image_text_models(
+    tmp_path: Path,
+) -> None:
     fake_model = FakeModel()
     model_path = _create_safe_model_dir(tmp_path, "vision")
     backend = TransformersGenericBackend(
@@ -112,19 +118,25 @@ def test_transformers_generic_backend_uses_processor_tokenizer_for_image_text_mo
     assert isinstance(runtime.tokenizer, FakeTokenizer)
 
 
-def test_transformers_generic_backend_rejects_custom_offload_controls(tmp_path: Path) -> None:
+def test_transformers_generic_backend_rejects_custom_offload_controls(
+    tmp_path: Path,
+) -> None:
     fake_model = FakeModel()
     model_path = _create_safe_model_dir(tmp_path, "offload")
     backend = TransformersGenericBackend(
         causal_loader=lambda **kwargs: fake_model,
         tokenizer_loader=lambda path, trust_remote_code=False: FakeTokenizer(),
     )
-    runtime = backend.load(build_plan(GenericModelKind.CAUSAL_LM, model_path), RuntimeConfig(device="cpu"))
+    runtime = backend.load(
+        build_plan(GenericModelKind.CAUSAL_LM, model_path), RuntimeConfig(device="cpu")
+    )
     with pytest.raises(ValueError):
         runtime.apply_offload(RuntimeConfig(device="cpu", offload_cpu_layers=1))
 
 
-def test_transformers_generic_backend_rejects_unsafe_weight_artifacts(tmp_path: Path) -> None:
+def test_transformers_generic_backend_rejects_unsafe_weight_artifacts(
+    tmp_path: Path,
+) -> None:
     model_path = tmp_path / "unsafe"
     model_path.mkdir()
     (model_path / "pytorch_model.bin").write_text("unsafe", encoding="utf-8")
@@ -133,4 +145,7 @@ def test_transformers_generic_backend_rejects_unsafe_weight_artifacts(tmp_path: 
         tokenizer_loader=lambda path, trust_remote_code=False: FakeTokenizer(),
     )
     with pytest.raises(ValueError, match="safetensors"):
-        backend.load(build_plan(GenericModelKind.CAUSAL_LM, model_path), RuntimeConfig(device="cpu"))
+        backend.load(
+            build_plan(GenericModelKind.CAUSAL_LM, model_path),
+            RuntimeConfig(device="cpu"),
+        )

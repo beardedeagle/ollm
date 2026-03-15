@@ -26,7 +26,9 @@ class FakeProvider(SpecializationProvider):
     def __init__(self):
         self.load_calls: list[str] = []
 
-    def match(self, resolved_model: ResolvedModel, config: RuntimeConfig) -> SpecializationMatch | None:
+    def match(
+        self, resolved_model: ResolvedModel, config: RuntimeConfig
+    ) -> SpecializationMatch | None:
         del config
         if resolved_model.native_family is not NativeFamily.LLAMA:
             return None
@@ -95,10 +97,14 @@ def test_auto_inference_rejects_unsafe_adapter_artifacts(tmp_path: Path) -> None
     (adapter_dir / "adapter_model.bin").write_text("unsafe", encoding="utf-8")
 
     with pytest.raises(ValueError, match="safetensors"):
-        StubAutoInference(str(model_dir), adapter_dir=str(adapter_dir), device="cpu", logging=False)
+        StubAutoInference(
+            str(model_dir), adapter_dir=str(adapter_dir), device="cpu", logging=False
+        )
 
 
-def test_inference_load_model_delegates_to_specialization_registry(tmp_path: Path) -> None:
+def test_inference_load_model_delegates_to_specialization_registry(
+    tmp_path: Path,
+) -> None:
     model_dir = tmp_path / "llama3-1B-chat"
     model_dir.mkdir()
     (model_dir / "config.json").write_text(
@@ -125,7 +131,9 @@ def test_inference_load_model_delegates_to_specialization_registry(tmp_path: Pat
     assert inference.loaded_applied_specialization_pass_ids == ()
 
 
-def test_auto_inference_preserves_local_path_reference_for_optimized_loads(tmp_path: Path) -> None:
+def test_auto_inference_preserves_local_path_reference_for_optimized_loads(
+    tmp_path: Path,
+) -> None:
     model_dir = tmp_path / "llama-local"
     model_dir.mkdir()
     (model_dir / "config.json").write_text(
@@ -150,7 +158,9 @@ def test_auto_inference_preserves_local_path_reference_for_optimized_loads(tmp_p
     assert auto_inference.optimized_model_id == "llama3-1B-chat"
 
 
-def test_auto_inference_does_not_claim_sharded_local_llama_is_8b(tmp_path: Path) -> None:
+def test_auto_inference_does_not_claim_sharded_local_llama_is_8b(
+    tmp_path: Path,
+) -> None:
     model_dir = tmp_path / "llama-local"
     model_dir.mkdir()
     (model_dir / "config.json").write_text(

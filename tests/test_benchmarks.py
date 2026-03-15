@@ -31,7 +31,9 @@ def test_measure_callable_reports_stats() -> None:
         counter["value"] += 1
         return counter["value"]
 
-    measurement = measure_callable("increment", operation, iterations=3, warmup_iterations=1)
+    measurement = measure_callable(
+        "increment", operation, iterations=3, warmup_iterations=1
+    )
 
     assert measurement.status == "measured"
     assert measurement.stats is not None
@@ -92,7 +94,9 @@ def test_measure_command_reports_unavailable_on_timeout(tmp_path: Path) -> None:
 def test_create_tiny_t5_fixture_supports_generic_plan(tmp_path: Path) -> None:
     model_dir = create_tiny_t5_fixture(tmp_path)
     client = RuntimeClient()
-    config = RuntimeConfig(model_reference=str(model_dir), models_dir=tmp_path, device="cpu")
+    config = RuntimeConfig(
+        model_reference=str(model_dir), models_dir=tmp_path, device="cpu"
+    )
 
     plan = client.plan(config)
 
@@ -100,7 +104,9 @@ def test_create_tiny_t5_fixture_supports_generic_plan(tmp_path: Path) -> None:
     assert plan.specialization_state.value == "not-planned"
 
 
-def test_measure_no_specialization_fallback_cost_returns_measurements(tmp_path: Path) -> None:
+def test_measure_no_specialization_fallback_cost_returns_measurements(
+    tmp_path: Path,
+) -> None:
     report = measure_no_specialization_fallback_cost(
         device="cpu",
         iterations=2,
@@ -175,7 +181,9 @@ def test_render_report_json_round_trips() -> None:
     assert payload["runtime_comparison"]["comparison_available"] is False
 
 
-def test_build_current_supported_family_targets_returns_unique_families(tmp_path: Path) -> None:
+def test_build_current_supported_family_targets_returns_unique_families(
+    tmp_path: Path,
+) -> None:
     targets = build_current_supported_family_targets(tmp_path)
 
     families = {target.family for target in targets}
@@ -204,7 +212,10 @@ def test_benchmark_runtime_target_reports_unmaterialized_family(tmp_path: Path) 
     optimized_result = cast(dict[str, object], result["optimized_native"])
     assert generic_result["status"] == "unavailable"
     assert optimized_result["status"] == "unavailable"
-    assert result["reason"] == "Neither runtime benchmark completed successfully on this host"
+    assert (
+        result["reason"]
+        == "Neither runtime benchmark completed successfully on this host"
+    )
 
 
 def test_benchmark_runtime_cli_rejects_invalid_iterations() -> None:

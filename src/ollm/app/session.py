@@ -2,7 +2,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ollm.app.history import TRANSCRIPT_VERSION, load_transcript, save_transcript
-from ollm.app.types import ContentKind, ContentPart, Message, MessageRole, PromptRequest, PromptResponse, Transcript
+from ollm.app.types import (
+    ContentKind,
+    ContentPart,
+    Message,
+    MessageRole,
+    PromptRequest,
+    PromptResponse,
+    Transcript,
+)
 from ollm.runtime.config import DEFAULT_SYSTEM_PROMPT, GenerationConfig, RuntimeConfig
 from ollm.runtime.generation import RuntimeExecutor
 from ollm.runtime.loader import LoadedRuntime, RuntimeLoader
@@ -33,7 +41,9 @@ class ChatSession:
     def prompt_text(self, text: str, sink: StreamSink | None = None) -> PromptResponse:
         return self.prompt_parts([ContentPart.text(text)], sink=sink)
 
-    def prompt_parts(self, parts: list[ContentPart], sink: StreamSink | None = None) -> PromptResponse:
+    def prompt_parts(
+        self, parts: list[ContentPart], sink: StreamSink | None = None
+    ) -> PromptResponse:
         if not parts:
             raise ValueError("A chat prompt requires at least one content part")
 
@@ -56,8 +66,13 @@ class ChatSession:
             raise ValueError("There is no previous exchange to retry")
         assistant_message = self.messages.pop()
         user_message = self.messages.pop()
-        if assistant_message.role is not MessageRole.ASSISTANT or user_message.role is not MessageRole.USER:
-            raise ValueError("The current session does not end with a retryable user/assistant exchange")
+        if (
+            assistant_message.role is not MessageRole.ASSISTANT
+            or user_message.role is not MessageRole.USER
+        ):
+            raise ValueError(
+                "The current session does not end with a retryable user/assistant exchange"
+            )
         return self.prompt_parts(user_message.content, sink=sink)
 
     def undo_last_exchange(self) -> None:
@@ -65,8 +80,13 @@ class ChatSession:
             raise ValueError("There is no previous exchange to undo")
         assistant_message = self.messages.pop()
         user_message = self.messages.pop()
-        if assistant_message.role is not MessageRole.ASSISTANT or user_message.role is not MessageRole.USER:
-            raise ValueError("The current session does not end with a removable user/assistant exchange")
+        if (
+            assistant_message.role is not MessageRole.ASSISTANT
+            or user_message.role is not MessageRole.USER
+        ):
+            raise ValueError(
+                "The current session does not end with a removable user/assistant exchange"
+            )
         self._autosave()
 
     def save(self, path: Path) -> None:

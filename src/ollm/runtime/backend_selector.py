@@ -26,10 +26,14 @@ class BackendSelector:
             else specialization_pipeline
         )
 
-    def select(self, resolved_model: ResolvedModel, config: RuntimeConfig) -> RuntimePlan:
+    def select(
+        self, resolved_model: ResolvedModel, config: RuntimeConfig
+    ) -> RuntimePlan:
         backend_override = config.resolved_backend()
         if backend_override is not None:
-            return self._select_explicit_backend(resolved_model, config, backend_override)
+            return self._select_explicit_backend(
+                resolved_model, config, backend_override
+            )
 
         if resolved_model.source_kind is ModelSourceKind.PROVIDER:
             return self._select_provider_backend(resolved_model)
@@ -110,7 +114,8 @@ class BackendSelector:
                     self._provider_runtime_plan(
                         resolved_model,
                         backend_id="openai-compatible",
-                        provider_name=resolved_model.provider_name or "openai-compatible",
+                        provider_name=resolved_model.provider_name
+                        or "openai-compatible",
                     ),
                     backend_override,
                 )
@@ -163,7 +168,9 @@ class BackendSelector:
             ),
             details={
                 "source_kind": resolved_model.source_kind.value,
-                "provider_name": "" if resolved_model.provider_name is None else resolved_model.provider_name,
+                "provider_name": ""
+                if resolved_model.provider_name is None
+                else resolved_model.provider_name,
             },
         )
 
@@ -204,7 +211,9 @@ class BackendSelector:
             return None
         if config.resolved_adapter_dir() is not None:
             return None
-        specialization_match = self._specialization_registry.select(resolved_model, config)
+        specialization_match = self._specialization_registry.select(
+            resolved_model, config
+        )
         if specialization_match is None:
             return None
 
@@ -285,13 +294,18 @@ class BackendSelector:
 
         if config_reason := reason:
             unsupported_reason = config_reason
-        elif config_reason is None and resolved_model.source_kind is ModelSourceKind.BUILTIN:
+        elif (
+            config_reason is None
+            and resolved_model.source_kind is ModelSourceKind.BUILTIN
+        ):
             unsupported_reason = (
                 f"transformers-generic is unavailable for {resolved_model.reference.raw} "
                 "until the model is materialized and inspected."
             )
         else:
-            unsupported_reason = resolved_model.capabilities.details.get("reason", resolved_model.resolution_message)
+            unsupported_reason = resolved_model.capabilities.details.get(
+                "reason", resolved_model.resolution_message
+            )
 
         details = {"source_kind": resolved_model.source_kind.value}
         if explicit_override is not None:
@@ -351,7 +365,9 @@ class BackendSelector:
             details=details,
         )
 
-    def _with_override_detail(self, runtime_plan: RuntimePlan, backend_override: str) -> RuntimePlan:
+    def _with_override_detail(
+        self, runtime_plan: RuntimePlan, backend_override: str
+    ) -> RuntimePlan:
         details = dict(runtime_plan.details)
         details["backend_override"] = backend_override
         return RuntimePlan(

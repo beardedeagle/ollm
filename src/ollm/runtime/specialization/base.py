@@ -69,7 +69,9 @@ class PlannedSpecialization:
         return {
             "provider_id": self.provider_id,
             "pass_ids": [pass_id.value for pass_id in self.pass_ids],
-            "passes": [specialization_pass.as_dict() for specialization_pass in self.passes],
+            "passes": [
+                specialization_pass.as_dict() for specialization_pass in self.passes
+            ],
             "traits": self.traits.as_dict(),
             "details": dict(self.details),
         }
@@ -85,15 +87,21 @@ class AppliedSpecialization:
 
     @property
     def planned_pass_ids(self) -> tuple[SpecializationPassId, ...]:
-        return tuple(specialization_pass.pass_id for specialization_pass in self.planned_passes)
+        return tuple(
+            specialization_pass.pass_id for specialization_pass in self.planned_passes
+        )
 
     @property
     def applied_pass_ids(self) -> tuple[SpecializationPassId, ...]:
-        return tuple(specialization_pass.pass_id for specialization_pass in self.applied_passes)
+        return tuple(
+            specialization_pass.pass_id for specialization_pass in self.applied_passes
+        )
 
     @property
     def skipped_pass_ids(self) -> tuple[SpecializationPassId, ...]:
-        return tuple(specialization_pass.pass_id for specialization_pass in self.skipped_passes)
+        return tuple(
+            specialization_pass.pass_id for specialization_pass in self.skipped_passes
+        )
 
     @property
     def traits(self) -> SpecializationPassTraits:
@@ -114,7 +122,9 @@ class AppliedSpecialization:
 
 
 class SpecializationLoadError(RuntimeError):
-    def __init__(self, message: str, provider_id: str, details: dict[str, str] | None = None):
+    def __init__(
+        self, message: str, provider_id: str, details: dict[str, str] | None = None
+    ):
         super().__init__(message)
         self.provider_id = provider_id
         self.details = {} if details is None else dict(details)
@@ -160,7 +170,9 @@ class SpecializationProvider(ABC):
     native_family: NativeFamily
 
     @abstractmethod
-    def match(self, resolved_model: ResolvedModel, config: RuntimeConfig) -> SpecializationMatch | None:
+    def match(
+        self, resolved_model: ResolvedModel, config: RuntimeConfig
+    ) -> SpecializationMatch | None:
         raise NotImplementedError
 
     @abstractmethod

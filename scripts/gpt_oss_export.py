@@ -17,14 +17,18 @@ from transformers.utils.quantization_config import Mxfp4Config
 
 # 1. Get original tensors(_blocks, _scales) in torch.uint8, torch.bfloat16.
 tensor_specs = {}
-for filename in ["model-00000-of-00002", "model-00001-of-00002", "model-00002-of-00002"]:
+for filename in [
+    "model-00000-of-00002",
+    "model-00001-of-00002",
+    "model-00002-of-00002",
+]:
     MODEL_DIR = f"/content/drive/MyDrive/temp/gpt-oss-20b/{filename}.safetensors"
     with safe_open(MODEL_DIR, framework="pt") as fin:
         for key in fin.keys():
             t = fin.get_tensor(key)
             tensor_specs[key] = t
 
-#2. Export
+# 2. Export
 MODEL_ID = "/content/drive/MyDrive/temp/gpt-oss-20b/"
 OUT_DIR = "/content/drive/MyDrive/temp/gds_export"
 os.makedirs(OUT_DIR, exist_ok=True)
@@ -34,8 +38,8 @@ state_dict = AutoModelForCausalLM.from_pretrained(
     quantization_config=quantization_config,
     device_map="cpu",
     torch_dtype="auto",
-    low_cpu_mem_usage=True
-).state_dict() #converts to bfloat16
+    low_cpu_mem_usage=True,
+).state_dict()  # converts to bfloat16
 
 manifest = {}
 for name, tensor in state_dict.items():
@@ -56,9 +60,9 @@ for name, tensor in state_dict.items():
     torch.save(t, path)
     manifest[name] = {
         "path": filename,
-        "dtype": str(dtype), #torch.bfloat16
+        "dtype": str(dtype),  # torch.bfloat16
         "shape": list(shape),
-        "packed": packed
+        "packed": packed,
     }
 
 with open(os.path.join(OUT_DIR, "manifest.json"), "w") as f:
@@ -87,7 +91,8 @@ FP4_VALUES = [
     -6.0,
 ]
 
-def convert_moe_packed_tensors( #copied from transformers/integrations/mxfp4.py
+
+def convert_moe_packed_tensors(  # copied from transformers/integrations/mxfp4.py
     blocks,
     scales,
     *,
@@ -101,13 +106,15 @@ def convert_moe_packed_tensors( #copied from transformers/integrations/mxfp4.py
     import math
 
     # Check if blocks and scales are on CPU, and move to GPU if so
-    #if not blocks.is_cuda and torch.cuda.is_available():
+    # if not blocks.is_cuda and torch.cuda.is_available():
     #    blocks = blocks.cuda()
     #    scales = scales.cuda()
 
     scales = scales.to(torch.int32) - 127  # TODO that's because 128=2**7
 
-    assert blocks.shape[:-1] == scales.shape, f"{blocks.shape[:-1]=} does not match {scales.shape=}"
+    assert blocks.shape[:-1] == scales.shape, (
+        f"{blocks.shape[:-1]=} does not match {scales.shape=}"
+    )
 
     lut = torch.tensor(FP4_VALUES, dtype=dtype, device=blocks.device)
 
@@ -140,10 +147,15 @@ def convert_moe_packed_tensors( #copied from transformers/integrations/mxfp4.py
     del blocks, scales, lut
     return out.transpose(1, 2).contiguous()
 
-#==========================================
+
+# ==========================================
 # Check if unpacks correctly
 d2 = {}
-for filename in ["model-00000-of-00002", "model-00001-of-00002", "model-00002-of-00002"]:
+for filename in [
+    "model-00000-of-00002",
+    "model-00001-of-00002",
+    "model-00002-of-00002",
+]:
     MODEL_DIR = f"/content/drive/MyDrive/temp/gpt-oss-20b/{filename}.safetensors"
     with safe_open(MODEL_DIR, framework="pt") as fin:
         for key in fin.keys():
@@ -153,12 +165,30 @@ for filename in ["model-00000-of-00002", "model-00001-of-00002", "model-00002-of
 for name, t1 in tensor_specs.items():
     dtype = t1.dtype
     shape = t1.shape
-    if name+"_blocks" in d2 and name+"_scales" in d2:
-        t2 = convert_moe_packed_tensors(d2[name+"_blocks"], d2[name+"_scales"])
-        print("unpacked:", name, dtype, shape, t1.flatten()[:5], "-- t2:", t2.shape, t2.flatten()[:5])
+    if name + "_blocks" in d2 and name + "_scales" in d2:
+        t2 = convert_moe_packed_tensors(d2[name + "_blocks"], d2[name + "_scales"])
+        print(
+            "unpacked:",
+            name,
+            dtype,
+            shape,
+            t1.flatten()[:5],
+            "-- t2:",
+            t2.shape,
+            t2.flatten()[:5],
+        )
     else:
         t2 = d2[name]
-        print("regular:", name, dtype, shape, t1.flatten()[:5], "-- t2:", t2.shape, t2.flatten()[:5])
+        print(
+            "regular:",
+            name,
+            dtype,
+            shape,
+            t1.flatten()[:5],
+            "-- t2:",
+            t2.shape,
+            t2.flatten()[:5],
+        )
 
 # Commented out IPython magic to ensure Python compatibility.
 del state_dict

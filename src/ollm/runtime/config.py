@@ -96,8 +96,13 @@ class RuntimeConfig:
             normalize_provider_endpoint(self.provider_endpoint)
         if self.verbose and self.quiet:
             raise ValueError("--verbose and --quiet cannot be used together")
-        if not self.use_specialization and self.resolved_backend() == "optimized-native":
-            raise ValueError("--backend optimized-native cannot be combined with --no-specialization")
+        if (
+            not self.use_specialization
+            and self.resolved_backend() == "optimized-native"
+        ):
+            raise ValueError(
+                "--backend optimized-native cannot be combined with --no-specialization"
+            )
         if self.offload_cpu_layers < 0:
             raise ValueError("--offload-cpu-layers must be zero or greater")
         if self.offload_gpu_layers < 0:
