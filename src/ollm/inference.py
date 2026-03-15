@@ -1,7 +1,9 @@
 """Low-level optimized-native inference helpers and snapshot utilities."""
 
+import importlib.util
 import logging
 from pathlib import Path
+from typing import Any, cast
 
 import torch
 from huggingface_hub import snapshot_download
@@ -25,13 +27,10 @@ LOGGER = logging.getLogger(__name__)
 
 def get_attn_implementation() -> str | None:
     """Return the preferred attention implementation identifier when available."""
-    try:
-        import flash_attn  # noqa: F401
-
+    if importlib.util.find_spec("flash_attn") is not None:
         return "flash_attention_2"
-    except ImportError:
-        LOGGER.warning("flash_attention_2 is not imported. The context length will be limited.")
-        return None
+    LOGGER.warning("flash_attention_2 is not imported. The context length will be limited.")
+    return None
 
 
 def download_hf_snapshot(
@@ -42,7 +41,8 @@ def download_hf_snapshot(
 ) -> None:
     """Download a Hugging Face snapshot into a local model directory."""
     LOGGER.info("Downloading model snapshot for %s.", repo_id)
-    snapshot_download(
+    snapshot_download_fn = cast(Any, snapshot_download)
+    snapshot_download_fn(
         repo_id=repo_id,
         local_dir=model_dir,
         local_dir_use_symlinks=False,

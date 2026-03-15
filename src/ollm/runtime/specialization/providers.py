@@ -1,3 +1,4 @@
+import importlib
 import logging
 from functools import lru_cache
 from importlib import import_module
@@ -26,8 +27,7 @@ LOGGER = logging.getLogger(__name__)
 
 def _get_attention_implementation() -> str | None:
     try:
-        import flash_attn  # noqa: F401
-
+        importlib.import_module("flash_attn")
         return "flash_attention_2"
     except ImportError:
         LOGGER.warning("flash_attention_2 is not imported. The context length will be limited.")
@@ -131,10 +131,10 @@ class LlamaSpecializationProvider(SpecializationProvider):
         module = import_module("ollm.llama")
         device = torch.device(config.device)
         if _is_sharded_model_dir(model_path):
-            module.loader = DenseWeightsLoader(str(model_path), device=device)
+            setattr(module, "loader", DenseWeightsLoader(str(model_path), device=str(device)))
         else:
-            module.loader = SingleDenseWeightsLoader(str(model_path), device=device)
-        module.stats = stats
+            setattr(module, "loader", SingleDenseWeightsLoader(str(model_path), device=str(device)))
+        setattr(module, "stats", stats)
         model = module.MyLlamaForCausalLM.from_pretrained(
             str(model_path),
             torch_dtype=torch.bfloat16,
@@ -193,8 +193,8 @@ class Gemma3SpecializationProvider(SpecializationProvider):
         validate_safe_model_artifacts(model_path)
         module = import_module("ollm.gemma3")
         device = torch.device(config.device)
-        module.loader = DenseWeightsLoader(str(model_path), device=device)
-        module.stats = stats
+        setattr(module, "loader", DenseWeightsLoader(str(model_path), device=str(device)))
+        setattr(module, "stats", stats)
         model_class = module.MyGemma3ForConditionalGeneration if config.multimodal else module.MyGemma3ForCausalLM
         model = model_class.from_pretrained(
             str(model_path),
@@ -255,8 +255,8 @@ class Qwen3NextSpecializationProvider(SpecializationProvider):
         validate_safe_model_artifacts(model_path)
         module = import_module("ollm.qwen3_next")
         device = torch.device(config.device)
-        module.loader = MoEWeightsLoader(str(model_path), device=device)
-        module.stats = stats
+        setattr(module, "loader", MoEWeightsLoader(str(model_path), device=str(device)))
+        setattr(module, "stats", stats)
         model = module.MyQwen3NextForCausalLM.from_pretrained(
             str(model_path),
             torch_dtype=torch.bfloat16,
@@ -337,8 +337,8 @@ class GptOssSpecializationProvider(SpecializationProvider):
         validate_safe_gds_export_artifacts(export_path)
         module = import_module("ollm.gpt_oss")
         device = torch.device(config.device)
-        module.loader = GDSWeights(export_path, device=device)
-        module.stats = stats
+        setattr(module, "loader", GDSWeights(str(export_path), device=str(device)))
+        setattr(module, "stats", stats)
         model = module.MyGptOssForCausalLM.from_pretrained(
             str(model_path),
             torch_dtype=torch.bfloat16,
@@ -400,8 +400,8 @@ class VoxtralSpecializationProvider(SpecializationProvider):
         validate_safe_model_artifacts(model_path)
         module = import_module("ollm.voxtral")
         device = torch.device(config.device)
-        module.loader = DenseWeightsLoader(str(model_path), device=device)
-        module.stats = stats
+        setattr(module, "loader", DenseWeightsLoader(str(model_path), device=str(device)))
+        setattr(module, "stats", stats)
         model = module.MyVoxtralForConditionalGeneration.from_pretrained(
             str(model_path),
             torch_dtype="auto",

@@ -1,14 +1,21 @@
 from ollm import Inference, TextStreamer, file_get_contents
-import torch, os
+import torch
 from datetime import datetime
 
 def run_test(test_id, model_id, sm, um, kvcache=None, offload_layers_to_gpu=0, offload_layers_to_cpu=0, max_new_tokens=500):
 	o = Inference(model_id, device="cuda:0", logging=True)
-	o.ini_model(models_dir=f"/media/mega4alik/ssd/models/", force_download=False)
-	if offload_layers_to_gpu: o.offload_layers_to_gpu_cpu(gpu_layers_num=offload_layers_to_gpu, cpu_layers_num=offload_layers_to_cpu)
-	elif offload_layers_to_cpu>0: o.offload_layers_to_cpu(layers_num=offload_layers_to_cpu)
-	if kvcache=="disk": past_key_values = o.DiskCache(cache_dir="/media/mega4alik/ssd/kv_cache/")
-	else: past_key_values=None
+	o.ini_model(models_dir="/media/mega4alik/ssd/models/", force_download=False)
+	if offload_layers_to_gpu:
+		o.offload_layers_to_gpu_cpu(
+			gpu_layers_num=offload_layers_to_gpu,
+			cpu_layers_num=offload_layers_to_cpu,
+		)
+	elif offload_layers_to_cpu > 0:
+		o.offload_layers_to_cpu(layers_num=offload_layers_to_cpu)
+	if kvcache == "disk":
+		past_key_values = o.DiskCache(cache_dir="/media/mega4alik/ssd/kv_cache/")
+	else:
+		past_key_values = None
 	model, tokenizer, device = o.model, o.tokenizer, o.device
 
 	messages = [{"role":"system", "content":sm}, {"role":"user", "content":um}]

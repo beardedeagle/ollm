@@ -8,11 +8,11 @@ Original file is located at
 """
 
 # gps-oss-20B. Export gds_export weights
-import json, os
+import json
+import os
 import torch
-from transformers import AutoModelForCausalLM, AutoConfig
-from safetensors.torch import load_file as load_safetensors
-from safetensors.torch import safe_open, save_file
+from transformers import AutoModelForCausalLM
+from safetensors.torch import safe_open
 from transformers.utils.quantization_config import Mxfp4Config
 
 # 1. Get original tensors(_blocks, _scales) in torch.uint8, torch.bfloat16.
@@ -39,13 +39,15 @@ state_dict = AutoModelForCausalLM.from_pretrained(
 
 manifest = {}
 for name, tensor in state_dict.items():
-    if not name.startswith(("model.layers", "transformer.h")): continue
+    if not name.startswith(("model.layers", "transformer.h")):
+        continue
     t, packed = tensor.to("cpu").contiguous(), None
     dtype, shape = t.dtype, t.shape
 
-    blocks, scales = do.get(name+"_blocks"), do.get(name+"_scales")
+    blocks = tensor_specs.get(name + "_blocks")
+    scales = tensor_specs.get(name + "_scales")
     if blocks is not None and scales is not None:
-        t = {"_blocks":blocks, "_scales":scales}
+        t = {"_blocks": blocks, "_scales": scales}
         packed = "mxfp4"
 
     filename = f"{name.replace('.', '__')}.pt"
@@ -59,7 +61,8 @@ for name, tensor in state_dict.items():
         "packed": packed
     }
 
-with open(os.path.join(OUT_DIR, "manifest.json"), "w") as f: json.dump(manifest, f, indent=2)
+with open(os.path.join(OUT_DIR, "manifest.json"), "w") as f:
+    json.dump(manifest, f, indent=2)
 print(f"Exported {len(manifest)} tensors to {OUT_DIR}")
 # ./endOf Export gds_export weights
 
@@ -147,8 +150,9 @@ for filename in ["model-00000-of-00002", "model-00001-of-00002", "model-00002-of
             t = fin.get_tensor(key)
             d2[key] = t
 
-for name, o in tensor_specs.items():
-    t1, dtype, shape = o
+for name, t1 in tensor_specs.items():
+    dtype = t1.dtype
+    shape = t1.shape
     if name+"_blocks" in d2 and name+"_scales" in d2:
         t2 = convert_moe_packed_tensors(d2[name+"_blocks"], d2[name+"_scales"])
         print("unpacked:", name, dtype, shape, t1.flatten()[:5], "-- t2:", t2.shape, t2.flatten()[:5])

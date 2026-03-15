@@ -1,5 +1,5 @@
 # qwen3_next_export
-import json, os
+import json
 import torch
 from safetensors.torch import safe_open, save_file
 from ollm import file_get_contents
@@ -23,13 +23,14 @@ def generate_manifest():
                     attr_name = manifest_name.replace(base, "")
                     d[base].append(attr_name)
 
-    with open(f"{out_dir}manifest.json", "w") as f: json.dump(d, f, indent=4)
+    with open(f"{out_dir}manifest.json", "w") as f:
+        json.dump(d, f, indent=4)
 
 
 def export_nonlayer_weights(): 
     d = {}
     for manifest_name, filename in wmap.items():
-        if not "model.layers" in manifest_name: #mtp
+        if "model.layers" not in manifest_name: #mtp
             with safe_open(path+filename, framework="pt", device="cpu") as f:
                 tensor = f.get_tensor(manifest_name)
                 d[manifest_name] = tensor

@@ -1,6 +1,7 @@
 import json
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
+from typing import cast
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -60,7 +61,7 @@ class OllamaClient:
 		for item in raw_models:
 			if not isinstance(item, dict):
 				continue
-			model_name = item.get("name")
+			model_name = cast(dict[str, object], item).get("name")
 			if isinstance(model_name, str) and model_name:
 				model_names.append(model_name)
 		return tuple(model_names)
@@ -221,14 +222,14 @@ def _chat_metadata(
 def _payload_dict(payload: dict[str, object], key: str) -> dict[str, object]:
 	value = payload.get(key)
 	if isinstance(value, dict):
-		return value
+		return cast(dict[str, object], value)
 	return {}
 
 
 def _payload_list(payload: dict[str, object], key: str) -> list[object]:
 	value = payload.get(key)
 	if isinstance(value, list):
-		return value
+		return cast(list[object], value)
 	return []
 
 

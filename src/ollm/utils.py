@@ -1,10 +1,10 @@
-import codecs, io, time
+import io
+import time
 import torch 
 
 def file_put_contents(filename, st):
-    file = codecs.open(filename, "w", "utf-8")
-    file.write(st)
-    file.close()
+    with open(filename, "w", encoding="utf-8") as file:
+        file.write(st)
 
 def file_get_contents(name):
     f = io.open(name, mode="r", encoding="utf-8") #utf-8 | Windows-1252
@@ -18,7 +18,8 @@ class Stats:
         self.d = {}
 
     def set(self, name, t1):
-        if name not in self.d: self.d[name] = []
+        if name not in self.d:
+            self.d[name] = []
         self.d[name].append( round(time.perf_counter() - t1, 3) ) 
 
     def print_and_clean(self):
@@ -87,5 +88,4 @@ def remove_layers_weights(model):
                 module.bias = torch.nn.Parameter(
                     torch.empty(0), requires_grad=False
                 )
-
 

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Protocol, cast
 
 import torch
 
@@ -9,6 +10,10 @@ from ollm.runtime.errors import PromptExecutionError
 from ollm.runtime.loader import LoadedRuntime
 from ollm.runtime.output_control import suppress_module_prints
 from ollm.runtime.streaming import BufferedTextStreamer, NullStreamSink, StreamSink
+
+
+class _StatsProtocol(Protocol):
+    def print_and_clean(self) -> str: ...
 
 
 @dataclass(slots=True)
@@ -157,7 +162,7 @@ class RuntimeExecutor:
 
     def _decode_response(self, runtime: LoadedRuntime, inputs: dict[str, object], outputs) -> str:
         if runtime.processor is not None:
-            input_ids = inputs["input_ids"]
+            input_ids = _require_tensor(inputs["input_ids"])
             decoded = runtime.processor.batch_decode(
                 outputs[:, input_ids.shape[1]:],
                 skip_special_tokens=False,
@@ -169,7 +174,7 @@ class RuntimeExecutor:
         if runtime.plan.generic_model_kind is GenericModelKind.SEQ2SEQ_LM:
             return runtime.tokenizer.decode(outputs[0], skip_special_tokens=False)
 
-        input_ids = inputs["input_ids"]
+        input_ids = _require_tensor(inputs["input_ids"])
         return runtime.tokenizer.decode(outputs[0][input_ids.shape[-1]:], skip_special_tokens=False)
 
     def _finalize_response(self, runtime: LoadedRuntime, response: PromptResponse) -> PromptResponse:
@@ -195,8 +200,9 @@ class RuntimeExecutor:
             ),
             "fallback_reason": runtime.plan.fallback_reason or "",
         }
-        if runtime.backend.stats is not None:
-            metadata["stats"] = runtime.backend.stats.print_and_clean()
+        stats = cast(_StatsProtocol | None, runtime.backend.stats)
+        if stats is not None:
+            metadata["stats"] = stats.print_and_clean()
         return metadata
 
     def _status_message(self, runtime: LoadedRuntime) -> str:
@@ -215,3 +221,9 @@ def _render_plain_prompt(messages: list[Message]) -> str:
         rendered_messages.append(f"{message.role.value.upper()}: {text}")
     rendered_messages.append("ASSISTANT:")
     return "\n\n".join(rendered_messages)
+
+
+def _require_tensor(value: object) -> torch.Tensor:
+    if not isinstance(value, torch.Tensor):
+        raise PromptExecutionError("Expected tensor-backed model inputs")
+    return value

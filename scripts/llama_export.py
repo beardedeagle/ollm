@@ -1,7 +1,7 @@
-import json, os
+import json
+import os
 import torch
-from transformers import AutoModelForCausalLM, AutoConfig
-from safetensors.torch import load_file as load_safetensors
+from transformers import AutoModelForCausalLM
 
 MODEL_ID = "meta-llama/Llama-3.2-1B-Instruct"
 OUT_DIR = "gds_export"
@@ -19,7 +19,8 @@ state_dict = AutoModelForCausalLM.from_pretrained(
 manifest = {}
 for name, tensor in state_dict.items():
     # Only export layer weights to keep it small; adjust filter as needed
-    if not name.startswith(("model.layers", "transformer.h")): continue
+    if not name.startswith(("model.layers", "transformer.h")):
+        continue
 
     t = tensor.to("cpu").contiguous()  # ensure contiguous for .tofile
     filename = f"{name.replace('.', '__')}.bin"

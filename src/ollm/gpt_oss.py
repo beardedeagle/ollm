@@ -1,16 +1,18 @@
+# type: ignore
+# Dynamic GPT-OSS specialization module: heavy runtime monkey-patching and optional CUDA kernel wiring.
 # efficiant gpt-oss-20B that runs on consumer PC with 8GB VRAM
 
-import time, os, math
+import time
 from datetime import datetime
-import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
-from typing import Callable, Optional, Tuple, Union, Dict, Any, Iterable, List, Unpack
+from typing import Optional, Unpack
 from transformers import DynamicCache
-from transformers import GptOssForCausalLM, AutoTokenizer, AutoModelForCausalLM
+from transformers import GptOssForCausalLM
+import transformers.models.gpt_oss.modeling_gpt_oss as modeling
+from transformers.models.gpt_oss.modeling_gpt_oss import GptOssAttention, GptOssConfig, GptOssDecoderLayer, GptOssExperts, GptOssModel, MoeModelOutputWithPast, create_causal_mask, create_sliding_window_causal_mask, repeat_kv
 from .utils import _walk_to_parent, _assign_tensor_to_module, _set_meta_placeholder
-from .gds_loader import GDSWeights
 
 try:
 	from .gpt_oss_attention import attention as flash_attention
@@ -19,9 +21,6 @@ except ImportError:
 
 #global vars
 loader, stats = None, None
-
-#======== rewriting core classess ==============
-from transformers.models.gpt_oss.modeling_gpt_oss import GptOssAttention, GptOssExperts,  GptOssModel, GptOssConfig, GptOssDecoderLayer, create_causal_mask, create_sliding_window_causal_mask, repeat_kv, MoeModelOutputWithPast
 
 class MyGptOssAttention(GptOssAttention):
 	def forward(self, *args, **kwargs):
@@ -87,7 +86,8 @@ class oDecoderLayer:
 		a = []
 		for manifest_name in loader.manifest.keys():
 			base = f"model.layers.{self.layer_idx}."
-			if not manifest_name.startswith(base): continue
+			if not manifest_name.startswith(base):
+				continue
 			attr_path = manifest_name.replace(base, "")
 			a.append((manifest_name, attr_path))
 		return a
@@ -99,7 +99,8 @@ class oDecoderLayer:
 				tensor = loader.load_param_to_cuda(manifest_name)
 				parent, leaf = _walk_to_parent(self, attr_path)
 				_assign_tensor_to_module(parent, leaf, tensor)
-				if stats: stats.set("layer_load", t1)
+				if stats:
+					stats.set("layer_load", t1)
 			except Exception as e:
 				raise RuntimeError(f"failed to load {manifest_name} into {attr_path}: {e}")
 
@@ -126,7 +127,8 @@ class MyGptOssModel(GptOssModel):
 		super().__init__(config)
 		self.config = config
 		self.layers = nn.ModuleList([MyGptOssDecoderLayer(config, layer_idx) for layer_idx in range(2)])
-		for decoder_layer in self.layers: decoder_layer._unload_layer_weights()		
+		for decoder_layer in self.layers:
+			decoder_layer._unload_layer_weights()
 
 	def forward(
 		self,
@@ -174,7 +176,8 @@ class MyGptOssModel(GptOssModel):
 		position_embeddings = self.rotary_emb(hidden_states, position_ids)
 
 		# ===== meine ========================
-		self.embed_tokens.cpu(); self.parent_lm_head.cpu()
+		self.embed_tokens.cpu()
+		self.parent_lm_head.cpu()
 
 		for layer_idx in range(self.config.num_hidden_layers):
 			decoder_layer = self.layers[layer_idx % 2]
@@ -191,9 +194,11 @@ class MyGptOssModel(GptOssModel):
 				**kwargs,
 			)
 
-		if stats: print("./gpt_oss.forward.", datetime.now().strftime("%H:%M:%S"), stats.print_and_clean() if stats else "")
+		if stats:
+			print("./gpt_oss.forward.", datetime.now().strftime("%H:%M:%S"), stats.print_and_clean() if stats else "")
 		hidden_states = self.norm(hidden_states)
-		self.embed_tokens.to(hidden_states.device); self.parent_lm_head.to(hidden_states.device)
+		self.embed_tokens.to(hidden_states.device)
+		self.parent_lm_head.to(hidden_states.device)
 		#./===================================
 		
 		return MoeModelOutputWithPast(
@@ -219,8 +224,8 @@ def my_eager_attention_forward(
 	value_states = repeat_kv(value, module.num_key_value_groups)	
 	
 	# Flash-attention
-	offset, n_ctx = min(key.shape[2] - query.shape[2], sliding_window if sliding_window else 999), query.shape[2]
-	if flash_attention is not None and offset==0: #use FA only for first generation
+	offset = min(key.shape[2] - query.shape[2], sliding_window if sliding_window else 999)
+	if flash_attention is not None and offset == 0: #use FA only for first generation
 		#print("offset", query.shape, key.shape, offset, "n_ctx:", n_ctx, "sliding_window:", sliding_window, "scaling:", scaling, kwargs)
 		start_q = torch.LongTensor([offset]).to(query.device)
 		t = flash_attention(
@@ -255,8 +260,6 @@ def my_eager_attention_forward(
 	#print("my_eager_attention_forward:", attn_output.shape, t.shape, attn_output.flatten()[-5:], t.flatten()[-5:], "Error:", (attn_output - t).abs().max().item(), "\n")
 	return attn_output, attn_weights
 
-
-import transformers.models.gpt_oss.modeling_gpt_oss as modeling
 modeling.GptOssExperts = MyGptOssExperts
 modeling.GptOssAttention = MyGptOssAttention
 modeling.GptOssModel = MyGptOssModel

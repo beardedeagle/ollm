@@ -66,8 +66,8 @@ class OpenAICompatibleFixtureServer:
 					return
 				_write_json(self, 404, {"error": {"message": f"unknown path: {self.path}"}})
 
-			def log_message(self, format_string: str, *args: object) -> None:
-				del format_string, args
+			def log_message(self, format: str, *args) -> None:
+				del format, args
 
 		return OpenAICompatibleHandler
 
@@ -116,7 +116,9 @@ def _handle_chat(
 	handler.send_response(200)
 	handler.send_header("Content-Type", "text/event-stream")
 	handler.end_headers()
-	for chunk in model.get("stream_chunks", [response_text]):
+	raw_chunks = model.get("stream_chunks")
+	stream_chunks = raw_chunks if isinstance(raw_chunks, list) else [response_text]
+	for chunk in stream_chunks:
 		handler.wfile.write(
 			(
 				"data: "

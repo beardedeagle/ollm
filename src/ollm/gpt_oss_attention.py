@@ -1,3 +1,5 @@
+# type: ignore
+# Optional Triton attention kernel module; static typing is intentionally disabled when Triton is absent.
 """FlashAttention w/support for learned sinks and banded attention.
 
 This is an expanded version of the Flash Attention v2 implementation (see https://tridao.me/publications/flash2/flash2.pdf)
@@ -119,7 +121,7 @@ class _attention(torch.autograd.Function):
         v = v.repeat_interleave(repeat_kv, dim=2).transpose(1, 2).contiguous()
         """
         #meine
-        bs, n_ctx, n_kv_ctx, n_heads, HEAD_DIM_K, HEAD_DIM_V = q.shape[0], q.shape[2], k.shape[2], 64, 64, 64
+        bs, n_ctx, n_kv_ctx, n_heads, HEAD_DIM_K = q.shape[0], q.shape[2], k.shape[2], 64, 64
         #print("n_ctx:", n_ctx, "n_kv_ctx:", n_kv_ctx)
         #=====
 

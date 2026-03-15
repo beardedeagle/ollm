@@ -58,8 +58,8 @@ class MediaFixtureServer:
 					content_type=response.content_type,
 				)
 
-			def log_message(self, format_string: str, *args: object) -> None:
-				del format_string, args
+			def log_message(self, format: str, *args) -> None:
+				del format, args
 
 		return MediaHandler
 

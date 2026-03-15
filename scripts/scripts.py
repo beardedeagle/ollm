@@ -1,7 +1,8 @@
 def safetensors_vs_ptfiles():
     import torch
     import safetensors.torch as st
-    import time, os
+    import time
+    import os
 
     # Simulate 512 experts for layer1
     experts = {f"layer1.expert{i}": torch.randn(1024, 1024) for i in range(512)}
@@ -27,13 +28,13 @@ def safetensors_vs_ptfiles():
     # Benchmark safetensors
     t0 = time.time()
     tensors = st.load_file("./temp/experts_all.safetensors")
-    out2 = [tensors[f"layer1.expert{eid}"] for eid in expert_ids]
+    _ = [tensors[f"layer1.expert{eid}"] for eid in expert_ids]
     print("Safetensors load time:", time.time() - t0, "sec")    
 
 #=================================
 
 def hf_push_to_hub():
-    from huggingface_hub import HfApi, HfFolder, Repository, create_repo
+    from huggingface_hub import HfApi, create_repo
     repo_name = "AnuarSh/gpt-oss-20B"
     create_repo(repo_name, private=False)
 
@@ -48,4 +49,3 @@ def hf_push_to_hub():
 
 if __name__=="__main__":
 	hf_push_to_hub()
-    

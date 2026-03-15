@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Self
+from typing import Self, cast
 
 
 class SpecializationPassId(str, Enum):
@@ -21,10 +21,13 @@ class SpecializationPassTraits:
     supports_gpu_offload: bool = False
 
     def merge(self, other: Self) -> Self:
-        return SpecializationPassTraits(
-            supports_disk_cache=self.supports_disk_cache or other.supports_disk_cache,
-            supports_cpu_offload=self.supports_cpu_offload or other.supports_cpu_offload,
-            supports_gpu_offload=self.supports_gpu_offload or other.supports_gpu_offload,
+        return cast(
+            Self,
+            SpecializationPassTraits(
+                supports_disk_cache=self.supports_disk_cache or other.supports_disk_cache,
+                supports_cpu_offload=self.supports_cpu_offload or other.supports_cpu_offload,
+                supports_gpu_offload=self.supports_gpu_offload or other.supports_gpu_offload,
+            ),
         )
 
     def as_dict(self) -> dict[str, bool]:

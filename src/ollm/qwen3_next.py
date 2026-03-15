@@ -1,20 +1,20 @@
+# type: ignore
+# Dynamic Qwen3-Next specialization module: expert routing and transformer monkey-patching are runtime-driven.
 # 4.57.0.dev qwen3_next
 
-import time, os, math, json
+import time
 from datetime import datetime
-import numpy as np
 import torch
 from torch import nn
 import torch.nn.functional as F
-from typing import Callable, Optional, Tuple, Union, Dict, Any, Iterable, List, Unpack
-from .utils import _walk_to_parent, _assign_tensor_to_module, _set_meta_placeholder, file_get_contents
+from typing import Optional, Tuple, Dict, Any, Unpack
+import transformers.models.qwen3_next.modeling_qwen3_next as modeling
+from transformers.models.qwen3_next.modeling_qwen3_next import Cache, MoeCausalLMOutputWithPast, MoeModelOutputWithPast, Qwen3NextConfig, Qwen3NextDecoderLayer, Qwen3NextDynamicCache, Qwen3NextForCausalLM, Qwen3NextMLP, Qwen3NextModel, Qwen3NextRMSNorm, Qwen3NextSparseMoeBlock, TransformersKwargs, create_causal_mask
+from .utils import _walk_to_parent, _assign_tensor_to_module, _set_meta_placeholder
 from .kvcache import oCache
 
 #global vars
 loader, stats = None, None
-
-#======== rewriting core classes ==============
-from transformers.models.qwen3_next.modeling_qwen3_next import Qwen3NextMLP, Qwen3NextSparseMoeBlock, Qwen3NextDecoderLayer, Qwen3NextConfig, Qwen3NextModel, Qwen3NextForCausalLM, Qwen3NextDynamicCache, Qwen3NextRMSNorm, create_causal_mask, repeat_kv, MoeModelOutputWithPast, MoeCausalLMOutputWithPast, TransformersKwargs, Cache
 
 class Qwen3NextDiskCache(Qwen3NextDynamicCache, oCache):
 	def __init__(self, config, cache_dir="./kv_cache", device="cuda:0", stats=None):
@@ -53,7 +53,8 @@ class Qwen3NextDiskCache(Qwen3NextDynamicCache, oCache):
 		out = super().update(key_states, value_states, layer_idx, cache_kwargs) #tuple of (self.key_cache[layer_idx], self.value_cache[layer_idx])
 		self.seq_lengths[layer_idx] = out[0].shape[-2]
 		#print(len(out), out[0].shape, "-- k shape" )
-		if tensors is None: self.save_to_disk(out, layer_idx) #save only first time cause it's slow to save
+		if tensors is None:
+			self.save_to_disk(out, layer_idx) #save only first time cause it's slow to save
 		self.key_cache[layer_idx], self.value_cache[layer_idx] = torch.empty(0), torch.empty(0)
 		return out
 
@@ -67,7 +68,8 @@ class loaderLayer:
 		for attr_path, tensor in d.items():
 			parent, leaf = _walk_to_parent(self, attr_path)
 			_assign_tensor_to_module(parent, leaf, tensor)
-		if stats: stats.set("layer_load", t1)
+		if stats:
+			stats.set("layer_load", t1)
 			
 	def _unload_layer_weights(self):
 		base = f"model.layers.{self.layer_idx}."
@@ -82,7 +84,8 @@ class loaderLayer:
 		for attr_path, tensor in d.items():
 			parent, leaf = _walk_to_parent(self, attr_path)
 			_assign_tensor_to_module(parent, leaf, tensor)
-		if stats: stats.set("experts_load", t1)
+		if stats:
+			stats.set("experts_load", t1)
 
 	def _unload_expert_weights(self):
 		base = f"model.layers.{self.layer_idx}.mlp.experts.{self.expert_idx}."
@@ -101,9 +104,11 @@ class loaderLayer:
 
 class MyQwen3NextMLP(Qwen3NextMLP, loaderLayer):
 	def forward(self, x):
-		if hasattr(self, "expert_idx"): self._load_expert_weights()
+		if hasattr(self, "expert_idx"):
+			self._load_expert_weights()
 		out = super().forward(x)
-		if hasattr(self, "expert_idx"): self._unload_expert_weights()
+		if hasattr(self, "expert_idx"):
+			self._unload_expert_weights()
 		return out
 		
 
@@ -149,7 +154,8 @@ class MyQwen3NextSparseMoeBlock(Qwen3NextSparseMoeBlock, loaderLayer):
 
 		for expert_idx in expert_hit:
 			local_rank, tok_pos = torch.where(expert_mask[expert_idx].squeeze(0))
-			if tok_pos.numel() == 0: continue #?
+			if tok_pos.numel() == 0:
+				continue #?
 			token_pos_list.append(tok_pos)
 			expert_id_list.append(torch.full_like(tok_pos, int(expert_idx)))
 			local_rank_list.append(local_rank)
@@ -161,8 +167,6 @@ class MyQwen3NextSparseMoeBlock(Qwen3NextSparseMoeBlock, loaderLayer):
 
 		x = hidden_states[token_pos]               # (M, in_dim)
 		M, in_dim = x.shape
-		device, dtype = x.device, x.dtype
-
 		# ---- Gather expert params as stacked tensors ----
 		def stack_params(attr):
 			return torch.stack([getattr(self.experts[eid], attr).weight for eid in expert_ids], dim=0)
@@ -281,7 +285,8 @@ class MyQwen3NextModel(Qwen3NextModel):
 		position_embeddings = self.rotary_emb(hidden_states, position_ids)
 
 		#===============================================
-		self.embed_tokens.cpu(); self.parent_lm_head.cpu()
+		self.embed_tokens.cpu()
+		self.parent_lm_head.cpu()
 		for decoder_layer in self.layers:
 			#print(decoder_layer.layer_idx, "decoder_layer /", self.config.num_hidden_layers, stats.print_and_clean())
 			layer_mask = linear_attn_mask if decoder_layer.layer_type == "linear_attention" else causal_mask
@@ -297,8 +302,10 @@ class MyQwen3NextModel(Qwen3NextModel):
 			)
 		
 		hidden_states = self.norm(hidden_states)
-		self.embed_tokens.to(hidden_states.device); self.parent_lm_head.to(hidden_states.device)
-		if stats: print("./qwen3_next.forward.", datetime.now().strftime("%H:%M:%S"), stats.print_and_clean() if stats else "")
+		self.embed_tokens.to(hidden_states.device)
+		self.parent_lm_head.to(hidden_states.device)
+		if stats:
+			print("./qwen3_next.forward.", datetime.now().strftime("%H:%M:%S"), stats.print_and_clean() if stats else "")
 		#================================================
 
 		return MoeModelOutputWithPast(
@@ -306,8 +313,6 @@ class MyQwen3NextModel(Qwen3NextModel):
 			past_key_values=past_key_values,
 		)
 
-
-import transformers.models.qwen3_next.modeling_qwen3_next as modeling
 modeling.Qwen3NextMLP = MyQwen3NextMLP
 modeling.Qwen3NextSparseMoeBlock = MyQwen3NextSparseMoeBlock
 modeling.Qwen3NextModel = MyQwen3NextModel

@@ -1,24 +1,30 @@
-import os, time, shutil
+import os
+import time
+import shutil
 import torch
 from transformers import DynamicCache
-from typing import Callable, Optional, Tuple, Union, Dict, Any, Iterable, List
+from typing import Optional, Tuple, Dict, Any
 
 class oCache:	
 	def ini_ocache(self, cache_dir, device, stats):
-		if not cache_dir: raise ValueError("cache_dir can not be empty. If you are trying to not use DiskCache, simply set past_key_values=None. This will use default DynamicCache")
+		if not cache_dir:
+			raise ValueError("cache_dir can not be empty. If you are trying to not use DiskCache, simply set past_key_values=None. This will use default DynamicCache")
 		self.cache_folder = os.path.join(cache_dir, "kv_cache")
 		self.key_cache2, self.value_cache2 = [], []
-		if os.path.exists(self.cache_folder): shutil.rmtree(self.cache_folder)
+		if os.path.exists(self.cache_folder):
+			shutil.rmtree(self.cache_folder)
 		os.makedirs(self.cache_folder)
 		self.device = device
 		self.stats = stats
 
 	def load_from_disk(self, layer_idx):
 		path = f"{self.cache_folder}/layer_{layer_idx}.pt"
-		if not os.path.exists(path): return None
+		if not os.path.exists(path):
+			return None
 		t1 = time.perf_counter()
 		tensors = torch.load(path, map_location=self.device)
-		if self.stats: self.stats.set("kvload", t1)
+		if self.stats:
+			self.stats.set("kvload", t1)
 		return tensors
 
 	def save_to_disk(self, tensors, layer_idx):
@@ -26,7 +32,8 @@ class oCache:
 		path = f"{self.cache_folder}/layer_{layer_idx}.pt"
 		tensors = (tensors[0].cpu(), tensors[1].cpu())
 		torch.save(tensors, path)
-		if self.stats: self.stats.set("kvsave", t1)
+		if self.stats:
+			self.stats.set("kvsave", t1)
 
 
 class KVCache(DynamicCache, oCache): #DiskCache
@@ -54,7 +61,8 @@ class KVCache(DynamicCache, oCache): #DiskCache
 				self.value_cache2.append(value_states)
 		
 		out = super().update(key_states, value_states, layer_idx, cache_kwargs) #tuple of (self.key_cache[layer_idx], self.value_cache[layer_idx])		
-		if tensors is None: self.save_to_disk(out, layer_idx) #save only first time cause it's slow to save
+		if tensors is None:
+			self.save_to_disk(out, layer_idx) #save only first time cause it's slow to save
 		self.layers[layer_idx].keys, self.layers[layer_idx].values = torch.empty(0), torch.empty(0)
 		return out
 
@@ -81,6 +89,7 @@ class KVCache_legacy(DynamicCache):
 				self.value_cache2.append(value_states)
 		
 		out = super().update(key_states, value_states, layer_idx, cache_kwargs) #tuple of (self.key_cache[layer_idx], self.value_cache[layer_idx])		
-		if tensors is None: self.save_to_disk(out, layer_idx) #save only first time cause it's slow to save
+		if tensors is None:
+			self.save_to_disk(out, layer_idx) #save only first time cause it's slow to save
 		self.key_cache[layer_idx], self.value_cache[layer_idx] = torch.empty(0), torch.empty(0)
 		return out

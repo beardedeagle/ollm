@@ -81,8 +81,6 @@ def online_chunked_grouped_attention_rope_no_mask(
             # iterate over k-blocks
             for k_start in range(0, Lk, k_block_size):
                 k_end = min(Lk, k_start + k_block_size)
-                Bk = k_end - k_start
-
                 k_block = k_h[:, k_start:k_end, :]   # (B, Bk, D)
                 v_block = v_h[:, k_start:k_end, :]   # (B, Bk, D)
 

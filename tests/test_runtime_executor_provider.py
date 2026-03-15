@@ -1,4 +1,5 @@
 import base64
+from typing import cast
 from pathlib import Path
 
 import pytest
@@ -170,7 +171,13 @@ def test_runtime_executor_sends_base64_image_to_ollama_vision_model(tmp_path: Pa
 		server.stop()
 
 	assert response.text == "vision ready"
-	assert server.requests[-1].payload["messages"][0]["images"] == [
+	messages = server.requests[-1].payload["messages"]
+	assert isinstance(messages, list)
+	first_message = messages[0]
+	assert isinstance(first_message, dict)
+	images = cast(dict[str, object], first_message)["images"]
+	assert isinstance(images, list)
+	assert images == [
 		base64.b64encode(b"png-bytes").decode("ascii")
 	]
 
@@ -221,7 +228,13 @@ def test_runtime_executor_fetches_remote_image_url_for_ollama_vision_model(tmp_p
 		server.stop()
 
 	assert response.text == "vision ready"
-	assert server.requests[-1].payload["messages"][0]["images"] == [
+	messages = server.requests[-1].payload["messages"]
+	assert isinstance(messages, list)
+	first_message = messages[0]
+	assert isinstance(first_message, dict)
+	images = cast(dict[str, object], first_message)["images"]
+	assert isinstance(images, list)
+	assert images == [
 		base64.b64encode(b"remote-png-bytes").decode("ascii")
 	]
 

@@ -1,6 +1,7 @@
 import json
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
+from typing import cast
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -55,7 +56,7 @@ class OpenAICompatibleClient:
 		for item in raw_models:
 			if not isinstance(item, dict):
 				continue
-			model_id = item.get("id")
+			model_id = cast(dict[str, object], item).get("id")
 			if isinstance(model_id, str) and model_id:
 				model_ids.append(model_id)
 		return tuple(model_ids)
@@ -175,7 +176,7 @@ def _request_error_message(exc: HTTPError) -> str:
 		return f"OpenAI-compatible request failed with status {exc.code}: {body}"
 	error_payload = payload.get("error")
 	if isinstance(error_payload, dict):
-		error_message = error_payload.get("message")
+		error_message = cast(dict[str, object], error_payload).get("message")
 		if isinstance(error_message, str) and error_message:
 			return f"OpenAI-compatible request failed with status {exc.code}: {error_message}"
 	if isinstance(error_payload, str) and error_payload:
@@ -204,7 +205,7 @@ def _chat_metadata(
 	if isinstance(choices, list) and choices:
 		first_choice = choices[0]
 		if isinstance(first_choice, dict):
-			finish_reason = first_choice.get("finish_reason")
+			finish_reason = cast(dict[str, object], first_choice).get("finish_reason")
 			if finish_reason is not None:
 				metadata["finish_reason"] = str(finish_reason)
 	return metadata
@@ -217,10 +218,10 @@ def _message_text(payload: dict[str, object]) -> str:
 	first_choice = choices[0]
 	if not isinstance(first_choice, dict):
 		return ""
-	message = first_choice.get("message")
+	message = cast(dict[str, object], first_choice).get("message")
 	if not isinstance(message, dict):
 		return ""
-	return _content_text(message.get("content"))
+	return _content_text(cast(dict[str, object], message).get("content"))
 
 
 def _delta_text(payload: dict[str, object]) -> str:
@@ -230,10 +231,10 @@ def _delta_text(payload: dict[str, object]) -> str:
 	first_choice = choices[0]
 	if not isinstance(first_choice, dict):
 		return ""
-	delta = first_choice.get("delta")
+	delta = cast(dict[str, object], first_choice).get("delta")
 	if not isinstance(delta, dict):
 		return ""
-	return _content_text(delta.get("content"))
+	return _content_text(cast(dict[str, object], delta).get("content"))
 
 
 def _content_text(content: object) -> str:
@@ -245,9 +246,10 @@ def _content_text(content: object) -> str:
 	for item in content:
 		if not isinstance(item, dict):
 			continue
-		if item.get("type") != "text":
+		typed_item = cast(dict[str, object], item)
+		if typed_item.get("type") != "text":
 			continue
-		text_value = item.get("text")
+		text_value = typed_item.get("text")
 		if isinstance(text_value, str):
 			text_parts.append(text_value)
 	return "".join(text_parts)

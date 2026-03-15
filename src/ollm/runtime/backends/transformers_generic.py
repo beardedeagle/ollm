@@ -55,8 +55,9 @@ class TransformersGenericBackend(ExecutionBackend):
         if tokenizer is None:
             raise ValueError(f"No tokenizer could be loaded for generic model at {plan.model_path}")
         _configure_padding(tokenizer, model)
-        if config.resolved_adapter_dir() is not None:
-            model = _apply_peft_adapter(model, config.resolved_adapter_dir())
+        adapter_dir = config.resolved_adapter_dir()
+        if adapter_dir is not None:
+            model = _apply_peft_adapter(model, adapter_dir)
             model.eval()
         return BackendRuntime(
             backend_id=self.backend_id,

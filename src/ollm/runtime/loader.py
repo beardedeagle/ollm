@@ -275,9 +275,12 @@ class RuntimeLoader:
             )
 
     def _load_backend_runtime(self, runtime_plan: RuntimePlan, config: RuntimeConfig) -> BackendRuntime:
-        backend_impl = self._backends.get(runtime_plan.backend_id)
+        backend_id = runtime_plan.backend_id
+        if backend_id is None:
+            raise ValueError("Runtime plan did not select a backend")
+        backend_impl = self._backends.get(backend_id)
         if backend_impl is None:
-            raise ValueError(f"No runtime backend is registered for '{runtime_plan.backend_id}'")
+            raise ValueError(f"No runtime backend is registered for '{backend_id}'")
         backend_runtime = backend_impl.load(runtime_plan, config)
         backend_runtime.apply_offload(config)
         return backend_runtime

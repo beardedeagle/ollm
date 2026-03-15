@@ -161,7 +161,7 @@ def measure_command(
             )
         samples_ms.append(duration_ms)
 
-    details = {
+    details: dict[str, object] = {
         "command": list(spec.command),
         "stdout_excerpt": _clip_text(last_result.stdout if last_result is not None else ""),
         "stderr_excerpt": _clip_text(last_result.stderr if last_result is not None else ""),
@@ -185,13 +185,13 @@ def run_command(command: tuple[str, ...], *, cwd: Path, timeout_seconds: float) 
             check=False,
         )
     except subprocess.TimeoutExpired as exc:
-        stderr = "" if exc.stderr is None else exc.stderr
+        stderr = "" if exc.stderr is None else _coerce_subprocess_output(exc.stderr)
         timeout_message = f"Command timed out after {timeout_seconds} seconds."
         if stderr:
             stderr = f"{stderr}\n{timeout_message}"
         else:
             stderr = timeout_message
-        stdout = "" if exc.stdout is None else exc.stdout
+        stdout = "" if exc.stdout is None else _coerce_subprocess_output(exc.stdout)
         return CommandExecutionResult(
             returncode=124,
             stdout=stdout,
@@ -268,7 +268,7 @@ def build_runtime_benchmark_report(
         warmup_iterations=min(warmup_iterations, 1),
     )
 
-    planner_summary = {
+    planner_summary: dict[str, object] = {
         "specialization_enabled": planner_enabled.to_dict(),
         "specialization_disabled": planner_disabled.to_dict(),
         "mean_delta_ms": _mean_delta_ms(planner_enabled, planner_disabled),
@@ -583,7 +583,7 @@ def _command_failure_measurement(
     *,
     warmup_only: bool,
 ) -> BenchmarkMeasurement:
-    details = {
+    details: dict[str, object] = {
         "command": list(spec.command),
         "returncode": result.returncode,
         "stdout_excerpt": _clip_text(result.stdout),
@@ -634,6 +634,8 @@ def _runtime_target_payload(
     speedup_ratio = None
     reason = None
     if comparison_available:
+        assert generic.stats is not None
+        assert optimized.stats is not None
         speedup_ratio = round(generic.stats.mean_ms / optimized.stats.mean_ms, 6)
     else:
         reason = _runtime_comparison_unavailable_reason(generic, optimized)
@@ -648,6 +650,12 @@ def _runtime_target_payload(
         "speedup_ratio": speedup_ratio,
         "reason": reason,
     }
+
+
+def _coerce_subprocess_output(output: str | bytes) -> str:
+    if isinstance(output, bytes):
+        return output.decode("utf-8", errors="replace")
+    return output
 
 
 def _clip_text(text: str, *, max_chars: int = 400) -> str:

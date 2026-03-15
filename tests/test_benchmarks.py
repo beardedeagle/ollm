@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+from typing import cast
 import subprocess
 import sys
 
@@ -49,7 +50,9 @@ def test_measure_command_reports_success(tmp_path: Path) -> None:
 
     assert measurement.status == "measured"
     assert measurement.stats is not None
-    assert measurement.details["stdout_excerpt"].strip() == "ok"
+    stdout_excerpt = measurement.details["stdout_excerpt"]
+    assert isinstance(stdout_excerpt, str)
+    assert stdout_excerpt.strip() == "ok"
 
 
 def test_measure_command_reports_unavailable_on_failure(tmp_path: Path) -> None:
@@ -64,7 +67,9 @@ def test_measure_command_reports_unavailable_on_failure(tmp_path: Path) -> None:
     assert measurement.status == "unavailable"
     assert measurement.stats is None
     assert measurement.details["returncode"] == 3
-    assert measurement.details["stdout_excerpt"].strip() == "boom"
+    stdout_excerpt = measurement.details["stdout_excerpt"]
+    assert isinstance(stdout_excerpt, str)
+    assert stdout_excerpt.strip() == "boom"
 
 
 def test_measure_command_reports_unavailable_on_timeout(tmp_path: Path) -> None:
@@ -79,7 +84,9 @@ def test_measure_command_reports_unavailable_on_timeout(tmp_path: Path) -> None:
     assert measurement.status == "unavailable"
     assert measurement.stats is None
     assert measurement.details["timed_out"] is True
-    assert "timed out" in measurement.details["stderr_excerpt"]
+    stderr_excerpt = measurement.details["stderr_excerpt"]
+    assert isinstance(stderr_excerpt, str)
+    assert "timed out" in stderr_excerpt
 
 
 def test_create_tiny_t5_fixture_supports_generic_plan(tmp_path: Path) -> None:
@@ -100,8 +107,10 @@ def test_measure_no_specialization_fallback_cost_returns_measurements(tmp_path: 
         warmup_iterations=1,
     )
 
-    assert report["specialization_enabled"]["status"] == "measured"
-    assert report["specialization_disabled"]["status"] == "measured"
+    specialization_enabled = cast(dict[str, object], report["specialization_enabled"])
+    specialization_disabled = cast(dict[str, object], report["specialization_disabled"])
+    assert specialization_enabled["status"] == "measured"
+    assert specialization_disabled["status"] == "measured"
     assert report["mean_delta_ms"] is not None
 
 
@@ -191,8 +200,10 @@ def test_benchmark_runtime_target_reports_unmaterialized_family(tmp_path: Path) 
     )
 
     assert result["comparison_available"] is False
-    assert result["generic"]["status"] == "unavailable"
-    assert result["optimized_native"]["status"] == "unavailable"
+    generic_result = cast(dict[str, object], result["generic"])
+    optimized_result = cast(dict[str, object], result["optimized_native"])
+    assert generic_result["status"] == "unavailable"
+    assert optimized_result["status"] == "unavailable"
     assert result["reason"] == "Neither runtime benchmark completed successfully on this host"
 
 
