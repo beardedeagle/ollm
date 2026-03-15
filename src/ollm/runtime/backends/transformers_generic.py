@@ -185,8 +185,12 @@ def _configure_padding(tokenizer, model) -> None:
 def _apply_peft_adapter(model, adapter_dir: Path):
     validate_safe_adapter_artifacts(adapter_dir)
     peft_module = importlib.import_module("peft")
-    lora_config_cls = cast(type[_LoraConfigProtocol], getattr(peft_module, "LoraConfig"))
-    get_peft_model = cast(Callable[[object, object], object], getattr(peft_module, "get_peft_model"))
+    lora_config_cls = cast(
+        type[_LoraConfigProtocol], getattr(peft_module, "LoraConfig")
+    )
+    get_peft_model = cast(
+        Callable[[object, object], object], getattr(peft_module, "get_peft_model")
+    )
 
     peft_config = lora_config_cls.from_pretrained(str(adapter_dir))
     adapted_model = cast(_PeftModelProtocol, get_peft_model(model, peft_config))

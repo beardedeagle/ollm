@@ -69,10 +69,16 @@ def download_hf_snapshot(
     )
 
 
-def _load_peft_symbols() -> tuple[type[_LoraConfigProtocol], Callable[[object, object], object]]:
+def _load_peft_symbols() -> tuple[
+    type[_LoraConfigProtocol], Callable[[object, object], object]
+]:
     peft_module = importlib.import_module("peft")
-    lora_config_cls = cast(type[_LoraConfigProtocol], getattr(peft_module, "LoraConfig"))
-    get_peft_model = cast(Callable[[object, object], object], getattr(peft_module, "get_peft_model"))
+    lora_config_cls = cast(
+        type[_LoraConfigProtocol], getattr(peft_module, "LoraConfig")
+    )
+    get_peft_model = cast(
+        Callable[[object, object], object], getattr(peft_module, "get_peft_model")
+    )
     return lora_config_cls, get_peft_model
 
 
@@ -295,7 +301,9 @@ class AutoInference(Inference):
             validate_safe_adapter_artifacts(adapter_path)
             lora_config_cls, get_peft_model = _load_peft_symbols()
             peft_config = lora_config_cls.from_pretrained(str(adapter_path))
-            peft_model = cast(_PeftModelProtocol, get_peft_model(self.model, peft_config))
+            peft_model = cast(
+                _PeftModelProtocol, get_peft_model(self.model, peft_config)
+            )
             peft_model.load_adapter(
                 str(adapter_path), adapter_name="default", use_safetensors=True
             )

@@ -1,4 +1,5 @@
 import json
+import re
 import stat
 from pathlib import Path
 from typing import cast
@@ -19,6 +20,11 @@ from tests.openai_compatible_server import OpenAICompatibleFixtureServer
 from tests.fakes import FakeDoctorService, FakeRuntimeExecutor, FakeRuntimeLoader
 from tests.media_server import MediaFixtureServer, MediaResponse
 from tests.ollama_server import OllamaFixtureServer
+
+
+def _strip_ansi(text: str) -> str:
+    """Remove ANSI escape sequences so assertions work regardless of terminal."""
+    return re.sub(r"\x1b\[[0-9;]*m", "", text)
 
 
 def build_test_app():
@@ -89,7 +95,9 @@ def test_prompt_command_validates_multimodal_and_json_stream() -> None:
         app, ["prompt", "hello", "--image", "image.png", "--no-stream", "--no-color"]
     )
     assert multimodal_error.exit_code != 0
-    assert "--image and --audio require --multimodal" in multimodal_error.output
+    assert "--image and --audio require --multimodal" in _strip_ansi(
+        multimodal_error.output
+    )
 
     multimodal_ok = runner.invoke(
         app,
@@ -685,7 +693,7 @@ def test_models_list_requires_endpoint_for_openai_compatible_discovery(
         ],
     )
     assert result.exit_code != 0
-    assert "--provider-endpoint" in result.output
+    assert "--provider-endpoint" in _strip_ansi(result.output)
 
 
 def test_models_list_requires_endpoint_for_msty_discovery(tmp_path: Path) -> None:
@@ -703,7 +711,7 @@ def test_models_list_requires_endpoint_for_msty_discovery(tmp_path: Path) -> Non
         ],
     )
     assert result.exit_code != 0
-    assert "--provider-endpoint" in result.output
+    assert "--provider-endpoint" in _strip_ansi(result.output)
 
 
 def test_models_list_rejects_invalid_provider_endpoint(tmp_path: Path) -> None:
