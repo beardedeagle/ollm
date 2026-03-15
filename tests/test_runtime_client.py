@@ -1,6 +1,9 @@
 from pathlib import Path
+from typing import cast
 
 from ollm import GenerationConfig, RuntimeClient, RuntimeConfig
+from ollm.runtime.generation import RuntimeExecutor
+from ollm.runtime.loader import RuntimeLoader
 
 from tests.fakes import FakeRuntimeExecutor, FakeRuntimeLoader
 
@@ -8,7 +11,14 @@ from tests.fakes import FakeRuntimeExecutor, FakeRuntimeLoader
 def build_client() -> tuple[RuntimeClient, FakeRuntimeLoader, FakeRuntimeExecutor]:
     loader = FakeRuntimeLoader()
     executor = FakeRuntimeExecutor()
-    return RuntimeClient(runtime_loader=loader, runtime_executor=executor), loader, executor
+    return (
+        RuntimeClient(
+            runtime_loader=cast(RuntimeLoader, loader),
+            runtime_executor=cast(RuntimeExecutor, executor),
+        ),
+        loader,
+        executor,
+    )
 
 
 def test_runtime_client_describe_plan_reports_backend_override_and_specialization_choice(tmp_path: Path) -> None:

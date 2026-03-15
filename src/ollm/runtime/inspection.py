@@ -1,9 +1,106 @@
+from typing import TypedDict, cast
+
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.plan import RuntimePlan
 from ollm.runtime.resolver import ModelSourceKind, ResolvedModel
 
 
-def resolved_model_payload(resolved_model: ResolvedModel) -> dict[str, object]:
+class ResolvedModelPayload(TypedDict):
+    model_reference: str
+    normalized_name: str
+    source_kind: str
+    support_level: str
+    modalities: list[str]
+    requires_processor: bool
+    supports_disk_cache: bool
+    supports_specialization: bool
+    repo_id: str | None
+    revision: str | None
+    path: str | None
+    provider_name: str | None
+    native_family: str | None
+    architecture: str | None
+    model_type: str | None
+    generic_model_kind: str | None
+    resolution_message: str
+
+
+class RuntimePlanPayload(TypedDict):
+    backend_id: str | None
+    modalities: list[str]
+    requires_processor: bool
+    audio_input_support: str
+    supports_disk_cache: bool
+    supports_cpu_offload: bool
+    supports_gpu_offload: bool
+    specialization_provider_id: str | None
+    specialization_enabled: bool
+    specialization_state: str
+    planned_specialization_pass_ids: list[str]
+    reason: str
+
+
+class AvailabilityPayload(TypedDict):
+    materialized: bool
+    available: bool | None
+    availability_status: str
+
+
+class MergedRuntimePayload(TypedDict):
+    model_reference: str
+    normalized_name: str
+    source_kind: str
+    support_level: str
+    modalities: list[str]
+    requires_processor: bool
+    supports_disk_cache: bool
+    supports_specialization: bool
+    repo_id: str | None
+    revision: str | None
+    path: str | None
+    provider_name: str | None
+    native_family: str | None
+    architecture: str | None
+    model_type: str | None
+    generic_model_kind: str | None
+    resolution_message: str
+    materialized: bool
+    available: bool | None
+    availability_status: str
+    resolved_support_level: str
+    resolved_modalities: list[str]
+    resolved_requires_processor: bool
+    resolved_supports_disk_cache: bool
+    resolved_resolution_message: str
+    runtime_plan: RuntimePlanPayload
+
+
+class RuntimeConfigPayload(TypedDict):
+    model_reference: str
+    models_dir: str
+    device: str
+    backend: str | None
+    provider_endpoint: str | None
+    adapter_dir: str | None
+    multimodal: bool
+    use_specialization: bool
+    cache_dir: str
+    use_cache: bool
+    offload_cpu_layers: int
+    offload_gpu_layers: int
+    force_download: bool
+    stats: bool
+    verbose: bool
+    quiet: bool
+
+
+class PlanJsonPayload(TypedDict):
+    runtime_config: RuntimeConfigPayload
+    resolved_model: ResolvedModelPayload
+    runtime_plan: RuntimePlanPayload
+
+
+def resolved_model_payload(resolved_model: ResolvedModel) -> ResolvedModelPayload:
     return {
         "model_reference": resolved_model.reference.raw,
         "normalized_name": resolved_model.normalized_name,
@@ -25,7 +122,7 @@ def resolved_model_payload(resolved_model: ResolvedModel) -> dict[str, object]:
     }
 
 
-def runtime_plan_payload(runtime_plan: RuntimePlan) -> dict[str, object]:
+def runtime_plan_payload(runtime_plan: RuntimePlan) -> RuntimePlanPayload:
     return {
         "backend_id": runtime_plan.backend_id,
         "modalities": [
@@ -51,7 +148,7 @@ def availability_payload(
     runtime_plan: RuntimePlan,
     *,
     materialized: bool,
-) -> dict[str, object]:
+) -> AvailabilityPayload:
     if resolved_model.source_kind is ModelSourceKind.PROVIDER:
         available = runtime_plan.is_executable()
         return {
@@ -71,8 +168,8 @@ def merged_runtime_payload(
     runtime_plan: RuntimePlan,
     *,
     materialized: bool,
-) -> dict[str, object]:
-    payload = resolved_model_payload(resolved_model)
+) -> MergedRuntimePayload:
+    payload = cast(MergedRuntimePayload, resolved_model_payload(resolved_model))
     payload.update(
         availability_payload(
             resolved_model,
@@ -96,7 +193,7 @@ def merged_runtime_payload(
     return payload
 
 
-def runtime_config_payload(runtime_config: RuntimeConfig) -> dict[str, object]:
+def runtime_config_payload(runtime_config: RuntimeConfig) -> RuntimeConfigPayload:
     return {
         "model_reference": runtime_config.model_reference,
         "models_dir": str(runtime_config.resolved_models_dir()),
@@ -117,7 +214,7 @@ def runtime_config_payload(runtime_config: RuntimeConfig) -> dict[str, object]:
     }
 
 
-def plan_json_payload(runtime_config: RuntimeConfig, runtime_plan: RuntimePlan) -> dict[str, object]:
+def plan_json_payload(runtime_config: RuntimeConfig, runtime_plan: RuntimePlan) -> PlanJsonPayload:
     return {
         "runtime_config": runtime_config_payload(runtime_config),
         "resolved_model": resolved_model_payload(runtime_plan.resolved_model),

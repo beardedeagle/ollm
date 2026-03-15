@@ -16,13 +16,13 @@ from safetensors.torch import safe_open, save_file
 from transformers.utils.quantization_config import Mxfp4Config
 
 # 1. Get original tensors(_blocks, _scales) in torch.uint8, torch.bfloat16.
-do = {}
+tensor_specs = {}
 for filename in ["model-00000-of-00002", "model-00001-of-00002", "model-00002-of-00002"]:
     MODEL_DIR = f"/content/drive/MyDrive/temp/gpt-oss-20b/{filename}.safetensors"
     with safe_open(MODEL_DIR, framework="pt") as fin:
         for key in fin.keys():
             t = fin.get_tensor(key)
-            do[key] = t
+            tensor_specs[key] = t
 
 #2. Export
 MODEL_ID = "/content/drive/MyDrive/temp/gpt-oss-20b/"
@@ -147,7 +147,7 @@ for filename in ["model-00000-of-00002", "model-00001-of-00002", "model-00002-of
             t = fin.get_tensor(key)
             d2[key] = t
 
-for name, o in d.items():
+for name, o in tensor_specs.items():
     t1, dtype, shape = o
     if name+"_blocks" in d2 and name+"_scales" in d2:
         t2 = convert_moe_packed_tensors(d2[name+"_blocks"], d2[name+"_scales"])

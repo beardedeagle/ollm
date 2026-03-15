@@ -13,6 +13,7 @@ from .utils import _walk_to_parent, _assign_tensor_to_module, _set_meta_placehol
 loader, stats = None, None
 
 #======== rewriting core classes (tested on transformers==4.52.3) ==============
+from transformers import DynamicCache
 from transformers.models.llama.modeling_llama import apply_rotary_pos_emb, eager_attention_forward, LlamaForCausalLM, LlamaAttention, LlamaMLP, LlamaDecoderLayer, LlamaModel, LlamaConfig, create_causal_mask, Cache
 from transformers.modeling_outputs import BaseModelOutputWithPast
 

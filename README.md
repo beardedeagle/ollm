@@ -280,6 +280,7 @@ Fast syntax-only verification remains:
 
 ```bash
 uv run python -m compileall src tests
+uv run ty check src tests
 ```
 
 Build the documentation site with:

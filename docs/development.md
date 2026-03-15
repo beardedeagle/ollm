@@ -14,6 +14,7 @@ uv sync --group docs
 
 ```bash
 uv run python -m compileall src tests
+uv run ty check src tests
 uv run pytest
 uv build
 uv run python -m pip_audit

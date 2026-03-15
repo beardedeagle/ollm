@@ -1,6 +1,7 @@
 import json
 import stat
 from pathlib import Path
+from typing import cast
 
 from typer.testing import CliRunner
 
@@ -24,9 +25,9 @@ from tests.ollama_server import OllamaFixtureServer
 def build_test_app():
     loader = FakeRuntimeLoader()
     services = CommandServices(
-        runtime_loader=loader,
-        runtime_executor=FakeRuntimeExecutor(),
-        doctor_service=FakeDoctorService(),
+        runtime_loader=cast(RuntimeLoader, loader),
+        runtime_executor=cast(RuntimeExecutor, FakeRuntimeExecutor()),
+        doctor_service=cast(DoctorService, FakeDoctorService()),
     )
     return CliRunner(), loader, create_app(services)
 

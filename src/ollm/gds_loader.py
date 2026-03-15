@@ -362,11 +362,3 @@ class MoEWeightsLoader(DenseWeightsLoader): #qwen3_next safetensors
 					if filename not in self.safetensors:
 						filepath = os.path.join(self.path, filename)
 						self.safetensors[filename] = get_optimal_safetensor_reader(filepath) #safe_open(filepath, framework="pt")
-
-
-#=========================================================================
-
-if __name__=="__main__":
-	q = GDSWeights("/media/mega4alik/ssd/models/gpt-oss-20B/gds_export/")
-	t = q.load_param_to_cuda("model.layers.0.self_attn.q_proj.weight")
-	print(t, t.dtype, t.shape)

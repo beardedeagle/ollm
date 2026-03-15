@@ -1,5 +1,7 @@
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Self, cast
 
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
 
@@ -22,15 +24,15 @@ class ContentPart:
     value: str
 
     @classmethod
-    def text(cls, value: str):
+    def text(cls, value: str) -> Self:
         return cls(kind=ContentKind.TEXT, value=value)
 
     @classmethod
-    def image(cls, value: str):
+    def image(cls, value: str) -> Self:
         return cls(kind=ContentKind.IMAGE, value=value)
 
     @classmethod
-    def audio(cls, value: str):
+    def audio(cls, value: str) -> Self:
         return cls(kind=ContentKind.AUDIO, value=value)
 
     def as_transformers_content(self) -> dict[str, str]:
@@ -44,9 +46,9 @@ class ContentPart:
         return {"type": self.kind.value, "value": self.value}
 
     @classmethod
-    def from_dict(cls, payload: dict[str, str]):
-        kind = ContentKind(payload["type"])
-        value = payload["value"]
+    def from_dict(cls, payload: Mapping[str, object]) -> Self:
+        kind = ContentKind(_require_string(payload, "type"))
+        value = _require_string(payload, "value")
         if kind is ContentKind.TEXT:
             return cls.text(value)
         if kind is ContentKind.IMAGE:
@@ -60,15 +62,15 @@ class Message:
     content: list[ContentPart]
 
     @classmethod
-    def system_text(cls, text: str):
+    def system_text(cls, text: str) -> Self:
         return cls(role=MessageRole.SYSTEM, content=[ContentPart.text(text)])
 
     @classmethod
-    def user_text(cls, text: str):
+    def user_text(cls, text: str) -> Self:
         return cls(role=MessageRole.USER, content=[ContentPart.text(text)])
 
     @classmethod
-    def assistant_text(cls, text: str):
+    def assistant_text(cls, text: str) -> Self:
         return cls(role=MessageRole.ASSISTANT, content=[ContentPart.text(text)])
 
     def as_transformers_message(self) -> dict[str, object]:
@@ -92,9 +94,12 @@ class Message:
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]):
-        role = MessageRole(str(payload["role"]))
-        parts = [ContentPart.from_dict(part) for part in payload["content"]]
+    def from_dict(cls, payload: Mapping[str, object]) -> Self:
+        role = MessageRole(_require_string(payload, "role"))
+        parts = [
+            ContentPart.from_dict(_require_mapping(part, f"content[{index}]"))
+            for index, part in enumerate(_require_sequence(payload, "content"))
+        ]
         return cls(role=role, content=parts)
 
 
@@ -130,12 +135,15 @@ class Transcript:
         }
 
     @classmethod
-    def from_dict(cls, payload: dict[str, object]):
-        version = int(payload["version"])
-        session_name = str(payload["session_name"])
-        model_reference = str(payload["model_reference"])
-        system_prompt = str(payload.get("system_prompt", ""))
-        messages = [Message.from_dict(message) for message in payload.get("messages", [])]
+    def from_dict(cls, payload: Mapping[str, object]) -> Self:
+        version = _require_int(payload, "version")
+        session_name = _require_string(payload, "session_name")
+        model_reference = _require_string(payload, "model_reference")
+        system_prompt = _optional_string(payload.get("system_prompt"), default="")
+        messages = [
+            Message.from_dict(_require_mapping(message, f"messages[{index}]"))
+            for index, message in enumerate(_optional_sequence(payload.get("messages"), default=()))
+        ]
         return cls(
             version=version,
             session_name=session_name,
@@ -143,3 +151,51 @@ class Transcript:
             system_prompt=system_prompt,
             messages=messages,
         )
+
+
+def _require_mapping(value: object, field_name: str) -> Mapping[str, object]:
+    if not isinstance(value, Mapping):
+        raise ValueError(f"{field_name} must be an object")
+    return cast(Mapping[str, object], value)
+
+
+def _require_sequence(payload: Mapping[str, object], field_name: str) -> Sequence[object]:
+    value = payload.get(field_name)
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+        raise ValueError(f"{field_name} must be a list")
+    return value
+
+
+def _optional_sequence(value: object, *, default: Sequence[object]) -> Sequence[object]:
+    if value is None:
+        return default
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)):
+        raise ValueError("messages must be a list")
+    return value
+
+
+def _require_string(payload: Mapping[str, object], field_name: str) -> str:
+    value = payload.get(field_name)
+    if not isinstance(value, str):
+        raise ValueError(f"{field_name} must be a string")
+    return value
+
+
+def _optional_string(value: object, *, default: str) -> str:
+    if value is None:
+        return default
+    if not isinstance(value, str):
+        raise ValueError("system_prompt must be a string")
+    return value
+
+
+def _require_int(payload: Mapping[str, object], field_name: str) -> int:
+    value = payload.get(field_name)
+    if isinstance(value, int):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError as exc:
+            raise ValueError(f"{field_name} must be an integer") from exc
+    raise ValueError(f"{field_name} must be an integer")

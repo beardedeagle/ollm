@@ -79,7 +79,7 @@ def ensure_interactive_terminal() -> None:
     raise typer.BadParameter("Interactive chat requires a TTY. Use `ollm prompt` for non-interactive usage.")
 
 
-def print_json(console: Console, payload: dict[str, object]) -> None:
+def print_json(console: Console, payload: object) -> None:
     del console
     typer.echo(json.dumps(payload, indent=2))
 

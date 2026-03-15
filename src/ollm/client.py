@@ -7,7 +7,7 @@ from ollm.app.session import ChatSession
 from ollm.app.types import ContentKind, ContentPart, Message, MessageRole, PromptRequest, PromptResponse
 from ollm.runtime.config import DEFAULT_SYSTEM_PROMPT, GenerationConfig, RuntimeConfig
 from ollm.runtime.generation import RuntimeExecutor
-from ollm.runtime.inspection import plan_json_payload
+from ollm.runtime.inspection import PlanJsonPayload, plan_json_payload
 from ollm.runtime.loader import DiscoveredRuntimeModel, LoadedRuntime, RuntimeLoader
 from ollm.runtime.plan import RuntimePlan
 from ollm.runtime.resolver import ResolvedModel
@@ -49,7 +49,7 @@ class RuntimeClient:
         """Build a runtime plan without loading a backend."""
         return self.runtime_loader.plan(runtime_config)
 
-    def describe_plan(self, runtime_config: RuntimeConfig) -> dict[str, object]:
+    def describe_plan(self, runtime_config: RuntimeConfig) -> PlanJsonPayload:
         """Return a JSON-serializable inspection payload for a runtime plan."""
         return plan_json_payload(runtime_config, self.plan(runtime_config))
 

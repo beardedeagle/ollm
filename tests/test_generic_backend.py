@@ -87,10 +87,12 @@ def test_transformers_generic_backend_loads_causal_models_via_injected_callables
         tokenizer_loader=lambda path, trust_remote_code=False: FakeTokenizer(),
     )
     runtime = backend.load(build_plan(GenericModelKind.CAUSAL_LM, model_path), RuntimeConfig(device="cpu"))
+    tokenizer = runtime.tokenizer
     assert runtime.backend_id == "transformers-generic"
     assert runtime.model is fake_model
     assert runtime.device == torch.device("cpu")
-    assert runtime.tokenizer.pad_token == "</s>"
+    assert isinstance(tokenizer, FakeTokenizer)
+    assert tokenizer.pad_token == "</s>"
     assert runtime.model.generation_config.pad_token_id == 7
 
 

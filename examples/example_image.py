@@ -1,7 +1,7 @@
 # gemma3-12B Image+Text example
 
 import torch
-from ollm import Inference, file_get_contents, TextStreamer
+from ollm import Inference, TextStreamer
 o = Inference("gemma3-12B", device="cuda:0", logging=True, multimodality=True)
 o.ini_model(models_dir="./models/", force_download=False)
 o.offload_layers_to_cpu(layers_num=12) #offload some layers to CPU for speed boost

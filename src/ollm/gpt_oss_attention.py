@@ -206,30 +206,3 @@ def attention_ref(
 
     output = output.reshape(batch_size, num_queries, num_key_value_heads * num_key_value_groups * head_dim).bfloat16()
     return output
-
-"""
-@pytest.mark.parametrize("batch_size", [1, 2])
-@pytest.mark.parametrize("num_queries", [1, 128])
-@pytest.mark.parametrize("num_keys", [128, 32])
-@pytest.mark.parametrize("num_key_value_heads", [8])
-@pytest.mark.parametrize("num_key_value_groups", [8])
-@pytest.mark.parametrize("head_dim", [64])
-@pytest.mark.parametrize("sm_scale", [0.125])
-@pytest.mark.parametrize("sliding_window", [None, 128])
-@pytest.mark.parametrize("start_q", [0, 5])
-"""
-def test_eq(batch_size, num_queries, num_keys, num_key_value_heads, num_key_value_groups, head_dim, sm_scale, sliding_window, start_q):
-    if num_queries > num_keys:
-        pytest.skip("too many queries")
-
-    q = torch.randn(batch_size, num_queries, num_key_value_heads, num_key_value_groups, head_dim).bfloat16().cuda()
-    k = torch.randn(batch_size, num_keys, num_key_value_heads, head_dim).bfloat16().cuda()
-    v = torch.randn(batch_size, num_keys, num_key_value_heads, head_dim).bfloat16().cuda()
-    sinks = torch.randn(num_key_value_heads * num_key_value_groups).bfloat16().cuda()
-
-    start_q = torch.tensor([start_q], dtype=torch.int32).cuda()
-
-    o1 = attention(q, k, v, sinks, sm_scale, sliding_window, start_q)
-    o2 = attention_ref(q, k, v, sinks, sm_scale, sliding_window, start_q)
-
-    torch.testing.assert_close(o1, o2)

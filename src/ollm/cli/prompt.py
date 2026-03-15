@@ -143,7 +143,10 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
             raise typer.Exit(code=1)
 
         if format == "json":
-            payload = {"text": response.text, "metadata": response.metadata}
+            payload: dict[str, object] = {
+                "text": response.text,
+                "metadata": dict(response.metadata),
+            }
             if output is not None:
                 write_private_text(output, json.dumps(payload, indent=2) + "\n")
             else:

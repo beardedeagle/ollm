@@ -1,4 +1,4 @@
-from ollm import Inference, file_get_contents, TextStreamer
+from ollm import Inference, TextStreamer
 
 o = Inference("llama3-1B-chat", device="cuda:0", logging=True) #llama3-1B-chat(3B, 8B) | gpt-oss-20B | qwen3-next-80B
 o.ini_model(models_dir="./models/", force_download=False)

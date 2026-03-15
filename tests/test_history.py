@@ -21,3 +21,20 @@ def test_transcript_save_and_load_round_trip(tmp_path: Path) -> None:
     assert loaded.model_reference == "llama3-1B-chat"
     assert [message.text_content() for message in loaded.messages] == ["hello", "hi"]
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
+
+
+def test_transcript_from_dict_rejects_non_list_messages() -> None:
+    payload = {
+        "version": TRANSCRIPT_VERSION,
+        "session_name": "demo",
+        "model_reference": "llama3-1B-chat",
+        "system_prompt": "You are helpful.",
+        "messages": "not-a-list",
+    }
+
+    try:
+        Transcript.from_dict(payload)
+    except ValueError as exc:
+        assert "messages must be a list" in str(exc)
+    else:
+        raise AssertionError("Transcript.from_dict should reject non-list messages")

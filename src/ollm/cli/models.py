@@ -6,7 +6,7 @@ from ollm.cli.common import build_console, print_json
 from ollm.cli.services import CommandServices
 from ollm.runtime.catalog import list_model_catalog
 from ollm.runtime.config import RuntimeConfig, normalize_provider_endpoint
-from ollm.runtime.inspection import merged_runtime_payload, plan_json_payload
+from ollm.runtime.inspection import MergedRuntimePayload, RuntimePlanPayload, merged_runtime_payload, plan_json_payload
 from ollm.runtime.loader import DiscoveredRuntimeModel
 
 
@@ -52,6 +52,19 @@ def _provider_runtime_config(
         provider_endpoint=discovered_model.provider_endpoint,
         use_specialization=not no_specialization,
     )
+
+
+def _discovery_entry(
+    payload: MergedRuntimePayload,
+    *,
+    discovery_source: str,
+    provider_endpoint: str | None = None,
+) -> dict[str, object]:
+    entry: dict[str, object] = {key: value for key, value in payload.items()}
+    entry["discovery_source"] = discovery_source
+    if provider_endpoint is not None:
+        entry["provider_endpoint"] = provider_endpoint
+    return entry
 
 
 def register_models_command(app: typer.Typer, services: CommandServices) -> None:
@@ -100,13 +113,15 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
                     use_specialization=not no_specialization,
                 )
             )
-            payload = merged_runtime_payload(
-                resolved_model,
-                runtime_plan,
-                materialized=installed_entry,
+            payload = _discovery_entry(
+                merged_runtime_payload(
+                    resolved_model,
+                    runtime_plan,
+                    materialized=installed_entry,
+                ),
+                discovery_source="built-in",
             )
-            payload["discovery_source"] = "built-in"
-            if installed and not payload["materialized"]:
+            if installed and not bool(payload["materialized"]):
                 continue
             entries.append(payload)
             if resolved_model.model_path is not None:
@@ -125,13 +140,15 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
                     use_specialization=not no_specialization,
                 )
             )
-            payload = merged_runtime_payload(
-                resolved_model,
-                runtime_plan,
-                materialized=installed_entry,
+            payload = _discovery_entry(
+                merged_runtime_payload(
+                    resolved_model,
+                    runtime_plan,
+                    materialized=installed_entry,
+                ),
+                discovery_source="discovered-local",
             )
-            payload["discovery_source"] = "discovered-local"
-            if installed and not payload["materialized"]:
+            if installed and not bool(payload["materialized"]):
                 continue
             entries.append(payload)
 
@@ -154,14 +171,16 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
                     no_specialization=no_specialization,
                 )
             )
-            payload = merged_runtime_payload(
-                discovered_model.resolved_model,
-                runtime_plan,
-                materialized=False,
+            payload = _discovery_entry(
+                merged_runtime_payload(
+                    discovered_model.resolved_model,
+                    runtime_plan,
+                    materialized=False,
+                ),
+                discovery_source="discovered-provider",
+                provider_endpoint=discovered_model.provider_endpoint,
             )
-            payload["discovery_source"] = "discovered-provider"
-            payload["provider_endpoint"] = discovered_model.provider_endpoint
-            if installed and not payload["materialized"]:
+            if installed and not bool(payload["materialized"]):
                 continue
             entries.append(payload)
 
@@ -203,7 +222,7 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
                 use_specialization=not no_specialization,
             )
         )
-        payload = merged_runtime_payload(
+        payload: MergedRuntimePayload = merged_runtime_payload(
             resolved_model,
             runtime_plan,
             materialized=materialized,
@@ -250,13 +269,14 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             console.print(f"revision: {payload['revision']}")
         if payload["path"] is not None:
             console.print(f"path: {payload['path']}")
-        runtime_plan = payload.get("runtime_plan")
-        if runtime_plan is not None:
-            console.print(f"backend: {runtime_plan['backend_id']}")
-            if runtime_plan.get("audio_input_support"):
-                console.print(f"audio-input: {runtime_plan['audio_input_support']}")
-            console.print(f"specialization-state: {runtime_plan['specialization_state']}")
-            console.print(f"planned-passes: {', '.join(runtime_plan['planned_specialization_pass_ids'])}")
+        runtime_plan_payload: RuntimePlanPayload = payload["runtime_plan"]
+        console.print(f"backend: {runtime_plan_payload['backend_id']}")
+        if runtime_plan_payload["audio_input_support"]:
+            console.print(f"audio-input: {runtime_plan_payload['audio_input_support']}")
+        console.print(f"specialization-state: {runtime_plan_payload['specialization_state']}")
+        console.print(
+            f"planned-passes: {', '.join(runtime_plan_payload['planned_specialization_pass_ids'])}"
+        )
         console.print(f"modalities: {', '.join(payload['modalities'])}")
         console.print(payload["resolution_message"])
 

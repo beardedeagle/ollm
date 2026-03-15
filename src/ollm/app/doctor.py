@@ -307,6 +307,12 @@ class DoctorService:
             and execution_model.capabilities.support_level is not SupportLevel.UNSUPPORTED
         ):
             resolution_ok = True
+        audio_input_support = runtime_plan.details.get("audio_input_support", "")
+        if not isinstance(audio_input_support, str):
+            audio_input_support = ""
+        backend_override = runtime_config.resolved_backend() or ""
+        backend_id = runtime_plan.backend_id or ""
+        specialization_provider_id = runtime_plan.specialization_provider_id or ""
 
         checks: list[DoctorCheck] = [
             DoctorCheck(
@@ -319,14 +325,12 @@ class DoctorService:
                     "modalities": ",".join(
                         modality.value for modality in runtime_plan.resolved_model.capabilities.modalities
                     ),
-                    "audio_input_support": runtime_plan.details.get("audio_input_support", ""),
-                    "backend_override": "" if runtime_config.resolved_backend() is None else runtime_config.resolved_backend(),
+                    "audio_input_support": audio_input_support,
+                    "backend_override": backend_override,
                     "use_specialization": str(runtime_config.use_specialization).lower(),
                     "requires_processor": str(runtime_plan.resolved_model.capabilities.requires_processor),
-                    "backend_id": "" if runtime_plan.backend_id is None else runtime_plan.backend_id,
-                    "specialization_provider_id": (
-                        "" if runtime_plan.specialization_provider_id is None else runtime_plan.specialization_provider_id
-                    ),
+                    "backend_id": backend_id,
+                    "specialization_provider_id": specialization_provider_id,
                     "specialization_state": runtime_plan.specialization_state.value,
                     "planned_specialization_pass_ids": ",".join(
                         pass_id.value for pass_id in runtime_plan.specialization_pass_ids

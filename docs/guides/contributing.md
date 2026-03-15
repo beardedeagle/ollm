@@ -14,6 +14,7 @@ Before sending a documentation or code change, run the relevant gates:
 
 ```bash
 uv run python -m compileall src tests examples scripts
+uv run ty check src tests
 uv run pytest -q
 uv build
 uv run python -m pip_audit
