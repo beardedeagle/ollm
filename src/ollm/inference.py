@@ -1,9 +1,10 @@
 """Low-level optimized-native inference helpers and snapshot utilities."""
 
+import importlib
 import importlib.util
 import logging
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Callable, Protocol, cast
 
 import torch
 from huggingface_hub import snapshot_download
@@ -23,6 +24,21 @@ from ollm.runtime.specialization import (
 from ollm.utils import Stats
 
 LOGGER = logging.getLogger(__name__)
+
+
+class _LoraConfigProtocol(Protocol):
+    @classmethod
+    def from_pretrained(cls, adapter_path: str) -> object: ...
+
+
+class _PeftModelProtocol(Protocol):
+    def load_adapter(
+        self,
+        adapter_path: str,
+        *,
+        adapter_name: str,
+        use_safetensors: bool,
+    ) -> None: ...
 
 
 def get_attn_implementation() -> str | None:
@@ -51,6 +67,13 @@ def download_hf_snapshot(
         force_download=force_download,
         revision=revision,
     )
+
+
+def _load_peft_symbols() -> tuple[type[_LoraConfigProtocol], Callable[[object, object], object]]:
+    peft_module = importlib.import_module("peft")
+    lora_config_cls = cast(type[_LoraConfigProtocol], getattr(peft_module, "LoraConfig"))
+    get_peft_model = cast(Callable[[object, object], object], getattr(peft_module, "get_peft_model"))
+    return lora_config_cls, get_peft_model
 
 
 class Inference:
@@ -266,14 +289,14 @@ class AutoInference(Inference):
             self.model_reference,
         )
         if adapter_dir:
-            from peft import LoraConfig, get_peft_model
-
             adapter_path = Path(adapter_dir).expanduser().resolve()
             if not adapter_path.exists() or not adapter_path.is_dir():
                 raise ValueError(f"Adapter directory does not exist: {adapter_path}")
             validate_safe_adapter_artifacts(adapter_path)
-            peft_config = LoraConfig.from_pretrained(str(adapter_path))
-            self.model = get_peft_model(self.model, peft_config)
-            self.model.load_adapter(
+            lora_config_cls, get_peft_model = _load_peft_symbols()
+            peft_config = lora_config_cls.from_pretrained(str(adapter_path))
+            peft_model = cast(_PeftModelProtocol, get_peft_model(self.model, peft_config))
+            peft_model.load_adapter(
                 str(adapter_path), adapter_name="default", use_safetensors=True
             )
+            self.model = peft_model

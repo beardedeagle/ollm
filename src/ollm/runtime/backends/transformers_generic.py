@@ -1,6 +1,7 @@
 from collections.abc import Callable
+import importlib
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol, cast
 
 import torch
 from transformers import (
@@ -20,6 +21,21 @@ from ollm.runtime.safety import (
     validate_safe_adapter_artifacts,
     validate_safe_model_artifacts,
 )
+
+
+class _LoraConfigProtocol(Protocol):
+    @classmethod
+    def from_pretrained(cls, adapter_path: str) -> object: ...
+
+
+class _PeftModelProtocol(Protocol):
+    def load_adapter(
+        self,
+        adapter_path: str,
+        *,
+        adapter_name: str,
+        use_safetensors: bool,
+    ) -> None: ...
 
 
 class TransformersGenericBackend(ExecutionBackend):
@@ -167,12 +183,13 @@ def _configure_padding(tokenizer, model) -> None:
 
 
 def _apply_peft_adapter(model, adapter_dir: Path):
-    from peft import LoraConfig, get_peft_model
-
     validate_safe_adapter_artifacts(adapter_dir)
+    peft_module = importlib.import_module("peft")
+    lora_config_cls = cast(type[_LoraConfigProtocol], getattr(peft_module, "LoraConfig"))
+    get_peft_model = cast(Callable[[object, object], object], getattr(peft_module, "get_peft_model"))
 
-    peft_config = LoraConfig.from_pretrained(str(adapter_dir))
-    adapted_model = get_peft_model(model, peft_config)
+    peft_config = lora_config_cls.from_pretrained(str(adapter_dir))
+    adapted_model = cast(_PeftModelProtocol, get_peft_model(model, peft_config))
     adapted_model.load_adapter(
         str(adapter_dir), adapter_name="default", use_safetensors=True
     )

@@ -7,6 +7,9 @@ strict: true
 
 extra:
   generator: false
+  version:
+    provider: mike
+    default: latest
 
 watch:
   - src/ollm
@@ -76,6 +79,10 @@ markdown_extensions:
 plugins:
   - search
   - autorefs
+  - mike:
+      canonical_version: latest
+      version_selector: true
+      alias_type: symlink
   - mkdocstrings:
       handlers:
         python:
