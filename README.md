@@ -16,8 +16,8 @@ oLLM is a lightweight Python library for large-context LLM inference, built on t
 <ul dir="auto">
 <li><code>AutoInference</code> for compatible local Llama and Gemma3 model directories with optional <a href="https://github.com/huggingface/peft">PEFT</a> adapter support</li>
 <li><code>kvikio</code> and <code>flash-attn</code> are optional now, meaning no hardware restrictions beyond HF transformers</li>
-<li>Multimodal <b>voxtral-small-24B</b> (audio+text) added. <a href="https://github.com/Mega4alik/ollm/blob/main/examples/example_audio.py">[sample with audio]</a> </li>
-<li>Multimodal <b>gemma3-12B</b> (image+text) added. <a href="https://github.com/Mega4alik/ollm/blob/main/examples/example_image.py">[sample with image]</a> </li>
+<li>Multimodal <b>voxtral-small-24B</b> (audio+text) added. <a href="examples/example_audio.py">[sample with audio]</a> </li>
+<li>Multimodal <b>gemma3-12B</b> (image+text) added. <a href="examples/example_image.py">[sample with image]</a> </li>
 <li><b>qwen3-next-80B</b> (160GB model) added with <span style="color:blue">⚡️1tok/2s</span> throughput (our fastest model so far)</li>
 <li>gpt-oss-20B flash-attention-like implementation added to reduce VRAM usage </li>
 <li>gpt-oss-20B chunked MLP added to reduce VRAM usage </li>
@@ -87,6 +87,19 @@ pip install kvikio-cu{cuda_version} Ex, kvikio-cu12 #speeds up the inference
 
 Check out the [Troubleshooting](https://github.com/Mega4alik/ollm/wiki/Troubleshooting) in case of any installation issues 
 
+The primary project documentation now lives under `docs/` and is built with MkDocs Material:
+
+- [Overview](docs/index.md)
+- [Getting Started / Installation](docs/guides/installation.md)
+- [User Guide: Terminal Interface](docs/terminal-interface.md)
+- [User Guide: Model References](docs/guides/model-references.md)
+- [User Guide: Providers](docs/guides/providers.md)
+- [Optimization Guide](docs/guides/optimization.md)
+- [CLI Reference](docs/cli.md)
+- [Architecture](docs/architecture/overview.md)
+- [API Reference](docs/api/client.md)
+- [Development](docs/development.md)
+
 ## Terminal Interface
 
 oLLM now ships with a first-party terminal interface in addition to the importable library.
@@ -109,7 +122,7 @@ ollm prompt --model llama3-8B-chat --backend transformers-generic --no-specializ
 ollm prompt --model llama3-8B-chat --plan-json
 ```
 
-`ollm doctor` reports missing optional extras, runtime availability, path issues, and model readiness. `ollm models` provides `list`, `info`, `download`, and `path` subcommands for both built-in aliases and arbitrary model references. `ollm models list` now acts as a discovery view: it combines built-in aliases, local materialized models, and provider-discovered entries from Ollama and LM Studio by default, and it can also probe `openai-compatible` or `msty` providers when you pass `--discover-provider <name> --provider-endpoint <url>`.
+`ollm doctor` reports missing optional extras, runtime availability, path issues, and model readiness. `ollm models` provides `list`, `info`, `download`, and `path` subcommands for both built-in aliases and arbitrary model references. `ollm models list` acts as a discovery view: it combines built-in aliases, local materialized models, and provider-discovered entries from Ollama and LM Studio by default, and it can also probe `openai-compatible` or `msty` providers when you pass `--discover-provider <name> --provider-endpoint <url>`.
 
 Runtime selection and inspection controls:
 - `--backend` lets you force one of `optimized-native`, `transformers-generic`, `ollama`, or `openai-compatible` when that backend is valid for the resolved model reference
@@ -118,6 +131,21 @@ Runtime selection and inspection controls:
 - `--provider-endpoint` must be an absolute `http` or `https` URL and must not embed credentials
 
 `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` now all honor `--backend` and `--no-specialization`. `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` also support `--plan-json` for script-friendly inspection of the resolver/backend decision.
+
+Runtime vocabulary:
+- support levels:
+  - `optimized`: a native specialization provider can run the reference
+  - `generic`: the Transformers-backed generic runtime can run the reference
+  - `provider-backed`: execution goes through a provider API such as Ollama or an OpenAI-compatible endpoint
+  - `unsupported`: the reference resolves, but the current runtime cannot execute it
+- discovery sources:
+  - `built-in`: a shipped oLLM alias
+  - `discovered-local`: a materialized local model directory found under `--models-dir`
+  - `discovered-provider`: a model reference returned by provider discovery
+- availability terms:
+  - `materialized` / `not-materialized` describe whether local weights are present on disk
+  - `available` / `unavailable` describe whether a provider reference is currently reachable and executable
+  - `ollm models list --installed` filters to materialized local entries only; provider references are never treated as installed
 
 `--model` now accepts opaque model references. Today that means:
 - built-in aliases such as `llama3-1B-chat` and `gemma3-12B` load through registered optimized specialization providers
@@ -234,8 +262,8 @@ o = AutoInference(
 
 You can still run the original sample script as `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True uv run python examples/example.py`.
 **More samples**
-- [gemma3-12B image+text](https://github.com/Mega4alik/ollm/blob/main/examples/example_image.py)
-- [voxtral-small-24B audio+text](https://github.com/Mega4alik/ollm/blob/main/examples/example_audio.py)
+- [gemma3-12B image+text](examples/example_image.py)
+- [voxtral-small-24B audio+text](examples/example_audio.py)
 - [AutoInference + SFT](https://github.com/Mega4alik/peftee?tab=readme-ov-file#usage)
 
 ## Development
@@ -252,6 +280,12 @@ Fast syntax-only verification remains:
 
 ```bash
 uv run python -m compileall src tests
+```
+
+Build the documentation site with:
+
+```bash
+uv run --group docs mkdocs build --strict
 ```
 
 ### Benchmark and perf proof

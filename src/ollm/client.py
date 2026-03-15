@@ -1,3 +1,5 @@
+"""High-level public runtime client built on the resolver, planner, loader, and executor stack."""
+
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
@@ -14,13 +16,17 @@ from ollm.runtime.streaming import StreamSink
 
 @dataclass(slots=True)
 class RuntimeClient:
+    """High-level API for resolving, inspecting, loading, and prompting model references."""
+
     runtime_loader: RuntimeLoader = field(default_factory=RuntimeLoader)
     runtime_executor: RuntimeExecutor = field(default_factory=RuntimeExecutor)
 
     def resolve(self, model_reference: str, models_dir: Path = Path("models")) -> ResolvedModel:
+        """Resolve a model reference without loading a runtime."""
         return self.runtime_loader.resolve(model_reference, models_dir.expanduser().resolve())
 
     def discover_local_models(self, models_dir: Path = Path("models")) -> tuple[ResolvedModel, ...]:
+        """Discover local materialized models under a models directory."""
         return self.runtime_loader.discover_local_models(models_dir.expanduser().resolve())
 
     def discover_provider_models(
@@ -31,6 +37,7 @@ class RuntimeClient:
         provider_endpoint: str | None = None,
         strict: bool = False,
     ) -> tuple[DiscoveredRuntimeModel, ...]:
+        """Discover models exposed by one or more provider backends."""
         return self.runtime_loader.discover_provider_models(
             models_dir.expanduser().resolve(),
             provider_names,
@@ -39,12 +46,15 @@ class RuntimeClient:
         )
 
     def plan(self, runtime_config: RuntimeConfig) -> RuntimePlan:
+        """Build a runtime plan without loading a backend."""
         return self.runtime_loader.plan(runtime_config)
 
     def describe_plan(self, runtime_config: RuntimeConfig) -> dict[str, object]:
+        """Return a JSON-serializable inspection payload for a runtime plan."""
         return plan_json_payload(runtime_config, self.plan(runtime_config))
 
     def load(self, runtime_config: RuntimeConfig) -> LoadedRuntime:
+        """Resolve and load a runtime backend for the given configuration."""
         return self.runtime_loader.load(runtime_config)
 
     def prompt(
@@ -58,6 +68,7 @@ class RuntimeClient:
         audio: tuple[str, ...] = (),
         sink: StreamSink | None = None,
     ) -> PromptResponse:
+        """Execute a single prompt using plain text plus optional image or audio inputs."""
         parts = [ContentPart.text(prompt)]
         parts.extend(ContentPart.image(item) for item in images)
         parts.extend(ContentPart.audio(item) for item in audio)
@@ -79,6 +90,7 @@ class RuntimeClient:
         history: list[Message] | None = None,
         sink: StreamSink | None = None,
     ) -> PromptResponse:
+        """Execute a prompt composed from explicit content parts."""
         if not parts:
             raise ValueError("A prompt requires at least one content part")
         effective_runtime_config = self._runtime_config_for_parts(runtime_config, parts)
@@ -109,6 +121,7 @@ class RuntimeClient:
         messages: list[Message] | None = None,
         autosave_path: Path | None = None,
     ) -> ChatSession:
+        """Create a reusable chat session over the shared runtime stack."""
         session = ChatSession(
             runtime_loader=self.runtime_loader,
             runtime_executor=self.runtime_executor,
@@ -129,6 +142,7 @@ class RuntimeClient:
         runtime_config: RuntimeConfig,
         parts: list[ContentPart],
     ) -> RuntimeConfig:
+        """Enable multimodal planning automatically when non-text parts are present."""
         requires_multimodal = any(part.kind is not ContentKind.TEXT for part in parts)
         if not requires_multimodal or runtime_config.multimodal:
             return runtime_config

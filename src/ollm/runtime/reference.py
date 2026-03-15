@@ -1,3 +1,5 @@
+"""Parsing for opaque model references accepted by the oLLM CLI and library APIs."""
+
 from dataclasses import dataclass
 from pathlib import Path
 import re
@@ -16,6 +18,8 @@ _WINDOWS_PATH_RE = re.compile(r"^[A-Za-z]:[\\/].+")
 
 @dataclass(frozen=True, slots=True)
 class ModelReference:
+    """Normalized representation of a user-supplied model reference string."""
+
     raw: str
     scheme: str | None
     identifier: str
@@ -24,6 +28,7 @@ class ModelReference:
 
     @classmethod
     def parse(cls, raw_reference: str) -> "ModelReference":
+        """Parse a raw model reference into a structured form."""
         raw = raw_reference.strip()
         if not raw:
             raise ValueError("Model reference cannot be empty")
@@ -41,9 +46,11 @@ class ModelReference:
         return cls(raw=raw, scheme=scheme, identifier=identifier, revision=revision, local_path=None)
 
     def has_provider_scheme(self) -> bool:
+        """Return whether the reference points at a provider-backed model."""
         return self.scheme in {"ollama", "openai-compatible", "lmstudio", "msty"}
 
     def is_huggingface_reference(self) -> bool:
+        """Return whether the reference should be treated as a Hugging Face repo ID."""
         if self.scheme == "hf":
             return True
         if self.scheme is not None:
@@ -53,6 +60,7 @@ class ModelReference:
         return " " not in self.identifier
 
     def materialization_name(self) -> str:
+        """Return the directory name used for local materialization of this reference."""
         base = self.identifier.replace("/", "--").replace(":", "--")
         if self.revision is None:
             return base

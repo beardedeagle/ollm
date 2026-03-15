@@ -209,6 +209,8 @@ def test_doctor_and_models_commands(tmp_path: Path) -> None:
     assert installed_info_result.exit_code == 0
     assert '"support_level": "optimized"' in installed_info_result.output
     assert '"resolved_support_level": "optimized"' in installed_info_result.output
+    assert '"materialized": true' in installed_info_result.output
+    assert '"availability_status": "materialized"' in installed_info_result.output
     assert '"resolved_supports_disk_cache": true' in installed_info_result.output
     assert '"specialization_state": "planned"' in installed_info_result.output
     assert '"planned_specialization_pass_ids": [' in installed_info_result.output
@@ -306,7 +308,9 @@ def test_provider_backed_models_info_and_doctor_commands(tmp_path: Path) -> None
         )
         assert info_result.exit_code == 0
         assert '"backend_id": "ollama"' in info_result.output
-        assert '"installed": true' in info_result.output
+        assert '"materialized": false' in info_result.output
+        assert '"available": true' in info_result.output
+        assert '"availability_status": "available"' in info_result.output
         assert '"support_level": "provider-backed"' in info_result.output
 
         doctor_result = runner.invoke(
@@ -353,7 +357,9 @@ def test_msty_provider_models_info_and_doctor_commands(tmp_path: Path) -> None:
         )
         assert info_result.exit_code == 0
         assert '"backend_id": "ollama"' in info_result.output
-        assert '"installed": true' in info_result.output
+        assert '"materialized": false' in info_result.output
+        assert '"available": true' in info_result.output
+        assert '"availability_status": "available"' in info_result.output
         assert '"provider_name": "msty"' in info_result.output
 
         doctor_result = runner.invoke(
@@ -468,6 +474,7 @@ def test_models_list_discovers_provider_models(tmp_path: Path) -> None:
         assert '"model_reference": "ollama:llama3.2"' in result.output
         assert '"model_reference": "lmstudio:local-model"' in result.output
         assert '"discovery_source": "discovered-provider"' in result.output
+        assert '"availability_status": "available"' in result.output
     finally:
         lmstudio_server.stop()
         ollama_server.stop()
@@ -509,6 +516,47 @@ def test_models_list_discovers_msty_provider_models(tmp_path: Path) -> None:
         assert '"model_reference": "msty:llama3.2"' in result.output
         assert '"provider_endpoint": "' + server.base_url + '"' in result.output
         assert '"discovery_source": "discovered-provider"' in result.output
+        assert '"availability_status": "available"' in result.output
+    finally:
+        server.stop()
+
+
+def test_models_list_installed_filters_out_provider_entries(tmp_path: Path) -> None:
+    server = OllamaFixtureServer(
+        models={"llama3.2": {"capabilities": ["completion"], "response_text": "ready"}}
+    )
+    server.start()
+    try:
+        runtime_loader = RuntimeLoader(
+            backends=(OllamaBackend(client=OllamaClient(base_url=server.base_url)),),
+        )
+        services = CommandServices(
+            runtime_loader=runtime_loader,
+            runtime_executor=RuntimeExecutor(),
+            doctor_service=DoctorService(runtime_loader=runtime_loader),
+        )
+        runner = CliRunner()
+        app = create_app(services)
+        model_dir = tmp_path / "models"
+        (model_dir / "llama3-1B-chat").mkdir(parents=True)
+
+        result = runner.invoke(
+            app,
+            [
+                "models",
+                "list",
+                "--installed",
+                "--discover-provider",
+                "ollama",
+                "--json",
+                "--models-dir",
+                str(model_dir),
+                "--no-color",
+            ],
+        )
+        assert result.exit_code == 0
+        assert '"model_reference": "llama3-1B-chat"' in result.output
+        assert '"model_reference": "ollama:llama3.2"' not in result.output
     finally:
         server.stop()
 
@@ -640,7 +688,9 @@ def test_openai_compatible_provider_models_info_and_doctor_commands(tmp_path: Pa
         )
         assert info_result.exit_code == 0
         assert '"backend_id": "openai-compatible"' in info_result.output
-        assert '"installed": true' in info_result.output
+        assert '"materialized": false' in info_result.output
+        assert '"available": true' in info_result.output
+        assert '"availability_status": "available"' in info_result.output
         assert '"support_level": "provider-backed"' in info_result.output
         assert '"modalities": [' in info_result.output
         assert '"audio_input_support": "request-capable"' in info_result.output

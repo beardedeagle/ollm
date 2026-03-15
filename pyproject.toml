@@ -49,7 +49,15 @@ export = [
 [dependency-groups]
 dev = [
     "pip-audit",
-    "pytest"
+    "pytest",
+    "ruff"
+]
+docs = [
+    "mkdocs>=1.6.1,<2.0.0",
+    "mkdocs-autorefs",
+    "mkdocs-material",
+    "mkdocstrings[python]",
+    "ruff"
 ]
 
 [tool.hatch.build.targets.wheel]

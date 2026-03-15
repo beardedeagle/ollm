@@ -1,6 +1,6 @@
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.plan import RuntimePlan
-from ollm.runtime.resolver import ResolvedModel
+from ollm.runtime.resolver import ModelSourceKind, ResolvedModel
 
 
 def resolved_model_payload(resolved_model: ResolvedModel) -> dict[str, object]:
@@ -46,14 +46,40 @@ def runtime_plan_payload(runtime_plan: RuntimePlan) -> dict[str, object]:
     }
 
 
+def availability_payload(
+    resolved_model: ResolvedModel,
+    runtime_plan: RuntimePlan,
+    *,
+    materialized: bool,
+) -> dict[str, object]:
+    if resolved_model.source_kind is ModelSourceKind.PROVIDER:
+        available = runtime_plan.is_executable()
+        return {
+            "materialized": False,
+            "available": available,
+            "availability_status": "available" if available else "unavailable",
+        }
+    return {
+        "materialized": materialized,
+        "available": None,
+        "availability_status": "materialized" if materialized else "not-materialized",
+    }
+
+
 def merged_runtime_payload(
     resolved_model: ResolvedModel,
     runtime_plan: RuntimePlan,
     *,
-    installed: bool,
+    materialized: bool,
 ) -> dict[str, object]:
     payload = resolved_model_payload(resolved_model)
-    payload["installed"] = installed
+    payload.update(
+        availability_payload(
+            resolved_model,
+            runtime_plan,
+            materialized=materialized,
+        )
+    )
     payload["resolved_support_level"] = payload["support_level"]
     payload["resolved_modalities"] = list(payload["modalities"])
     payload["resolved_requires_processor"] = payload["requires_processor"]

@@ -1,3 +1,5 @@
+"""Runtime and generation configuration types used by the CLI and library APIs."""
+
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
@@ -14,6 +16,7 @@ KNOWN_BACKEND_IDS = (
 
 
 def normalize_provider_endpoint(provider_endpoint: str | None) -> str | None:
+    """Validate and normalize a provider API root URL."""
     if provider_endpoint is None:
         return None
     normalized_endpoint = provider_endpoint.strip().rstrip("/")
@@ -28,6 +31,7 @@ def normalize_provider_endpoint(provider_endpoint: str | None) -> str | None:
 
 
 def normalize_backend(backend: str | None) -> str | None:
+    """Validate and normalize a backend override identifier."""
     if backend is None:
         return None
     normalized_backend = backend.strip().lower()
@@ -41,6 +45,8 @@ def normalize_backend(backend: str | None) -> str | None:
 
 @dataclass(slots=True)
 class RuntimeConfig:
+    """Describe how a model reference should be resolved and executed."""
+
     model_reference: str = DEFAULT_MODEL_REFERENCE
     models_dir: Path = field(default_factory=lambda: Path("models"))
     device: str = "cuda:0"
@@ -59,23 +65,29 @@ class RuntimeConfig:
     quiet: bool = False
 
     def resolved_models_dir(self) -> Path:
+        """Return the absolute local models directory."""
         return self.models_dir.expanduser().resolve()
 
     def resolved_backend(self) -> str | None:
+        """Return the normalized backend override when provided."""
         return normalize_backend(self.backend)
 
     def resolved_provider_endpoint(self) -> str | None:
+        """Return the normalized provider endpoint when provided."""
         return normalize_provider_endpoint(self.provider_endpoint)
 
     def resolved_cache_dir(self) -> Path:
+        """Return the absolute cache directory."""
         return self.cache_dir.expanduser().resolve()
 
     def resolved_adapter_dir(self) -> Path | None:
+        """Return the absolute adapter directory when one is configured."""
         if self.adapter_dir is None:
             return None
         return self.adapter_dir.expanduser().resolve()
 
     def validate(self) -> None:
+        """Validate the configuration before planning or execution."""
         if not self.model_reference.strip():
             raise ValueError("--model cannot be empty")
         if self.backend is not None:
@@ -94,6 +106,8 @@ class RuntimeConfig:
 
 @dataclass(slots=True)
 class GenerationConfig:
+    """Describe generation-time sampling and streaming behavior."""
+
     max_new_tokens: int = DEFAULT_MAX_NEW_TOKENS
     temperature: float = 0.0
     top_p: float | None = None
@@ -102,6 +116,7 @@ class GenerationConfig:
     stream: bool = True
 
     def validate(self) -> None:
+        """Validate sampling and generation limits."""
         if self.max_new_tokens <= 0:
             raise ValueError("--max-new-tokens must be greater than zero")
         if self.temperature < 0:
@@ -112,4 +127,5 @@ class GenerationConfig:
             raise ValueError("--top-k must be greater than zero")
 
     def sampling_enabled(self) -> bool:
+        """Return whether stochastic sampling is enabled."""
         return self.temperature > 0

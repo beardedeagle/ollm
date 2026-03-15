@@ -1,3 +1,5 @@
+"""Runtime planning types used to describe backend selection and specialization state."""
+
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -9,6 +11,8 @@ from ollm.runtime.specialization.passes.base import SpecializationPassId
 
 
 class SpecializationState(str, Enum):
+    """Describe whether specialization is absent, planned, applied, or replaced by fallback."""
+
     NOT_PLANNED = "not-planned"
     PLANNED = "planned"
     APPLIED = "applied"
@@ -17,6 +21,8 @@ class SpecializationState(str, Enum):
 
 @dataclass(frozen=True, slots=True)
 class RuntimePlan:
+    """Describe how oLLM intends to execute a resolved model reference."""
+
     resolved_model: ResolvedModel
     backend_id: str | None
     model_path: Path | None
@@ -36,9 +42,11 @@ class RuntimePlan:
     details: dict[str, str] = field(default_factory=dict)
 
     def is_executable(self) -> bool:
+        """Return whether the plan resolved to a runnable backend."""
         return self.backend_id is not None
 
     def as_dict(self) -> dict[str, object]:
+        """Return a JSON-serializable representation of the runtime plan."""
         return {
             "backend_id": self.backend_id,
             "model_path": None if self.model_path is None else str(self.model_path),

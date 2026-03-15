@@ -1,0 +1,124 @@
+site_name: oLLM
+site_description: Local and provider-backed LLM inference for large-context workloads
+repo_name: Mega4alik/ollm
+repo_url: https://github.com/Mega4alik/ollm
+edit_uri: edit/main/docs/
+strict: true
+
+extra:
+  generator: false
+
+watch:
+  - src/ollm
+
+nav:
+  - Getting Started:
+      - Overview: index.md
+      - Installation: guides/installation.md
+      - Configuration: guides/configuration.md
+      - Quickstart: guides/quickstart.md
+  - User Guide:
+      - Terminal Interface: terminal-interface.md
+      - Model References: guides/model-references.md
+      - Providers: guides/providers.md
+      - Multimodal Workflows: guides/multimodal.md
+      - Runtime Planning and Inspection: guides/runtime-planning.md
+      - Model Discovery: guides/models-discovery.md
+      - Optimization Guide: guides/optimization.md
+      - Troubleshooting: guides/troubleshooting.md
+      - Benchmarking: benchmarking.md
+  - CLI Reference:
+      - CLI Overview: cli.md
+      - prompt: cli/prompt.md
+      - chat: cli/chat.md
+      - doctor: cli/doctor.md
+      - models: cli/models.md
+  - Library Guide:
+      - Overview: library.md
+      - High-level Client: library/runtime-client.md
+      - Runtime Configuration: library/runtime-config.md
+      - Optimized-native Helpers: library/inference.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - Model Resolution: architecture/model-resolution.md
+      - Backend Selection: architecture/backend-selection.md
+      - Specialization: architecture/specialization.md
+      - Provider Backends: architecture/provider-backends.md
+  - API Reference:
+      - Runtime Client: api/client.md
+      - Runtime Config: api/config.md
+      - Model References: api/reference.md
+      - Resolver: api/resolver.md
+      - Runtime Plan: api/plan.md
+      - Runtime Loader: api/loader.md
+      - Inference Helpers: api/inference.md
+  - Contributing:
+      - Development: development.md
+      - Contributing Guide: guides/contributing.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      title: Page contents
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      guess_lang: false
+      default_lang: python
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      disable_indented_code_blocks: true
+
+plugins:
+  - search
+  - autorefs
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - src
+          options:
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            filters:
+              - '!^_'
+              - '!^__'
+            members_order: source
+            show_signature_annotations: true
+            separate_signature: true
+            signature_crossrefs: true
+
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.path
+    - navigation.indexes
+    - navigation.top
+    - toc.follow
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+  palette:
+    - media: '(prefers-color-scheme)'
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: '(prefers-color-scheme: light)'
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: '(prefers-color-scheme: dark)'
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference

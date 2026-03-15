@@ -1,3 +1,5 @@
+"""Runtime loading, planning, provider discovery, and safe fallback orchestration."""
+
 from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -23,6 +25,8 @@ from ollm.runtime.specialization import (
 
 @dataclass(slots=True)
 class LoadedRuntime:
+    """Loaded runtime bundle containing the finalized backend and plan metadata."""
+
     resolved_model: ResolvedModel
     config: RuntimeConfig
     backend: BackendRuntime
@@ -31,6 +35,7 @@ class LoadedRuntime:
 
     @property
     def capabilities(self) -> CapabilityProfile:
+        """Return capability information aligned with the finalized runtime plan."""
         resolved_capabilities = self.resolved_model.capabilities
         if (
             resolved_capabilities.support_level is self.plan.support_level
@@ -52,23 +57,29 @@ class LoadedRuntime:
 
     @property
     def model(self):
+        """Expose the backend-owned model object when one exists."""
         return self.backend.model
 
     @property
     def tokenizer(self):
+        """Expose the backend-owned tokenizer when one exists."""
         return self.backend.tokenizer
 
     @property
     def processor(self):
+        """Expose the backend-owned processor when one exists."""
         return self.backend.processor
 
     @property
     def device(self):
+        """Expose the backend runtime device."""
         return self.backend.device
 
 
 @dataclass(frozen=True, slots=True)
 class DiscoveredRuntimeModel:
+    """Provider-discovered model reference plus its resolution context."""
+
     model_reference: str
     provider_name: str
     provider_endpoint: str | None
@@ -76,6 +87,8 @@ class DiscoveredRuntimeModel:
 
 
 class RuntimeLoader:
+    """Resolve, plan, discover, materialize, and load runtimes for model references."""
+
     def __init__(
         self,
         resolver: ModelResolver | None = None,
@@ -101,9 +114,11 @@ class RuntimeLoader:
         self._snapshot_downloader = download_hf_snapshot if snapshot_downloader is None else snapshot_downloader
 
     def resolve(self, model_reference: str, models_dir: Path) -> ResolvedModel:
+        """Resolve a model reference without planning or loading."""
         return self._resolver.resolve(model_reference, models_dir)
 
     def discover_local_models(self, models_dir: Path) -> tuple[ResolvedModel, ...]:
+        """Discover local materialized models under a models directory."""
         return self._resolver.discover_local_models(models_dir)
 
     def discover_provider_models(
@@ -114,6 +129,7 @@ class RuntimeLoader:
         *,
         strict: bool = False,
     ) -> tuple[DiscoveredRuntimeModel, ...]:
+        """Discover models exposed by the configured provider backends."""
         model_root = models_dir.expanduser().resolve()
         discovered_models: list[DiscoveredRuntimeModel] = []
         seen_references: set[str] = set()
@@ -155,6 +171,7 @@ class RuntimeLoader:
         return tuple(discovered_models)
 
     def download(self, model_reference: str, models_dir: Path, force_download: bool = False) -> Path:
+        """Materialize a downloadable model reference locally and return its path."""
         resolved_model = self.resolve(model_reference, models_dir)
         if resolved_model.source_kind is ModelSourceKind.LOCAL_PATH:
             if resolved_model.model_path is None or not resolved_model.model_path.exists():
@@ -174,6 +191,7 @@ class RuntimeLoader:
         return resolved_model.model_path
 
     def load(self, config: RuntimeConfig) -> LoadedRuntime:
+        """Validate, plan, and load a runtime backend for execution."""
         config.validate()
         resolved_model = self.resolve(config.model_reference, config.resolved_models_dir())
         model_path: Path | None = None
@@ -209,6 +227,7 @@ class RuntimeLoader:
         )
 
     def plan(self, config: RuntimeConfig) -> RuntimePlan:
+        """Build a runtime plan without loading a backend."""
         config.validate()
         resolved_model = self.resolve(config.model_reference, config.resolved_models_dir())
         if resolved_model.source_kind is ModelSourceKind.PROVIDER:

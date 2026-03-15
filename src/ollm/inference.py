@@ -1,3 +1,5 @@
+"""Low-level optimized-native inference helpers and snapshot utilities."""
+
 import logging
 from pathlib import Path
 
@@ -22,6 +24,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def get_attn_implementation() -> str | None:
+    """Return the preferred attention implementation identifier when available."""
     try:
         import flash_attn  # noqa: F401
 
@@ -37,6 +40,7 @@ def download_hf_snapshot(
     force_download: bool = False,
     revision: str | None = None,
 ) -> None:
+    """Download a Hugging Face snapshot into a local model directory."""
     LOGGER.info("Downloading model snapshot for %s.", repo_id)
     snapshot_download(
         repo_id=repo_id,
@@ -48,6 +52,8 @@ def download_hf_snapshot(
 
 
 class Inference:
+    """Direct optimized-native helper for built-in aliases and matching local native families."""
+
     def __init__(
         self,
         model_id: str,
@@ -78,6 +84,7 @@ class Inference:
         self.loaded_applied_specialization_pass_ids = ()
 
     def hf_download(self, model_dir: str, force_download: bool = False) -> None:
+        """Download the built-in optimized alias into a local directory."""
         entry = find_model_catalog_entry(self.optimized_model_id)
         if entry is None:
             raise ValueError(
@@ -86,6 +93,7 @@ class Inference:
         download_hf_snapshot(entry.repo_id, model_dir, force_download=force_download)
 
     def ini_model(self, models_dir: str = "./models/", force_download: bool = False) -> None:
+        """Download if needed and then load the optimized-native runtime."""
         entry = find_model_catalog_entry(self.optimized_model_id)
         if entry is None:
             raise ValueError(
@@ -99,6 +107,7 @@ class Inference:
         self.load_model(str(model_dir))
 
     def load_model(self, model_dir: str) -> None:
+        """Load an optimized-native runtime from a local directory."""
         model_path = Path(model_dir).expanduser().resolve()
         if not model_path.exists() or not model_path.is_dir():
             raise ValueError(f"Model directory does not exist: {model_path}")
@@ -181,11 +190,13 @@ class Inference:
         self._apply_gpu_offload = artifacts.apply_gpu_offload
 
     def offload_layers_to_cpu(self, layers_num: int) -> None:
+        """Apply CPU layer offload through the selected specialization when supported."""
         if self._apply_cpu_offload is None:
             raise ValueError(f"{self.model_id} does not support CPU layer offload")
         self._apply_cpu_offload(layers_num)
 
     def offload_layers_to_gpu_cpu(self, gpu_layers_num: int = 0, cpu_layers_num: int = 0) -> None:
+        """Apply mixed GPU/CPU layer placement when the specialization exposes it."""
         if gpu_layers_num == 0 and cpu_layers_num == 0:
             return
         if self._apply_gpu_offload is None:
@@ -193,12 +204,15 @@ class Inference:
         self._apply_gpu_offload(gpu_layers_num, cpu_layers_num)
 
     def DiskCache(self, cache_dir: str = "./kvcache"):
+        """Create the specialization-backed disk KV cache when supported."""
         if self._cache_factory is None:
             return None
         return self._cache_factory(Path(cache_dir).expanduser().resolve())
 
 
 class AutoInference(Inference):
+    """Optimized-native helper that infers the matching local native family from a model directory."""
+
     def __init__(
         self,
         model_dir: str,

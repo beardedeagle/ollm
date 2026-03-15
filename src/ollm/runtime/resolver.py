@@ -1,3 +1,5 @@
+"""Resolution from user-supplied model references to normalized runtime inputs."""
+
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -14,6 +16,8 @@ from ollm.runtime.reference import ModelReference
 
 
 class ModelSourceKind(str, Enum):
+    """Describe where a model reference originates from."""
+
     BUILTIN = "builtin"
     HUGGING_FACE = "hugging-face"
     LOCAL_PATH = "local-path"
@@ -22,6 +26,8 @@ class ModelSourceKind(str, Enum):
 
 
 class NativeFamily(str, Enum):
+    """Known optimized-native model families."""
+
     LLAMA = "llama"
     GEMMA3 = "gemma3"
     GPT_OSS = "gpt-oss"
@@ -31,6 +37,8 @@ class NativeFamily(str, Enum):
 
 @dataclass(frozen=True, slots=True)
 class ResolvedModel:
+    """Resolved model metadata used by planning, inspection, and loading."""
+
     reference: ModelReference
     source_kind: ModelSourceKind
     normalized_name: str
@@ -47,14 +55,18 @@ class ResolvedModel:
     generic_model_kind: GenericModelKind | None
 
     def is_downloadable(self) -> bool:
+        """Return whether the resolved model can be materialized locally."""
         return self.repo_id is not None and self.model_path is not None
 
 
 class ModelResolver:
+    """Resolve model references into built-in, local, Hugging Face, or provider-backed forms."""
+
     def __init__(self, capability_discovery: CapabilityDiscovery | None = None):
         self._capability_discovery = capability_discovery or CapabilityDiscovery()
 
     def resolve(self, raw_reference: str, models_dir: Path) -> ResolvedModel:
+        """Resolve a raw model reference without loading model weights."""
         reference = ModelReference.parse(raw_reference)
         model_root = models_dir.expanduser().resolve()
 
@@ -135,6 +147,7 @@ class ModelResolver:
         )
 
     def discover_local_models(self, models_dir: Path) -> tuple[ResolvedModel, ...]:
+        """Inspect local materialized model directories under a models root."""
         model_root = models_dir.expanduser().resolve()
         if not model_root.exists() or not model_root.is_dir():
             return ()
@@ -157,6 +170,7 @@ class ModelResolver:
         provider_name: str | None,
         catalog_entry: ModelCatalogEntry | None,
     ) -> ResolvedModel:
+        """Inspect a materialized local model directory and derive runtime capabilities."""
         inspection = self._capability_discovery.inspect_model_path(model_path)
         capabilities = inspection.capabilities
         if catalog_entry is not None and source_kind in {ModelSourceKind.BUILTIN, ModelSourceKind.HUGGING_FACE}:

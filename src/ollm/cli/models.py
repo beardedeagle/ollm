@@ -8,13 +8,10 @@ from ollm.runtime.catalog import list_model_catalog
 from ollm.runtime.config import RuntimeConfig, normalize_provider_endpoint
 from ollm.runtime.inspection import merged_runtime_payload, plan_json_payload
 from ollm.runtime.loader import DiscoveredRuntimeModel
-from ollm.runtime.resolver import ModelSourceKind
 
 
 def _availability_label(entry: dict[str, object]) -> str:
-    if entry["source_kind"] == ModelSourceKind.PROVIDER.value:
-        return "available" if entry["installed"] else "unavailable"
-    return "installed" if entry["installed"] else "not-installed"
+    return str(entry["availability_status"])
 
 
 def _provider_discovery_names(
@@ -58,11 +55,13 @@ def _provider_runtime_config(
 
 
 def register_models_command(app: typer.Typer, services: CommandServices) -> None:
-    models_app = typer.Typer(help="Inspect built-in aliases and discovered model references.")
+    models_app = typer.Typer(
+        help="Inspect built-in aliases, local materializations, and provider-discovered model references."
+    )
 
     @models_app.command("list")
     def list_models(
-        installed: bool = typer.Option(False, "--installed", help="Show only materialized local models."),
+        installed: bool = typer.Option(False, "--installed", help="Show only materialized local model references."),
         backend: str | None = typer.Option(None, "--backend", help="Backend override for runtime planning output."),
         no_specialization: bool = typer.Option(False, "--no-specialization", help="Disable optimized specialization selection for runtime planning output."),
         discover_provider: list[str] | None = typer.Option(
@@ -104,10 +103,10 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             payload = merged_runtime_payload(
                 resolved_model,
                 runtime_plan,
-                installed=installed_entry,
+                materialized=installed_entry,
             )
             payload["discovery_source"] = "built-in"
-            if installed and not payload["installed"]:
+            if installed and not payload["materialized"]:
                 continue
             entries.append(payload)
             if resolved_model.model_path is not None:
@@ -129,10 +128,10 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             payload = merged_runtime_payload(
                 resolved_model,
                 runtime_plan,
-                installed=installed_entry,
+                materialized=installed_entry,
             )
             payload["discovery_source"] = "discovered-local"
-            if installed and not payload["installed"]:
+            if installed and not payload["materialized"]:
                 continue
             entries.append(payload)
 
@@ -158,11 +157,11 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             payload = merged_runtime_payload(
                 discovered_model.resolved_model,
                 runtime_plan,
-                installed=runtime_plan.is_executable(),
+                materialized=False,
             )
             payload["discovery_source"] = "discovered-provider"
             payload["provider_endpoint"] = discovered_model.provider_endpoint
-            if installed and not payload["installed"]:
+            if installed and not payload["materialized"]:
                 continue
             entries.append(payload)
 
@@ -193,7 +192,7 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         no_color: bool = typer.Option(False, "--no-color", help="Disable ANSI color output."),
     ) -> None:
         resolved_model = services.runtime_loader.resolve(model, models_dir.expanduser().resolve())
-        installed = bool(resolved_model.model_path is not None and resolved_model.model_path.exists())
+        materialized = bool(resolved_model.model_path is not None and resolved_model.model_path.exists())
         runtime_plan = services.runtime_loader.plan(
             RuntimeConfig(
                 model_reference=model,
@@ -204,12 +203,10 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
                 use_specialization=not no_specialization,
             )
         )
-        if resolved_model.source_kind is ModelSourceKind.PROVIDER and runtime_plan.is_executable():
-            installed = True
         payload = merged_runtime_payload(
             resolved_model,
             runtime_plan,
-            installed=installed,
+            materialized=materialized,
         )
         console = build_console(no_color=no_color)
         if plan_json_flag:
@@ -236,6 +233,9 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         console.print(f"source: {payload['source_kind']}")
         if payload["provider_name"] is not None:
             console.print(f"provider: {payload['provider_name']}")
+            console.print(f"availability: {payload['availability_status']}")
+        else:
+            console.print(f"materialized: {payload['materialized']}")
         console.print(f"support: {payload['support_level']}")
         console.print(f"specialization: {payload['supports_specialization']}")
         if payload["generic_model_kind"] is not None:
