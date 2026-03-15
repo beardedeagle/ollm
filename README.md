@@ -16,8 +16,8 @@ oLLM is a lightweight Python library for large-context LLM inference, built on t
 <ul dir="auto">
 <li><code>AutoInference</code> for compatible local Llama and Gemma3 model directories with optional <a href="https://github.com/huggingface/peft">PEFT</a> adapter support</li>
 <li><code>kvikio</code> and <code>flash-attn</code> are optional now, meaning no hardware restrictions beyond HF transformers</li>
-<li>Multimodal <b>voxtral-small-24B</b> (audio+text) added. <a href="https://github.com/Mega4alik/ollm/blob/main/example_audio.py">[sample with audio]</a> </li>
-<li>Multimodal <b>gemma3-12B</b> (image+text) added. <a href="https://github.com/Mega4alik/ollm/blob/main/example_image.py">[sample with image]</a> </li>
+<li>Multimodal <b>voxtral-small-24B</b> (audio+text) added. <a href="https://github.com/Mega4alik/ollm/blob/main/examples/example_audio.py">[sample with audio]</a> </li>
+<li>Multimodal <b>gemma3-12B</b> (image+text) added. <a href="https://github.com/Mega4alik/ollm/blob/main/examples/example_image.py">[sample with image]</a> </li>
 <li><b>qwen3-next-80B</b> (160GB model) added with <span style="color:blue">⚡️1tok/2s</span> throughput (our fastest model so far)</li>
 <li>gpt-oss-20B flash-attention-like implementation added to reduce VRAM usage </li>
 <li>gpt-oss-20B chunked MLP added to reduce VRAM usage </li>
@@ -232,10 +232,10 @@ o = AutoInference(
 )
 ```
 
-You can still run the original sample script as `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True uv run python example.py`.
+You can still run the original sample script as `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True uv run python examples/example.py`.
 **More samples**
-- [gemma3-12B image+text](https://github.com/Mega4alik/ollm/blob/main/example_image.py)
-- [voxtral-small-24B audio+text](https://github.com/Mega4alik/ollm/blob/main/example_audio.py)
+- [gemma3-12B image+text](https://github.com/Mega4alik/ollm/blob/main/examples/example_image.py)
+- [voxtral-small-24B audio+text](https://github.com/Mega4alik/ollm/blob/main/examples/example_audio.py)
 - [AutoInference + SFT](https://github.com/Mega4alik/peftee?tab=readme-ov-file#usage)
 
 ## Development
