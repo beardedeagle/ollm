@@ -1,0 +1,70 @@
+# Python Standards
+
+This project treats Python engineering standards as a prerequisite to further feature work.
+
+These rules are not advisory. For `ollm`, they are the working contract for new code, refactors,
+runtime changes, and contributor-facing documentation.
+
+## Process rules
+
+- Provide full 5W1H before any change and wait for approval unless the user explicitly waives it.
+- Use tree-sitter and code-context-provider tooling when modifying modules, alongside the other
+  available repository tools.
+- Prefer `eza` over `ls`, `bat` over `cat` or `nl`, `rg` over `grep` or `find`, and pair
+  `ast-grep` with structural code-intel tooling.
+- Work at a distinguished engineer / software architect bar.
+- Follow the repo validation order exactly:
+  1. `uv run ruff format src tests examples scripts`
+  2. `uv run ruff check src tests examples scripts`
+  3. `uv run ty check src tests`
+  4. `uv run python -m compileall src tests`
+  5. `uv run pytest -q`
+  6. `uv build`
+  7. `uv run python -m pip_audit`
+  8. `uv run --group docs mkdocs build --strict`
+  9. `git diff --check`
+
+## Code rules
+
+- Apply SOLID principles.
+- Write modern, idiomatic Python with self-documenting names and modular structure.
+- Keep file size within a 500 line soft limit and a 1000 line hard limit.
+- All I/O must be async. Pure logic may remain sync.
+- Code must be thread safe.
+- Code must be strongly and strictly typed.
+- Code must be secure, defensive, correct, performant, and warning-free under the validation
+  stack.
+- Use Google-style docstrings that are compatible with MkDocs and include concrete parameter and
+  return types.
+- Use absolute imports only.
+- Keep imports at the top of the module.
+- Use `|` unions instead of `Optional[...]` or `Union[...]`.
+
+## Forbidden patterns
+
+- No `Any`.
+- No forward references.
+- No relative imports.
+- No TODO, FIXME, or XXX markers.
+- No compatibility code or legacy preservation.
+- No mock-driven fake success.
+- No low-value tests written only for coverage.
+
+## Project-specific policy
+
+`ollm` is being treated as a greenfield project. That means:
+
+- delete bad shapes instead of preserving them for compatibility
+- do not add backwards-compatibility ballast
+- do not keep legacy-only code paths alive once a better shape replaces them
+
+When working in existing code, keep diffs tight and surgical, but do not preserve a bad structure
+just because it already exists.
+
+## Enforcement and audit
+
+- `uv run python scripts/check_python_standards.py` enforces the mechanically checkable rules.
+- `docs/guides/python-standards-audit.md` is the current remediation matrix for repo-wide
+  violations that still require follow-on work.
+- `docs/development.md` and `docs/guides/contributing.md` summarize the contributor workflow, but
+  this page is the canonical standards source.

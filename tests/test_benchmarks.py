@@ -1,9 +1,9 @@
-from pathlib import Path
 import json
-from typing import cast
-import subprocess
 import sys
+from pathlib import Path
+from typing import cast
 
+from ollm.async_io import subprocess_run_process
 from ollm.client import RuntimeClient
 from ollm.runtime.benchmark_probes import (
     OutputScalingCase,
@@ -30,18 +30,18 @@ from ollm.runtime.benchmarks import (
     BenchmarkStats,
     CommandBenchmarkSpec,
     RuntimeBenchmarkReport,
+    RuntimeComparisonTarget,
     benchmark_runtime_target,
-    build_runtime_probe_command,
     build_current_supported_family_targets,
     build_host_summary,
+    build_runtime_probe_command,
     create_tiny_t5_fixture,
     measure_callable,
     measure_command,
-    measure_runtime_probe,
     measure_no_specialization_fallback_cost,
+    measure_runtime_probe,
     render_report_json,
     render_runtime_probe_json,
-    RuntimeComparisonTarget,
 )
 from ollm.runtime.config import RuntimeConfig
 
@@ -466,12 +466,9 @@ def test_scaling_and_session_probes_round_trip() -> None:
 def test_benchmark_runtime_cli_rejects_invalid_iterations() -> None:
     repo_root = Path(__file__).resolve().parents[1]
 
-    completed = subprocess.run(
-        [sys.executable, "scripts/benchmark_runtime.py", "--iterations", "0"],
-        cwd=repo_root,
-        capture_output=True,
-        text=True,
-        check=False,
+    completed = subprocess_run_process(
+        (sys.executable, "scripts/benchmark_runtime.py", "--iterations", "0"),
+        cwd=str(repo_root),
     )
 
     assert completed.returncode != 0
@@ -481,17 +478,14 @@ def test_benchmark_runtime_cli_rejects_invalid_iterations() -> None:
 def test_benchmark_runtime_cli_rejects_invalid_prompt_scale_tokens() -> None:
     repo_root = Path(__file__).resolve().parents[1]
 
-    completed = subprocess.run(
-        [
+    completed = subprocess_run_process(
+        (
             sys.executable,
             "scripts/benchmark_runtime.py",
             "--prompt-scale-tokens",
             "abc,128",
-        ],
-        cwd=repo_root,
-        capture_output=True,
-        text=True,
-        check=False,
+        ),
+        cwd=str(repo_root),
     )
 
     assert completed.returncode != 0

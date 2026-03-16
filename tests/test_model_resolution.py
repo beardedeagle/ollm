@@ -1,8 +1,8 @@
 import json
 from pathlib import Path
 
-from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.capabilities import SupportLevel
+from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.resolver import ModelResolver, ModelSourceKind
 
 

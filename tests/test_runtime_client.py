@@ -4,7 +4,6 @@ from typing import cast
 from ollm import GenerationConfig, RuntimeClient, RuntimeConfig
 from ollm.runtime.generation import RuntimeExecutor
 from ollm.runtime.loader import RuntimeLoader
-
 from tests.fakes import FakeRuntimeExecutor, FakeRuntimeLoader
 
 

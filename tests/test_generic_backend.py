@@ -4,8 +4,7 @@ import pytest
 import torch
 
 from ollm.runtime.backends.transformers_generic import TransformersGenericBackend
-from ollm.runtime.capabilities import CapabilityProfile
-from ollm.runtime.capabilities import SupportLevel
+from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.plan import RuntimePlan, SpecializationState

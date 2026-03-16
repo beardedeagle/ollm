@@ -1,9 +1,10 @@
-from ollm import Inference, TextStreamer, file_get_contents
-import torch
 from datetime import datetime
 from typing import Protocol, cast
 
+import torch
 from transformers import AutoTokenizer
+
+from ollm import Inference, TextStreamer, file_get_contents
 
 
 class _GenerativeModelProtocol(Protocol):

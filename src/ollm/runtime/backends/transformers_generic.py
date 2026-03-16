@@ -1,7 +1,7 @@
-from collections.abc import Callable
 import importlib
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Protocol, cast
+from typing import Protocol, cast
 
 import torch
 from transformers import (
@@ -38,17 +38,22 @@ class _PeftModelProtocol(Protocol):
     ) -> None: ...
 
 
+GenericModelLoader = Callable[..., object]
+TokenizerLoader = Callable[..., object]
+ProcessorLoader = Callable[..., object]
+
+
 class TransformersGenericBackend(ExecutionBackend):
     backend_id = "transformers-generic"
 
     def __init__(
         self,
         *,
-        causal_loader: Callable[..., Any] | None = None,
-        image_text_loader: Callable[..., Any] | None = None,
-        seq2seq_loader: Callable[..., Any] | None = None,
-        tokenizer_loader: Callable[..., Any] | None = None,
-        processor_loader: Callable[..., Any] | None = None,
+        causal_loader: GenericModelLoader | None = None,
+        image_text_loader: GenericModelLoader | None = None,
+        seq2seq_loader: GenericModelLoader | None = None,
+        tokenizer_loader: TokenizerLoader | None = None,
+        processor_loader: ProcessorLoader | None = None,
     ):
         self._causal_loader = (
             AutoModelForCausalLM.from_pretrained
@@ -117,7 +122,7 @@ class TransformersGenericBackend(ExecutionBackend):
         )
 
     def _load_model(self, model_path: Path, generic_model_kind: GenericModelKind):
-        base_kwargs = {
+        base_kwargs: dict[str, object] = {
             "pretrained_model_name_or_path": str(model_path),
             "torch_dtype": "auto",
             "low_cpu_mem_usage": True,
@@ -152,7 +157,9 @@ class TransformersGenericBackend(ExecutionBackend):
         return self._processor_loader(str(model_path), trust_remote_code=False)
 
 
-def _load_with_fallbacks(loader: Callable[..., Any], base_kwargs: dict[str, Any]):
+def _load_with_fallbacks(
+    loader: GenericModelLoader, base_kwargs: dict[str, object]
+) -> object:
     loader_kwargs = dict(base_kwargs)
     try:
         return loader(**loader_kwargs)

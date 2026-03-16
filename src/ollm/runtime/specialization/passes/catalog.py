@@ -4,7 +4,6 @@ from ollm.runtime.specialization.passes.base import (
     SpecializationPassTraits,
 )
 
-
 SPECIALIZATION_PASS_CATALOG: dict[SpecializationPassId, SpecializationPass] = {
     SpecializationPassId.DISK_CACHE: SpecializationPass(
         pass_id=SpecializationPassId.DISK_CACHE,

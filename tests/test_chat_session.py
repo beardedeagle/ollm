@@ -3,10 +3,9 @@ from typing import cast
 
 from ollm.app.history import load_transcript
 from ollm.app.session import ChatSession
+from ollm.runtime.config import GenerationConfig, RuntimeConfig
 from ollm.runtime.generation import RuntimeExecutor
 from ollm.runtime.loader import RuntimeLoader
-from ollm.runtime.config import GenerationConfig, RuntimeConfig
-
 from tests.fakes import FakeRuntimeExecutor, FakeRuntimeLoader
 
 

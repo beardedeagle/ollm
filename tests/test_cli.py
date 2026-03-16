@@ -7,11 +7,10 @@ from typing import cast
 from typer.testing import CliRunner
 
 from ollm.app.doctor import DoctorService
-from ollm.cli.services import CommandServices
 from ollm.cli.main import create_app
+from ollm.cli.services import CommandServices
 from ollm.runtime.generation import RuntimeExecutor
 from ollm.runtime.loader import RuntimeLoader
-
 from tests.fakes import FakeDoctorService, FakeRuntimeExecutor, FakeRuntimeLoader
 
 

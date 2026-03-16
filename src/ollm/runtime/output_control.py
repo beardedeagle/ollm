@@ -1,7 +1,7 @@
-from collections.abc import Iterator
-from contextlib import ExitStack, contextmanager, redirect_stderr, redirect_stdout
 import io
 import logging
+from collections.abc import Iterator
+from contextlib import ExitStack, contextmanager, redirect_stderr, redirect_stdout
 from threading import RLock
 from types import ModuleType
 

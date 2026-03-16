@@ -1,0 +1,234 @@
+"""Private helpers for runtime benchmark probe execution."""
+
+import time
+from typing import cast
+
+import torch
+
+from ollm.app.types import Message, PromptRequest
+from ollm.runtime.benchmark_probe_types import (
+    RequestProbeExecution,
+    RequestProbeMetrics,
+)
+from ollm.runtime.benchmark_resources import cache_dir_size_mb, measure_stage
+from ollm.runtime.capability_discovery import GenericModelKind
+from ollm.runtime.config import GenerationConfig, RuntimeConfig
+from ollm.runtime.errors import PromptExecutionError
+from ollm.runtime.generation import RuntimeExecutor
+from ollm.runtime.loader import LoadedRuntime
+from ollm.runtime.output_control import suppress_module_prints
+from ollm.runtime.streaming import BufferedTextStreamer
+
+
+class TimedBufferedTextStreamer(BufferedTextStreamer):
+    def __init__(self, tokenizer):
+        super().__init__(
+            tokenizer,
+            sink=_NullStreamSink(),
+            skip_prompt=True,
+            skip_special_tokens=False,
+        )
+        self._token_timestamps: list[float] = []
+
+    @property
+    def token_timestamps(self) -> tuple[float, ...]:
+        return tuple(self._token_timestamps)
+
+    def put(self, value) -> None:
+        tensor_value = value
+        if hasattr(tensor_value, "shape"):
+            if len(tensor_value.shape) > 1 and tensor_value.shape[0] > 1:
+                raise ValueError("TimedBufferedTextStreamer only supports batch size 1")
+            if len(tensor_value.shape) > 1:
+                tensor_value = tensor_value[0]
+        skip_prompt_tokens = bool(self.skip_prompt and self.next_tokens_are_prompt)
+        if not skip_prompt_tokens:
+            token_count = (
+                tensor_value.numel()
+                if isinstance(tensor_value, torch.Tensor)
+                else len(list(tensor_value))
+            )
+            now = time.perf_counter()
+            self._token_timestamps.extend(now for _ in range(token_count))
+        super().put(value)
+
+
+class _NullStreamSink:
+    def on_status(self, message: str) -> None:
+        del message
+
+    def on_text(self, text: str) -> None:
+        del text
+
+    def on_complete(self, text: str) -> None:
+        del text
+
+
+def execute_request_probe(
+    *,
+    runtime: LoadedRuntime,
+    request: PromptRequest,
+) -> RequestProbeExecution:
+    executor = RuntimeExecutor()
+    executor._validate_request(runtime, request)
+    inputs = executor._build_inputs(runtime, request.messages)
+    prompt_tokens = _count_prompt_tokens(inputs)
+    streamer = TimedBufferedTextStreamer(runtime.tokenizer)
+    generate_kwargs = executor._build_generate_kwargs(runtime, request, streamer)
+    cache_mode = _cache_mode(runtime, request)
+    generation_result, generation_ms, generation_resources = measure_stage(
+        runtime.config.device,
+        lambda: _generate_outputs(runtime, inputs, generate_kwargs),
+        sample_accelerator_utilization=True,
+    )
+    output_tensor = cast(torch.Tensor, cast(tuple[object, float], generation_result)[0])
+    generation_started = cast(tuple[object, float], generation_result)[1]
+    if hasattr(output_tensor, "detach"):
+        output_tensor = output_tensor.detach()
+    cpu_outputs = output_tensor.cpu()
+    response_text = executor._decode_response(runtime, inputs, cpu_outputs)
+    output_tokens = _count_output_tokens(runtime, inputs, cpu_outputs)
+    time_to_first_token_ms = None
+    if streamer.token_timestamps:
+        time_to_first_token_ms = round(
+            (streamer.token_timestamps[0] - generation_started) * 1000.0,
+            6,
+        )
+    prompt_tokens_per_second = None
+    if time_to_first_token_ms is not None and time_to_first_token_ms > 0:
+        prompt_tokens_per_second = round(
+            prompt_tokens / (time_to_first_token_ms / 1000.0),
+            6,
+        )
+    output_tokens_per_second = None
+    if generation_ms > 0:
+        output_tokens_per_second = round(
+            output_tokens / (generation_ms / 1000.0),
+            6,
+        )
+    cache_dir_size = None
+    if cache_mode == "disk-kv":
+        cache_dir_size = cache_dir_size_mb(
+            request.runtime_config.resolved_cache_dir() / "kv_cache"
+        )
+    allocator_gap_mb = None
+    allocator_gap_ratio = None
+    if (
+        generation_resources.accelerator_peak_reserved_mb is not None
+        and generation_resources.accelerator_peak_mb is not None
+    ):
+        allocator_gap_mb = round(
+            generation_resources.accelerator_peak_reserved_mb
+            - generation_resources.accelerator_peak_mb,
+            6,
+        )
+        if generation_resources.accelerator_peak_reserved_mb > 0:
+            allocator_gap_ratio = round(
+                allocator_gap_mb / generation_resources.accelerator_peak_reserved_mb,
+                6,
+            )
+    return RequestProbeExecution(
+        metrics=RequestProbeMetrics(
+            total_ms=round(generation_ms, 6),
+            generation_ms=round(generation_ms, 6),
+            time_to_first_token_ms=time_to_first_token_ms,
+            inter_token_latencies_ms=_inter_token_latencies(streamer.token_timestamps),
+            prompt_tokens=prompt_tokens,
+            prompt_tokens_per_second=prompt_tokens_per_second,
+            output_tokens=output_tokens,
+            output_tokens_per_second=output_tokens_per_second,
+            cache_mode=cache_mode,
+            cache_dir_size_mb=cache_dir_size,
+            allocator_gap_mb=allocator_gap_mb,
+            allocator_gap_ratio=allocator_gap_ratio,
+            resources=generation_resources,
+            text_excerpt=_clip_text(response_text, max_chars=120),
+        ),
+        response_text=response_text,
+    )
+
+
+def build_prompt_request(
+    *,
+    runtime_config: RuntimeConfig,
+    generation_config: GenerationConfig,
+    messages: list[Message],
+) -> PromptRequest:
+    return PromptRequest(
+        runtime_config=runtime_config,
+        generation_config=generation_config,
+        messages=messages,
+    )
+
+
+def build_scaling_prompt(*, target_prompt_tokens: int) -> str:
+    repeated_words = " ".join("benchmark" for _ in range(max(1, target_prompt_tokens)))
+    return (
+        "Benchmark scaling probe input. "
+        "Repeat and summarize this synthetic workload: "
+        f"{repeated_words}"
+    )
+
+
+def _generate_outputs(
+    runtime: LoadedRuntime,
+    inputs: dict[str, object],
+    generate_kwargs: dict[str, object],
+) -> tuple[object, float]:
+    generation_started = time.perf_counter()
+    try:
+        with torch.inference_mode():
+            with suppress_module_prints(runtime.backend.print_suppression_modules):
+                return runtime.model.generate(
+                    **inputs, **generate_kwargs
+                ), generation_started
+    except TypeError as exc:
+        if "streamer" not in str(exc):
+            raise
+        retry_kwargs = dict(generate_kwargs)
+        retry_kwargs.pop("streamer", None)
+        with torch.inference_mode():
+            with suppress_module_prints(runtime.backend.print_suppression_modules):
+                return runtime.model.generate(
+                    **inputs, **retry_kwargs
+                ), generation_started
+
+
+def _count_prompt_tokens(inputs: dict[str, object]) -> int:
+    input_ids = inputs.get("input_ids")
+    if not isinstance(input_ids, torch.Tensor):
+        raise PromptExecutionError("Benchmark probe expected tensor-backed input_ids")
+    return int(input_ids.shape[0] if input_ids.ndim == 1 else input_ids.shape[-1])
+
+
+def _count_output_tokens(
+    runtime: LoadedRuntime, inputs: dict[str, object], outputs: torch.Tensor
+) -> int:
+    input_ids = cast(torch.Tensor, inputs["input_ids"])
+    if runtime.plan.generic_model_kind is GenericModelKind.SEQ2SEQ_LM:
+        return int(outputs.shape[-1])
+    return max(0, int(outputs.shape[-1] - input_ids.shape[-1]))
+
+
+def _cache_mode(runtime: LoadedRuntime, request: PromptRequest) -> str:
+    if not request.runtime_config.use_cache:
+        return "none"
+    if runtime.plan.supports_disk_cache:
+        return "disk-kv"
+    return "transformers-dynamic"
+
+
+def _inter_token_latencies(token_timestamps: tuple[float, ...]) -> tuple[float, ...]:
+    if len(token_timestamps) < 2:
+        return ()
+    return tuple(
+        round((right - left) * 1000.0, 6)
+        for left, right in zip(token_timestamps, token_timestamps[1:])
+    )
+
+
+def _clip_text(text: str, *, max_chars: int) -> str:
+    text = " ".join(text.split())
+    if len(text) <= max_chars:
+        return text
+    return text[: max_chars - 3] + "..."

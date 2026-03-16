@@ -6,8 +6,8 @@ from typing import Protocol, Unpack, cast
 import torch
 from transformers.models.voxtral.modeling_voxtral import VoxtralForConditionalGeneration
 
-from . import llama
-from .utils import _assign_tensor_to_module, _set_meta_placeholder, _walk_to_parent
+import ollm.llama as llama
+from ollm.utils import _assign_tensor_to_module, _set_meta_placeholder, _walk_to_parent
 
 
 class _LoaderProtocol(Protocol):

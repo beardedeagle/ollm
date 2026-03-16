@@ -56,6 +56,8 @@ nav:
   - Contributing:
       - Development: development.md
       - Contributing Guide: guides/contributing.md
+      - Python Standards: guides/python-standards.md
+      - Python Standards Audit: guides/python-standards-audit.md
 
 markdown_extensions:
   - admonition

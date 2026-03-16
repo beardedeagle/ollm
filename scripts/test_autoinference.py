@@ -2,11 +2,12 @@
 # pip install peft
 # supported model families: llama3, gemma3
 
-from ollm import TextStreamer, AutoInference, file_get_contents
-import torch
 from typing import Protocol, cast
 
+import torch
 from transformers import AutoTokenizer
+
+from ollm import AutoInference, TextStreamer, file_get_contents
 
 
 class _GenerativeModelProtocol(Protocol):

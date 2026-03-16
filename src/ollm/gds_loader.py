@@ -5,98 +5,21 @@ import os
 import re
 import struct
 import time
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol, Self, TypedDict, cast
+from typing import Self, cast
 
 import torch
 from torch.utils.dlpack import from_dlpack
 
-
-class _StatsProtocol(Protocol):
-    def set(self, name: str, started_at: float) -> None: ...
-
-
-class _CuPyDTypeInfo(Protocol):
-    itemsize: int
-
-
-class _CuPyArray(Protocol):
-    def reshape(self, shape: int | tuple[int, ...] | list[int]) -> Self: ...
-    def toDlpack(self) -> object: ...
-
-
-class _CudaDeviceContext(Protocol):
-    def __enter__(self) -> Self: ...
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: object,
-    ) -> None: ...
-
-
-class _CudaNamespace(Protocol):
-    def Device(self, device_id: int) -> _CudaDeviceContext: ...
-
-
-class _CuPyModule(Protocol):
-    float16: object
-    float32: object
-    float64: object
-    int8: object
-    int32: object
-    uint8: object
-    cuda: _CudaNamespace
-
-    def dtype(self, dtype: object) -> _CuPyDTypeInfo: ...
-    def empty(self, shape: int | tuple[int, ...], dtype: object) -> _CuPyArray: ...
-
-
-class _CuFileFuture(Protocol):
-    def get(self) -> int: ...
-
-
-class _CuFile(Protocol):
-    def __enter__(self) -> Self: ...
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: object,
-    ) -> None: ...
-    def read(self, buffer: _CuPyArray) -> int: ...
-    def pread(self, buffer: _CuPyArray, file_offset: int) -> _CuFileFuture: ...
-    def close(self) -> None: ...
-
-
-class _CuFileFactory(Protocol):
-    def __call__(self, path: str, mode: str) -> _CuFile: ...
-
-
-class _KvikioModule(Protocol):
-    CuFile: _CuFileFactory
-
-
-class _GDSManifestEntry(TypedDict):
-    path: str
-    shape: list[int]
-    dtype: str
-    packed: str | None
-
-
-class _SafeTensorHeaderEntry(TypedDict):
-    dtype: str
-    shape: list[int]
-    data_offsets: list[int]
-
-
-@dataclass(slots=True)
-class _OffloadedTensorRecord:
-    shape: list[int]
-    dtype: str
-    packed: str | None
-    tensor: torch.Tensor | dict[str, torch.Tensor]
+from ollm.async_io import open_binary_file, torch_load_file
+from ollm.gds_loader_types import (
+    _CuPyModule,
+    _GDSManifestEntry,
+    _KvikioModule,
+    _OffloadedTensorRecord,
+    _SafeTensorHeaderEntry,
+    _StatsProtocol,
+)
 
 
 def _import_optional_module(module_name: str) -> object | None:
@@ -205,11 +128,12 @@ class GDSWeights:
         return name in self.manifest
 
     def load_torch_from_disk(self, path: str) -> torch.Tensor:
-        return cast(torch.Tensor, torch.load(path, map_location=self.device))
+        return cast(torch.Tensor, torch_load_file(path, map_location=self.device))
 
     def load_mxfp4_from_disk(self, path: str) -> torch.Tensor:
         packed_tensors = cast(
-            dict[str, torch.Tensor], torch.load(path, map_location=self.device)
+            dict[str, torch.Tensor],
+            torch_load_file(path, map_location=self.device),
         )
         return convert_moe_packed_tensors(
             packed_tensors["_blocks"], packed_tensors["_scales"]
@@ -224,7 +148,7 @@ class GDSWeights:
         if packed == "mxfp4" or dtype.startswith("torch"):
             tensor = cast(
                 torch.Tensor | dict[str, torch.Tensor],
-                torch.load(path, map_location="cpu"),
+                torch_load_file(path, map_location="cpu"),
             )
         else:
             tensor = self.load_from_disk_to_cuda(path, shape, dtype).cpu()
@@ -307,14 +231,14 @@ def convert_moe_packed_tensors(
 class SafeTensorReader:
     def __init__(self, path: str):
         self.path = path
-        with open(path, "rb") as handle:
+        with open_binary_file(path) as handle:
             header_length = struct.unpack("<Q", handle.read(8))[0]
             self.header = cast(
                 dict[str, _SafeTensorHeaderEntry],
                 json.loads(handle.read(header_length)),
             )
             self.data_offset = 8 + header_length
-        self._file_pointer = open(path, "rb")
+        self._file_pointer = open_binary_file(path)
         self._dtype_map = {
             "F32": torch.float32,
             "F16": torch.float16,
@@ -349,7 +273,7 @@ class SafeTensorReaderGPU:
         }
         self.path = path
         self.device = device
-        with open(path, "rb") as handle:
+        with open_binary_file(path) as handle:
             header_length = struct.unpack("<Q", handle.read(8))[0]
             self.header = cast(
                 dict[str, _SafeTensorHeaderEntry],

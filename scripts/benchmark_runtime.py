@@ -1,6 +1,6 @@
 import argparse
-from pathlib import Path
 import sys
+from pathlib import Path
 
 from ollm.runtime.benchmarks import (
     build_runtime_benchmark_report,

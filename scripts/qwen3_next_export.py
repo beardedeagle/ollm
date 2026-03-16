@@ -1,8 +1,11 @@
 # qwen3_next_export
 import json
-import torch
+from pathlib import Path
+
 from safetensors.torch import safe_open, save_file
+
 from ollm import file_get_contents
+from ollm.async_io import path_write_text, torch_save_file
 
 
 def generate_manifest():
@@ -24,8 +27,7 @@ def generate_manifest():
                     attr_name = manifest_name.replace(base, "")
                     d[base].append(attr_name)
 
-    with open(f"{out_dir}manifest.json", "w") as f:
-        json.dump(d, f, indent=4)
+    path_write_text(Path(out_dir) / "manifest.json", json.dumps(d, indent=4))
 
 
 def export_nonlayer_weights():
@@ -63,7 +65,7 @@ for layer_idx in range(num_hidden_layers):
             with safe_open(path + filename, framework="pt", device="cpu") as f:
                 tensor = f.get_tensor(manifest_name)
                 d[attr_name] = tensor
-    torch.save(d, out_dir + base.replace(".", "__") + ".pt")
+    torch_save_file(d, out_dir + base.replace(".", "__") + ".pt")
 
 
 # 4. export mlp.experts
@@ -77,6 +79,6 @@ for layer_idx in range(num_hidden_layers):
                 with safe_open(path + filename, framework="pt", device="cpu") as f:
                     tensor = f.get_tensor(manifest_name)
                     d[attr_name] = tensor
-        torch.save(
+        torch_save_file(
             d, out_dir + base.replace(".", "__") + ".pt"
         )  # save_file(d, out_dir+base.replace(".","__")+".safetensors") #

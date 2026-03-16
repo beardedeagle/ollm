@@ -1,12 +1,12 @@
 import json
 import logging
-import subprocess
 import sys
 from pathlib import Path
 
 import pytest
 import torch
 
+from ollm.async_io import subprocess_run_process
 from ollm.inference import (
     HF_RUNTIME_ARTIFACT_PATTERNS,
     AutoInference,
@@ -221,11 +221,8 @@ sys.path.insert(0, r'REPO_SRC')
 import ollm
 print('ok')
 """
-    result = subprocess.run(
-        [sys.executable, "-c", script.replace("REPO_SRC", str(repo_root / "src"))],
-        check=False,
-        capture_output=True,
-        text=True,
+    result = subprocess_run_process(
+        (sys.executable, "-c", script.replace("REPO_SRC", str(repo_root / "src"))),
     )
     assert result.returncode == 0, result.stderr
     assert result.stdout.strip() == "ok"
