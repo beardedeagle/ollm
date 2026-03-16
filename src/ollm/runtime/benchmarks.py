@@ -2,9 +2,8 @@ from contextlib import redirect_stderr, redirect_stdout
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 import io
-from pathlib import Path
 import json
-import os
+from pathlib import Path
 import platform
 import statistics
 import subprocess
@@ -20,14 +19,70 @@ from tokenizers.pre_tokenizers import Whitespace
 from transformers import PreTrainedTokenizerFast
 from transformers.models.t5 import T5Config, T5ForConditionalGeneration
 
-from ollm.app.types import ContentPart, Message, MessageRole, PromptRequest
 from ollm.client import RuntimeClient
+from ollm.runtime.benchmark_probes import (
+    RequestProbeMetrics,
+    RuntimeProbeResult,
+    parse_output_scaling_probe_result,
+    parse_prompt_scaling_probe_result,
+    parse_runtime_probe_result,
+    parse_session_growth_probe_result,
+    parse_warm_runtime_probe_result,
+    render_output_scaling_probe_json,
+    render_prompt_scaling_probe_json,
+    render_runtime_probe_json,
+    render_session_growth_probe_json,
+    render_warm_runtime_probe_json,
+    run_output_scaling_probe,
+    run_prompt_scaling_probe,
+    run_runtime_probe,
+    run_session_growth_probe,
+    run_warm_runtime_probe,
+)
+from ollm.runtime.benchmark_resources import (
+    StageResourceSnapshot,
+    summarize_optional_numeric_values,
+)
 from ollm.runtime.catalog import list_model_catalog
-from ollm.runtime.capability_discovery import GenericModelKind
-from ollm.runtime.config import DEFAULT_SYSTEM_PROMPT, GenerationConfig, RuntimeConfig
-from ollm.runtime.output_control import suppress_module_prints
+from ollm.runtime.config import RuntimeConfig
 
 T = TypeVar("T")
+
+DEFAULT_PROMPT_TOKEN_TARGETS = (32, 128, 512)
+DEFAULT_OUTPUT_TOKEN_TARGETS = (16, 64, 128)
+DEFAULT_SESSION_TURNS = 4
+
+__all__ = [
+    "BenchmarkMeasurement",
+    "BenchmarkStats",
+    "CommandBenchmarkSpec",
+    "RuntimeBenchmarkReport",
+    "RuntimeComparisonTarget",
+    "benchmark_runtime_target",
+    "build_current_supported_family_targets",
+    "build_host_summary",
+    "build_runtime_benchmark_report",
+    "build_runtime_probe_command",
+    "choose_default_device",
+    "create_tiny_t5_fixture",
+    "measure_callable",
+    "measure_command",
+    "measure_no_specialization_fallback_cost",
+    "measure_runtime_probe",
+    "render_output_scaling_probe_json",
+    "render_prompt_scaling_probe_json",
+    "render_report_json",
+    "render_runtime_probe_json",
+    "render_session_growth_probe_json",
+    "render_warm_runtime_probe_json",
+    "run_command",
+    "run_output_scaling_probe",
+    "run_prompt_scaling_probe",
+    "run_runtime_probe",
+    "run_session_growth_probe",
+    "run_warm_runtime_probe",
+    "unavailable_measurement",
+]
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,28 +161,6 @@ class RuntimeComparisonTarget:
     model_path: str | None
 
 
-@dataclass(frozen=True, slots=True)
-class RuntimeProbeResult:
-    load_ms: float
-    generation_ms: float
-    total_ms: float
-    output_tokens: int
-    output_tokens_per_second: float | None
-    rss_after_load_mb: float | None
-    rss_after_generate_mb: float | None
-    accelerator_kind: str | None
-    accelerator_current_after_load_mb: float | None
-    accelerator_current_after_generate_mb: float | None
-    accelerator_peak_mb: float | None
-    accelerator_reserved_after_load_mb: float | None
-    accelerator_reserved_after_generate_mb: float | None
-    accelerator_peak_reserved_mb: float | None
-    text_excerpt: str
-
-    def to_dict(self) -> dict[str, object]:
-        return asdict(self)
-
-
 def measure_callable(
     name: str,
     operation: Callable[[], T],
@@ -140,16 +173,13 @@ def measure_callable(
         raise ValueError("iterations must be positive")
     if warmup_iterations < 0:
         raise ValueError("warmup_iterations must be non-negative")
-
     for _ in range(warmup_iterations):
         operation()
-
     samples_ms: list[float] = []
     for _ in range(iterations):
         started = time.perf_counter()
         operation()
         samples_ms.append((time.perf_counter() - started) * 1000.0)
-
     return BenchmarkMeasurement(
         name=name,
         status="measured",
@@ -171,10 +201,7 @@ def measure_command(
             spec.command, cwd=cwd, timeout_seconds=spec.timeout_seconds
         )
         if last_result.returncode != 0:
-            return _command_failure_measurement(
-                spec, last_result, warmup_iterations, warmup_only=True
-            )
-
+            return _command_failure_measurement(spec, last_result, warmup_only=True)
     samples_ms: list[float] = []
     for _ in range(iterations):
         started = time.perf_counter()
@@ -183,11 +210,9 @@ def measure_command(
         )
         duration_ms = (time.perf_counter() - started) * 1000.0
         if last_result.returncode != 0:
-            failure = _command_failure_measurement(
-                spec, last_result, warmup_iterations, warmup_only=False
-            )
+            failure = _command_failure_measurement(spec, last_result, warmup_only=False)
             failure_details = dict(failure.details)
-            failure_details["failed_after_ms"] = round(duration_ms, 3)
+            failure_details["failed_after_ms"] = round(duration_ms, 6)
             return BenchmarkMeasurement(
                 name=failure.name,
                 status=failure.status,
@@ -195,55 +220,19 @@ def measure_command(
                 details=failure_details,
             )
         samples_ms.append(duration_ms)
-
-    details: dict[str, object] = {
-        "command": list(spec.command),
-        "stdout_excerpt": _clip_text(
-            last_result.stdout if last_result is not None else ""
-        ),
-        "stderr_excerpt": _clip_text(
-            last_result.stderr if last_result is not None else ""
-        ),
-    }
     return BenchmarkMeasurement(
         name=spec.name,
         status="measured",
         stats=_summarize_samples(samples_ms, iterations, warmup_iterations),
-        details=details,
-    )
-
-
-def run_command(
-    command: tuple[str, ...], *, cwd: Path, timeout_seconds: float
-) -> CommandExecutionResult:
-    try:
-        completed = subprocess.run(
-            command,
-            cwd=str(cwd),
-            capture_output=True,
-            text=True,
-            timeout=timeout_seconds,
-            check=False,
-        )
-    except subprocess.TimeoutExpired as exc:
-        stderr = "" if exc.stderr is None else _coerce_subprocess_output(exc.stderr)
-        timeout_message = f"Command timed out after {timeout_seconds} seconds."
-        if stderr:
-            stderr = f"{stderr}\n{timeout_message}"
-        else:
-            stderr = timeout_message
-        stdout = "" if exc.stdout is None else _coerce_subprocess_output(exc.stdout)
-        return CommandExecutionResult(
-            returncode=124,
-            stdout=stdout,
-            stderr=stderr,
-            timed_out=True,
-        )
-    return CommandExecutionResult(
-        returncode=completed.returncode,
-        stdout=completed.stdout,
-        stderr=completed.stderr,
-        timed_out=False,
+        details={
+            "command": list(spec.command),
+            "stdout_excerpt": _clip_text(
+                "" if last_result is None else last_result.stdout
+            ),
+            "stderr_excerpt": _clip_text(
+                "" if last_result is None else last_result.stderr
+            ),
+        },
     )
 
 
@@ -251,50 +240,33 @@ def measure_runtime_probe(
     spec: CommandBenchmarkSpec,
     *,
     iterations: int,
-    warmup_iterations: int = 1,
+    warmup_iterations: int = 0,
     cwd: Path,
 ) -> BenchmarkMeasurement:
-    last_result: CommandExecutionResult | None = None
-    for _ in range(warmup_iterations):
-        last_result = run_command(
-            spec.command, cwd=cwd, timeout_seconds=spec.timeout_seconds
-        )
-        if last_result.returncode != 0:
-            return _command_failure_measurement(
-                spec, last_result, warmup_iterations, warmup_only=True
-            )
-        try:
-            _parse_runtime_probe_result(last_result.stdout)
-        except ValueError:
-            return _probe_parse_failure_measurement(
-                spec, last_result, warmup_iterations, warmup_only=True
-            )
-
+    if warmup_iterations != 0:
+        raise ValueError("cold runtime probes do not support warmup iterations")
     probe_samples: list[RuntimeProbeResult] = []
     for _ in range(iterations):
-        last_result = run_command(
+        result = run_command(
             spec.command, cwd=cwd, timeout_seconds=spec.timeout_seconds
         )
-        if last_result.returncode != 0:
-            return _command_failure_measurement(
-                spec, last_result, warmup_iterations, warmup_only=False
-            )
+        if result.returncode != 0:
+            return _command_failure_measurement(spec, result, warmup_only=False)
         try:
-            probe_samples.append(_parse_runtime_probe_result(last_result.stdout))
+            probe_samples.append(parse_runtime_probe_result(result.stdout))
         except ValueError:
             return _probe_parse_failure_measurement(
-                spec, last_result, warmup_iterations, warmup_only=False
+                spec,
+                result,
+                warmup_only=False,
+                reason="runtime probe did not emit valid JSON",
             )
-
+    samples_ms = [sample.load_ms + sample.request.total_ms for sample in probe_samples]
     return BenchmarkMeasurement(
         name=spec.name,
         status="measured",
-        stats=_summarize_samples(
-            [sample.total_ms for sample in probe_samples],
-            iterations,
-            warmup_iterations,
-        ),
-        details=_build_runtime_probe_details(spec, probe_samples),
+        stats=_summarize_samples(samples_ms, iterations, warmup_iterations),
+        details=_build_cold_probe_details(spec, probe_samples),
     )
 
 
@@ -306,6 +278,9 @@ def build_runtime_benchmark_report(
     device: str,
     iterations: int = 5,
     warmup_iterations: int = 1,
+    prompt_token_targets: tuple[int, ...] = DEFAULT_PROMPT_TOKEN_TARGETS,
+    output_token_targets: tuple[int, ...] = DEFAULT_OUTPUT_TOKEN_TARGETS,
+    session_turns: int = DEFAULT_SESSION_TURNS,
 ) -> RuntimeBenchmarkReport:
     client = RuntimeClient()
     models_root = models_dir.expanduser().resolve()
@@ -344,13 +319,11 @@ def build_runtime_benchmark_report(
             "use_specialization": False,
         },
     )
-
     fallback_measurements = measure_no_specialization_fallback_cost(
         device=device,
         iterations=iterations,
         warmup_iterations=warmup_iterations,
     )
-
     runtime_comparison = measure_runtime_comparison(
         repo_root=repo_root,
         benchmark_model_reference=benchmark_model_reference,
@@ -358,20 +331,20 @@ def build_runtime_benchmark_report(
         device=device,
         iterations=max(1, min(iterations, 3)),
         warmup_iterations=min(warmup_iterations, 1),
+        prompt_token_targets=prompt_token_targets,
+        output_token_targets=output_token_targets,
+        session_turns=session_turns,
     )
-
-    planner_summary: dict[str, object] = {
-        "specialization_enabled": planner_enabled.to_dict(),
-        "specialization_disabled": planner_disabled.to_dict(),
-        "mean_delta_ms": _mean_delta_ms(planner_enabled, planner_disabled),
-    }
-
     return RuntimeBenchmarkReport(
         generated_at=datetime.now(timezone.utc).isoformat(),
         host=build_host_summary(),
         benchmark_model_reference=benchmark_model_reference,
         device=device,
-        specialization_planner_overhead=planner_summary,
+        specialization_planner_overhead={
+            "specialization_enabled": planner_enabled.to_dict(),
+            "specialization_disabled": planner_disabled.to_dict(),
+            "mean_delta_ms": _mean_delta_ms(planner_enabled, planner_disabled),
+        },
         fallback_cost_when_no_specialization_applies=fallback_measurements,
         runtime_comparison=runtime_comparison,
     )
@@ -444,13 +417,13 @@ def measure_no_specialization_fallback_cost(
                 "use_specialization": False,
             },
         )
-        return {
-            "specialization_enabled": specialization_enabled.to_dict(),
-            "specialization_disabled": specialization_disabled.to_dict(),
-            "mean_delta_ms": _mean_delta_ms(
-                specialization_enabled, specialization_disabled
-            ),
-        }
+    return {
+        "specialization_enabled": specialization_enabled.to_dict(),
+        "specialization_disabled": specialization_disabled.to_dict(),
+        "mean_delta_ms": _mean_delta_ms(
+            specialization_enabled, specialization_disabled
+        ),
+    }
 
 
 def measure_runtime_comparison(
@@ -461,21 +434,35 @@ def measure_runtime_comparison(
     device: str,
     iterations: int,
     warmup_iterations: int,
+    prompt_token_targets: tuple[int, ...],
+    output_token_targets: tuple[int, ...],
+    session_turns: int,
 ) -> dict[str, object]:
+    client = RuntimeClient()
+    resolved_primary = client.resolve(benchmark_model_reference, models_dir)
     primary_target = benchmark_runtime_target(
         repo_root=repo_root,
         target=RuntimeComparisonTarget(
             family="requested",
             model_reference=benchmark_model_reference,
-            is_materialized=True,
-            model_path=None,
+            is_materialized=(
+                resolved_primary.model_path is not None
+                and resolved_primary.model_path.exists()
+            ),
+            model_path=None
+            if resolved_primary.model_path is None
+            else str(resolved_primary.model_path),
         ),
         models_dir=models_dir,
         device=device,
         iterations=iterations,
         warmup_iterations=warmup_iterations,
+        include_extended_scenarios=True,
+        prompt_token_targets=prompt_token_targets,
+        output_token_targets=output_token_targets,
+        session_turns=session_turns,
     )
-    family_results = [
+    family_results: list[dict[str, object]] = [
         benchmark_runtime_target(
             repo_root=repo_root,
             target=target,
@@ -483,21 +470,24 @@ def measure_runtime_comparison(
             device=device,
             iterations=iterations,
             warmup_iterations=warmup_iterations,
+            include_extended_scenarios=False,
+            prompt_token_targets=prompt_token_targets,
+            output_token_targets=output_token_targets,
+            session_turns=session_turns,
         )
         for target in build_current_supported_family_targets(models_dir)
     ]
-    comparison_available = primary_target["comparison_available"]
-    reason = primary_target["reason"]
-    speedup_ratio = primary_target["speedup_ratio"]
     return {
         "primary_target": primary_target,
         "family_results": family_results,
-        "all_family_comparisons_available": all(
-            result["comparison_available"] for result in family_results
+        "all_family_cold_start_comparisons_available": all(
+            cast(dict[str, object], result["cold_start"])["comparison_available"]
+            for result in family_results
         ),
-        "comparison_available": comparison_available,
-        "speedup_ratio": speedup_ratio,
-        "reason": reason,
+        "all_family_warm_runtime_comparisons_available": all(
+            cast(dict[str, object], result["warm_runtime"])["comparison_available"]
+            for result in family_results
+        ),
     }
 
 
@@ -509,13 +499,21 @@ def build_runtime_probe_command(
     device: str,
     backend: str,
     use_specialization: bool,
+    probe_mode: str = "cold",
     prompt: str = "Say hi.",
     max_new_tokens: int = 4,
+    iterations: int = 1,
+    warmup_iterations: int = 0,
+    prompt_token_targets: tuple[int, ...] = DEFAULT_PROMPT_TOKEN_TARGETS,
+    output_token_targets: tuple[int, ...] = DEFAULT_OUTPUT_TOKEN_TARGETS,
+    session_turns: int = DEFAULT_SESSION_TURNS,
 ) -> tuple[str, ...]:
     command = [
         sys.executable,
         str((repo_root / "scripts" / "benchmark_runtime.py").resolve()),
         "--probe-runtime",
+        "--probe-mode",
+        probe_mode,
         "--model",
         model_reference,
         "--models-dir",
@@ -528,6 +526,16 @@ def build_runtime_probe_command(
         prompt,
         "--probe-max-new-tokens",
         str(max_new_tokens),
+        "--probe-iterations",
+        str(iterations),
+        "--probe-warmup-iterations",
+        str(warmup_iterations),
+        "--probe-prompt-token-targets",
+        ",".join(str(value) for value in prompt_token_targets),
+        "--probe-output-token-targets",
+        ",".join(str(value) for value in output_token_targets),
+        "--probe-session-turns",
+        str(session_turns),
     ]
     if not use_specialization:
         command.append("--probe-no-specialization")
@@ -539,26 +547,27 @@ def build_current_supported_family_targets(
 ) -> tuple[RuntimeComparisonTarget, ...]:
     client = RuntimeClient()
     models_root = models_dir.expanduser().resolve()
-    targets: list[RuntimeComparisonTarget] = []
-    seen_families: set[str] = set()
+    targets_by_family: dict[str, RuntimeComparisonTarget] = {}
     for entry in list_model_catalog():
         resolved_model = client.resolve(entry.model_id, models_root)
         if resolved_model.native_family is None:
             continue
         family_name = resolved_model.native_family.value
-        if family_name in seen_families:
-            continue
-        seen_families.add(family_name)
         model_path = resolved_model.model_path
-        targets.append(
-            RuntimeComparisonTarget(
-                family=family_name,
-                model_reference=entry.model_id,
-                is_materialized=model_path is not None and model_path.exists(),
-                model_path=None if model_path is None else str(model_path),
-            )
+        candidate = RuntimeComparisonTarget(
+            family=family_name,
+            model_reference=entry.model_id,
+            is_materialized=model_path is not None and model_path.exists(),
+            model_path=None if model_path is None else str(model_path),
         )
-    return tuple(targets)
+        existing = targets_by_family.get(family_name)
+        if existing is None or (
+            candidate.is_materialized and not existing.is_materialized
+        ):
+            targets_by_family[family_name] = candidate
+    return tuple(
+        targets_by_family[family_name] for family_name in sorted(targets_by_family)
+    )
 
 
 def benchmark_runtime_target(
@@ -569,10 +578,15 @@ def benchmark_runtime_target(
     device: str,
     iterations: int,
     warmup_iterations: int,
+    include_extended_scenarios: bool = False,
+    prompt_token_targets: tuple[int, ...] = DEFAULT_PROMPT_TOKEN_TARGETS,
+    output_token_targets: tuple[int, ...] = DEFAULT_OUTPUT_TOKEN_TARGETS,
+    session_turns: int = DEFAULT_SESSION_TURNS,
 ) -> dict[str, object]:
-    if not target.is_materialized and target.family != "requested":
-        generic = unavailable_measurement(
-            name=f"{target.family}-generic-runtime-prompt",
+    client = RuntimeClient()
+    if not target.is_materialized:
+        unavailable = unavailable_measurement(
+            name=f"{target.family}-runtime",
             details={
                 "family": target.family,
                 "model_reference": target.model_reference,
@@ -580,20 +594,31 @@ def benchmark_runtime_target(
                 "reason": "model is not materialized locally",
             },
         )
-        optimized = unavailable_measurement(
-            name=f"{target.family}-optimized-runtime-prompt",
-            details={
-                "family": target.family,
-                "model_reference": target.model_reference,
-                "model_path": target.model_path,
-                "reason": "model is not materialized locally",
-            },
-        )
-        return _runtime_target_payload(target, generic, optimized)
-
-    generic = measure_runtime_probe(
+        payload: dict[str, object] = {
+            "family": target.family,
+            "model_reference": target.model_reference,
+            "materialized": target.is_materialized,
+            "model_path": target.model_path,
+            "cold_start": _backend_pair_payload(unavailable, unavailable),
+            "warm_runtime": _backend_pair_payload(unavailable, unavailable),
+        }
+        if include_extended_scenarios:
+            payload["prompt_length_scaling"] = {
+                "generic": unavailable.to_dict(),
+                "optimized_native": unavailable.to_dict(),
+            }
+            payload["output_length_scaling"] = {
+                "generic": unavailable.to_dict(),
+                "optimized_native": unavailable.to_dict(),
+            }
+            payload["session_growth"] = {
+                "generic": unavailable.to_dict(),
+                "optimized_native": unavailable.to_dict(),
+            }
+        return payload
+    cold_generic = measure_runtime_probe(
         CommandBenchmarkSpec(
-            name=f"{target.family}-generic-runtime-prompt",
+            name=f"{target.family}-generic-cold-start",
             command=build_runtime_probe_command(
                 repo_root,
                 target.model_reference,
@@ -601,16 +626,18 @@ def benchmark_runtime_target(
                 device=device,
                 backend="transformers-generic",
                 use_specialization=False,
+                probe_mode="cold",
+                iterations=max(1, iterations),
             ),
-            timeout_seconds=180.0,
+            timeout_seconds=240.0,
         ),
-        iterations=iterations,
-        warmup_iterations=warmup_iterations,
+        iterations=max(1, iterations),
+        warmup_iterations=0,
         cwd=repo_root,
     )
-    optimized = measure_runtime_probe(
+    cold_optimized = measure_runtime_probe(
         CommandBenchmarkSpec(
-            name=f"{target.family}-optimized-runtime-prompt",
+            name=f"{target.family}-optimized-cold-start",
             command=build_runtime_probe_command(
                 repo_root,
                 target.model_reference,
@@ -618,14 +645,180 @@ def benchmark_runtime_target(
                 device=device,
                 backend="optimized-native",
                 use_specialization=True,
+                probe_mode="cold",
+                iterations=max(1, iterations),
             ),
-            timeout_seconds=180.0,
+            timeout_seconds=240.0,
         ),
-        iterations=iterations,
-        warmup_iterations=warmup_iterations,
+        iterations=max(1, iterations),
+        warmup_iterations=0,
         cwd=repo_root,
     )
-    return _runtime_target_payload(target, generic, optimized)
+    warm_generic = _measure_warm_runtime_probe(
+        CommandBenchmarkSpec(
+            name=f"{target.family}-generic-warm-runtime",
+            command=build_runtime_probe_command(
+                repo_root,
+                target.model_reference,
+                models_dir=models_dir,
+                device=device,
+                backend="transformers-generic",
+                use_specialization=False,
+                probe_mode="warm",
+                iterations=max(1, iterations),
+                warmup_iterations=warmup_iterations,
+            ),
+            timeout_seconds=240.0,
+        ),
+        cwd=repo_root,
+    )
+    warm_optimized = _measure_warm_runtime_probe(
+        CommandBenchmarkSpec(
+            name=f"{target.family}-optimized-warm-runtime",
+            command=build_runtime_probe_command(
+                repo_root,
+                target.model_reference,
+                models_dir=models_dir,
+                device=device,
+                backend="optimized-native",
+                use_specialization=True,
+                probe_mode="warm",
+                iterations=max(1, iterations),
+                warmup_iterations=warmup_iterations,
+            ),
+            timeout_seconds=240.0,
+        ),
+        cwd=repo_root,
+    )
+    refreshed_target = _refresh_runtime_target(
+        client=client,
+        target=target,
+        models_dir=models_dir,
+    )
+    payload: dict[str, object] = {
+        "family": target.family,
+        "model_reference": target.model_reference,
+        "materialized": refreshed_target.is_materialized,
+        "model_path": refreshed_target.model_path,
+        "cold_start": _backend_pair_payload(cold_generic, cold_optimized),
+        "warm_runtime": _backend_pair_payload(warm_generic, warm_optimized),
+    }
+    if include_extended_scenarios:
+        payload["prompt_length_scaling"] = {
+            "generic": _measure_prompt_scaling_probe(
+                CommandBenchmarkSpec(
+                    name=f"{target.family}-generic-prompt-scaling",
+                    command=build_runtime_probe_command(
+                        repo_root,
+                        target.model_reference,
+                        models_dir=models_dir,
+                        device=device,
+                        backend="transformers-generic",
+                        use_specialization=False,
+                        probe_mode="prompt-scaling",
+                        max_new_tokens=min(output_token_targets),
+                        prompt_token_targets=prompt_token_targets,
+                    ),
+                    timeout_seconds=300.0,
+                ),
+                cwd=repo_root,
+            ).to_dict(),
+            "optimized_native": _measure_prompt_scaling_probe(
+                CommandBenchmarkSpec(
+                    name=f"{target.family}-optimized-prompt-scaling",
+                    command=build_runtime_probe_command(
+                        repo_root,
+                        target.model_reference,
+                        models_dir=models_dir,
+                        device=device,
+                        backend="optimized-native",
+                        use_specialization=True,
+                        probe_mode="prompt-scaling",
+                        max_new_tokens=min(output_token_targets),
+                        prompt_token_targets=prompt_token_targets,
+                    ),
+                    timeout_seconds=300.0,
+                ),
+                cwd=repo_root,
+            ).to_dict(),
+        }
+        payload["output_length_scaling"] = {
+            "generic": _measure_output_scaling_probe(
+                CommandBenchmarkSpec(
+                    name=f"{target.family}-generic-output-scaling",
+                    command=build_runtime_probe_command(
+                        repo_root,
+                        target.model_reference,
+                        models_dir=models_dir,
+                        device=device,
+                        backend="transformers-generic",
+                        use_specialization=False,
+                        probe_mode="output-scaling",
+                        prompt="Explain KV cache in one sentence.",
+                        output_token_targets=output_token_targets,
+                    ),
+                    timeout_seconds=300.0,
+                ),
+                cwd=repo_root,
+            ).to_dict(),
+            "optimized_native": _measure_output_scaling_probe(
+                CommandBenchmarkSpec(
+                    name=f"{target.family}-optimized-output-scaling",
+                    command=build_runtime_probe_command(
+                        repo_root,
+                        target.model_reference,
+                        models_dir=models_dir,
+                        device=device,
+                        backend="optimized-native",
+                        use_specialization=True,
+                        probe_mode="output-scaling",
+                        prompt="Explain KV cache in one sentence.",
+                        output_token_targets=output_token_targets,
+                    ),
+                    timeout_seconds=300.0,
+                ),
+                cwd=repo_root,
+            ).to_dict(),
+        }
+        payload["session_growth"] = {
+            "generic": _measure_session_growth_probe(
+                CommandBenchmarkSpec(
+                    name=f"{target.family}-generic-session-growth",
+                    command=build_runtime_probe_command(
+                        repo_root,
+                        target.model_reference,
+                        models_dir=models_dir,
+                        device=device,
+                        backend="transformers-generic",
+                        use_specialization=False,
+                        probe_mode="session-growth",
+                        session_turns=session_turns,
+                        max_new_tokens=min(output_token_targets),
+                    ),
+                    timeout_seconds=300.0,
+                ),
+                cwd=repo_root,
+            ).to_dict(),
+            "optimized_native": _measure_session_growth_probe(
+                CommandBenchmarkSpec(
+                    name=f"{target.family}-optimized-session-growth",
+                    command=build_runtime_probe_command(
+                        repo_root,
+                        target.model_reference,
+                        models_dir=models_dir,
+                        device=device,
+                        backend="optimized-native",
+                        use_specialization=True,
+                        probe_mode="session-growth",
+                        session_turns=session_turns,
+                        max_new_tokens=min(output_token_targets),
+                    ),
+                    timeout_seconds=300.0,
+                ),
+                cwd=repo_root,
+            ).to_dict(),
+        }
+    return payload
 
 
 def create_tiny_t5_fixture(root: Path) -> Path:
@@ -666,110 +859,6 @@ def create_tiny_t5_fixture(root: Path) -> Path:
     return model_dir
 
 
-def run_runtime_probe(
-    *,
-    model_reference: str,
-    models_dir: Path,
-    device: str,
-    backend: str,
-    use_specialization: bool,
-    prompt: str,
-    max_new_tokens: int,
-) -> RuntimeProbeResult:
-    runtime_config = RuntimeConfig(
-        model_reference=model_reference,
-        models_dir=models_dir.expanduser().resolve(),
-        device=device,
-        backend=backend,
-        use_specialization=use_specialization,
-        use_cache=False,
-    )
-    generation_config = GenerationConfig(
-        stream=False,
-        max_new_tokens=max_new_tokens,
-        temperature=0.0,
-    )
-    client = RuntimeClient()
-    executor = client.runtime_executor
-
-    _reset_accelerator_metrics(device)
-    load_started = time.perf_counter()
-    runtime = client.load(runtime_config)
-    _synchronize_runtime_device(runtime.config.device)
-    load_ms = (time.perf_counter() - load_started) * 1000.0
-    rss_after_load_mb = _current_rss_mb()
-    accelerator_after_load = _capture_accelerator_metrics(runtime.config.device)
-
-    request = PromptRequest(
-        runtime_config=runtime_config,
-        generation_config=generation_config,
-        messages=[
-            Message(
-                role=MessageRole.SYSTEM,
-                content=[ContentPart.text(DEFAULT_SYSTEM_PROMPT)],
-            ),
-            Message(role=MessageRole.USER, content=[ContentPart.text(prompt)]),
-        ],
-    )
-    executor._validate_request(runtime, request)
-    inputs = executor._build_inputs(runtime, request.messages)
-    generate_kwargs = executor._build_generate_kwargs(runtime, request, None)
-
-    generation_started = time.perf_counter()
-    with torch.inference_mode():
-        with suppress_module_prints(runtime.backend.print_suppression_modules):
-            outputs = runtime.model.generate(**inputs, **generate_kwargs)
-    _synchronize_runtime_device(runtime.config.device)
-    generation_ms = (time.perf_counter() - generation_started) * 1000.0
-
-    if hasattr(outputs, "detach"):
-        outputs = outputs.detach()
-    outputs = outputs.cpu()
-    response_text = executor._decode_response(runtime, inputs, outputs)
-    output_tokens = _count_output_tokens(runtime, inputs, outputs)
-    tokens_per_second = None
-    if generation_ms > 0:
-        tokens_per_second = round(output_tokens / (generation_ms / 1000.0), 6)
-
-    rss_after_generate_mb = _current_rss_mb()
-    accelerator_after_generate = _capture_accelerator_metrics(runtime.config.device)
-    return RuntimeProbeResult(
-        load_ms=round(load_ms, 6),
-        generation_ms=round(generation_ms, 6),
-        total_ms=round(load_ms + generation_ms, 6),
-        output_tokens=output_tokens,
-        output_tokens_per_second=tokens_per_second,
-        rss_after_load_mb=rss_after_load_mb,
-        rss_after_generate_mb=rss_after_generate_mb,
-        accelerator_kind=cast(
-            str | None, accelerator_after_generate["accelerator_kind"]
-        ),
-        accelerator_current_after_load_mb=cast(
-            float | None, accelerator_after_load["accelerator_current_mb"]
-        ),
-        accelerator_current_after_generate_mb=cast(
-            float | None, accelerator_after_generate["accelerator_current_mb"]
-        ),
-        accelerator_peak_mb=cast(
-            float | None, accelerator_after_generate["accelerator_peak_mb"]
-        ),
-        accelerator_reserved_after_load_mb=cast(
-            float | None, accelerator_after_load["accelerator_reserved_mb"]
-        ),
-        accelerator_reserved_after_generate_mb=cast(
-            float | None, accelerator_after_generate["accelerator_reserved_mb"]
-        ),
-        accelerator_peak_reserved_mb=cast(
-            float | None, accelerator_after_generate["accelerator_peak_reserved_mb"]
-        ),
-        text_excerpt=_clip_text(response_text, max_chars=120),
-    )
-
-
-def render_runtime_probe_json(probe: RuntimeProbeResult) -> str:
-    return json.dumps(probe.to_dict(), indent=2, sort_keys=True)
-
-
 def render_report_json(report: RuntimeBenchmarkReport) -> str:
     return json.dumps(report.to_dict(), indent=2, sort_keys=True)
 
@@ -782,43 +871,435 @@ def unavailable_measurement(
     )
 
 
+def run_command(
+    command: tuple[str, ...], *, cwd: Path, timeout_seconds: float
+) -> CommandExecutionResult:
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=str(cwd),
+            capture_output=True,
+            text=True,
+            timeout=timeout_seconds,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        stderr = "" if exc.stderr is None else _coerce_subprocess_output(exc.stderr)
+        timeout_message = f"Command timed out after {timeout_seconds} seconds."
+        stderr = timeout_message if not stderr else f"{stderr}\n{timeout_message}"
+        stdout = "" if exc.stdout is None else _coerce_subprocess_output(exc.stdout)
+        return CommandExecutionResult(
+            returncode=124,
+            stdout=stdout,
+            stderr=stderr,
+            timed_out=True,
+        )
+    return CommandExecutionResult(
+        returncode=completed.returncode,
+        stdout=completed.stdout,
+        stderr=completed.stderr,
+        timed_out=False,
+    )
+
+
+def _measure_warm_runtime_probe(
+    spec: CommandBenchmarkSpec,
+    *,
+    cwd: Path,
+) -> BenchmarkMeasurement:
+    result = run_command(spec.command, cwd=cwd, timeout_seconds=spec.timeout_seconds)
+    if result.returncode != 0:
+        return _command_failure_measurement(spec, result, warmup_only=False)
+    try:
+        probe = parse_warm_runtime_probe_result(result.stdout)
+    except ValueError:
+        return _probe_parse_failure_measurement(
+            spec,
+            result,
+            warmup_only=False,
+            reason="warm runtime probe did not emit valid JSON",
+        )
+    samples = list(probe.measured_iterations)
+    stats = _summarize_samples(
+        [sample.total_ms for sample in samples],
+        len(samples),
+        probe.warmup_iterations,
+    )
+    return BenchmarkMeasurement(
+        name=spec.name,
+        status="measured",
+        stats=stats,
+        details={
+            "command": list(spec.command),
+            "runtime_load_ms": probe.runtime_load_ms,
+            "runtime_load_resources": probe.runtime_load_resources.to_dict(),
+            "warmup_iterations": probe.warmup_iterations,
+            "metrics": _summarize_request_metrics(samples),
+        },
+    )
+
+
+def _measure_prompt_scaling_probe(
+    spec: CommandBenchmarkSpec,
+    *,
+    cwd: Path,
+) -> BenchmarkMeasurement:
+    result = run_command(spec.command, cwd=cwd, timeout_seconds=spec.timeout_seconds)
+    if result.returncode != 0:
+        return _command_failure_measurement(spec, result, warmup_only=False)
+    try:
+        probe = parse_prompt_scaling_probe_result(result.stdout)
+    except ValueError:
+        return _probe_parse_failure_measurement(
+            spec,
+            result,
+            warmup_only=False,
+            reason="prompt scaling probe did not emit valid JSON",
+        )
+    return BenchmarkMeasurement(
+        name=spec.name,
+        status="measured",
+        stats=None,
+        details={
+            "command": list(spec.command),
+            "runtime_load_ms": probe.runtime_load_ms,
+            "runtime_load_resources": probe.runtime_load_resources.to_dict(),
+            "cases": [case.to_dict() for case in probe.cases],
+        },
+    )
+
+
+def _measure_output_scaling_probe(
+    spec: CommandBenchmarkSpec,
+    *,
+    cwd: Path,
+) -> BenchmarkMeasurement:
+    result = run_command(spec.command, cwd=cwd, timeout_seconds=spec.timeout_seconds)
+    if result.returncode != 0:
+        return _command_failure_measurement(spec, result, warmup_only=False)
+    try:
+        probe = parse_output_scaling_probe_result(result.stdout)
+    except ValueError:
+        return _probe_parse_failure_measurement(
+            spec,
+            result,
+            warmup_only=False,
+            reason="output scaling probe did not emit valid JSON",
+        )
+    return BenchmarkMeasurement(
+        name=spec.name,
+        status="measured",
+        stats=None,
+        details={
+            "command": list(spec.command),
+            "runtime_load_ms": probe.runtime_load_ms,
+            "runtime_load_resources": probe.runtime_load_resources.to_dict(),
+            "cases": [case.to_dict() for case in probe.cases],
+        },
+    )
+
+
+def _measure_session_growth_probe(
+    spec: CommandBenchmarkSpec,
+    *,
+    cwd: Path,
+) -> BenchmarkMeasurement:
+    result = run_command(spec.command, cwd=cwd, timeout_seconds=spec.timeout_seconds)
+    if result.returncode != 0:
+        return _command_failure_measurement(spec, result, warmup_only=False)
+    try:
+        probe = parse_session_growth_probe_result(result.stdout)
+    except ValueError:
+        return _probe_parse_failure_measurement(
+            spec,
+            result,
+            warmup_only=False,
+            reason="session growth probe did not emit valid JSON",
+        )
+    return BenchmarkMeasurement(
+        name=spec.name,
+        status="measured",
+        stats=None,
+        details={
+            "command": list(spec.command),
+            "runtime_load_ms": probe.runtime_load_ms,
+            "runtime_load_resources": probe.runtime_load_resources.to_dict(),
+            "turns": [turn.to_dict() for turn in probe.turns],
+        },
+    )
+
+
+def _build_cold_probe_details(
+    spec: CommandBenchmarkSpec,
+    samples: list[RuntimeProbeResult],
+) -> dict[str, object]:
+    return {
+        "command": list(spec.command),
+        "load": {
+            "latency_ms": _summarize_numeric_values(
+                [sample.load_ms for sample in samples]
+            ),
+            "resources": _summarize_stage_resources(
+                [sample.load_resources for sample in samples]
+            ),
+        },
+        "metrics": _summarize_request_metrics([sample.request for sample in samples]),
+        "text_excerpt": samples[-1].request.text_excerpt,
+    }
+
+
+def _summarize_request_metrics(
+    samples: list[RequestProbeMetrics],
+) -> dict[str, object]:
+    return {
+        "latency_ms": {
+            "total": _summarize_numeric_values([sample.total_ms for sample in samples]),
+            "generation": _summarize_numeric_values(
+                [sample.generation_ms for sample in samples]
+            ),
+            "time_to_first_token": _optional_summary_dict(
+                [
+                    sample.time_to_first_token_ms
+                    for sample in samples
+                    if sample.time_to_first_token_ms is not None
+                ]
+            ),
+            "inter_token_latency": _optional_summary_dict(
+                [
+                    latency
+                    for sample in samples
+                    for latency in sample.inter_token_latencies_ms
+                ]
+            ),
+        },
+        "throughput": {
+            "prompt_tokens": _summarize_numeric_values(
+                [float(sample.prompt_tokens) for sample in samples]
+            ),
+            "prompt_tokens_per_second": _optional_summary_dict(
+                [
+                    sample.prompt_tokens_per_second
+                    for sample in samples
+                    if sample.prompt_tokens_per_second is not None
+                ]
+            ),
+            "output_tokens": _summarize_numeric_values(
+                [float(sample.output_tokens) for sample in samples]
+            ),
+            "output_tokens_per_second": _optional_summary_dict(
+                [
+                    sample.output_tokens_per_second
+                    for sample in samples
+                    if sample.output_tokens_per_second is not None
+                ]
+            ),
+        },
+        "memory": _summarize_stage_resources([sample.resources for sample in samples]),
+        "cache": {
+            "cache_mode": _single_optional_string(
+                [sample.cache_mode for sample in samples]
+            ),
+            "cache_dir_size_mb": _optional_summary_dict(
+                [
+                    sample.cache_dir_size_mb
+                    for sample in samples
+                    if sample.cache_dir_size_mb is not None
+                ]
+            ),
+        },
+        "allocator": {
+            "allocator_gap_mb": _optional_summary_dict(
+                [
+                    sample.allocator_gap_mb
+                    for sample in samples
+                    if sample.allocator_gap_mb is not None
+                ]
+            ),
+            "allocator_gap_ratio": _optional_summary_dict(
+                [
+                    sample.allocator_gap_ratio
+                    for sample in samples
+                    if sample.allocator_gap_ratio is not None
+                ]
+            ),
+        },
+    }
+
+
+def _summarize_stage_resources(
+    snapshots: list[StageResourceSnapshot],
+) -> dict[str, object]:
+    accelerator_utilizations = [
+        snapshot.accelerator_utilization
+        for snapshot in snapshots
+        if snapshot.accelerator_utilization is not None
+    ]
+    gpu_utilization_means = [
+        utilization.gpu_utilization_percent.mean
+        for utilization in accelerator_utilizations
+        if utilization.gpu_utilization_percent is not None
+    ]
+    memory_utilization_means = [
+        utilization.memory_utilization_percent.mean
+        for utilization in accelerator_utilizations
+        if utilization.memory_utilization_percent is not None
+    ]
+    return {
+        "current_rss_mb": _optional_summary_dict(
+            [
+                snapshot.current_rss_mb
+                for snapshot in snapshots
+                if snapshot.current_rss_mb is not None
+            ]
+        ),
+        "peak_rss_mb": _optional_summary_dict(
+            [
+                snapshot.peak_rss_mb
+                for snapshot in snapshots
+                if snapshot.peak_rss_mb is not None
+            ]
+        ),
+        "peak_rss_source": _single_optional_string(
+            [
+                snapshot.peak_rss_source
+                for snapshot in snapshots
+                if snapshot.peak_rss_source
+            ]
+        ),
+        "accelerator_kind": _single_optional_string(
+            [
+                snapshot.accelerator_kind
+                for snapshot in snapshots
+                if snapshot.accelerator_kind
+            ]
+        ),
+        "accelerator_current_mb": _optional_summary_dict(
+            [
+                snapshot.accelerator_current_mb
+                for snapshot in snapshots
+                if snapshot.accelerator_current_mb is not None
+            ]
+        ),
+        "accelerator_peak_mb": _optional_summary_dict(
+            [
+                snapshot.accelerator_peak_mb
+                for snapshot in snapshots
+                if snapshot.accelerator_peak_mb is not None
+            ]
+        ),
+        "accelerator_reserved_mb": _optional_summary_dict(
+            [
+                snapshot.accelerator_reserved_mb
+                for snapshot in snapshots
+                if snapshot.accelerator_reserved_mb is not None
+            ]
+        ),
+        "accelerator_peak_reserved_mb": _optional_summary_dict(
+            [
+                snapshot.accelerator_peak_reserved_mb
+                for snapshot in snapshots
+                if snapshot.accelerator_peak_reserved_mb is not None
+            ]
+        ),
+        "accelerator_peak_source": _single_optional_string(
+            [
+                snapshot.accelerator_peak_source
+                for snapshot in snapshots
+                if snapshot.accelerator_peak_source
+            ]
+        ),
+        "process_cpu_utilization_percent": _optional_summary_dict(
+            [
+                snapshot.process_cpu_utilization_percent
+                for snapshot in snapshots
+                if snapshot.process_cpu_utilization_percent is not None
+            ]
+        ),
+        "accelerator_utilization_percent": _optional_summary_dict(
+            gpu_utilization_means
+        ),
+        "accelerator_memory_utilization_percent": _optional_summary_dict(
+            memory_utilization_means
+        ),
+    }
+
+
+def _backend_pair_payload(
+    generic: BenchmarkMeasurement, optimized: BenchmarkMeasurement
+) -> dict[str, object]:
+    comparison_available = (
+        generic.status == "measured" and optimized.status == "measured"
+    )
+    speedup_ratio = None
+    reason = None
+    if comparison_available:
+        assert generic.stats is not None
+        assert optimized.stats is not None
+        speedup_ratio = round(generic.stats.mean_ms / optimized.stats.mean_ms, 6)
+    else:
+        reason = _measurement_reason(generic)
+        if reason is None:
+            reason = _measurement_reason(optimized)
+        if reason is None:
+            reason = _runtime_comparison_unavailable_reason(generic, optimized)
+    return {
+        "generic": generic.to_dict(),
+        "optimized_native": optimized.to_dict(),
+        "comparison_available": comparison_available,
+        "speedup_ratio": speedup_ratio,
+        "reason": reason,
+    }
+
+
 def _command_failure_measurement(
     spec: CommandBenchmarkSpec,
     result: CommandExecutionResult,
-    warmup_iterations: int,
     *,
     warmup_only: bool,
 ) -> BenchmarkMeasurement:
-    details: dict[str, object] = {
-        "command": list(spec.command),
-        "returncode": result.returncode,
-        "stdout_excerpt": _clip_text(result.stdout),
-        "stderr_excerpt": _clip_text(result.stderr),
-        "timed_out": result.timed_out,
-        "warmup_only": warmup_only,
-    }
+    raw_stderr_reason = _first_nonempty_line(result.stderr)
+    raw_stdout_reason = _first_nonempty_line(result.stdout)
+    stderr_excerpt = _clip_text(result.stderr)
+    stdout_excerpt = _clip_text(result.stdout)
     return BenchmarkMeasurement(
-        name=spec.name, status="unavailable", stats=None, details=details
+        name=spec.name,
+        status="unavailable",
+        stats=None,
+        details={
+            "command": list(spec.command),
+            "returncode": result.returncode,
+            "stdout_excerpt": stdout_excerpt,
+            "stderr_excerpt": stderr_excerpt,
+            "timed_out": result.timed_out,
+            "warmup_only": warmup_only,
+            "reason": _command_failure_reason(
+                result=result,
+                stderr_reason=raw_stderr_reason,
+                stdout_reason=raw_stdout_reason,
+            ),
+        },
     )
 
 
 def _probe_parse_failure_measurement(
     spec: CommandBenchmarkSpec,
     result: CommandExecutionResult,
-    warmup_iterations: int,
     *,
     warmup_only: bool,
+    reason: str,
 ) -> BenchmarkMeasurement:
-    details: dict[str, object] = {
-        "command": list(spec.command),
-        "stdout_excerpt": _clip_text(result.stdout),
-        "stderr_excerpt": _clip_text(result.stderr),
-        "timed_out": result.timed_out,
-        "warmup_only": warmup_only,
-        "reason": "runtime probe did not emit valid JSON",
-    }
     return BenchmarkMeasurement(
-        name=spec.name, status="unavailable", stats=None, details=details
+        name=spec.name,
+        status="unavailable",
+        stats=None,
+        details={
+            "command": list(spec.command),
+            "stdout_excerpt": _clip_text(result.stdout),
+            "stderr_excerpt": _clip_text(result.stderr),
+            "timed_out": result.timed_out,
+            "warmup_only": warmup_only,
+            "reason": reason,
+        },
     )
 
 
@@ -850,72 +1331,19 @@ def _summarize_numeric_values(values: list[float]) -> dict[str, float]:
     }
 
 
-def _summarize_optional_values(values: list[float | None]) -> dict[str, float] | None:
-    filtered_values = [value for value in values if value is not None]
-    if not filtered_values:
+def _single_optional_string(values: list[str]) -> str | None:
+    if not values:
         return None
-    return _summarize_numeric_values(filtered_values)
+    if len(set(values)) != 1:
+        return None
+    return values[0]
 
 
-def _build_runtime_probe_details(
-    spec: CommandBenchmarkSpec, samples: list[RuntimeProbeResult]
-) -> dict[str, object]:
-    accelerator_kinds = {
-        sample.accelerator_kind for sample in samples if sample.accelerator_kind
-    }
-    accelerator_kind = None if len(accelerator_kinds) != 1 else accelerator_kinds.pop()
-    return {
-        "command": list(spec.command),
-        "text_excerpt": samples[-1].text_excerpt,
-        "metrics": {
-            "latency_ms": {
-                "load": _summarize_numeric_values(
-                    [sample.load_ms for sample in samples]
-                ),
-                "generation": _summarize_numeric_values(
-                    [sample.generation_ms for sample in samples]
-                ),
-            },
-            "throughput": {
-                "output_tokens": _summarize_numeric_values(
-                    [float(sample.output_tokens) for sample in samples]
-                ),
-                "output_tokens_per_second": _summarize_optional_values(
-                    [sample.output_tokens_per_second for sample in samples]
-                ),
-            },
-            "memory": {
-                "rss_after_load_mb": _summarize_optional_values(
-                    [sample.rss_after_load_mb for sample in samples]
-                ),
-                "rss_after_generate_mb": _summarize_optional_values(
-                    [sample.rss_after_generate_mb for sample in samples]
-                ),
-                "accelerator_kind": accelerator_kind,
-                "accelerator_current_after_load_mb": _summarize_optional_values(
-                    [sample.accelerator_current_after_load_mb for sample in samples]
-                ),
-                "accelerator_current_after_generate_mb": _summarize_optional_values(
-                    [sample.accelerator_current_after_generate_mb for sample in samples]
-                ),
-                "accelerator_peak_mb": _summarize_optional_values(
-                    [sample.accelerator_peak_mb for sample in samples]
-                ),
-                "accelerator_reserved_after_load_mb": _summarize_optional_values(
-                    [sample.accelerator_reserved_after_load_mb for sample in samples]
-                ),
-                "accelerator_reserved_after_generate_mb": _summarize_optional_values(
-                    [
-                        sample.accelerator_reserved_after_generate_mb
-                        for sample in samples
-                    ]
-                ),
-                "accelerator_peak_reserved_mb": _summarize_optional_values(
-                    [sample.accelerator_peak_reserved_mb for sample in samples]
-                ),
-            },
-        },
-    }
+def _optional_summary_dict(values: list[float]) -> dict[str, float] | None:
+    summary = summarize_optional_numeric_values(values)
+    if summary is None:
+        return None
+    return summary.to_dict()
 
 
 def _mean_delta_ms(
@@ -926,189 +1354,17 @@ def _mean_delta_ms(
     return round(left.stats.mean_ms - right.stats.mean_ms, 6)
 
 
-def _parse_runtime_probe_result(stdout: str) -> RuntimeProbeResult:
-    try:
-        payload = json.loads(stdout)
-    except json.JSONDecodeError as exc:
-        raise ValueError("runtime probe output was not valid JSON") from exc
-    if not isinstance(payload, dict):
-        raise ValueError("runtime probe output must be a JSON object")
-
-    return RuntimeProbeResult(
-        load_ms=_require_float(payload, "load_ms"),
-        generation_ms=_require_float(payload, "generation_ms"),
-        total_ms=_require_float(payload, "total_ms"),
-        output_tokens=_require_int(payload, "output_tokens"),
-        output_tokens_per_second=_optional_float(payload, "output_tokens_per_second"),
-        rss_after_load_mb=_optional_float(payload, "rss_after_load_mb"),
-        rss_after_generate_mb=_optional_float(payload, "rss_after_generate_mb"),
-        accelerator_kind=_optional_string(payload, "accelerator_kind"),
-        accelerator_current_after_load_mb=_optional_float(
-            payload, "accelerator_current_after_load_mb"
-        ),
-        accelerator_current_after_generate_mb=_optional_float(
-            payload, "accelerator_current_after_generate_mb"
-        ),
-        accelerator_peak_mb=_optional_float(payload, "accelerator_peak_mb"),
-        accelerator_reserved_after_load_mb=_optional_float(
-            payload, "accelerator_reserved_after_load_mb"
-        ),
-        accelerator_reserved_after_generate_mb=_optional_float(
-            payload, "accelerator_reserved_after_generate_mb"
-        ),
-        accelerator_peak_reserved_mb=_optional_float(
-            payload, "accelerator_peak_reserved_mb"
-        ),
-        text_excerpt=_require_string(payload, "text_excerpt"),
-    )
-
-
-def _require_float(payload: dict[str, object], key: str) -> float:
-    value = payload.get(key)
-    if isinstance(value, (int, float)):
-        return float(value)
-    raise ValueError(f"runtime probe field '{key}' must be numeric")
-
-
-def _optional_float(payload: dict[str, object], key: str) -> float | None:
-    value = payload.get(key)
-    if value is None:
-        return None
-    if isinstance(value, (int, float)):
-        return float(value)
-    raise ValueError(f"runtime probe field '{key}' must be numeric or null")
-
-
-def _require_int(payload: dict[str, object], key: str) -> int:
-    value = payload.get(key)
-    if isinstance(value, int):
-        return value
-    raise ValueError(f"runtime probe field '{key}' must be an integer")
-
-
-def _require_string(payload: dict[str, object], key: str) -> str:
-    value = payload.get(key)
+def _coerce_subprocess_output(value: bytes | str) -> str:
     if isinstance(value, str):
         return value
-    raise ValueError(f"runtime probe field '{key}' must be a string")
+    return value.decode("utf-8", errors="replace")
 
 
-def _optional_string(payload: dict[str, object], key: str) -> str | None:
-    value = payload.get(key)
-    if value is None:
-        return None
-    if isinstance(value, str):
-        return value
-    raise ValueError(f"runtime probe field '{key}' must be a string or null")
-
-
-def _current_rss_mb() -> float | None:
-    if sys.platform == "win32":
-        return None
-    try:
-        completed = subprocess.run(
-            ("ps", "-o", "rss=", "-p", str(os.getpid())),
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    except OSError:
-        return None
-    if completed.returncode != 0:
-        return None
-    value = completed.stdout.strip()
-    if not value:
-        return None
-    return round(int(value) / 1024.0, 6)
-
-
-def _reset_accelerator_metrics(device: str) -> None:
-    resolved_device = torch.device(device)
-    if resolved_device.type == "cuda" and torch.cuda.is_available():
-        torch.cuda.reset_peak_memory_stats(resolved_device)
-
-
-def _capture_accelerator_metrics(device: str) -> dict[str, object]:
-    resolved_device = torch.device(device)
-    if resolved_device.type == "cuda" and torch.cuda.is_available():
-        torch.cuda.synchronize(resolved_device)
-        return {
-            "accelerator_kind": "cuda",
-            "accelerator_current_mb": _bytes_to_mb(
-                float(torch.cuda.memory_allocated(resolved_device))
-            ),
-            "accelerator_peak_mb": _bytes_to_mb(
-                float(torch.cuda.max_memory_allocated(resolved_device))
-            ),
-            "accelerator_reserved_mb": _bytes_to_mb(
-                float(torch.cuda.memory_reserved(resolved_device))
-            ),
-            "accelerator_peak_reserved_mb": _bytes_to_mb(
-                float(torch.cuda.max_memory_reserved(resolved_device))
-            ),
-        }
-    if (
-        resolved_device.type == "mps"
-        and hasattr(torch.backends, "mps")
-        and torch.backends.mps.is_available()
-    ):
-        current_allocated = _mps_memory_stat("current_allocated_memory")
-        driver_allocated = _mps_memory_stat("driver_allocated_memory")
-        return {
-            "accelerator_kind": "mps",
-            "accelerator_current_mb": current_allocated,
-            "accelerator_peak_mb": None,
-            "accelerator_reserved_mb": driver_allocated,
-            "accelerator_peak_reserved_mb": None,
-        }
-    return {
-        "accelerator_kind": None,
-        "accelerator_current_mb": None,
-        "accelerator_peak_mb": None,
-        "accelerator_reserved_mb": None,
-        "accelerator_peak_reserved_mb": None,
-    }
-
-
-def _mps_memory_stat(name: str) -> float | None:
-    if not hasattr(torch, "mps"):
-        return None
-    function = getattr(torch.mps, name, None)
-    if function is None or not callable(function):
-        return None
-    try:
-        value = function()
-    except RuntimeError:
-        return None
-    if not isinstance(value, int | float):
-        return None
-    return _bytes_to_mb(float(value))
-
-
-def _bytes_to_mb(value: float) -> float:
-    return round(value / (1024.0 * 1024.0), 6)
-
-
-def _synchronize_runtime_device(device: str) -> None:
-    resolved_device = torch.device(device)
-    if resolved_device.type == "cuda" and torch.cuda.is_available():
-        torch.cuda.synchronize(resolved_device)
-        return
-    if (
-        resolved_device.type == "mps"
-        and hasattr(torch, "mps")
-        and hasattr(torch.mps, "synchronize")
-    ):
-        torch.mps.synchronize()
-
-
-def _count_output_tokens(
-    runtime, inputs: dict[str, object], outputs: torch.Tensor
-) -> int:
-    input_ids = cast(torch.Tensor, inputs["input_ids"])
-    if runtime.plan.generic_model_kind is GenericModelKind.SEQ2SEQ_LM:
-        return int(outputs.shape[-1])
-    return max(0, int(outputs.shape[-1] - input_ids.shape[-1]))
+def _clip_text(text: str, max_chars: int = 400) -> str:
+    normalized_text = " ".join(text.split())
+    if len(normalized_text) <= max_chars:
+        return normalized_text
+    return normalized_text[: max_chars - 3] + "..."
 
 
 def _runtime_comparison_unavailable_reason(
@@ -1118,46 +1374,53 @@ def _runtime_comparison_unavailable_reason(
     if generic.status != "measured" and optimized.status != "measured":
         return "Neither runtime benchmark completed successfully on this host"
     if generic.status != "measured":
-        return "The generic benchmark did not complete successfully on this host"
-    return "The optimized-native benchmark did not complete successfully on this host"
+        return (
+            "The generic runtime benchmark did not complete successfully on this host"
+        )
+    return "The optimized-native runtime benchmark did not complete successfully on this host"
 
 
-def _runtime_target_payload(
+def _measurement_reason(measurement: BenchmarkMeasurement) -> str | None:
+    reason = measurement.details.get("reason")
+    if isinstance(reason, str) and reason:
+        return reason
+    return None
+
+
+def _command_failure_reason(
+    *,
+    result: CommandExecutionResult,
+    stderr_reason: str | None,
+    stdout_reason: str | None,
+) -> str:
+    if result.timed_out:
+        return f"Command timed out after benchmark timeout (returncode {result.returncode})"
+    if stderr_reason is not None:
+        return stderr_reason
+    if stdout_reason is not None:
+        return stdout_reason
+    return f"Command failed with returncode {result.returncode}"
+
+
+def _first_nonempty_line(text: str) -> str | None:
+    for line in text.splitlines():
+        stripped = line.strip()
+        if stripped:
+            return stripped
+    return None
+
+
+def _refresh_runtime_target(
+    *,
+    client: RuntimeClient,
     target: RuntimeComparisonTarget,
-    generic: BenchmarkMeasurement,
-    optimized: BenchmarkMeasurement,
-) -> dict[str, object]:
-    comparison_available = (
-        generic.status == "measured" and optimized.status == "measured"
+    models_dir: Path,
+) -> RuntimeComparisonTarget:
+    resolved_model = client.resolve(target.model_reference, models_dir)
+    model_path = resolved_model.model_path
+    return RuntimeComparisonTarget(
+        family=target.family,
+        model_reference=target.model_reference,
+        is_materialized=model_path is not None and model_path.exists(),
+        model_path=None if model_path is None else str(model_path),
     )
-    speedup_ratio = None
-    reason = None
-    if comparison_available:
-        assert generic.stats is not None
-        assert optimized.stats is not None
-        speedup_ratio = round(generic.stats.mean_ms / optimized.stats.mean_ms, 6)
-    else:
-        reason = _runtime_comparison_unavailable_reason(generic, optimized)
-    return {
-        "family": target.family,
-        "model_reference": target.model_reference,
-        "materialized": target.is_materialized,
-        "model_path": target.model_path,
-        "generic": generic.to_dict(),
-        "optimized_native": optimized.to_dict(),
-        "comparison_available": comparison_available,
-        "speedup_ratio": speedup_ratio,
-        "reason": reason,
-    }
-
-
-def _coerce_subprocess_output(output: str | bytes) -> str:
-    if isinstance(output, bytes):
-        return output.decode("utf-8", errors="replace")
-    return output
-
-
-def _clip_text(text: str, *, max_chars: int = 400) -> str:
-    if len(text) <= max_chars:
-        return text
-    return text[:max_chars] + "..."

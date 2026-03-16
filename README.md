@@ -278,8 +278,25 @@ The harness is designed to stay truthful on hardware-constrained machines:
 - it always measures specialization planner overhead without loading model weights
 - it measures the extra planning cost when no specialization applies by using a tiny local T5 fixture created on the fly
 - it reports a runtime-comparison matrix for the current optimized families, using any locally materialized built-in aliases it finds and marking missing families as unavailable instead of fabricating results
-- runtime comparisons now include end-to-end latency plus load/generation breakdowns, generated output tokens, output tokens/sec, process RSS snapshots, and accelerator memory snapshots when the runtime exposes them
-- it also benchmarks the requested `--model-reference` directly and reports `comparison_available: false` when the optimized path cannot execute on the current host
+- the requested `--model-reference` now gets deeper analysis:
+  - cold-start vs warm-runtime comparisons
+  - TTFT and inter-token latency
+  - prompt-token and output-token throughput
+  - current and peak process RSS
+  - accelerator memory, cache footprint, process CPU, best-effort accelerator utilization, and allocator-gap metrics when the host/runtime can measure them truthfully
+  - prompt-length scaling, output-length scaling, and repeated-turn session-growth sweeps
+- family-wide comparisons stay bounded to cold-start and warm-runtime generic-vs-optimized results so the harness remains practical on development machines
+- unsupported metrics and non-executable optimized paths remain explicitly unavailable instead of being fabricated
+- peak RSS reports now carry source labels so warm/scaling/session sections can use stage-local sampled peaks instead of misleading process-lifetime maxima
+
+Useful knobs for the primary-target sweeps:
+
+```bash
+uv run python scripts/benchmark_runtime.py \
+  --prompt-scale-tokens 32,128,512 \
+  --output-scale-tokens 16,64,128 \
+  --session-turns 4
+```
 
 Only the runtime comparison loads requested model weights. The planning and no-specialization fallback measurements are low-RAM and safe to run on development laptops.
 
