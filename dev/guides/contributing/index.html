@@ -14,6 +14,8 @@
         <link rel="prev" href="../../development/">
       
       
+        <link rel="next" href="../python-standards/">
+      
       
         
       
@@ -1756,6 +1758,10 @@
       
         
       
+        
+      
+        
+      
     
     
     
@@ -1934,6 +1940,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#standards-expectations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standards expectations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#testing-style" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1948,6 +1965,62 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python-standards/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python Standards
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../python-standards-audit/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Python Standards Audit
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -2022,6 +2095,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#standards-expectations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Standards expectations
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#testing-style" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2065,7 +2149,10 @@
 </code></pre></div>
 <h2 id="verification-expectations">Verification expectations<a class="headerlink" href="#verification-expectations" title="Permanent link">&para;</a></h2>
 <p>Before sending a documentation or code change, run the relevant gates:</p>
-<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>compileall<span class="w"> </span>src<span class="w"> </span>tests<span class="w"> </span>examples<span class="w"> </span>scripts
+<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>format<span class="w"> </span>src<span class="w"> </span>tests<span class="w"> </span>examples<span class="w"> </span>scripts
+uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>src<span class="w"> </span>tests<span class="w"> </span>examples<span class="w"> </span>scripts
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/check_python_standards.py
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>compileall<span class="w"> </span>src<span class="w"> </span>tests<span class="w"> </span>examples<span class="w"> </span>scripts
 uv<span class="w"> </span>run<span class="w"> </span>ty<span class="w"> </span>check<span class="w"> </span>src<span class="w"> </span>tests
 uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-q
 uv<span class="w"> </span>build
@@ -2077,10 +2164,20 @@ uv<span class="w"> </span>run<span class="w"> </span>--group<span class="w"> </s
 <p>This project treats docs as part of the product surface:</p>
 <ul>
 <li>keep README and <code>docs/</code> aligned</li>
+<li>keep the canonical standards contract in <a href="../python-standards/">Python Standards</a></li>
 <li>keep CLI/help text and docs terminology aligned</li>
 <li>avoid internal implementation-plan language in user-facing docs</li>
 <li>prefer truthful statements over broad claims that cannot be proved on the current host</li>
 </ul>
+<h2 id="standards-expectations">Standards expectations<a class="headerlink" href="#standards-expectations" title="Permanent link">&para;</a></h2>
+<p><code>ollm</code> is being treated as a greenfield codebase:</p>
+<ul>
+<li>no legacy-only code paths</li>
+<li>no compatibility scaffolding</li>
+<li>no preserving bad structures because they already exist</li>
+</ul>
+<p>The mechanically enforced rules live in <code>scripts/check_python_standards.py</code>, and the current
+repo-wide remediation matrix lives in <a href="../python-standards-audit/">Python Standards Audit</a>.</p>
 <h2 id="testing-style">Testing style<a class="headerlink" href="#testing-style" title="Permanent link">&para;</a></h2>
 <ul>
 <li>prefer fakes and tiny real fixtures over mocks</li>
