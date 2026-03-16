@@ -885,6 +885,24 @@
         
       
       
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Benchmarking
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
       <a href="./" class="md-nav__link md-nav__link--active">
         
   
@@ -901,6 +919,38 @@
   
 
       </a>
+      
+        
+
+  
+
+<nav class="md-nav md-nav--secondary" aria-label="Page contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Page contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#sweep-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sweep controls
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
       
     </li>
   
@@ -1901,6 +1951,25 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Page contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#sweep-controls" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Sweep controls
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -1933,18 +2002,34 @@
 <ul>
 <li>it always measures specialization planner overhead without loading model weights</li>
 <li>it measures the extra planning cost when no specialization applies by creating a tiny local T5 fixture on the fly</li>
-<li>it reports a runtime-comparison matrix for the current optimized families using any locally materialized built-in aliases it finds</li>
-<li>runtime comparisons now include:</li>
-<li>end-to-end runtime latency</li>
-<li>load and generation latency breakdowns</li>
-<li>generated output tokens</li>
-<li>generated output tokens per second</li>
-<li>process RSS snapshots after load and after generation</li>
-<li>accelerator memory snapshots when the runtime exposes them</li>
-<li>it marks missing or non-executable optimized paths as unavailable instead of fabricating numbers</li>
-<li>it also benchmarks the requested <code>--model-reference</code> directly and reports <code>comparison_available: false</code> when the optimized path cannot execute on the current host</li>
+<li>it reports a bounded family-wide comparison matrix for the current optimized families using any locally materialized built-in aliases it finds</li>
+<li>the requested <code>--model-reference</code> now gets deeper benchmark sections:</li>
+<li>cold-start vs warm-runtime comparisons</li>
+<li>TTFT and inter-token latency</li>
+<li>prompt-token and output-token throughput</li>
+<li>current and peak process RSS</li>
+<li>accelerator memory, cache footprint, process CPU, best-effort accelerator utilization, and allocator-gap metrics when the host/runtime can measure them truthfully</li>
+<li>prompt-length scaling</li>
+<li>output-length scaling</li>
+<li>repeated-turn session growth</li>
+<li>it marks unsupported metrics and non-executable optimized paths as unavailable instead of fabricating numbers</li>
 </ul>
 <p>Only the runtime comparison loads requested model weights. The planning and no-specialization fallback measurements are intentionally lightweight.</p>
+<h2 id="sweep-controls">Sweep controls<a class="headerlink" href="#sweep-controls" title="Permanent link">&para;</a></h2>
+<p>The deeper primary-target sweeps can be tuned from the CLI:</p>
+<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--prompt-scale-tokens<span class="w"> </span><span class="m">32</span>,128,512<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output-scale-tokens<span class="w"> </span><span class="m">16</span>,64,128<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--session-turns<span class="w"> </span><span class="m">4</span>
+</code></pre></div>
+<p>Interpretation notes:</p>
+<ul>
+<li>family-wide results stay limited to cold-start and warm-runtime comparisons so the benchmark remains bounded</li>
+<li>prompt throughput is prompt tokens divided by TTFT/prefill latency</li>
+<li>output throughput is generated output tokens divided by total generation latency</li>
+<li>peak RSS includes a source label; long-lived warm/scaling/session probes use stage-local sampled peaks instead of process-lifetime peaks</li>
+<li>allocator-gap metrics are reported as reserved-minus-allocated style slack when the backend exposes the required counters; unsupported backends serialize them as <code>null</code></li>
+</ul>
 
 
 
