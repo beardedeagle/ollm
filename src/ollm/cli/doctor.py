@@ -4,6 +4,7 @@ import typer
 
 from ollm.cli.common import build_console, build_runtime_config, print_json
 from ollm.cli.services import CommandServices
+from ollm.runtime.config import DEFAULT_DEVICE
 from ollm.runtime.inspection import plan_json_payload
 
 
@@ -16,7 +17,7 @@ def register_doctor_command(app: typer.Typer, services: CommandServices) -> None
         models_dir: Path = typer.Option(
             Path("models"), "--models-dir", help="Directory containing model data."
         ),
-        device: str = typer.Option("cuda:0", "--device", help="Torch device string."),
+        device: str = typer.Option(DEFAULT_DEVICE, "--device", help="Torch device string."),
         backend: str | None = typer.Option(None, "--backend", help="Backend override."),
         provider_endpoint: str | None = typer.Option(
             None, "--provider-endpoint", help="Provider API root URL."
