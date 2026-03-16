@@ -4,13 +4,13 @@
 
 import time
 from datetime import datetime
+from typing import Unpack
+
 import torch
-from torch import nn
 import torch.nn.functional as F
-from typing import Optional, Unpack
-from transformers import DynamicCache
-from transformers import GptOssForCausalLM
 import transformers.models.gpt_oss.modeling_gpt_oss as modeling
+from torch import nn
+from transformers import DynamicCache, GptOssForCausalLM
 from transformers.models.gpt_oss.modeling_gpt_oss import (
     GptOssAttention,
     GptOssConfig,
@@ -22,10 +22,11 @@ from transformers.models.gpt_oss.modeling_gpt_oss import (
     create_sliding_window_causal_mask,
     repeat_kv,
 )
-from .utils import _walk_to_parent, _assign_tensor_to_module, _set_meta_placeholder
+
+from ollm.utils import _assign_tensor_to_module, _set_meta_placeholder, _walk_to_parent
 
 try:
-    from .gpt_oss_attention import attention as flash_attention
+    from ollm.gpt_oss_attention import attention as flash_attention
 except ImportError:
     flash_attention = None
 
@@ -167,13 +168,13 @@ class MyGptOssModel(GptOssModel):
 
     def forward(
         self,
-        input_ids: Optional[torch.LongTensor] = None,
-        attention_mask: Optional[torch.Tensor] = None,
-        position_ids: Optional[torch.LongTensor] = None,
-        past_key_values: Optional[list[torch.FloatTensor]] = None,
-        inputs_embeds: Optional[torch.FloatTensor] = None,
-        use_cache: Optional[bool] = None,
-        cache_position: Optional[torch.LongTensor] = None,
+        input_ids: torch.LongTensor | None = None,
+        attention_mask: torch.Tensor | None = None,
+        position_ids: torch.LongTensor | None = None,
+        past_key_values: list[torch.FloatTensor] | None = None,
+        inputs_embeds: torch.FloatTensor | None = None,
+        use_cache: bool | None = None,
+        cache_position: torch.LongTensor | None = None,
         **kwargs: Unpack,
     ) -> MoeModelOutputWithPast:
         if (input_ids is None) ^ (inputs_embeds is not None):
@@ -258,7 +259,7 @@ def my_eager_attention_forward(
     query: torch.Tensor,
     key: torch.Tensor,
     value: torch.Tensor,
-    attention_mask: Optional[torch.Tensor],
+    attention_mask: torch.Tensor | None,
     scaling: float,
     dropout: float = 0.0,
     sliding_window=None,

@@ -19,7 +19,7 @@ from transformers.models.gemma3.modeling_gemma3 import (
     TransformersKwargs,
 )
 
-from .utils import _assign_tensor_to_module, _set_meta_placeholder, _walk_to_parent
+from ollm.utils import _assign_tensor_to_module, _set_meta_placeholder, _walk_to_parent
 
 
 class _LoaderProtocol(Protocol):

@@ -256,6 +256,9 @@ uv run pytest
 Fast syntax-only verification remains:
 
 ```bash
+uv run ruff format src tests examples scripts
+uv run ruff check src tests examples scripts
+uv run python scripts/check_python_standards.py
 uv run python -m compileall src tests
 uv run ty check src tests
 ```
@@ -299,6 +302,25 @@ uv run python scripts/benchmark_runtime.py \
 ```
 
 Only the runtime comparison loads requested model weights. The planning and no-specialization fallback measurements are low-RAM and safe to run on development laptops.
+
+### Engineering standards
+
+The canonical contributor standards live in [docs/guides/python-standards.md](docs/guides/python-standards.md).
+
+This repo is currently being treated as greenfield:
+
+- no legacy-only code paths
+- no compatibility scaffolding
+- delete bad shapes instead of preserving them
+
+The repo-local standards checker is:
+
+```bash
+uv run python scripts/check_python_standards.py
+```
+
+The current repo-wide remediation matrix lives in
+[docs/guides/python-standards-audit.md](docs/guides/python-standards-audit.md).
 
 
 ## Knowledge base

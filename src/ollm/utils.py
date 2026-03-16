@@ -1,16 +1,17 @@
-import io
 import time
+from pathlib import Path
+
 import torch
+
+from ollm.async_io import path_read_text, path_write_text
 
 
 def file_put_contents(filename, st):
-    with open(filename, "w", encoding="utf-8") as file:
-        file.write(st)
+    path_write_text(Path(filename), st, encoding="utf-8")
 
 
 def file_get_contents(name):
-    f = io.open(name, mode="r", encoding="utf-8")  # utf-8 | Windows-1252
-    return f.read()
+    return path_read_text(Path(name), encoding="utf-8")
 
 
 def tensor_size_gb(t: torch.Tensor) -> float:

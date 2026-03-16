@@ -9,10 +9,7 @@ from ollm.app.session import ChatSession
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
 from ollm.runtime.generation import RuntimeExecutor
 from ollm.runtime.loader import RuntimeLoader
-
-from ollm.ui.chat_shell import parse_slash_command
-from ollm.ui.chat_shell import InteractiveChatShell, SlashCommand
-
+from ollm.ui.chat_shell import InteractiveChatShell, SlashCommand, parse_slash_command
 from tests.fakes import FakeRuntimeExecutor, FakeRuntimeLoader
 
 

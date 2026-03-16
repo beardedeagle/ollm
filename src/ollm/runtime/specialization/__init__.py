@@ -18,8 +18,8 @@ from ollm.runtime.specialization.passes.base import (
     SpecializationPassId,
     SpecializationPassTraits,
 )
-from ollm.runtime.specialization.pipeline import SpecializationPipeline
 from ollm.runtime.specialization.passes.catalog import get_specialization_pass
+from ollm.runtime.specialization.pipeline import SpecializationPipeline
 from ollm.runtime.specialization.providers import build_default_specialization_registry
 from ollm.runtime.specialization.registry import SpecializationRegistry
 

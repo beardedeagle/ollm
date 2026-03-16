@@ -5,8 +5,8 @@ import torch
 
 from ollm.app.types import ContentPart, Message, MessageRole, PromptRequest
 from ollm.runtime.backends.base import BackendRuntime
-from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
+from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.catalog import ModelModality
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
 from ollm.runtime.generation import PromptExecutionError, RuntimeExecutor

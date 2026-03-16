@@ -1,10 +1,9 @@
 """Parsing for opaque model references accepted by the oLLM CLI and library APIs."""
 
+import re
 from dataclasses import dataclass
 from pathlib import Path
-import re
 from typing import Self
-
 
 KNOWN_REFERENCE_SCHEMES = {
     "hf",

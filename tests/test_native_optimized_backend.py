@@ -1,7 +1,7 @@
 import logging
-from pathlib import Path
 import sys
 import types
+from pathlib import Path
 
 import pytest
 import torch
@@ -16,8 +16,8 @@ from ollm.runtime.resolver import ModelSourceKind, NativeFamily, ResolvedModel
 from ollm.runtime.specialization import SpecializationRegistry
 from ollm.runtime.specialization.base import (
     OptimizedModelArtifacts,
-    SpecializationMatch,
     SpecializationLoadError,
+    SpecializationMatch,
     SpecializationProvider,
     SpecializationTraits,
 )

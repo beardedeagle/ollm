@@ -1,3 +1,4 @@
+.DS_Store
 temp
 kv_cache
 gds_export
@@ -19,7 +20,7 @@ AGENTS.md
 tmp-provider-models/
 .omc/
 .claude/
-docs/
+.beads/.beads-credential-key
 OLLM_TERMINAL_INTERFACE_IMPLEMENTATION_SPEC.md
 OLLM_GENERIC_EXECUTION_AND_AUTOMATED_SPECIALIZATION_IMPLEMENTATION_PLAN.md
 OLLM_GENERIC_EXECUTION_AND_AUTOMATED_SPECIALIZATION_SPEC.md

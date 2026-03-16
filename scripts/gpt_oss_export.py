@@ -9,11 +9,14 @@ Original file is located at
 
 # gps-oss-20B. Export gds_export weights
 import json
-import os
+from pathlib import Path
+
 import torch
-from transformers import AutoModelForCausalLM
 from safetensors.torch import safe_open
+from transformers import AutoModelForCausalLM
 from transformers.utils.quantization_config import Mxfp4Config
+
+from ollm.async_io import path_mkdir, path_write_text, torch_save_file
 
 # 1. Get original tensors(_blocks, _scales) in torch.uint8, torch.bfloat16.
 tensor_specs = {}
@@ -31,7 +34,7 @@ for filename in [
 # 2. Export
 MODEL_ID = "/content/drive/MyDrive/temp/gpt-oss-20b/"
 OUT_DIR = "/content/drive/MyDrive/temp/gds_export"
-os.makedirs(OUT_DIR, exist_ok=True)
+path_mkdir(Path(OUT_DIR), exist_ok=True)
 quantization_config = Mxfp4Config(dequantize=False)
 state_dict = AutoModelForCausalLM.from_pretrained(
     MODEL_ID,
@@ -55,9 +58,9 @@ for name, tensor in state_dict.items():
         packed = "mxfp4"
 
     filename = f"{name.replace('.', '__')}.pt"
-    path = os.path.join(OUT_DIR, filename)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    torch.save(t, path)
+    path = Path(OUT_DIR) / filename
+    path_mkdir(path.parent, parents=True, exist_ok=True)
+    torch_save_file(t, path)
     manifest[name] = {
         "path": filename,
         "dtype": str(dtype),  # torch.bfloat16
@@ -65,8 +68,7 @@ for name, tensor in state_dict.items():
         "packed": packed,
     }
 
-with open(os.path.join(OUT_DIR, "manifest.json"), "w") as f:
-    json.dump(manifest, f, indent=2)
+path_write_text(Path(OUT_DIR) / "manifest.json", json.dumps(manifest, indent=2))
 print(f"Exported {len(manifest)} tensors to {OUT_DIR}")
 # ./endOf Export gds_export weights
 
@@ -97,7 +99,7 @@ def convert_moe_packed_tensors(  # copied from transformers/integrations/mxfp4.p
     scales,
     *,
     dtype: torch.dtype = torch.bfloat16,
-    rows_per_chunk: int = 32768 * 1024,  # TODO these values are not here by mistake ;)
+    rows_per_chunk: int = 32768 * 1024,
 ) -> torch.Tensor:
     """
     Convert the mxfp4 weights again, dequantizing and makes them compatible with the forward
@@ -110,7 +112,9 @@ def convert_moe_packed_tensors(  # copied from transformers/integrations/mxfp4.p
     #    blocks = blocks.cuda()
     #    scales = scales.cuda()
 
-    scales = scales.to(torch.int32) - 127  # TODO that's because 128=2**7
+    # MXFP4 stores scale exponents in biased unsigned bytes, so subtract the
+    # bias to recover the signed exponent values used during dequantization.
+    scales = scales.to(torch.int32) - 127
 
     assert blocks.shape[:-1] == scales.shape, (
         f"{blocks.shape[:-1]=} does not match {scales.shape=}"

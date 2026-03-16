@@ -1,16 +1,19 @@
 def safetensors_vs_ptfiles():
-    import torch
-    import safetensors.torch as st
     import time
-    import os
+    from pathlib import Path
+
+    import safetensors.torch as st
+    import torch
+
+    from ollm.async_io import path_mkdir, torch_load_file, torch_save_file
 
     # Simulate 512 experts for layer1
     experts = {f"layer1.expert{i}": torch.randn(1024, 1024) for i in range(512)}
 
     # Save as separate .pt files
-    os.makedirs("./temp/experts_pt", exist_ok=True)
+    path_mkdir(Path("./temp/experts_pt"), parents=True, exist_ok=True)
     for k, v in experts.items():
-        torch.save(v, f"./temp/experts_pt/{k}.pt")
+        torch_save_file(v, f"./temp/experts_pt/{k}.pt")
 
     # Save all in one safetensors file
     st.save_file(experts, "./temp/experts_all.safetensors")
@@ -21,7 +24,9 @@ def safetensors_vs_ptfiles():
     t0 = time.time()
     out = []
     for eid in expert_ids:
-        t = torch.load(f"./temp/experts_pt/layer1.expert{eid}.pt")
+        t = torch_load_file(
+            f"./temp/experts_pt/layer1.expert{eid}.pt", map_location="cpu"
+        )
         out.append(t)
     print("PT load time:", time.time() - t0, "sec")
 

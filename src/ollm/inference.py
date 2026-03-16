@@ -3,9 +3,9 @@
 import importlib
 import importlib.util
 import logging
-from pathlib import Path
-from pathlib import PurePosixPath
-from typing import Any, Callable, Protocol, cast
+from collections.abc import Callable
+from pathlib import Path, PurePosixPath
+from typing import Protocol, cast
 
 import torch
 from huggingface_hub import snapshot_download
@@ -83,6 +83,19 @@ class _PeftModelProtocol(Protocol):
         adapter_name: str,
         use_safetensors: bool,
     ) -> None: ...
+
+
+class _SnapshotDownloadCallable(Protocol):
+    def __call__(
+        self,
+        *,
+        repo_id: str,
+        local_dir: str,
+        local_dir_use_symlinks: bool,
+        force_download: bool,
+        revision: str | None,
+        allow_patterns: list[str],
+    ) -> str: ...
 
 
 def get_attn_implementation() -> str | None:
@@ -196,7 +209,7 @@ def download_hf_snapshot(
     target_dir.mkdir(parents=True, exist_ok=True)
     prune_hf_runtime_artifacts(target_dir)
     LOGGER.info("Downloading runtime artifacts for %s.", repo_id)
-    snapshot_download_fn = cast(Any, snapshot_download)
+    snapshot_download_fn = cast(_SnapshotDownloadCallable, snapshot_download)
     snapshot_download_fn(
         repo_id=repo_id,
         local_dir=str(target_dir),

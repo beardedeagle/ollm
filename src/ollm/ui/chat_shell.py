@@ -1,4 +1,3 @@
-import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -8,6 +7,7 @@ from rich.console import Console
 
 from ollm.app.session import ChatSession
 from ollm.app.types import ContentPart
+from ollm.async_io import chmod_path, path_mkdir, path_touch
 from ollm.runtime.streaming import StreamSink
 
 
@@ -63,10 +63,9 @@ class InteractiveChatShell:
         self._pending_parts: list[ContentPart] = []
         history = InMemoryHistory()
         if history_file is not None:
-            history_file.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-            fd = os.open(history_file, os.O_CREAT | os.O_APPEND, 0o600)
-            os.close(fd)
-            os.chmod(history_file, 0o600)
+            path_mkdir(history_file.parent, parents=True, exist_ok=True, mode=0o700)
+            path_touch(history_file, exist_ok=True)
+            chmod_path(history_file, 0o600)
             history = FileHistory(str(history_file))
         self._prompt_session = PromptSession(history=history)
 

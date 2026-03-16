@@ -4,11 +4,12 @@
 
 import time
 from datetime import datetime
+from typing import Unpack
+
 import torch
-from torch import nn
 import torch.nn.functional as F
-from typing import Optional, Tuple, Dict, Any, Unpack
 import transformers.models.qwen3_next.modeling_qwen3_next as modeling
+from torch import nn
 from transformers.models.qwen3_next.modeling_qwen3_next import (
     Cache,
     MoeCausalLMOutputWithPast,
@@ -24,8 +25,9 @@ from transformers.models.qwen3_next.modeling_qwen3_next import (
     TransformersKwargs,
     create_causal_mask,
 )
-from .utils import _walk_to_parent, _assign_tensor_to_module, _set_meta_placeholder
-from .kvcache import oCache
+
+from ollm.kvcache import oCache
+from ollm.utils import _assign_tensor_to_module, _set_meta_placeholder, _walk_to_parent
 
 # global vars
 loader, stats = None, None
@@ -37,7 +39,7 @@ class Qwen3NextDiskCache(Qwen3NextDynamicCache, oCache):
         self.ini_ocache(cache_dir, device, stats)
         self.seq_lengths = [0 for _ in range(len(self.key_cache))]
 
-    def get_seq_length(self, layer_idx: Optional[int] = 0) -> int:
+    def get_seq_length(self, layer_idx: int | None = 0) -> int:
         return self.seq_lengths[layer_idx]
 
     def __getitem__(self, layer_idx: int) -> tuple[torch.Tensor, torch.Tensor]:
@@ -55,8 +57,8 @@ class Qwen3NextDiskCache(Qwen3NextDynamicCache, oCache):
         key_states: torch.Tensor,
         value_states: torch.Tensor,
         layer_idx: int,
-        cache_kwargs: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        cache_kwargs: dict[str, object] | None = None,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
         tensors = self.load_from_disk(layer_idx)
         if tensors is not None:
             self.key_cache[layer_idx], self.value_cache[layer_idx] = tensors
@@ -294,13 +296,13 @@ class MyQwen3NextModel(Qwen3NextModel):
 
     def forward(
         self,
-        input_ids: Optional[torch.LongTensor] = None,
-        attention_mask: Optional[torch.Tensor] = None,
-        position_ids: Optional[torch.LongTensor] = None,
-        past_key_values: Optional[Cache] = None,
-        inputs_embeds: Optional[torch.FloatTensor] = None,
-        use_cache: Optional[bool] = None,
-        cache_position: Optional[torch.LongTensor] = None,
+        input_ids: torch.LongTensor | None = None,
+        attention_mask: torch.Tensor | None = None,
+        position_ids: torch.LongTensor | None = None,
+        past_key_values: Cache | None = None,
+        inputs_embeds: torch.FloatTensor | None = None,
+        use_cache: bool | None = None,
+        cache_position: torch.LongTensor | None = None,
         **kwargs: Unpack[TransformersKwargs],
     ) -> MoeModelOutputWithPast:
         if (input_ids is None) ^ (inputs_embeds is not None):

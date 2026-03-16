@@ -1,11 +1,14 @@
 import json
-import os
+from pathlib import Path
+
 import torch
 from transformers import AutoModelForCausalLM
 
+from ollm.async_io import path_mkdir, path_write_text
+
 MODEL_ID = "meta-llama/Llama-3.2-1B-Instruct"
 OUT_DIR = "gds_export"
-os.makedirs(OUT_DIR, exist_ok=True)
+path_mkdir(Path(OUT_DIR), exist_ok=True)
 
 # Load weights on CPU (normal HF path), then export raw
 # If your model is sharded across multiple .safetensors, iterate them.
@@ -24,8 +27,8 @@ for name, tensor in state_dict.items():
 
     t = tensor.to("cpu").contiguous()  # ensure contiguous for .tofile
     filename = f"{name.replace('.', '__')}.bin"
-    path = os.path.join(OUT_DIR, filename)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    path = Path(OUT_DIR) / filename
+    path_mkdir(path.parent, parents=True, exist_ok=True)
     t.numpy().tofile(path)  # raw bytes
 
     manifest[name] = {
@@ -34,7 +37,6 @@ for name, tensor in state_dict.items():
         "shape": list(t.shape),
     }
 
-with open(os.path.join(OUT_DIR, "manifest.json"), "w") as f:
-    json.dump(manifest, f, indent=2)
+path_write_text(Path(OUT_DIR) / "manifest.json", json.dumps(manifest, indent=2))
 
 print(f"Exported {len(manifest)} tensors to {OUT_DIR}")

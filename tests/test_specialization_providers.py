@@ -48,7 +48,7 @@ def test_llama_specialization_provider_allows_placeholder_weight_mismatches(
         lambda module_name: fake_module,
     )
     monkeypatch.setattr(
-        "ollm.runtime.specialization.providers._get_attention_implementation",
+        "ollm.runtime.specialization.providers.get_attention_implementation",
         lambda: None,
     )
     monkeypatch.setattr(

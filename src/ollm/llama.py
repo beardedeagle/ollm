@@ -19,7 +19,7 @@ from transformers.models.llama.modeling_llama import (
     create_causal_mask,
 )
 
-from .utils import _assign_tensor_to_module, _set_meta_placeholder, _walk_to_parent
+from ollm.utils import _assign_tensor_to_module, _set_meta_placeholder, _walk_to_parent
 
 
 class _LoaderProtocol(Protocol):
