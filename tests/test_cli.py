@@ -118,7 +118,9 @@ def test_prompt_command_validates_multimodal_and_json_stream() -> None:
         app, ["prompt", "hello", "--format", "json", "--no-color"]
     )
     assert json_stream_error.exit_code != 0
-    assert "--format json cannot be combined with --stream" in json_stream_error.output
+    assert "--format json cannot be combined with --stream" in _strip_ansi(
+        json_stream_error.output
+    )
 
 
 def test_prompt_command_accepts_non_catalog_model_reference() -> None:
@@ -731,7 +733,7 @@ def test_models_list_rejects_invalid_provider_endpoint(tmp_path: Path) -> None:
         ],
     )
     assert result.exit_code != 0
-    assert "absolute http or https URL" in result.output
+    assert "absolute http or https URL" in _strip_ansi(result.output)
 
 
 def test_models_list_rejects_provider_endpoint_with_credentials(tmp_path: Path) -> None:
@@ -751,7 +753,7 @@ def test_models_list_rejects_provider_endpoint_with_credentials(tmp_path: Path) 
         ],
     )
     assert result.exit_code != 0
-    assert "must not include credentials" in result.output
+    assert "must not include credentials" in _strip_ansi(result.output)
 
 
 def test_prompt_command_rejects_provider_endpoint_with_credentials() -> None:
