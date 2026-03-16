@@ -8,6 +8,8 @@ from urllib.parse import urlparse
 DEFAULT_MODEL_REFERENCE = "llama3-1B-chat"
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 DEFAULT_MAX_NEW_TOKENS = 500
+
+
 def _platform_default_device() -> str:
     """Return a sensible default device based on the host platform."""
     if sys.platform == "darwin":
