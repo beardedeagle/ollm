@@ -1,139 +1,310 @@
-import os
+"""Low-level optimized-native inference helpers and snapshot utilities."""
+
+import importlib
+import importlib.util
+import logging
+from pathlib import Path
+from typing import Any, Callable, Protocol, cast
 
 import torch
 from huggingface_hub import snapshot_download
-from transformers import AutoTokenizer, AutoProcessor, AutoConfig
+from transformers import AutoConfig
 
-from .utils import Stats
-from .gds_loader import GDSWeights, DenseWeightsLoader, MoEWeightsLoader, SingleDenseWeightsLoader
-from .kvcache import KVCache
-from .runtime.catalog import get_model_catalog_entry, supported_model_ids
+from ollm.runtime.catalog import ModelCatalogEntry, find_model_catalog_entry
+from ollm.runtime.config import RuntimeConfig
+from ollm.runtime.reference import ModelReference
+from ollm.runtime.resolver import ModelResolver, ModelSourceKind
+from ollm.runtime.safety import validate_safe_adapter_artifacts
+from ollm.runtime.specialization import (
+    SpecializationPipeline,
+    SpecializationRegistry,
+    apply_specialization,
+    build_default_specialization_registry,
+)
+from ollm.utils import Stats
+
+LOGGER = logging.getLogger(__name__)
 
 
-def get_attn_implementation():
-	try:
-		import flash_attn
-		return "flash_attention_2"
-	except ImportError:
-		print("Warning: flash_attention_2 is not imported. The context length will be limited")
-		return None
+class _LoraConfigProtocol(Protocol):
+    @classmethod
+    def from_pretrained(cls, adapter_path: str) -> object: ...
 
 
-def download_model_snapshot(model_id, model_dir, force_download=False):
-	entry = get_model_catalog_entry(model_id)
-	print(f"Downloading {entry.repo_id} ...")
-	snapshot_download(
-		repo_id=entry.repo_id,
-		local_dir=model_dir,
-		local_dir_use_symlinks=False,
-		force_download=force_download,
-	)
+class _PeftModelProtocol(Protocol):
+    def load_adapter(
+        self,
+        adapter_path: str,
+        *,
+        adapter_name: str,
+        use_safetensors: bool,
+    ) -> None: ...
+
+
+def get_attn_implementation() -> str | None:
+    """Return the preferred attention implementation identifier when available."""
+    if importlib.util.find_spec("flash_attn") is not None:
+        return "flash_attention_2"
+    LOGGER.warning(
+        "flash_attention_2 is not imported. The context length will be limited."
+    )
+    return None
+
+
+def download_hf_snapshot(
+    repo_id: str,
+    model_dir: str,
+    force_download: bool = False,
+    revision: str | None = None,
+) -> None:
+    """Download a Hugging Face snapshot into a local model directory."""
+    LOGGER.info("Downloading model snapshot for %s.", repo_id)
+    snapshot_download_fn = cast(Any, snapshot_download)
+    snapshot_download_fn(
+        repo_id=repo_id,
+        local_dir=model_dir,
+        local_dir_use_symlinks=False,
+        force_download=force_download,
+        revision=revision,
+    )
+
+
+def _load_peft_symbols() -> tuple[
+    type[_LoraConfigProtocol], Callable[[object, object], object]
+]:
+    peft_module = importlib.import_module("peft")
+    lora_config_cls = cast(
+        type[_LoraConfigProtocol], getattr(peft_module, "LoraConfig")
+    )
+    get_peft_model = cast(
+        Callable[[object, object], object], getattr(peft_module, "get_peft_model")
+    )
+    return lora_config_cls, get_peft_model
 
 
 class Inference:
-	def __init__(self, model_id, device="cuda:0", logging=True, multimodality=False):
-		self.model_id = model_id
-		self.device = torch.device(device)
-		self.multimodality = multimodality
-		self.stats = Stats() if logging else None
+    """Direct optimized-native helper for built-in aliases and matching local native families."""
 
-	def hf_download(self, model_dir):
-		download_model_snapshot(self.model_id, model_dir)
+    def __init__(
+        self,
+        model_id: str,
+        device: str = "cuda:0",
+        logging: bool = True,
+        multimodality: bool = False,
+        specialization_registry: SpecializationRegistry | None = None,
+        resolver: ModelResolver | None = None,
+    ):
+        self.model_id = model_id
+        self.model_reference = model_id
+        self.optimized_model_id = model_id
+        self.device = torch.device(device)
+        self.multimodality = multimodality
+        self.stats = Stats() if logging else None
+        self._specialization_registry = (
+            build_default_specialization_registry()
+            if specialization_registry is None
+            else specialization_registry
+        )
+        self._resolver = resolver or ModelResolver()
+        self._specialization_pipeline = SpecializationPipeline()
+        self._cache_factory = None
+        self._apply_cpu_offload = None
+        self._apply_gpu_offload = None
+        self.loaded_resolved_model = None
+        self.loaded_specialization_provider_id = None
+        self.loaded_applied_specialization_pass_ids = ()
 
-	
-	def ini_model(self, models_dir="./models/", force_download=False):
-		models_list = supported_model_ids()
-		if self.model_id not in models_list:
-			raise ValueError("Incorrect model id. It must be one of", models_list)
-		
-		model_dir = os.path.join(models_dir, self.model_id)
-		if os.path.exists(model_dir)==False or force_download==True:
-			self.hf_download(model_dir)
+    def hf_download(self, model_dir: str, force_download: bool = False) -> None:
+        """Download the built-in optimized alias into a local directory."""
+        entry = find_model_catalog_entry(self.optimized_model_id)
+        if entry is None:
+            raise ValueError(
+                f"Inference only supports built-in optimized aliases. Received {self.optimized_model_id!r}."
+            )
+        download_hf_snapshot(entry.repo_id, model_dir, force_download=force_download)
 
-		self.load_model(model_dir)
+    def ini_model(
+        self, models_dir: str = "./models/", force_download: bool = False
+    ) -> None:
+        """Download if needed and then load the optimized-native runtime."""
+        entry = find_model_catalog_entry(self.optimized_model_id)
+        if entry is None:
+            raise ValueError(
+                f"Inference only supports built-in optimized aliases. Received {self.optimized_model_id!r}."
+            )
 
-	
-	def load_model(self, model_dir):
-		print("loading model from", model_dir)
-		if self.model_id=="qwen3-next-80B":
-			from . import qwen3_next
-			qwen3_next.loader = MoEWeightsLoader(model_dir, device=self.device)
-			qwen3_next.stats = self.stats
-			self.model = qwen3_next.MyQwen3NextForCausalLM.from_pretrained(model_dir, torch_dtype=torch.bfloat16, device_map="cpu", attn_implementation=get_attn_implementation(), low_cpu_mem_usage=True, ignore_mismatched_sizes=True)
-		elif self.model_id=="gemma3-12B":
-			from . import gemma3
-			gemma3.loader = DenseWeightsLoader(model_dir, device=self.device)
-			gemma3.stats = self.stats
-			automodel = gemma3.MyGemma3ForConditionalGeneration if self.multimodality else gemma3.MyGemma3ForCausalLM
-			self.model = automodel.from_pretrained(model_dir, torch_dtype=torch.bfloat16, device_map="cpu", attn_implementation=get_attn_implementation(), low_cpu_mem_usage=True, ignore_mismatched_sizes=True)
-			self.processor = AutoProcessor.from_pretrained(model_dir)
-		elif self.model_id=="voxtral-small-24B":
-			from . import voxtral
-			voxtral.loader = DenseWeightsLoader(model_dir, device=self.device)
-			voxtral.stats = self.stats
-			self.model = voxtral.MyVoxtralForConditionalGeneration.from_pretrained(model_dir, torch_dtype="auto", device_map="cpu", attn_implementation=get_attn_implementation(), low_cpu_mem_usage=True, ignore_mismatched_sizes=True)
-			self.processor = AutoProcessor.from_pretrained(model_dir)
-			self.tokenizer = self.processor.tokenizer
-		elif self.model_id=="gpt-oss-20B":
-			from . import gpt_oss
-			gpt_oss.loader = GDSWeights(os.path.join(model_dir, "gds_export"), device=self.device)
-			gpt_oss.stats = self.stats
-			self.model = gpt_oss.MyGptOssForCausalLM.from_pretrained(model_dir, torch_dtype=torch.bfloat16, device_map="cpu", low_cpu_mem_usage=True, ignore_mismatched_sizes=True)		
-		else:
-			from . import llama
-			llama.loader = SingleDenseWeightsLoader(model_dir, device=self.device) if self.model_id in ["llama3-1B-chat"] else DenseWeightsLoader(model_dir, device=self.device)
-			llama.stats = self.stats
-			self.model = llama.MyLlamaForCausalLM.from_pretrained(model_dir, torch_dtype=torch.bfloat16, device_map="cpu", attn_implementation=get_attn_implementation(), low_cpu_mem_usage=True, ignore_mismatched_sizes=True)
+        model_dir = Path(models_dir).expanduser().resolve() / entry.model_id
+        if force_download or not model_dir.exists():
+            self.hf_download(str(model_dir), force_download=force_download)
 
-		self.model.eval()
-		self.model.to(self.device)
-		if not hasattr(self, "tokenizer"): self.tokenizer = AutoTokenizer.from_pretrained(model_dir)
+        self.load_model(str(model_dir))
 
-	
-	def offload_layers_to_cpu(self, **args):
-		self.model.offload_layers_to_cpu(**args)
-	
-	def offload_layers_to_gpu_cpu(self, **args):
-		self.model.offload_layers_to_gpu_cpu(**args)
-	
-	def DiskCache(self, cache_dir="./kvcache"):
-		if self.model_id in ["gpt-oss-20B"]:
-			print(f"{self.model_id} DiskCache is not supported at the moment. Using default DynamicCache instead")
-			return None
-		elif self.model_id=="qwen3-next-80B":
-			from .qwen3_next import Qwen3NextDiskCache
-			return Qwen3NextDiskCache(self.model.config, cache_dir=cache_dir, device=self.device, stats=self.stats)
-		else:
-			return KVCache(cache_dir=cache_dir, device=self.device, stats=self.stats)
+    def load_model(self, model_dir: str) -> None:
+        """Load an optimized-native runtime from a local directory."""
+        model_path = Path(model_dir).expanduser().resolve()
+        if not model_path.exists() or not model_path.is_dir():
+            raise ValueError(f"Model directory does not exist: {model_path}")
+        entry = find_model_catalog_entry(self.optimized_model_id)
+        if entry is None:
+            raise ValueError(
+                f"Inference only supports built-in optimized aliases. Received {self.optimized_model_id!r}."
+            )
+        self._load_optimized_model(
+            model_path,
+            ModelSourceKind.BUILTIN,
+            self.model_reference,
+            catalog_entry=entry,
+        )
 
+    def _load_optimized_model(
+        self,
+        model_path: Path,
+        source_kind: ModelSourceKind,
+        raw_reference: str,
+        catalog_entry: ModelCatalogEntry | None = None,
+    ) -> None:
+        entry = catalog_entry
+        if source_kind is ModelSourceKind.BUILTIN:
+            entry = find_model_catalog_entry(self.optimized_model_id)
+            if entry is None:
+                raise ValueError(
+                    f"Inference only supports built-in optimized aliases. Received {self.optimized_model_id!r}."
+                )
+
+        LOGGER.info("Loading optimized model from %s.", model_path)
+        runtime_config = RuntimeConfig(
+            model_reference=raw_reference,
+            device=str(self.device),
+            multimodal=self.multimodality,
+            stats=self.stats is not None,
+        )
+        resolved_model = self._resolver.inspect_materialized_model(
+            ModelReference.parse(raw_reference),
+            model_path,
+            source_kind=source_kind,
+            repo_id=None if entry is None else entry.repo_id,
+            revision=None,
+            provider_name=None,
+            catalog_entry=entry,
+        )
+        specialization_match = self._specialization_registry.select(
+            resolved_model, runtime_config
+        )
+        if specialization_match is None:
+            raise ValueError(
+                f"No optimized specialization provider is available for {self.model_id!r} at {model_path}"
+            )
+        planned_specialization = self._specialization_pipeline.plan(
+            resolved_model,
+            runtime_config,
+            specialization_match.provider_id,
+        )
+        artifacts = self._specialization_registry.load(
+            specialization_match.provider_id,
+            resolved_model,
+            runtime_config,
+            self.stats,
+        )
+        applied_specialization = apply_specialization(
+            planned_specialization,
+            artifacts,
+            runtime_config,
+        )
+        self.loaded_resolved_model = resolved_model
+        self.loaded_specialization_provider_id = specialization_match.provider_id
+        self.loaded_applied_specialization_pass_ids = (
+            applied_specialization.applied_pass_ids
+        )
+        self.model = artifacts.model
+        self.tokenizer = artifacts.tokenizer
+        if artifacts.processor is None:
+            if hasattr(self, "processor"):
+                delattr(self, "processor")
+        else:
+            self.processor = artifacts.processor
+        self._cache_factory = artifacts.create_cache
+        self._apply_cpu_offload = artifacts.apply_cpu_offload
+        self._apply_gpu_offload = artifacts.apply_gpu_offload
+
+    def offload_layers_to_cpu(self, layers_num: int) -> None:
+        """Apply CPU layer offload through the selected specialization when supported."""
+        if self._apply_cpu_offload is None:
+            raise ValueError(f"{self.model_id} does not support CPU layer offload")
+        self._apply_cpu_offload(layers_num)
+
+    def offload_layers_to_gpu_cpu(
+        self, gpu_layers_num: int = 0, cpu_layers_num: int = 0
+    ) -> None:
+        """Apply mixed GPU/CPU layer placement when the specialization exposes it."""
+        if gpu_layers_num == 0 and cpu_layers_num == 0:
+            return
+        if self._apply_gpu_offload is None:
+            raise ValueError(f"{self.model_id} does not support GPU layer offload")
+        self._apply_gpu_offload(gpu_layers_num, cpu_layers_num)
+
+    def DiskCache(self, cache_dir: str = "./kvcache"):
+        """Create the specialization-backed disk KV cache when supported."""
+        if self._cache_factory is None:
+            return None
+        return self._cache_factory(Path(cache_dir).expanduser().resolve())
 
 
 class AutoInference(Inference):
-	def __init__(self, model_dir, adapter_dir=None, device="cuda:0", logging=True, multimodality=False):
-		self.device = torch.device(device)
-		self.stats = Stats() if logging else None
-		config = AutoConfig.from_pretrained(model_dir)
-		arc = config.architectures[0]
-		sharded = self.is_sharded(model_dir)
-		if arc == "LlamaForCausalLM":
-			self.model_id = "llama3-8B-chat" if sharded else "llama3-1B-chat"
-		elif arc == "Gemma3ForConditionalGeneration":
-			self.model_id = "gemma3-12B"
-			#multimodality = True
-		elif arc == "Gemma3ForCausalLM": self.model_id = "gemma3-12B"
-		else:
-			raise ValueError("This model type is not supported")
-			
-		self.multimodality = multimodality
-		self.load_model(model_dir) #peft_config.base_model_name_or_path
-		if adapter_dir:
-			from peft import LoraConfig, get_peft_model
-			peft_config = LoraConfig.from_pretrained(adapter_dir)
-			self.model = get_peft_model(self.model, peft_config)   # this creates LoRA modules with grad enabled
-			self.model.load_adapter(adapter_dir, adapter_name="default")
-			#self.model = self.model.model #?
+    """Optimized-native helper that infers the matching local native family from a model directory."""
 
-	def is_sharded(self, model_dir):
-		files = os.listdir(model_dir)
-		is_sharded = any("index.json" in f for f in files)
-		return is_sharded
+    def __init__(
+        self,
+        model_dir: str,
+        adapter_dir: str | None = None,
+        device: str = "cuda:0",
+        logging: bool = True,
+        multimodality: bool = False,
+        specialization_registry: SpecializationRegistry | None = None,
+        resolver: ModelResolver | None = None,
+    ):
+        model_path = Path(model_dir).expanduser().resolve()
+        if not model_path.exists() or not model_path.is_dir():
+            raise ValueError(f"Local model directory does not exist: {model_path}")
+
+        config = AutoConfig.from_pretrained(model_path)
+        architectures = getattr(config, "architectures", None) or ()
+        architecture = architectures[0] if architectures else None
+        if architecture == "LlamaForCausalLM":
+            optimized_model_id = "llama3-1B-chat"
+        elif architecture in {"Gemma3ForConditionalGeneration", "Gemma3ForCausalLM"}:
+            optimized_model_id = "gemma3-12B"
+        else:
+            raise ValueError(
+                f"The current optimized path cannot run architecture {architecture!r}. "
+                "Use a built-in optimized alias or a compatible local Llama/Gemma3 model directory."
+            )
+
+        super().__init__(
+            str(model_path),
+            device=device,
+            logging=logging,
+            multimodality=multimodality,
+            specialization_registry=specialization_registry,
+            resolver=resolver,
+        )
+        self.optimized_model_id = optimized_model_id
+        self.model_reference = str(model_path)
+        self._load_optimized_model(
+            model_path,
+            ModelSourceKind.LOCAL_PATH,
+            self.model_reference,
+        )
+        if adapter_dir:
+            adapter_path = Path(adapter_dir).expanduser().resolve()
+            if not adapter_path.exists() or not adapter_path.is_dir():
+                raise ValueError(f"Adapter directory does not exist: {adapter_path}")
+            validate_safe_adapter_artifacts(adapter_path)
+            lora_config_cls, get_peft_model = _load_peft_symbols()
+            peft_config = lora_config_cls.from_pretrained(str(adapter_path))
+            peft_model = cast(
+                _PeftModelProtocol, get_peft_model(self.model, peft_config)
+            )
+            peft_model.load_adapter(
+                str(adapter_path), adapter_name="default", use_safetensors=True
+            )
+            self.model = peft_model

@@ -5,14 +5,11 @@ from transformers import TextStreamer
 
 
 class StreamSink(Protocol):
-    def on_status(self, message: str) -> None:
-        ...
+    def on_status(self, message: str) -> None: ...
 
-    def on_text(self, text: str) -> None:
-        ...
+    def on_text(self, text: str) -> None: ...
 
-    def on_complete(self, text: str) -> None:
-        ...
+    def on_complete(self, text: str) -> None: ...
 
 
 class NullStreamSink:
@@ -43,8 +40,16 @@ class CollectingStreamSink:
 
 
 class BufferedTextStreamer(TextStreamer):
-    def __init__(self, tokenizer, sink: StreamSink, skip_prompt: bool = True, skip_special_tokens: bool = False):
-        super().__init__(tokenizer, skip_prompt=skip_prompt, skip_special_tokens=skip_special_tokens)
+    def __init__(
+        self,
+        tokenizer,
+        sink: StreamSink,
+        skip_prompt: bool = True,
+        skip_special_tokens: bool = False,
+    ):
+        super().__init__(
+            tokenizer, skip_prompt=skip_prompt, skip_special_tokens=skip_special_tokens
+        )
         self._sink = sink
         self._chunks: list[str] = []
 
@@ -58,4 +63,3 @@ class BufferedTextStreamer(TextStreamer):
             self._sink.on_text(text)
         if stream_end:
             self._sink.on_complete(self.text)
-

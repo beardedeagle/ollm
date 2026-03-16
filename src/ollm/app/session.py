@@ -2,7 +2,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from ollm.app.history import TRANSCRIPT_VERSION, load_transcript, save_transcript
-from ollm.app.types import ContentKind, ContentPart, Message, MessageRole, PromptRequest, PromptResponse, Transcript
+from ollm.app.types import (
+    ContentKind,
+    ContentPart,
+    Message,
+    MessageRole,
+    PromptRequest,
+    PromptResponse,
+    Transcript,
+)
 from ollm.runtime.config import DEFAULT_SYSTEM_PROMPT, GenerationConfig, RuntimeConfig
 from ollm.runtime.generation import RuntimeExecutor
 from ollm.runtime.loader import LoadedRuntime, RuntimeLoader
@@ -33,7 +41,9 @@ class ChatSession:
     def prompt_text(self, text: str, sink: StreamSink | None = None) -> PromptResponse:
         return self.prompt_parts([ContentPart.text(text)], sink=sink)
 
-    def prompt_parts(self, parts: list[ContentPart], sink: StreamSink | None = None) -> PromptResponse:
+    def prompt_parts(
+        self, parts: list[ContentPart], sink: StreamSink | None = None
+    ) -> PromptResponse:
         if not parts:
             raise ValueError("A chat prompt requires at least one content part")
 
@@ -56,18 +66,27 @@ class ChatSession:
             raise ValueError("There is no previous exchange to retry")
         assistant_message = self.messages.pop()
         user_message = self.messages.pop()
-        if assistant_message.role is not MessageRole.ASSISTANT or user_message.role is not MessageRole.USER:
-            raise ValueError("The current session does not end with a retryable user/assistant exchange")
-        response = self.prompt_parts(user_message.content, sink=sink)
-        return response
+        if (
+            assistant_message.role is not MessageRole.ASSISTANT
+            or user_message.role is not MessageRole.USER
+        ):
+            raise ValueError(
+                "The current session does not end with a retryable user/assistant exchange"
+            )
+        return self.prompt_parts(user_message.content, sink=sink)
 
     def undo_last_exchange(self) -> None:
         if len(self.messages) < 2:
             raise ValueError("There is no previous exchange to undo")
         assistant_message = self.messages.pop()
         user_message = self.messages.pop()
-        if assistant_message.role is not MessageRole.ASSISTANT or user_message.role is not MessageRole.USER:
-            raise ValueError("The current session does not end with a removable user/assistant exchange")
+        if (
+            assistant_message.role is not MessageRole.ASSISTANT
+            or user_message.role is not MessageRole.USER
+        ):
+            raise ValueError(
+                "The current session does not end with a removable user/assistant exchange"
+            )
         self._autosave()
 
     def save(self, path: Path) -> None:
@@ -78,7 +97,7 @@ class ChatSession:
         transcript = load_transcript(path)
         self.session_name = transcript.session_name
         self.system_prompt = transcript.system_prompt
-        self.runtime_config.model_id = transcript.model_id
+        self.runtime_config.model_reference = transcript.model_reference
         self.messages = list(transcript.messages)
         self.autosave_path = path
         self._loaded_runtime = None
@@ -87,7 +106,7 @@ class ChatSession:
         return Transcript(
             version=TRANSCRIPT_VERSION,
             session_name=self.session_name,
-            model_id=self.runtime_config.model_id,
+            model_reference=self.runtime_config.model_reference,
             system_prompt=self.system_prompt,
             messages=list(self.messages),
         )
@@ -96,8 +115,8 @@ class ChatSession:
         self.system_prompt = prompt
         self._autosave()
 
-    def set_model(self, model_id: str) -> None:
-        self.runtime_config.model_id = model_id
+    def set_model(self, model_reference: str) -> None:
+        self.runtime_config.model_reference = model_reference
         self.runtime_config.multimodal = False
         self._loaded_runtime = None
         self._autosave()

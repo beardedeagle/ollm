@@ -4,11 +4,14 @@
 #  pip install --upgrade "mistral-common[audio]"
 #  pip install librosa
 
-from ollm import Inference, file_get_contents, TextStreamer
+from ollm import Inference, TextStreamer
+
 o = Inference("voxtral-small-24B", device="cuda:0", logging=True, multimodality=True)
 o.ini_model(models_dir="./models/", force_download=False)
-#o.offload_layers_to_cpu(layers_num=2) #offload some layers to CPU for speed boost
-past_key_values = None #o.DiskCache(cache_dir="./kv_cache/") #uncomment for large context
+# o.offload_layers_to_cpu(layers_num=2) #offload some layers to CPU for speed boost
+past_key_values = (
+    None  # o.DiskCache(cache_dir="./kv_cache/") #uncomment for large context
+)
 text_streamer = TextStreamer(o.tokenizer, skip_prompt=True, skip_special_tokens=False)
 messages = [
     {
@@ -23,6 +26,19 @@ messages = [
     }
 ]
 inputs = o.processor.apply_chat_template(messages, return_tensors="pt").to(o.device)
-outputs = o.model.generate(**inputs, max_new_tokens=500, do_sample=False, past_key_values=None, use_cache=True, streamer=text_streamer).detach().cpu()
-answer = o.processor.batch_decode(outputs[:, inputs.input_ids.shape[1]:], skip_special_tokens=False)
+outputs = (
+    o.model.generate(
+        **inputs,
+        max_new_tokens=500,
+        do_sample=False,
+        past_key_values=None,
+        use_cache=True,
+        streamer=text_streamer,
+    )
+    .detach()
+    .cpu()
+)
+answer = o.processor.batch_decode(
+    outputs[:, inputs.input_ids.shape[1] :], skip_special_tokens=False
+)
 print(answer)

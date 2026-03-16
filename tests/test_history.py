@@ -1,21 +1,39 @@
 import stat
 from pathlib import Path
 
-from ollm.app.history import load_transcript, save_transcript
+from ollm.app.history import TRANSCRIPT_VERSION, load_transcript, save_transcript
 from ollm.app.types import Message, Transcript
 
 
 def test_transcript_save_and_load_round_trip(tmp_path: Path) -> None:
     path = tmp_path / "transcript.json"
     transcript = Transcript(
-        version=1,
+        version=TRANSCRIPT_VERSION,
         session_name="demo",
-        model_id="llama3-1B-chat",
+        model_reference="llama3-1B-chat",
         system_prompt="You are helpful.",
         messages=[Message.user_text("hello"), Message.assistant_text("hi")],
     )
     save_transcript(path, transcript)
     loaded = load_transcript(path)
     assert loaded.session_name == "demo"
+    assert loaded.model_reference == "llama3-1B-chat"
     assert [message.text_content() for message in loaded.messages] == ["hello", "hi"]
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
+
+
+def test_transcript_from_dict_rejects_non_list_messages() -> None:
+    payload = {
+        "version": TRANSCRIPT_VERSION,
+        "session_name": "demo",
+        "model_reference": "llama3-1B-chat",
+        "system_prompt": "You are helpful.",
+        "messages": "not-a-list",
+    }
+
+    try:
+        Transcript.from_dict(payload)
+    except ValueError as exc:
+        assert "messages must be a list" in str(exc)
+    else:
+        raise AssertionError("Transcript.from_dict should reject non-list messages")

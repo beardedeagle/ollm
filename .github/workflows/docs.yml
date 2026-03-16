@@ -1,0 +1,87 @@
+---
+name: Documentation
+
+on:  # yamllint disable-line rule:truthy
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+    paths:
+      - "docs/**"
+      - "src/**"
+      - "mkdocs.yml"
+      - "pyproject.toml"
+      - "uv.lock"
+      - ".python-version"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: .python-version
+
+      - name: Install dependencies
+        run: uv sync --frozen --group docs --python 3.12
+        shell: bash
+
+      - name: Set git credentials
+        run: |
+          git config --global user.name "${GIT_USER}"
+          git config --global user.email "${GIT_EMAIL}"
+        env:
+          GIT_USER: ${{ github.actor }}
+          GIT_EMAIL: ${{ github.actor }}@users.noreply.github.com
+        shell: bash
+
+      - name: Deploy development documentation
+        if: github.ref == 'refs/heads/main'
+        run: |
+          uv run --group docs mike deploy -b gh-pages dev --push
+          uv run --group docs mike alias -b gh-pages dev latest --push --update-aliases
+          uv run --group docs mike set-default -b gh-pages latest --push
+        env:
+          CI: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+
+      - name: Get version
+        if: startsWith(github.ref, 'refs/tags/')
+        id: get-version
+        run: |
+          VERSION="${REF_NAME#v}"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+        env:
+          REF_NAME: ${{ github.ref_name }}
+        shell: bash
+
+      - name: Deploy versioned documentation
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          uv run --group docs mike deploy -b gh-pages "${VERSION}" --push
+          uv run --group docs mike alias -b gh-pages "${VERSION}" latest --push --update-aliases
+          uv run --group docs mike set-default -b gh-pages latest --push
+        env:
+          CI: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ steps.get-version.outputs.version }}
+        shell: bash

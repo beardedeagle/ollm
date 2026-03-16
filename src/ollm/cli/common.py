@@ -6,6 +6,7 @@ import typer
 from rich.console import Console
 
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
+from ollm.runtime.inspection import runtime_config_payload
 
 
 def build_console(no_color: bool = False) -> Console:
@@ -16,8 +17,11 @@ def build_runtime_config(
     model: str,
     models_dir: Path,
     device: str,
+    backend: str | None,
+    provider_endpoint: str | None,
     adapter_dir: Path | None,
     multimodal: bool,
+    no_specialization: bool,
     cache_dir: Path,
     no_cache: bool,
     offload_cpu_layers: int,
@@ -28,11 +32,14 @@ def build_runtime_config(
     quiet: bool,
 ) -> RuntimeConfig:
     config = RuntimeConfig(
-        model_id=model,
+        model_reference=model,
         models_dir=models_dir,
         device=device,
+        backend=backend,
+        provider_endpoint=provider_endpoint,
         adapter_dir=adapter_dir,
         multimodal=multimodal,
+        use_specialization=not no_specialization,
         cache_dir=cache_dir,
         use_cache=not no_cache,
         offload_cpu_layers=offload_cpu_layers,
@@ -69,31 +76,21 @@ def build_generation_config(
 def ensure_interactive_terminal() -> None:
     if sys.stdin.isatty() and sys.stdout.isatty():
         return
-    raise typer.BadParameter("Interactive chat requires a TTY. Use `ollm prompt` for non-interactive usage.")
+    raise typer.BadParameter(
+        "Interactive chat requires a TTY. Use `ollm prompt` for non-interactive usage."
+    )
 
 
-def print_json(console: Console, payload: dict[str, object]) -> None:
+def print_json(console: Console, payload: object) -> None:
     del console
     typer.echo(json.dumps(payload, indent=2))
 
 
-def config_as_dict(runtime_config: RuntimeConfig, generation_config: GenerationConfig) -> dict[str, object]:
+def config_as_dict(
+    runtime_config: RuntimeConfig, generation_config: GenerationConfig
+) -> dict[str, object]:
     return {
-        "runtime": {
-            "model_id": runtime_config.model_id,
-            "models_dir": str(runtime_config.resolved_models_dir()),
-            "device": runtime_config.device,
-            "adapter_dir": None if runtime_config.resolved_adapter_dir() is None else str(runtime_config.resolved_adapter_dir()),
-            "multimodal": runtime_config.multimodal,
-            "cache_dir": str(runtime_config.resolved_cache_dir()),
-            "use_cache": runtime_config.use_cache,
-            "offload_cpu_layers": runtime_config.offload_cpu_layers,
-            "offload_gpu_layers": runtime_config.offload_gpu_layers,
-            "force_download": runtime_config.force_download,
-            "stats": runtime_config.stats,
-            "verbose": runtime_config.verbose,
-            "quiet": runtime_config.quiet,
-        },
+        "runtime": runtime_config_payload(runtime_config),
         "generation": {
             "max_new_tokens": generation_config.max_new_tokens,
             "temperature": generation_config.temperature,
