@@ -2107,7 +2107,9 @@ ollm<span class="w"> </span>models<span class="w"> </span>list<span class="w"> <
 ollm<span class="w"> </span>models<span class="w"> </span>info<span class="w"> </span>Qwen/Qwen2.5-7B-Instruct<span class="w"> </span>--json
 </code></pre></div>
 <h2 id="download"><code>download</code><a class="headerlink" href="#download" title="Permanent link">&para;</a></h2>
-<p>Materialize a downloadable model reference locally:</p>
+<p>Materialize a downloadable model reference locally. The downloader stores only the
+runtime-critical artifacts that <code>ollm</code> needs to inspect, plan, and execute the
+model locally rather than a full Hugging Face repository snapshot:</p>
 <div class="language-bash highlight"><pre><span></span><code>ollm<span class="w"> </span>models<span class="w"> </span>download<span class="w"> </span>llama3-3B-chat
 ollm<span class="w"> </span>models<span class="w"> </span>download<span class="w"> </span>Qwen/Qwen2.5-7B-Instruct
 </code></pre></div>

@@ -1934,6 +1934,13 @@
 <li>it always measures specialization planner overhead without loading model weights</li>
 <li>it measures the extra planning cost when no specialization applies by creating a tiny local T5 fixture on the fly</li>
 <li>it reports a runtime-comparison matrix for the current optimized families using any locally materialized built-in aliases it finds</li>
+<li>runtime comparisons now include:</li>
+<li>end-to-end runtime latency</li>
+<li>load and generation latency breakdowns</li>
+<li>generated output tokens</li>
+<li>generated output tokens per second</li>
+<li>process RSS snapshots after load and after generation</li>
+<li>accelerator memory snapshots when the runtime exposes them</li>
 <li>it marks missing or non-executable optimized paths as unavailable instead of fabricating numbers</li>
 <li>it also benchmarks the requested <code>--model-reference</code> directly and reports <code>comparison_available: false</code> when the optimized path cannot execute on the current host</li>
 </ul>
