@@ -6,6 +6,8 @@ from ollm.runtime.benchmarks import (
     build_runtime_benchmark_report,
     choose_default_device,
     render_report_json,
+    render_runtime_probe_json,
+    run_runtime_probe,
 )
 
 
@@ -57,11 +59,48 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output", default=None, help="Optional path to write the JSON report."
     )
+    parser.add_argument(
+        "--probe-runtime",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument("--model", dest="probe_model", help=argparse.SUPPRESS)
+    parser.add_argument("--probe-backend", help=argparse.SUPPRESS)
+    parser.add_argument("--probe-prompt", help=argparse.SUPPRESS, default="Say hi.")
+    parser.add_argument(
+        "--probe-max-new-tokens",
+        type=positive_int,
+        default=4,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--probe-no-specialization",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     return parser.parse_args()
 
 
 def main() -> int:
     args = parse_args()
+    if args.probe_runtime:
+        if args.probe_model is None:
+            raise SystemExit("--probe-runtime requires --model")
+        if args.probe_backend is None:
+            raise SystemExit("--probe-runtime requires --probe-backend")
+        probe = run_runtime_probe(
+            model_reference=args.probe_model,
+            models_dir=Path(args.models_dir),
+            device=choose_default_device() if args.device is None else args.device,
+            backend=args.probe_backend,
+            use_specialization=not args.probe_no_specialization,
+            prompt=args.probe_prompt,
+            max_new_tokens=args.probe_max_new_tokens,
+        )
+        sys.stdout.write(render_runtime_probe_json(probe))
+        sys.stdout.write("\n")
+        return 0
+
     repo_root = Path(__file__).resolve().parents[1]
     device = choose_default_device() if args.device is None else args.device
     report = build_runtime_benchmark_report(

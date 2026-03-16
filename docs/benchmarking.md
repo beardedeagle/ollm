@@ -11,6 +11,13 @@ The harness is designed to stay truthful on hardware-constrained machines:
 - it always measures specialization planner overhead without loading model weights
 - it measures the extra planning cost when no specialization applies by creating a tiny local T5 fixture on the fly
 - it reports a runtime-comparison matrix for the current optimized families using any locally materialized built-in aliases it finds
+- runtime comparisons now include:
+  - end-to-end runtime latency
+  - load and generation latency breakdowns
+  - generated output tokens
+  - generated output tokens per second
+  - process RSS snapshots after load and after generation
+  - accelerator memory snapshots when the runtime exposes them
 - it marks missing or non-executable optimized paths as unavailable instead of fabricating numbers
 - it also benchmarks the requested `--model-reference` directly and reports `comparison_available: false` when the optimized path cannot execute on the current host
 

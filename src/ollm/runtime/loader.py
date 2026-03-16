@@ -4,7 +4,11 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from ollm.inference import download_hf_snapshot
+from ollm.inference import (
+    download_hf_snapshot,
+    hf_runtime_artifacts_complete,
+    prune_hf_runtime_artifacts,
+)
 from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
 from ollm.runtime.backend_selector import BackendSelector
 from ollm.runtime.backends.base import BackendRuntime, ExecutionBackend
@@ -134,7 +138,9 @@ class RuntimeLoader:
                 f"Model reference '{model_reference}' does not support snapshot download"
             )
         if resolved_model.model_path.exists() and not force_download:
-            return resolved_model.model_path
+            self._repair_managed_model_dir(resolved_model)
+            if self._managed_model_dir_is_complete(resolved_model):
+                return resolved_model.model_path
         resolved_model.model_path.parent.mkdir(parents=True, exist_ok=True)
         self._snapshot_downloader(
             resolved_model.repo_id,
@@ -142,6 +148,8 @@ class RuntimeLoader:
             force_download,
             resolved_model.revision,
         )
+        self._repair_managed_model_dir(resolved_model)
+        self._validate_managed_model_dir(resolved_model)
         return resolved_model.model_path
 
     def load(self, config: RuntimeConfig) -> LoadedRuntime:
@@ -223,7 +231,9 @@ class RuntimeLoader:
                 f"Model reference '{resolved_model.reference.raw}' does not resolve to a local model path"
             )
         if resolved_model.model_path.exists() and not force_download:
-            return resolved_model.model_path
+            self._repair_managed_model_dir(resolved_model)
+            if self._managed_model_dir_is_complete(resolved_model):
+                return resolved_model.model_path
         if resolved_model.repo_id is None:
             raise ValueError(
                 f"Local model path does not exist: {resolved_model.model_path}"
@@ -235,7 +245,32 @@ class RuntimeLoader:
             force_download,
             resolved_model.revision,
         )
+        self._repair_managed_model_dir(resolved_model)
+        self._validate_managed_model_dir(resolved_model)
         return resolved_model.model_path
+
+    def _repair_managed_model_dir(self, resolved_model: ResolvedModel) -> None:
+        model_path = resolved_model.model_path
+        if (
+            resolved_model.repo_id is None
+            or model_path is None
+            or not model_path.exists()
+        ):
+            return
+        prune_hf_runtime_artifacts(model_path)
+
+    def _managed_model_dir_is_complete(self, resolved_model: ResolvedModel) -> bool:
+        model_path = resolved_model.model_path
+        if resolved_model.repo_id is None or model_path is None:
+            return True
+        return hf_runtime_artifacts_complete(model_path)
+
+    def _validate_managed_model_dir(self, resolved_model: ResolvedModel) -> None:
+        if self._managed_model_dir_is_complete(resolved_model):
+            return
+        raise ValueError(
+            f"Managed model directory is missing required runtime artifacts: {resolved_model.model_path}"
+        )
 
     def _validate_runtime_plan(
         self, runtime_plan: RuntimePlan, config: RuntimeConfig

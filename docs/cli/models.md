@@ -34,7 +34,9 @@ ollm models info Qwen/Qwen2.5-7B-Instruct --json
 
 ## `download`
 
-Materialize a downloadable model reference locally:
+Materialize a downloadable model reference locally. The downloader stores only the
+runtime-critical artifacts that `ollm` needs to inspect, plan, and execute the
+model locally rather than a full Hugging Face repository snapshot:
 
 ```bash
 ollm models download llama3-3B-chat

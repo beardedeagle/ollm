@@ -11,15 +11,18 @@ from ollm.runtime.benchmarks import (
     CommandBenchmarkSpec,
     RuntimeBenchmarkReport,
     benchmark_runtime_target,
+    build_runtime_probe_command,
     build_current_supported_family_targets,
     build_host_summary,
-    build_prompt_command,
     create_tiny_t5_fixture,
     measure_callable,
     measure_command,
+    measure_runtime_probe,
     measure_no_specialization_fallback_cost,
     render_report_json,
+    render_runtime_probe_json,
     RuntimeComparisonTarget,
+    RuntimeProbeResult,
 )
 from ollm.runtime.config import RuntimeConfig
 
@@ -120,8 +123,11 @@ def test_measure_no_specialization_fallback_cost_returns_measurements(
     assert report["mean_delta_ms"] is not None
 
 
-def test_build_prompt_command_handles_specialization_flag() -> None:
-    command = build_prompt_command(
+def test_build_runtime_probe_command_handles_specialization_flag(
+    tmp_path: Path,
+) -> None:
+    command = build_runtime_probe_command(
+        tmp_path,
         "llama3-1B-chat",
         models_dir=Path("models"),
         device="cpu",
@@ -129,9 +135,64 @@ def test_build_prompt_command_handles_specialization_flag() -> None:
         use_specialization=False,
     )
 
-    assert "--backend" in command
+    assert "--probe-backend" in command
     assert "transformers-generic" in command
-    assert "--no-specialization" in command
+    assert "--probe-no-specialization" in command
+
+
+def test_measure_runtime_probe_reports_success(tmp_path: Path) -> None:
+    payload = {
+        "load_ms": 10.0,
+        "generation_ms": 20.0,
+        "total_ms": 30.0,
+        "output_tokens": 4,
+        "output_tokens_per_second": 200.0,
+        "rss_after_load_mb": 128.0,
+        "rss_after_generate_mb": 132.0,
+        "accelerator_kind": None,
+        "accelerator_current_after_load_mb": None,
+        "accelerator_current_after_generate_mb": None,
+        "accelerator_peak_mb": None,
+        "accelerator_reserved_after_load_mb": None,
+        "accelerator_reserved_after_generate_mb": None,
+        "accelerator_peak_reserved_mb": None,
+        "text_excerpt": "Hello",
+    }
+    spec = CommandBenchmarkSpec(
+        name="runtime-probe-ok",
+        command=(sys.executable, "-c", f"import json; print(json.dumps({payload!r}))"),
+        timeout_seconds=10.0,
+    )
+
+    measurement = measure_runtime_probe(
+        spec, iterations=2, warmup_iterations=1, cwd=tmp_path
+    )
+
+    assert measurement.status == "measured"
+    assert measurement.stats is not None
+    metrics = cast(dict[str, object], measurement.details["metrics"])
+    throughput = cast(dict[str, object], metrics["throughput"])
+    memory = cast(dict[str, object], metrics["memory"])
+    assert throughput["output_tokens_per_second"] is not None
+    assert memory["rss_after_load_mb"] is not None
+
+
+def test_measure_runtime_probe_reports_unavailable_on_invalid_json(
+    tmp_path: Path,
+) -> None:
+    spec = CommandBenchmarkSpec(
+        name="runtime-probe-invalid",
+        command=(sys.executable, "-c", "print('not-json')"),
+        timeout_seconds=10.0,
+    )
+
+    measurement = measure_runtime_probe(
+        spec, iterations=1, warmup_iterations=0, cwd=tmp_path
+    )
+
+    assert measurement.status == "unavailable"
+    assert measurement.stats is None
+    assert measurement.details["reason"] == "runtime probe did not emit valid JSON"
 
 
 def test_render_report_json_round_trips() -> None:
@@ -179,6 +240,31 @@ def test_render_report_json_round_trips() -> None:
 
     assert payload["benchmark_model_reference"] == "llama3-1B-chat"
     assert payload["runtime_comparison"]["comparison_available"] is False
+
+
+def test_render_runtime_probe_json_round_trips() -> None:
+    probe = RuntimeProbeResult(
+        load_ms=10.0,
+        generation_ms=20.0,
+        total_ms=30.0,
+        output_tokens=4,
+        output_tokens_per_second=200.0,
+        rss_after_load_mb=128.0,
+        rss_after_generate_mb=132.0,
+        accelerator_kind="cuda",
+        accelerator_current_after_load_mb=256.0,
+        accelerator_current_after_generate_mb=260.0,
+        accelerator_peak_mb=300.0,
+        accelerator_reserved_after_load_mb=280.0,
+        accelerator_reserved_after_generate_mb=284.0,
+        accelerator_peak_reserved_mb=320.0,
+        text_excerpt="Hello",
+    )
+
+    payload = json.loads(render_runtime_probe_json(probe))
+
+    assert payload["output_tokens"] == 4
+    assert payload["accelerator_kind"] == "cuda"
 
 
 def test_build_current_supported_family_targets_returns_unique_families(

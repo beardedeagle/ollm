@@ -4,6 +4,7 @@ import importlib
 import importlib.util
 import logging
 from pathlib import Path
+from pathlib import PurePosixPath
 from typing import Any, Callable, Protocol, cast
 
 import torch
@@ -25,6 +26,49 @@ from ollm.utils import Stats
 
 LOGGER = logging.getLogger(__name__)
 
+HF_RUNTIME_ARTIFACT_PATTERNS: tuple[str, ...] = (
+    "config.json",
+    "generation_config.json",
+    "*.safetensors",
+    "*.safetensors.index.json",
+    "tokenizer.json",
+    "tokenizer_config.json",
+    "special_tokens_map.json",
+    "added_tokens.json",
+    "merges.txt",
+    "vocab.json",
+    "vocab.txt",
+    "tokenizer.model",
+    "spiece.model",
+    "sentencepiece.bpe.model",
+    "processor_config.json",
+    "preprocessor_config.json",
+    "feature_extractor.json",
+    "feature_extractor_config.json",
+    "image_processor_config.json",
+    "chat_template.json",
+    "chat_template.jinja",
+    "gds_export",
+    "gds_export/*",
+    "gds_export/**",
+    "gds_export/**/*",
+)
+HF_TOKENIZER_RUNTIME_FILES: tuple[str, ...] = (
+    "tokenizer.json",
+    "tokenizer.model",
+    "spiece.model",
+    "sentencepiece.bpe.model",
+    "vocab.txt",
+)
+HF_TOKENIZER_PAIR_FILES: tuple[str, ...] = ("vocab.json", "merges.txt")
+HF_PROCESSOR_RUNTIME_FILES: tuple[str, ...] = (
+    "processor_config.json",
+    "preprocessor_config.json",
+    "feature_extractor.json",
+    "feature_extractor_config.json",
+    "image_processor_config.json",
+)
+
 
 class _LoraConfigProtocol(Protocol):
     @classmethod
@@ -45,10 +89,100 @@ def get_attn_implementation() -> str | None:
     """Return the preferred attention implementation identifier when available."""
     if importlib.util.find_spec("flash_attn") is not None:
         return "flash_attention_2"
-    LOGGER.warning(
+    LOGGER.debug(
         "flash_attention_2 is not imported. The context length will be limited."
     )
     return None
+
+
+def _is_hf_runtime_artifact(relative_path: PurePosixPath) -> bool:
+    return any(relative_path.match(pattern) for pattern in HF_RUNTIME_ARTIFACT_PATTERNS)
+
+
+def prune_hf_runtime_artifacts(model_dir: str | Path) -> tuple[Path, ...]:
+    """Remove non-runtime files from a managed Hugging Face materialization directory."""
+    target_dir = Path(model_dir).expanduser().resolve()
+    if not target_dir.exists():
+        return ()
+    if not target_dir.is_dir():
+        raise ValueError(
+            f"Managed Hugging Face materialization path is not a directory: {target_dir}"
+        )
+
+    removed_paths: list[Path] = []
+    managed_entries = sorted(
+        (path for path in target_dir.rglob("*") if path.is_file() or path.is_symlink()),
+        key=lambda path: len(path.relative_to(target_dir).parts),
+        reverse=True,
+    )
+    for path in managed_entries:
+        relative_path = PurePosixPath(path.relative_to(target_dir).as_posix())
+        if _is_hf_runtime_artifact(relative_path):
+            continue
+        path.unlink()
+        removed_paths.append(path)
+
+    empty_dirs = sorted(
+        (path for path in target_dir.rglob("*") if path.is_dir()),
+        key=lambda path: len(path.relative_to(target_dir).parts),
+        reverse=True,
+    )
+    for directory in empty_dirs:
+        if any(directory.iterdir()):
+            continue
+        directory.rmdir()
+
+    if removed_paths:
+        LOGGER.info(
+            "Removed %d non-runtime files from %s.",
+            len(removed_paths),
+            target_dir,
+        )
+    return tuple(removed_paths)
+
+
+def hf_runtime_artifacts_complete(model_dir: str | Path) -> bool:
+    """Return whether a managed Hugging Face model directory contains the runtime floor."""
+    target_dir = Path(model_dir).expanduser().resolve()
+    if not target_dir.exists() or not target_dir.is_dir():
+        return False
+    if not (target_dir / "config.json").exists():
+        return False
+    if not any(target_dir.glob("*.safetensors")):
+        return False
+    if not _has_tokenizer_runtime_artifacts(target_dir):
+        return False
+    if _model_requires_processor_assets(target_dir) and not any(
+        (target_dir / file_name).exists() for file_name in HF_PROCESSOR_RUNTIME_FILES
+    ):
+        return False
+    return True
+
+
+def _has_tokenizer_runtime_artifacts(target_dir: Path) -> bool:
+    if any(
+        (target_dir / file_name).exists() for file_name in HF_TOKENIZER_RUNTIME_FILES
+    ):
+        return True
+    return all(
+        (target_dir / file_name).exists() for file_name in HF_TOKENIZER_PAIR_FILES
+    )
+
+
+def _model_requires_processor_assets(target_dir: Path) -> bool:
+    try:
+        config = AutoConfig.from_pretrained(target_dir, trust_remote_code=False)
+    except Exception:
+        return False
+    if getattr(config, "vision_config", None) is not None:
+        return True
+    if getattr(config, "audio_config", None) is not None:
+        return True
+    try:
+        config_dict = config.to_dict()
+    except Exception:
+        return False
+    return "vision_config" in config_dict or "audio_config" in config_dict
 
 
 def download_hf_snapshot(
@@ -57,16 +191,21 @@ def download_hf_snapshot(
     force_download: bool = False,
     revision: str | None = None,
 ) -> None:
-    """Download a Hugging Face snapshot into a local model directory."""
-    LOGGER.info("Downloading model snapshot for %s.", repo_id)
+    """Download only runtime-critical Hugging Face artifacts into a local model directory."""
+    target_dir = Path(model_dir).expanduser().resolve()
+    target_dir.mkdir(parents=True, exist_ok=True)
+    prune_hf_runtime_artifacts(target_dir)
+    LOGGER.info("Downloading runtime artifacts for %s.", repo_id)
     snapshot_download_fn = cast(Any, snapshot_download)
     snapshot_download_fn(
         repo_id=repo_id,
-        local_dir=model_dir,
+        local_dir=str(target_dir),
         local_dir_use_symlinks=False,
         force_download=force_download,
         revision=revision,
+        allow_patterns=list(HF_RUNTIME_ARTIFACT_PATTERNS),
     )
+    prune_hf_runtime_artifacts(target_dir)
 
 
 def _load_peft_symbols() -> tuple[
@@ -136,6 +275,10 @@ class Inference:
         model_dir = Path(models_dir).expanduser().resolve() / entry.model_id
         if force_download or not model_dir.exists():
             self.hf_download(str(model_dir), force_download=force_download)
+        prune_hf_runtime_artifacts(model_dir)
+        if not hf_runtime_artifacts_complete(model_dir):
+            self.hf_download(str(model_dir), force_download=force_download)
+            prune_hf_runtime_artifacts(model_dir)
 
         self.load_model(str(model_dir))
 

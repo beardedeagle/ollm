@@ -42,8 +42,11 @@ class FakeTokenizer:
 
 
 class FakeModel:
+    def __init__(self):
+        self.generate_kwargs: dict[str, object] = {}
+
     def generate(self, **kwargs):
-        del kwargs
+        self.generate_kwargs = kwargs
         return torch.tensor([[1, 2, 3, 4, 5]])
 
 
@@ -61,6 +64,60 @@ class InspectingTokenizer(PlainTokenizer):
     def decode(self, tensor, skip_special_tokens=False):
         del skip_special_tokens
         return f"decoded:{tensor.tolist()}"
+
+
+class MappingTokenizer:
+    def apply_chat_template(
+        self,
+        messages,
+        reasoning_effort,
+        tokenize,
+        add_generation_prompt,
+        return_tensors,
+        return_dict,
+    ):
+        del (
+            messages,
+            reasoning_effort,
+            tokenize,
+            add_generation_prompt,
+            return_tensors,
+        )
+        if not return_dict:
+            raise TypeError("return_dict=True required")
+        return {
+            "input_ids": torch.tensor([[1, 2, 3]]),
+            "attention_mask": torch.tensor([[1, 1, 1]]),
+        }
+
+    def decode(self, tensor, skip_special_tokens=False):
+        del tensor, skip_special_tokens
+        return "mapping-decoded"
+
+
+class TensorOnlyChatTemplateTokenizer:
+    def apply_chat_template(
+        self,
+        messages,
+        reasoning_effort,
+        tokenize,
+        add_generation_prompt,
+        return_tensors,
+        return_dict,
+    ):
+        del (
+            messages,
+            reasoning_effort,
+            tokenize,
+            add_generation_prompt,
+            return_tensors,
+            return_dict,
+        )
+        return torch.tensor([[1, 2, 3]])
+
+    def decode(self, tensor, skip_special_tokens=False):
+        del tensor, skip_special_tokens
+        return "tensor-decoded"
 
 
 class Seq2SeqModel(FakeModel):
@@ -135,6 +192,24 @@ def build_runtime(capabilities: CapabilityProfile, tokenizer=None) -> LoadedRunt
         backend=backend,
         model_path=resolved_model.model_path,
     )
+
+
+def build_runtime_with_model(
+    capabilities: CapabilityProfile, tokenizer, model: FakeModel
+) -> LoadedRuntime:
+    runtime = build_runtime(capabilities, tokenizer=tokenizer)
+    runtime.backend = BackendRuntime(
+        backend_id=runtime.backend.backend_id,
+        model=model,
+        tokenizer=tokenizer,
+        processor=None,
+        device=torch.device("cpu"),
+        stats=None,
+        print_suppression_modules=(),
+        create_cache=lambda cache_dir: None,
+        apply_offload=lambda runtime_config: None,
+    )
+    return runtime
 
 
 def build_runtime_with_printing_module(
@@ -281,3 +356,49 @@ def test_runtime_executor_suppresses_module_prints_during_generate(capfd) -> Non
     captured = capfd.readouterr()
     assert response.text == "plain-decoded"
     assert captured.out == ""
+
+
+def test_runtime_executor_preserves_attention_mask_from_chat_template_mapping() -> None:
+    model = FakeModel()
+    runtime = build_runtime_with_model(
+        CapabilityProfile(support_level=SupportLevel.GENERIC),
+        tokenizer=MappingTokenizer(),
+        model=model,
+    )
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("hello")]),
+    )
+
+    response = RuntimeExecutor().execute(runtime, request)
+
+    assert response.text == "mapping-decoded"
+    attention_mask = model.generate_kwargs["attention_mask"]
+    assert isinstance(attention_mask, torch.Tensor)
+    assert torch.equal(
+        attention_mask,
+        torch.tensor([[1, 1, 1]]),
+    )
+
+
+def test_runtime_executor_synthesizes_attention_mask_for_tensor_chat_template() -> None:
+    model = FakeModel()
+    runtime = build_runtime_with_model(
+        CapabilityProfile(support_level=SupportLevel.GENERIC),
+        tokenizer=TensorOnlyChatTemplateTokenizer(),
+        model=model,
+    )
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("hello")]),
+    )
+
+    response = RuntimeExecutor().execute(runtime, request)
+
+    assert response.text == "tensor-decoded"
+    attention_mask = model.generate_kwargs["attention_mask"]
+    assert isinstance(attention_mask, torch.Tensor)
+    assert torch.equal(
+        attention_mask,
+        torch.tensor([[1, 1, 1]]),
+    )

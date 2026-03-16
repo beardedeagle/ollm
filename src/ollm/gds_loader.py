@@ -336,7 +336,8 @@ class SafeTensorReader:
         offset_start, offset_end = info["data_offsets"]
         self._file_pointer.seek(self.data_offset + offset_start)
         buffer = self._file_pointer.read(offset_end - offset_start)
-        return torch.frombuffer(memoryview(buffer), dtype=dtype).reshape(shape)
+        writable_buffer = bytearray(buffer)
+        return torch.frombuffer(writable_buffer, dtype=dtype).reshape(shape)
 
 
 class SafeTensorReaderGPU:

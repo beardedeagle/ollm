@@ -65,6 +65,8 @@ def test_runtime_loader_materializes_non_catalog_hf_reference_and_routes_to_gene
             json.dumps({"model_type": "qwen2", "architectures": ["Qwen2ForCausalLM"]}),
             encoding="utf-8",
         )
+        (target / "tokenizer.json").write_text("{}", encoding="utf-8")
+        (target / "model.safetensors").write_text("safe", encoding="utf-8")
 
     fake_backend = FakeGenericBackend()
     loader = RuntimeLoader(
@@ -107,6 +109,8 @@ def test_runtime_loader_routes_built_in_alias_with_adapter_to_generic_backend(
             json.dumps({"model_type": "llama", "architectures": ["LlamaForCausalLM"]}),
             encoding="utf-8",
         )
+        (target / "tokenizer.json").write_text("{}", encoding="utf-8")
+        (target / "model.safetensors").write_text("safe", encoding="utf-8")
 
     fake_backend = FakeGenericBackend()
     adapter_dir = tmp_path / "adapter"
@@ -142,6 +146,8 @@ def test_runtime_loader_routes_built_in_alias_to_generic_when_specialization_is_
             json.dumps({"model_type": "llama", "architectures": ["LlamaForCausalLM"]}),
             encoding="utf-8",
         )
+        (target / "tokenizer.json").write_text("{}", encoding="utf-8")
+        (target / "model.safetensors").write_text("safe", encoding="utf-8")
 
     fake_backend = FakeGenericBackend()
     loader = RuntimeLoader(
@@ -201,3 +207,93 @@ def test_runtime_loader_plan_does_not_materialize_missing_model_references(
     assert calls == []
     assert runtime_plan.backend_id == "transformers-generic"
     assert runtime_plan.support_level is SupportLevel.GENERIC
+
+
+def test_runtime_loader_repairs_existing_managed_model_directory(
+    tmp_path: Path,
+) -> None:
+    managed_model_dir = (
+        tmp_path / "models" / "HuggingFaceTB--SmolLM2-1.7B-Instruct"
+    ).resolve()
+    managed_model_dir.mkdir(parents=True)
+    (managed_model_dir / "config.json").write_text(
+        json.dumps({"model_type": "llama", "architectures": ["LlamaForCausalLM"]}),
+        encoding="utf-8",
+    )
+    (managed_model_dir / "model.safetensors").write_text("safe", encoding="utf-8")
+    (managed_model_dir / "tokenizer.json").write_text("{}", encoding="utf-8")
+    (managed_model_dir / "training_args.bin").write_text("unsafe", encoding="utf-8")
+    (managed_model_dir / "README.md").write_text("docs", encoding="utf-8")
+    stale_docs_dir = managed_model_dir / "notes"
+    stale_docs_dir.mkdir()
+    (stale_docs_dir / "usage.txt").write_text("ignore", encoding="utf-8")
+
+    fake_backend = FakeGenericBackend()
+    loader = RuntimeLoader(backends=(fake_backend,))
+
+    runtime = loader.load(
+        RuntimeConfig(
+            model_reference="HuggingFaceTB/SmolLM2-1.7B-Instruct",
+            models_dir=tmp_path / "models",
+            device="cpu",
+            use_cache=False,
+            use_specialization=False,
+        )
+    )
+
+    assert runtime.plan.backend_id == "transformers-generic"
+    assert fake_backend.loaded_backend_ids == ["transformers-generic"]
+    assert (managed_model_dir / "config.json").exists()
+    assert (managed_model_dir / "model.safetensors").exists()
+    assert not (managed_model_dir / "training_args.bin").exists()
+    assert not (managed_model_dir / "README.md").exists()
+    assert not stale_docs_dir.exists()
+
+
+def test_runtime_loader_redownloads_incomplete_managed_model_directory(
+    tmp_path: Path,
+) -> None:
+    calls: list[tuple[str, str, bool, str | None]] = []
+    managed_model_dir = (
+        tmp_path / "models" / "HuggingFaceTB--SmolLM2-1.7B-Instruct"
+    ).resolve()
+    managed_model_dir.mkdir(parents=True)
+    (managed_model_dir / "config.json").write_text(
+        json.dumps({"model_type": "llama", "architectures": ["LlamaForCausalLM"]}),
+        encoding="utf-8",
+    )
+    (managed_model_dir / "model.safetensors").write_text("safe", encoding="utf-8")
+
+    def snapshot_downloader(
+        repo_id: str, model_dir: str, force_download: bool, revision: str | None
+    ) -> None:
+        calls.append((repo_id, model_dir, force_download, revision))
+        target = Path(model_dir)
+        (target / "tokenizer.json").write_text("{}", encoding="utf-8")
+
+    fake_backend = FakeGenericBackend()
+    loader = RuntimeLoader(
+        backends=(fake_backend,),
+        snapshot_downloader=snapshot_downloader,
+    )
+
+    runtime = loader.load(
+        RuntimeConfig(
+            model_reference="HuggingFaceTB/SmolLM2-1.7B-Instruct",
+            models_dir=tmp_path / "models",
+            device="cpu",
+            use_cache=False,
+            use_specialization=False,
+        )
+    )
+
+    assert runtime.plan.backend_id == "transformers-generic"
+    assert calls == [
+        (
+            "HuggingFaceTB/SmolLM2-1.7B-Instruct",
+            str(managed_model_dir),
+            False,
+            None,
+        )
+    ]
+    assert (managed_model_dir / "tokenizer.json").exists()

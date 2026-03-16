@@ -76,6 +76,7 @@ def _snapshot_downloader(
         json.dumps({"model_type": "llama", "architectures": ["LlamaForCausalLM"]}),
         encoding="utf-8",
     )
+    (target / "tokenizer.json").write_text("{}", encoding="utf-8")
     (target / "model.safetensors").write_text("safe", encoding="utf-8")
 
 

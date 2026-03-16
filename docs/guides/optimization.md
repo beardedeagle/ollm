@@ -63,5 +63,5 @@ The optimized GPT-OSS path is intentionally strict:
 The benchmark harness is designed to stay truthful on limited-RAM hosts:
 
 - planner overhead and no-specialization cost do not require large model loads
-- runtime comparisons only load weights when the target actually exists locally
+- runtime comparisons only load weights when the target actually exists locally and now report latency, memory, and output tokens/sec for each backend
 - unavailable optimized comparisons are reported as unavailable instead of being fabricated

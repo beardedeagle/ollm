@@ -1,6 +1,9 @@
 from ollm.runtime.backends.base import BackendRuntime, ExecutionBackend
 from ollm.runtime.config import RuntimeConfig
-from ollm.runtime.output_control import suppress_module_prints
+from ollm.runtime.output_control import (
+    suppress_external_runtime_noise,
+    suppress_module_prints,
+)
 from ollm.runtime.plan import RuntimePlan
 from ollm.runtime.specialization import (
     PlannedSpecialization,
@@ -32,15 +35,16 @@ class NativeOptimizedBackend(ExecutionBackend):
 
         stats = Stats() if config.stats or config.verbose else None
         try:
-            with suppress_module_prints(
-                _modules_for_provider_id(plan.specialization_provider_id)
-            ):
-                artifacts = self._specialization_registry.load(
-                    plan.specialization_provider_id,
-                    plan.resolved_model,
-                    config,
-                    stats,
-                )
+            with suppress_external_runtime_noise(not config.verbose):
+                with suppress_module_prints(
+                    _modules_for_provider_id(plan.specialization_provider_id)
+                ):
+                    artifacts = self._specialization_registry.load(
+                        plan.specialization_provider_id,
+                        plan.resolved_model,
+                        config,
+                        stats,
+                    )
         except (ImportError, OSError, RuntimeError, ValueError) as exc:
             raise SpecializationLoadError(
                 (
