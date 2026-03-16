@@ -12,7 +12,7 @@ Use these helpers when you specifically want:
 
 ## When not to use them
 
-For new high-level application code, prefer `RuntimeClient`, because it uses the same resolver, backend selection, provider support, and plan inspection model as the CLI.
+For new high-level application code, prefer `RuntimeClient`, because it uses the same resolver, backend selection, and plan inspection model as the CLI.
 
 ## Typical `Inference` example
 

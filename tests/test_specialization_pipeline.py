@@ -33,7 +33,6 @@ def _build_resolved_model(
         model_path=model_path,
         repo_id=None,
         revision=None,
-        provider_name=None,
         catalog_entry=None,
         capabilities=capabilities,
         native_family=native_family,
@@ -103,7 +102,6 @@ def test_specialization_pipeline_returns_empty_plan_without_provider() -> None:
             model_path=None,
             repo_id="Qwen/Qwen2.5-7B-Instruct",
             revision=None,
-            provider_name=None,
             catalog_entry=None,
             capabilities=CapabilityProfile(
                 support_level=SupportLevel.GENERIC,

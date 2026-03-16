@@ -7,7 +7,6 @@ Model resolution converts user input into a structured `ResolvedModel`.
 - built-in aliases
 - Hugging Face repo IDs
 - local paths
-- provider-prefixed refs
 
 ## Output
 
@@ -17,7 +16,6 @@ A `ResolvedModel` records:
 - source kind
 - repo id / revision when relevant
 - local path when relevant
-- provider name when relevant
 - capabilities
 - native family when recognized
 - architecture/model type when inspected from local artifacts

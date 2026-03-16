@@ -9,17 +9,10 @@ from typer.testing import CliRunner
 from ollm.app.doctor import DoctorService
 from ollm.cli.services import CommandServices
 from ollm.cli.main import create_app
-from ollm.runtime.backends.openai_compatible import OpenAICompatibleBackend
-from ollm.runtime.backends.ollama import OllamaBackend
 from ollm.runtime.generation import RuntimeExecutor
 from ollm.runtime.loader import RuntimeLoader
-from ollm.runtime.providers.openai_compatible_client import OpenAICompatibleClient
-from ollm.runtime.providers.ollama_client import OllamaClient
 
-from tests.openai_compatible_server import OpenAICompatibleFixtureServer
 from tests.fakes import FakeDoctorService, FakeRuntimeExecutor, FakeRuntimeLoader
-from tests.media_server import MediaFixtureServer, MediaResponse
-from tests.ollama_server import OllamaFixtureServer
 
 
 def _strip_ansi(text: str) -> str:
@@ -35,6 +28,16 @@ def build_test_app():
         doctor_service=cast(DoctorService, FakeDoctorService()),
     )
     return CliRunner(), loader, create_app(services)
+
+
+def build_real_app():
+    runtime_loader = RuntimeLoader()
+    services = CommandServices(
+        runtime_loader=runtime_loader,
+        runtime_executor=RuntimeExecutor(),
+        doctor_service=DoctorService(runtime_loader=runtime_loader),
+    )
+    return CliRunner(), create_app(services)
 
 
 def test_prompt_command_supports_text_and_json_output(tmp_path: Path) -> None:
@@ -272,7 +275,6 @@ def test_doctor_and_models_commands(tmp_path: Path) -> None:
     assert '"support_level": "optimized"' in installed_info_result.output
     assert '"resolved_support_level": "optimized"' in installed_info_result.output
     assert '"materialized": true' in installed_info_result.output
-    assert '"availability_status": "materialized"' in installed_info_result.output
     assert '"resolved_supports_disk_cache": true' in installed_info_result.output
     assert '"specialization_state": "planned"' in installed_info_result.output
     assert '"planned_specialization_pass_ids": [' in installed_info_result.output
@@ -359,617 +361,68 @@ def test_models_list_applies_backend_override_to_runtime_plans(tmp_path: Path) -
     assert '"backend_id": "transformers-generic"' in result.output
 
 
-def test_provider_backed_models_info_and_doctor_commands(tmp_path: Path) -> None:
-    server = OllamaFixtureServer(
-        models={"llama3.2": {"capabilities": ["completion"], "response_text": "ready"}}
-    )
-    server.start()
-    try:
-        runtime_loader = RuntimeLoader(
-            backends=(OllamaBackend(client=OllamaClient(base_url=server.base_url)),),
-        )
-        services = CommandServices(
-            runtime_loader=runtime_loader,
-            runtime_executor=RuntimeExecutor(),
-            doctor_service=DoctorService(runtime_loader=runtime_loader),
-        )
-        runner = CliRunner()
-        app = create_app(services)
-
-        info_result = runner.invoke(
-            app,
-            [
-                "models",
-                "info",
-                "ollama:llama3.2",
-                "--json",
-                "--models-dir",
-                str(tmp_path / "models"),
-                "--no-color",
-            ],
-        )
-        assert info_result.exit_code == 0
-        assert '"backend_id": "ollama"' in info_result.output
-        assert '"materialized": false' in info_result.output
-        assert '"available": true' in info_result.output
-        assert '"availability_status": "available"' in info_result.output
-        assert '"support_level": "provider-backed"' in info_result.output
-
-        doctor_result = runner.invoke(
-            app,
-            [
-                "doctor",
-                "--json",
-                "--model",
-                "ollama:llama3.2",
-                "--models-dir",
-                str(tmp_path / "models"),
-                "--no-color",
-            ],
-        )
-        assert doctor_result.exit_code == 0
-        assert '"runtime:requested-device"' in doctor_result.output
-        assert (
-            '"Provider-backed model references for ollama ignore local device'
-            in doctor_result.output
-        )
-    finally:
-        server.stop()
-
-
-def test_msty_provider_models_info_and_doctor_commands(tmp_path: Path) -> None:
-    server = OllamaFixtureServer(
-        models={"llama3.2": {"capabilities": ["completion"], "response_text": "ready"}}
-    )
-    server.start()
-    try:
-        runtime_loader = RuntimeLoader(
-            backends=(
-                OllamaBackend(
-                    client_factory=lambda endpoint: OllamaClient(base_url=endpoint)
-                ),
-            ),
-        )
-        services = CommandServices(
-            runtime_loader=runtime_loader,
-            runtime_executor=RuntimeExecutor(),
-            doctor_service=DoctorService(runtime_loader=runtime_loader),
-        )
-        runner = CliRunner()
-        app = create_app(services)
-
-        info_result = runner.invoke(
-            app,
-            [
-                "models",
-                "info",
-                "msty:llama3.2",
-                "--provider-endpoint",
-                server.base_url,
-                "--json",
-                "--models-dir",
-                str(tmp_path / "models"),
-                "--no-color",
-            ],
-        )
-        assert info_result.exit_code == 0
-        assert '"backend_id": "ollama"' in info_result.output
-        assert '"materialized": false' in info_result.output
-        assert '"available": true' in info_result.output
-        assert '"availability_status": "available"' in info_result.output
-        assert '"provider_name": "msty"' in info_result.output
-
-        doctor_result = runner.invoke(
-            app,
-            [
-                "doctor",
-                "--json",
-                "--model",
-                "msty:llama3.2",
-                "--provider-endpoint",
-                server.base_url,
-                "--models-dir",
-                str(tmp_path / "models"),
-                "--no-color",
-            ],
-        )
-        assert doctor_result.exit_code == 0
-        assert '"runtime:requested-device"' in doctor_result.output
-        assert (
-            '"Provider-backed model references for msty ignore local device'
-            in doctor_result.output
-        )
-    finally:
-        server.stop()
-
-
-def test_prompt_command_executes_ollama_provider_reference_with_remote_image_url(
+def test_opaque_models_info_and_doctor_commands_are_unsupported(
     tmp_path: Path,
 ) -> None:
-    ollama_server = OllamaFixtureServer(
-        models={
-            "llava": {
-                "capabilities": ["completion", "vision"],
-                "response_text": "remote vision ready",
-            }
-        }
+    runner, app = build_real_app()
+    model_dir = tmp_path / "models"
+    model_dir.mkdir()
+
+    info_result = runner.invoke(
+        app,
+        [
+            "models",
+            "info",
+            "qwen3.5:9b-bf16",
+            "--json",
+            "--models-dir",
+            str(model_dir),
+            "--no-color",
+        ],
     )
-    media_server = MediaFixtureServer(
-        responses={
-            "/diagram.png": MediaResponse(
-                body=b"remote-png-bytes", content_type="image/png"
-            ),
-        }
+    assert info_result.exit_code == 0
+    assert '"source_kind": "opaque"' in info_result.output
+    assert '"support_level": "unsupported"' in info_result.output
+    assert "could not be resolved" in info_result.output
+
+    doctor_result = runner.invoke(
+        app,
+        [
+            "doctor",
+            "--json",
+            "--model",
+            "qwen3.5:9b-bf16",
+            "--models-dir",
+            str(model_dir),
+            "--no-color",
+        ],
     )
-    ollama_server.start()
-    media_server.start()
-    try:
-        runtime_loader = RuntimeLoader(
-            backends=(
-                OllamaBackend(client=OllamaClient(base_url=ollama_server.base_url)),
-            ),
-        )
-        services = CommandServices(
-            runtime_loader=runtime_loader,
-            runtime_executor=RuntimeExecutor(),
-            doctor_service=DoctorService(runtime_loader=runtime_loader),
-        )
-        runner = CliRunner()
-        app = create_app(services)
-
-        result = runner.invoke(
-            app,
-            [
-                "prompt",
-                "describe the image",
-                "--model",
-                "ollama:llava",
-                "--image",
-                f"{media_server.base_url}/diagram.png",
-                "--multimodal",
-                "--no-stream",
-                "--no-color",
-            ],
-        )
-        assert result.exit_code == 0
-        assert "remote vision ready" in result.output
-    finally:
-        media_server.stop()
-        ollama_server.stop()
-
-
-def test_models_list_discovers_provider_models(tmp_path: Path) -> None:
-    ollama_server = OllamaFixtureServer(
-        models={"llama3.2": {"capabilities": ["completion"], "response_text": "ready"}}
+    assert doctor_result.exit_code == 1
+    assert '"model:resolution"' in doctor_result.output
+    assert "is not a built-in alias, local directory, or Hugging Face repository" in (
+        doctor_result.output
     )
-    lmstudio_server = OpenAICompatibleFixtureServer(
-        models={"local-model": {"response_text": "ready"}}
-    )
-    ollama_server.start()
-    lmstudio_server.start()
-    try:
-        runtime_loader = RuntimeLoader(
-            backends=(
-                OllamaBackend(client=OllamaClient(base_url=ollama_server.base_url)),
-                OpenAICompatibleBackend(
-                    client_factory=lambda endpoint: OpenAICompatibleClient(
-                        base_url=endpoint
-                    )
-                ),
-            ),
-        )
-        services = CommandServices(
-            runtime_loader=runtime_loader,
-            runtime_executor=RuntimeExecutor(),
-            doctor_service=DoctorService(runtime_loader=runtime_loader),
-        )
-        runner = CliRunner()
-        app = create_app(services)
-
-        result = runner.invoke(
-            app,
-            [
-                "models",
-                "list",
-                "--json",
-                "--discover-provider",
-                "ollama",
-                "--discover-provider",
-                "lmstudio",
-                "--provider-endpoint",
-                lmstudio_server.base_url,
-                "--models-dir",
-                str(tmp_path / "models"),
-                "--no-color",
-            ],
-        )
-        assert result.exit_code == 0
-        assert '"model_reference": "ollama:llama3.2"' in result.output
-        assert '"model_reference": "lmstudio:local-model"' in result.output
-        assert '"discovery_source": "discovered-provider"' in result.output
-        assert '"availability_status": "available"' in result.output
-    finally:
-        lmstudio_server.stop()
-        ollama_server.stop()
 
 
-def test_models_list_discovers_msty_provider_models(tmp_path: Path) -> None:
-    server = OllamaFixtureServer(
-        models={"llama3.2": {"capabilities": ["completion"], "response_text": "ready"}}
-    )
-    server.start()
-    try:
-        runtime_loader = RuntimeLoader(
-            backends=(
-                OllamaBackend(
-                    client_factory=lambda endpoint: OllamaClient(base_url=endpoint)
-                ),
-            ),
-        )
-        services = CommandServices(
-            runtime_loader=runtime_loader,
-            runtime_executor=RuntimeExecutor(),
-            doctor_service=DoctorService(runtime_loader=runtime_loader),
-        )
-        runner = CliRunner()
-        app = create_app(services)
-
-        result = runner.invoke(
-            app,
-            [
-                "models",
-                "list",
-                "--json",
-                "--discover-provider",
-                "msty",
-                "--provider-endpoint",
-                server.base_url,
-                "--models-dir",
-                str(tmp_path / "models"),
-                "--no-color",
-            ],
-        )
-        assert result.exit_code == 0
-        assert '"model_reference": "msty:llama3.2"' in result.output
-        assert '"provider_endpoint": "' + server.base_url + '"' in result.output
-        assert '"discovery_source": "discovered-provider"' in result.output
-        assert '"availability_status": "available"' in result.output
-    finally:
-        server.stop()
-
-
-def test_models_list_installed_filters_out_provider_entries(tmp_path: Path) -> None:
-    server = OllamaFixtureServer(
-        models={"llama3.2": {"capabilities": ["completion"], "response_text": "ready"}}
-    )
-    server.start()
-    try:
-        runtime_loader = RuntimeLoader(
-            backends=(OllamaBackend(client=OllamaClient(base_url=server.base_url)),),
-        )
-        services = CommandServices(
-            runtime_loader=runtime_loader,
-            runtime_executor=RuntimeExecutor(),
-            doctor_service=DoctorService(runtime_loader=runtime_loader),
-        )
-        runner = CliRunner()
-        app = create_app(services)
-        model_dir = tmp_path / "models"
-        (model_dir / "llama3-1B-chat").mkdir(parents=True)
-
-        result = runner.invoke(
-            app,
-            [
-                "models",
-                "list",
-                "--installed",
-                "--discover-provider",
-                "ollama",
-                "--json",
-                "--models-dir",
-                str(model_dir),
-                "--no-color",
-            ],
-        )
-        assert result.exit_code == 0
-        assert '"model_reference": "llama3-1B-chat"' in result.output
-        assert '"model_reference": "ollama:llama3.2"' not in result.output
-    finally:
-        server.stop()
-
-
-def test_models_list_requires_endpoint_for_openai_compatible_discovery(
+def test_prompt_command_rejects_opaque_model_reference(
     tmp_path: Path,
 ) -> None:
-    runner, _, app = build_test_app()
-    result = runner.invoke(
-        app,
-        [
-            "models",
-            "list",
-            "--discover-provider",
-            "openai-compatible",
-            "--models-dir",
-            str(tmp_path / "models"),
-            "--no-color",
-        ],
-    )
-    assert result.exit_code != 0
-    assert "--provider-endpoint" in _strip_ansi(result.output)
+    runner, app = build_real_app()
+    model_dir = tmp_path / "models"
+    model_dir.mkdir()
 
-
-def test_models_list_requires_endpoint_for_msty_discovery(tmp_path: Path) -> None:
-    runner, _, app = build_test_app()
-    result = runner.invoke(
-        app,
-        [
-            "models",
-            "list",
-            "--discover-provider",
-            "msty",
-            "--models-dir",
-            str(tmp_path / "models"),
-            "--no-color",
-        ],
-    )
-    assert result.exit_code != 0
-    assert "--provider-endpoint" in _strip_ansi(result.output)
-
-
-def test_models_list_rejects_invalid_provider_endpoint(tmp_path: Path) -> None:
-    runner, _, app = build_test_app()
-    result = runner.invoke(
-        app,
-        [
-            "models",
-            "list",
-            "--discover-provider",
-            "openai-compatible",
-            "--provider-endpoint",
-            "not-a-url",
-            "--models-dir",
-            str(tmp_path / "models"),
-            "--no-color",
-        ],
-    )
-    assert result.exit_code != 0
-    assert "absolute http or https URL" in _strip_ansi(result.output)
-
-
-def test_models_list_rejects_provider_endpoint_with_credentials(tmp_path: Path) -> None:
-    runner, _, app = build_test_app()
-    result = runner.invoke(
-        app,
-        [
-            "models",
-            "list",
-            "--discover-provider",
-            "openai-compatible",
-            "--provider-endpoint",
-            "https://user:pass@example.test/v1",
-            "--models-dir",
-            str(tmp_path / "models"),
-            "--no-color",
-        ],
-    )
-    assert result.exit_code != 0
-    assert "must not include credentials" in _strip_ansi(result.output)
-
-
-def test_prompt_command_rejects_provider_endpoint_with_credentials() -> None:
-    runner, _, app = build_test_app()
     result = runner.invoke(
         app,
         [
             "prompt",
             "hello world",
             "--model",
-            "openai-compatible:local-model",
-            "--provider-endpoint",
-            "https://user:pass@example.test/v1",
+            "qwen3.5:9b-bf16",
+            "--models-dir",
+            str(model_dir),
             "--no-stream",
             "--no-color",
         ],
     )
-    assert result.exit_code != 0
-    assert isinstance(result.exception, ValueError)
-    assert "must not include credentials" in str(result.exception)
-
-
-def test_openai_compatible_provider_models_info_and_doctor_commands(
-    tmp_path: Path,
-) -> None:
-    server = OpenAICompatibleFixtureServer(
-        models={"local-model": {"response_text": "ready"}}
-    )
-    server.start()
-    try:
-        runtime_loader = RuntimeLoader(
-            backends=(OpenAICompatibleBackend(),),
-        )
-        services = CommandServices(
-            runtime_loader=runtime_loader,
-            runtime_executor=RuntimeExecutor(),
-            doctor_service=DoctorService(runtime_loader=runtime_loader),
-        )
-        runner = CliRunner()
-        app = create_app(services)
-
-        info_result = runner.invoke(
-            app,
-            [
-                "models",
-                "info",
-                "openai-compatible:local-model",
-                "--provider-endpoint",
-                server.base_url,
-                "--json",
-                "--models-dir",
-                str(tmp_path / "models"),
-                "--no-color",
-            ],
-        )
-        assert info_result.exit_code == 0
-        assert '"backend_id": "openai-compatible"' in info_result.output
-        assert '"materialized": false' in info_result.output
-        assert '"available": true' in info_result.output
-        assert '"availability_status": "available"' in info_result.output
-        assert '"support_level": "provider-backed"' in info_result.output
-        assert '"modalities": [' in info_result.output
-        assert '"audio_input_support": "request-capable"' in info_result.output
-
-        doctor_result = runner.invoke(
-            app,
-            [
-                "doctor",
-                "--json",
-                "--model",
-                "openai-compatible:local-model",
-                "--provider-endpoint",
-                server.base_url,
-                "--models-dir",
-                str(tmp_path / "models"),
-                "--no-color",
-            ],
-        )
-        assert doctor_result.exit_code == 0
-        assert '"runtime:requested-device"' in doctor_result.output
-        assert (
-            '"Provider-backed model references for openai-compatible ignore local device'
-            in doctor_result.output
-        )
-        assert '"modalities": "text"' in doctor_result.output
-        assert '"audio_input_support": "request-capable"' in doctor_result.output
-    finally:
-        server.stop()
-
-
-def test_prompt_command_executes_openai_compatible_provider_reference(
-    tmp_path: Path,
-) -> None:
-    server = OpenAICompatibleFixtureServer(
-        models={"local-model": {"response_text": "ready from provider"}}
-    )
-    server.start()
-    try:
-        runtime_loader = RuntimeLoader(
-            backends=(OpenAICompatibleBackend(),),
-        )
-        services = CommandServices(
-            runtime_loader=runtime_loader,
-            runtime_executor=RuntimeExecutor(),
-            doctor_service=DoctorService(runtime_loader=runtime_loader),
-        )
-        runner = CliRunner()
-        app = create_app(services)
-
-        result = runner.invoke(
-            app,
-            [
-                "prompt",
-                "say hi",
-                "--model",
-                "openai-compatible:local-model",
-                "--provider-endpoint",
-                server.base_url,
-                "--no-stream",
-                "--no-color",
-            ],
-        )
-        assert result.exit_code == 0
-        assert "ready from provider" in result.output
-    finally:
-        server.stop()
-
-
-def test_prompt_command_executes_openai_compatible_provider_audio_reference(
-    tmp_path: Path,
-) -> None:
-    provider_server = OpenAICompatibleFixtureServer(
-        models={"audio-model": {"response_text": "heard audio from cli"}}
-    )
-    media_server = MediaFixtureServer(
-        responses={
-            "/sample.wav": MediaResponse(body=b"wav-bytes", content_type="audio/wav"),
-        }
-    )
-    provider_server.start()
-    media_server.start()
-    try:
-        runtime_loader = RuntimeLoader(
-            backends=(OpenAICompatibleBackend(),),
-        )
-        services = CommandServices(
-            runtime_loader=runtime_loader,
-            runtime_executor=RuntimeExecutor(),
-            doctor_service=DoctorService(runtime_loader=runtime_loader),
-        )
-        runner = CliRunner()
-        app = create_app(services)
-
-        result = runner.invoke(
-            app,
-            [
-                "prompt",
-                "describe the clip",
-                "--model",
-                "openai-compatible:audio-model",
-                "--provider-endpoint",
-                provider_server.base_url,
-                "--multimodal",
-                "--audio",
-                f"{media_server.base_url}/sample.wav",
-                "--no-stream",
-                "--no-color",
-            ],
-        )
-        assert result.exit_code == 0
-        assert "heard audio from cli" in result.output
-    finally:
-        media_server.stop()
-        provider_server.stop()
-
-
-def test_prompt_command_executes_msty_provider_reference(tmp_path: Path) -> None:
-    server = OllamaFixtureServer(
-        models={
-            "llama3.2": {
-                "capabilities": ["completion"],
-                "response_text": "ready from msty",
-            }
-        }
-    )
-    server.start()
-    try:
-        runtime_loader = RuntimeLoader(
-            backends=(
-                OllamaBackend(
-                    client_factory=lambda endpoint: OllamaClient(base_url=endpoint)
-                ),
-            ),
-        )
-        services = CommandServices(
-            runtime_loader=runtime_loader,
-            runtime_executor=RuntimeExecutor(),
-            doctor_service=DoctorService(runtime_loader=runtime_loader),
-        )
-        runner = CliRunner()
-        app = create_app(services)
-
-        result = runner.invoke(
-            app,
-            [
-                "prompt",
-                "say hi",
-                "--model",
-                "msty:llama3.2",
-                "--provider-endpoint",
-                server.base_url,
-                "--no-stream",
-                "--no-color",
-            ],
-        )
-        assert result.exit_code == 0
-        assert "ready from msty" in result.output
-    finally:
-        server.stop()
+    assert result.exit_code == 1
+    assert "could not be resolved" in _strip_ansi(result.output)

@@ -93,7 +93,6 @@ The primary project documentation now lives under `docs/` and is built with MkDo
 - [Getting Started / Installation](docs/guides/installation.md)
 - [User Guide: Terminal Interface](docs/terminal-interface.md)
 - [User Guide: Model References](docs/guides/model-references.md)
-- [User Guide: Providers](docs/guides/providers.md)
 - [Optimization Guide](docs/guides/optimization.md)
 - [CLI Reference](docs/cli.md)
 - [Architecture](docs/architecture/overview.md)
@@ -109,7 +108,7 @@ ollm                         # interactive terminal chat
 ollm chat                    # explicit alias for interactive chat
 ollm prompt "List planets"   # one-shot prompt
 ollm doctor --json           # environment and runtime diagnostics
-ollm models list             # known, local, and provider-discovered model references
+ollm models list             # known and locally discovered model references
 ```
 
 Use `ollm` or `ollm chat` only from an interactive terminal. For scripts, pipes, and automation use `ollm prompt`:
@@ -122,13 +121,12 @@ ollm prompt --model llama3-8B-chat --backend transformers-generic --no-specializ
 ollm prompt --model llama3-8B-chat --plan-json
 ```
 
-`ollm doctor` reports missing optional extras, runtime availability, path issues, and model readiness. `ollm models` provides `list`, `info`, `download`, and `path` subcommands for both built-in aliases and arbitrary model references. `ollm models list` acts as a discovery view: it combines built-in aliases, local materialized models, and provider-discovered entries from Ollama and LM Studio by default, and it can also probe `openai-compatible` or `msty` providers when you pass `--discover-provider <name> --provider-endpoint <url>`.
+`ollm doctor` reports missing optional extras, runtime availability, path issues, and model readiness. `ollm models` provides `list`, `info`, `download`, and `path` subcommands for both built-in aliases and arbitrary model references. `ollm models list` acts as a discovery view over built-in aliases and local materialized models under `--models-dir`.
 
 Runtime selection and inspection controls:
-- `--backend` lets you force one of `optimized-native`, `transformers-generic`, `ollama`, or `openai-compatible` when that backend is valid for the resolved model reference
+- `--backend` lets you force one of `optimized-native` or `transformers-generic` when that backend is valid for the resolved model reference
 - `--no-specialization` disables optimized native specialization selection and forces the generic path when one exists
 - `--plan-json` prints the resolved runtime plan as JSON and exits without running generation
-- `--provider-endpoint` must be an absolute `http` or `https` URL and must not embed credentials
 
 `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` now all honor `--backend` and `--no-specialization`. `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` also support `--plan-json` for script-friendly inspection of the resolver/backend decision.
 
@@ -136,52 +134,31 @@ Runtime vocabulary:
 - support levels:
   - `optimized`: a native specialization provider can run the reference
   - `generic`: the Transformers-backed generic runtime can run the reference
-  - `provider-backed`: execution goes through a provider API such as Ollama or an OpenAI-compatible endpoint
   - `unsupported`: the reference resolves, but the current runtime cannot execute it
 - discovery sources:
   - `built-in`: a shipped oLLM alias
   - `discovered-local`: a materialized local model directory found under `--models-dir`
-  - `discovered-provider`: a model reference returned by provider discovery
 - availability terms:
   - `materialized` / `not-materialized` describe whether local weights are present on disk
-  - `available` / `unavailable` describe whether a provider reference is currently reachable and executable
-  - `ollm models list --installed` filters to materialized local entries only; provider references are never treated as installed
+  - `ollm models list --installed` filters to materialized local entries only
 
 `--model` now accepts opaque model references. Today that means:
 - built-in aliases such as `llama3-1B-chat` and `gemma3-12B` load through registered optimized specialization providers
 - Hugging Face repo IDs such as `Qwen/Qwen2.5-7B-Instruct` resolve and materialize locally
 - local model directories resolve directly
-- Ollama provider refs such as `ollama:llama3.2` execute through the local Ollama API
-- Msty provider refs such as `msty:llama3.2` execute through the Msty Local AI service when `--provider-endpoint` is supplied
-- LM Studio provider refs such as `lmstudio:qwen2.5` execute through the local OpenAI-compatible API
-- generic OpenAI-compatible refs such as `openai-compatible:local-model` execute when `--provider-endpoint` is supplied
 
 The current generic execution path now covers compatible local or materialized Transformers-backed:
 - causal language models such as Qwen2-family checkpoints
 - encoder-decoder text generation models such as T5-family checkpoints
 - image-text conditional generation models that expose a processor-backed `vision_config`
 
-When the resolved model matches a native family specialization (`llama`, `gemma3`, `qwen3-next`, `gpt-oss`, or `voxtral`), `ollm` now records and selects the matching optimized specialization provider through the runtime plan instead of hard-coding model-family branches inside `Inference.load_model()`. Built-in aliases still prefer the optimized native backend, and compatible local native-family directories can now do the same when a specialization provider matches while preserving the original local-path reference internally for optimized local loads. Provider-backed execution is now live for `ollama:<model>`, `msty:<model>`, `lmstudio:<model>`, and `openai-compatible:<model>` references, while audio-focused generic conditional generation remains deferred.
+When the resolved model matches a native family specialization (`llama`, `gemma3`, `qwen3-next`, `gpt-oss`, or `voxtral`), `ollm` now records and selects the matching optimized specialization provider through the runtime plan instead of hard-coding model-family branches inside `Inference.load_model()`. Built-in aliases still prefer the optimized native backend, and compatible local native-family directories can now do the same when a specialization provider matches while preserving the original local-path reference internally for optimized local loads.
 
 Optimized-native planning now also records reusable specialization passes such as `disk-cache`, `cpu-offload`, `gpu-offload`, `mlp-chunking`, `moe-routing`, `attention-replacement`, `multimodal-shell`, and `gds-export-weights`. Those passes are now validated against the assembled optimized runtime before execution proceeds. If an optimized specialization cannot satisfy its planned pass contract and a compatible generic Transformers path exists, `ollm` falls back safely to `transformers-generic` instead of silently pretending the optimized path succeeded.
 
 Planning-only surfaces such as `ollm doctor` and `ollm models info --json` now expose an explicit `specialization_state` plus the planned specialization provider/pass ids. They do **not** execute a backend load just to answer an inspection request, so they should be read as runtime-planning output.
 
 Actual execution surfaces follow the finalized runtime plan instead. In particular, prompt response metadata includes the execution backend, specialization state, applied specialization pass ids, and any recorded fallback reason.
-
-For provider-backed execution, `ollm` currently supports:
-- the local Ollama API on the default `http://127.0.0.1:11434` endpoint
-- Msty Local AI through the existing Ollama transport when `--provider-endpoint` points at the configured Msty Local AI service endpoint
-- LM Studio on the default `http://127.0.0.1:1234/v1` OpenAI-compatible endpoint
-- arbitrary OpenAI-compatible servers when `--provider-endpoint` points at the provider API root
-
-Example Ollama vision prompt with a remote image URL:
-
-```bash
-ollm prompt --multimodal --model ollama:llava --image https://example.com/diagram.png "Describe this image"
-```
-
-`ollm doctor --model <provider-ref>` and `ollm models info <provider-ref>` probe the configured endpoint and report executability truthfully. If an Ollama-family provider model advertises `vision` capability, `ollm prompt --multimodal --model ollama:<model>` can now send local-file paths, base64 data URLs, and remote `http`/`https` image URLs through the Ollama chat API. Remote image URLs are fetched client-side with bounded downloads and content-type validation before being base64-forwarded to Ollama. `msty:<model>` now reuses the same Ollama transport but intentionally requires an explicit `--provider-endpoint`, because the Msty Local AI service endpoint is user-configurable and `ollm` does not guess it. The OpenAI-compatible backend now supports audio **request execution** for generic `openai-compatible:<model>` references when `--provider-endpoint` is supplied: `--audio` inputs may be local `.wav`/`.mp3` files, base64 data URLs, or remote `http`/`https` WAV/MP3 URLs, and `ollm` fetches/validates remote audio client-side before forwarding it as OpenAI-compatible `input_audio`. Because the generic OpenAI-compatible `/models` probe does not expose per-model audio capabilities, `ollm models info` and `ollm doctor` keep the model modalities conservative and instead report `audio_input_support: request-capable` in the runtime-plan details for `openai-compatible:` refs. `lmstudio:<model>` remains text-only in `ollm`, because the current LM Studio OpenAI-compatible docs do not give this repo a verified audio input contract. Provider-backed execution still rejects `--top-k`, PEFT adapters, and custom layer offload controls.
 
 The optimized GPT-OSS provider is intentionally stricter than before: it only matches when a validated `gds_export/` tree is present beside the model, and that export manifest must stay inside the export directory and avoid torch-serialized or pickle-backed artifacts.
 

@@ -184,7 +184,6 @@ class Inference:
             source_kind=source_kind,
             repo_id=None if entry is None else entry.repo_id,
             revision=None,
-            provider_name=None,
             catalog_entry=entry,
         )
         specialization_match = self._specialization_registry.select(

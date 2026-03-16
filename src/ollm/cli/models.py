@@ -5,79 +5,28 @@ import typer
 from ollm.cli.common import build_console, print_json
 from ollm.cli.services import CommandServices
 from ollm.runtime.catalog import list_model_catalog
-from ollm.runtime.config import RuntimeConfig, normalize_provider_endpoint
+from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.inspection import (
     MergedRuntimePayload,
     RuntimePlanPayload,
     merged_runtime_payload,
     plan_json_payload,
 )
-from ollm.runtime.loader import DiscoveredRuntimeModel
-
-
-def _availability_label(entry: dict[str, object]) -> str:
-    return str(entry["availability_status"])
-
-
-def _provider_discovery_names(
-    discover_provider: list[str] | None,
-    provider_endpoint: str | None,
-) -> tuple[str, ...]:
-    if provider_endpoint is not None:
-        normalize_provider_endpoint(provider_endpoint)
-    if not discover_provider:
-        return ("ollama", "lmstudio")
-
-    normalized_providers: list[str] = []
-    for provider_name in discover_provider:
-        normalized_name = provider_name.strip().lower()
-        if normalized_name not in {"ollama", "lmstudio", "openai-compatible", "msty"}:
-            raise typer.BadParameter(
-                "--discover-provider must be one of: ollama, lmstudio, openai-compatible, msty"
-            )
-        if (
-            normalized_name in {"openai-compatible", "msty"}
-            and provider_endpoint is None
-        ):
-            raise typer.BadParameter(
-                f"--discover-provider {normalized_name} requires --provider-endpoint"
-            )
-        if normalized_name not in normalized_providers:
-            normalized_providers.append(normalized_name)
-    return tuple(normalized_providers)
-
-
-def _provider_runtime_config(
-    discovered_model: DiscoveredRuntimeModel,
-    models_dir: Path,
-    backend: str | None = None,
-    no_specialization: bool = False,
-) -> RuntimeConfig:
-    return RuntimeConfig(
-        model_reference=discovered_model.model_reference,
-        models_dir=models_dir,
-        backend=backend,
-        provider_endpoint=discovered_model.provider_endpoint,
-        use_specialization=not no_specialization,
-    )
 
 
 def _discovery_entry(
     payload: MergedRuntimePayload,
     *,
     discovery_source: str,
-    provider_endpoint: str | None = None,
 ) -> dict[str, object]:
     entry: dict[str, object] = {key: value for key, value in payload.items()}
     entry["discovery_source"] = discovery_source
-    if provider_endpoint is not None:
-        entry["provider_endpoint"] = provider_endpoint
     return entry
 
 
 def register_models_command(app: typer.Typer, services: CommandServices) -> None:
     models_app = typer.Typer(
-        help="Inspect built-in aliases, local materializations, and provider-discovered model references."
+        help="Inspect built-in aliases and discovered local model materializations."
     )
 
     @models_app.command("list")
@@ -93,19 +42,6 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             "--no-specialization",
             help="Disable optimized specialization selection for runtime planning output.",
         ),
-        discover_provider: list[str] | None = typer.Option(
-            None,
-            "--discover-provider",
-            help=(
-                "Provider to probe for discovered models. Repeatable. "
-                "Defaults to ollama and lmstudio."
-            ),
-        ),
-        provider_endpoint: str | None = typer.Option(
-            None,
-            "--provider-endpoint",
-            help="Provider API root URL for msty/openai-compatible discovery or lmstudio override.",
-        ),
         json_output: bool = typer.Option(False, "--json", help="Output JSON."),
         models_dir: Path = typer.Option(
             Path("models"), "--models-dir", help="Directory containing model data."
@@ -117,12 +53,6 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         model_dir = models_dir.expanduser().resolve()
         entries: list[dict[str, object]] = []
         seen_paths: set[str] = set()
-        try:
-            provider_names = _provider_discovery_names(
-                discover_provider, provider_endpoint
-            )
-        except ValueError as exc:
-            raise typer.BadParameter(str(exc)) from exc
 
         for entry in list_model_catalog():
             resolved_model = services.runtime_loader.resolve(entry.model_id, model_dir)
@@ -184,40 +114,6 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
                 continue
             entries.append(payload)
 
-        try:
-            discovered_provider_models = (
-                services.runtime_loader.discover_provider_models(
-                    model_dir,
-                    provider_names,
-                    provider_endpoint,
-                    strict=bool(discover_provider),
-                )
-            )
-        except ValueError as exc:
-            raise typer.BadParameter(str(exc)) from exc
-
-        for discovered_model in discovered_provider_models:
-            runtime_plan = services.runtime_loader.plan(
-                _provider_runtime_config(
-                    discovered_model,
-                    model_dir,
-                    backend=backend,
-                    no_specialization=no_specialization,
-                )
-            )
-            payload = _discovery_entry(
-                merged_runtime_payload(
-                    discovered_model.resolved_model,
-                    runtime_plan,
-                    materialized=False,
-                ),
-                discovery_source="discovered-provider",
-                provider_endpoint=discovered_model.provider_endpoint,
-            )
-            if installed and not bool(payload["materialized"]):
-                continue
-            entries.append(payload)
-
         entries.sort(
             key=lambda item: (str(item["source_kind"]), str(item["model_reference"]))
         )
@@ -227,11 +123,10 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             return
 
         for entry in entries:
-            status = _availability_label(entry)
             known = entry["discovery_source"]
             console.print(
-                f"{entry['model_reference']} [{known} / {status}] - "
-                f"{entry['support_level']} - {entry['resolution_message']}"
+                f"{entry['model_reference']} [{known}] - {entry['support_level']} - "
+                f"{entry['resolution_message']}"
             )
 
     @models_app.command("info")
@@ -241,9 +136,6 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             Path("models"), "--models-dir", help="Directory containing model data."
         ),
         backend: str | None = typer.Option(None, "--backend", help="Backend override."),
-        provider_endpoint: str | None = typer.Option(
-            None, "--provider-endpoint", help="Provider API root URL."
-        ),
         multimodal: bool = typer.Option(
             False,
             "--multimodal/--no-multimodal",
@@ -262,22 +154,20 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             False, "--no-color", help="Disable ANSI color output."
         ),
     ) -> None:
+        runtime_config = RuntimeConfig(
+            model_reference=model,
+            models_dir=models_dir.expanduser().resolve(),
+            backend=backend,
+            multimodal=multimodal,
+            use_specialization=not no_specialization,
+        )
         resolved_model = services.runtime_loader.resolve(
-            model, models_dir.expanduser().resolve()
+            model, runtime_config.resolved_models_dir()
         )
         materialized = bool(
             resolved_model.model_path is not None and resolved_model.model_path.exists()
         )
-        runtime_plan = services.runtime_loader.plan(
-            RuntimeConfig(
-                model_reference=model,
-                models_dir=models_dir.expanduser().resolve(),
-                backend=backend,
-                provider_endpoint=provider_endpoint,
-                multimodal=multimodal,
-                use_specialization=not no_specialization,
-            )
-        )
+        runtime_plan = services.runtime_loader.plan(runtime_config)
         payload: MergedRuntimePayload = merged_runtime_payload(
             resolved_model,
             runtime_plan,
@@ -285,20 +175,7 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         )
         console = build_console(no_color=no_color)
         if plan_json_flag:
-            print_json(
-                console,
-                plan_json_payload(
-                    RuntimeConfig(
-                        model_reference=model,
-                        models_dir=models_dir.expanduser().resolve(),
-                        backend=backend,
-                        provider_endpoint=provider_endpoint,
-                        multimodal=multimodal,
-                        use_specialization=not no_specialization,
-                    ),
-                    runtime_plan,
-                ),
-            )
+            print_json(console, plan_json_payload(runtime_config, runtime_plan))
             return
         if json_output:
             print_json(console, payload)
@@ -306,11 +183,7 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         console.print(f"reference: {payload['model_reference']}")
         console.print(f"normalized: {payload['normalized_name']}")
         console.print(f"source: {payload['source_kind']}")
-        if payload["provider_name"] is not None:
-            console.print(f"provider: {payload['provider_name']}")
-            console.print(f"availability: {payload['availability_status']}")
-        else:
-            console.print(f"materialized: {payload['materialized']}")
+        console.print(f"materialized: {payload['materialized']}")
         console.print(f"support: {payload['support_level']}")
         console.print(f"specialization: {payload['supports_specialization']}")
         if payload["generic_model_kind"] is not None:
@@ -327,8 +200,6 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             console.print(f"path: {payload['path']}")
         runtime_plan_payload: RuntimePlanPayload = payload["runtime_plan"]
         console.print(f"backend: {runtime_plan_payload['backend_id']}")
-        if runtime_plan_payload["audio_input_support"]:
-            console.print(f"audio-input: {runtime_plan_payload['audio_input_support']}")
         console.print(
             f"specialization-state: {runtime_plan_payload['specialization_state']}"
         )

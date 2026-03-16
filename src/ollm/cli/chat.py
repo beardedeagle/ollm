@@ -23,7 +23,6 @@ def run_chat_command(
     models_dir: Path,
     device: str,
     backend: str | None,
-    provider_endpoint: str | None,
     adapter_dir: Path | None,
     multimodal: bool,
     no_specialization: bool,
@@ -56,7 +55,6 @@ def run_chat_command(
         models_dir=models_dir,
         device=device,
         backend=backend,
-        provider_endpoint=provider_endpoint,
         adapter_dir=adapter_dir,
         multimodal=multimodal,
         no_specialization=no_specialization,
@@ -138,9 +136,6 @@ def register_chat_surfaces(app: typer.Typer, services: CommandServices) -> None:
             DEFAULT_DEVICE, "--device", help="Torch device string."
         ),
         backend: str | None = typer.Option(None, "--backend", help="Backend override."),
-        provider_endpoint: str | None = typer.Option(
-            None, "--provider-endpoint", help="Provider API root URL."
-        ),
         adapter_dir: Path | None = typer.Option(
             None, "--adapter-dir", help="Optional PEFT adapter directory."
         ),
@@ -243,7 +238,6 @@ def register_chat_surfaces(app: typer.Typer, services: CommandServices) -> None:
             models_dir=models_dir,
             device=device,
             backend=backend,
-            provider_endpoint=provider_endpoint,
             adapter_dir=adapter_dir,
             multimodal=multimodal,
             no_specialization=no_specialization,

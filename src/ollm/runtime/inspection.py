@@ -2,7 +2,7 @@ from typing import TypedDict, cast
 
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.plan import RuntimePlan
-from ollm.runtime.resolver import ModelSourceKind, ResolvedModel
+from ollm.runtime.resolver import ResolvedModel
 
 
 class ResolvedModelPayload(TypedDict):
@@ -17,7 +17,6 @@ class ResolvedModelPayload(TypedDict):
     repo_id: str | None
     revision: str | None
     path: str | None
-    provider_name: str | None
     native_family: str | None
     architecture: str | None
     model_type: str | None
@@ -29,7 +28,6 @@ class RuntimePlanPayload(TypedDict):
     backend_id: str | None
     modalities: list[str]
     requires_processor: bool
-    audio_input_support: str
     supports_disk_cache: bool
     supports_cpu_offload: bool
     supports_gpu_offload: bool
@@ -38,12 +36,6 @@ class RuntimePlanPayload(TypedDict):
     specialization_state: str
     planned_specialization_pass_ids: list[str]
     reason: str
-
-
-class AvailabilityPayload(TypedDict):
-    materialized: bool
-    available: bool | None
-    availability_status: str
 
 
 class MergedRuntimePayload(TypedDict):
@@ -58,15 +50,12 @@ class MergedRuntimePayload(TypedDict):
     repo_id: str | None
     revision: str | None
     path: str | None
-    provider_name: str | None
     native_family: str | None
     architecture: str | None
     model_type: str | None
     generic_model_kind: str | None
     resolution_message: str
     materialized: bool
-    available: bool | None
-    availability_status: str
     resolved_support_level: str
     resolved_modalities: list[str]
     resolved_requires_processor: bool
@@ -80,7 +69,6 @@ class RuntimeConfigPayload(TypedDict):
     models_dir: str
     device: str
     backend: str | None
-    provider_endpoint: str | None
     adapter_dir: str | None
     multimodal: bool
     use_specialization: bool
@@ -117,7 +105,6 @@ def resolved_model_payload(resolved_model: ResolvedModel) -> ResolvedModelPayloa
         "path": None
         if resolved_model.model_path is None
         else str(resolved_model.model_path),
-        "provider_name": resolved_model.provider_name,
         "native_family": None
         if resolved_model.native_family is None
         else resolved_model.native_family.value,
@@ -138,7 +125,6 @@ def runtime_plan_payload(runtime_plan: RuntimePlan) -> RuntimePlanPayload:
             for modality in runtime_plan.resolved_model.capabilities.modalities
         ],
         "requires_processor": runtime_plan.resolved_model.capabilities.requires_processor,
-        "audio_input_support": runtime_plan.details.get("audio_input_support", ""),
         "supports_disk_cache": runtime_plan.supports_disk_cache,
         "supports_cpu_offload": runtime_plan.supports_cpu_offload,
         "supports_gpu_offload": runtime_plan.supports_gpu_offload,
@@ -152,26 +138,6 @@ def runtime_plan_payload(runtime_plan: RuntimePlan) -> RuntimePlanPayload:
     }
 
 
-def availability_payload(
-    resolved_model: ResolvedModel,
-    runtime_plan: RuntimePlan,
-    *,
-    materialized: bool,
-) -> AvailabilityPayload:
-    if resolved_model.source_kind is ModelSourceKind.PROVIDER:
-        available = runtime_plan.is_executable()
-        return {
-            "materialized": False,
-            "available": available,
-            "availability_status": "available" if available else "unavailable",
-        }
-    return {
-        "materialized": materialized,
-        "available": None,
-        "availability_status": "materialized" if materialized else "not-materialized",
-    }
-
-
 def merged_runtime_payload(
     resolved_model: ResolvedModel,
     runtime_plan: RuntimePlan,
@@ -179,13 +145,7 @@ def merged_runtime_payload(
     materialized: bool,
 ) -> MergedRuntimePayload:
     payload = cast(MergedRuntimePayload, resolved_model_payload(resolved_model))
-    payload.update(
-        availability_payload(
-            resolved_model,
-            runtime_plan,
-            materialized=materialized,
-        )
-    )
+    payload["materialized"] = materialized
     payload["resolved_support_level"] = payload["support_level"]
     payload["resolved_modalities"] = list(payload["modalities"])
     payload["resolved_requires_processor"] = payload["requires_processor"]
@@ -211,7 +171,6 @@ def runtime_config_payload(runtime_config: RuntimeConfig) -> RuntimeConfigPayloa
         "models_dir": str(runtime_config.resolved_models_dir()),
         "device": runtime_config.device,
         "backend": runtime_config.resolved_backend(),
-        "provider_endpoint": runtime_config.resolved_provider_endpoint(),
         "adapter_dir": None
         if runtime_config.resolved_adapter_dir() is None
         else str(runtime_config.resolved_adapter_dir()),

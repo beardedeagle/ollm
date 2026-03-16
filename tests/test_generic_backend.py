@@ -46,7 +46,6 @@ def build_plan(kind: GenericModelKind, model_path: Path) -> RuntimePlan:
         model_path=model_path,
         repo_id=None,
         revision=None,
-        provider_name=None,
         catalog_entry=None,
         capabilities=CapabilityProfile(support_level=SupportLevel.GENERIC),
         native_family=None,

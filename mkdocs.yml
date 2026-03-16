@@ -1,5 +1,5 @@
 site_name: oLLM
-site_description: Local and provider-backed LLM inference for large-context workloads
+site_description: Local LLM inference for large-context workloads
 repo_name: Mega4alik/ollm
 repo_url: https://github.com/Mega4alik/ollm
 edit_uri: edit/main/docs/
@@ -23,7 +23,6 @@ nav:
   - User Guide:
       - Terminal Interface: terminal-interface.md
       - Model References: guides/model-references.md
-      - Providers: guides/providers.md
       - Multimodal Workflows: guides/multimodal.md
       - Runtime Planning and Inspection: guides/runtime-planning.md
       - Model Discovery: guides/models-discovery.md
@@ -46,7 +45,6 @@ nav:
       - Model Resolution: architecture/model-resolution.md
       - Backend Selection: architecture/backend-selection.md
       - Specialization: architecture/specialization.md
-      - Provider Backends: architecture/provider-backends.md
   - API Reference:
       - Runtime Client: api/client.md
       - Runtime Config: api/config.md

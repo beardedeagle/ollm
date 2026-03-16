@@ -15,7 +15,7 @@ from ollm.app.types import (
 from ollm.runtime.config import DEFAULT_SYSTEM_PROMPT, GenerationConfig, RuntimeConfig
 from ollm.runtime.generation import RuntimeExecutor
 from ollm.runtime.inspection import PlanJsonPayload, plan_json_payload
-from ollm.runtime.loader import DiscoveredRuntimeModel, LoadedRuntime, RuntimeLoader
+from ollm.runtime.loader import LoadedRuntime, RuntimeLoader
 from ollm.runtime.plan import RuntimePlan
 from ollm.runtime.resolver import ResolvedModel
 from ollm.runtime.streaming import StreamSink
@@ -42,22 +42,6 @@ class RuntimeClient:
         """Discover local materialized models under a models directory."""
         return self.runtime_loader.discover_local_models(
             models_dir.expanduser().resolve()
-        )
-
-    def discover_provider_models(
-        self,
-        provider_names: tuple[str, ...],
-        *,
-        models_dir: Path = Path("models"),
-        provider_endpoint: str | None = None,
-        strict: bool = False,
-    ) -> tuple[DiscoveredRuntimeModel, ...]:
-        """Discover models exposed by one or more provider backends."""
-        return self.runtime_loader.discover_provider_models(
-            models_dir.expanduser().resolve(),
-            provider_names,
-            provider_endpoint,
-            strict=strict,
         )
 
     def plan(self, runtime_config: RuntimeConfig) -> RuntimePlan:

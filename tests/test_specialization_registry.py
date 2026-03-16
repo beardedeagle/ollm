@@ -67,7 +67,6 @@ def test_specialization_registry_selects_provider_by_native_family() -> None:
         model_path=None,
         repo_id=None,
         revision=None,
-        provider_name=None,
         catalog_entry=None,
         capabilities=CapabilityProfile(
             support_level=SupportLevel.GENERIC,

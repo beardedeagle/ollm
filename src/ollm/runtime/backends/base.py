@@ -30,31 +30,12 @@ class BackendRuntime:
     applied_specialization: AppliedSpecialization | None = None
 
 
-@dataclass(frozen=True, slots=True)
-class DiscoveredProviderModel:
-    model_reference: str
-    provider_name: str
-    provider_endpoint: str | None = None
-
-
 class ExecutionBackend(ABC):
     backend_id: str
 
     def refine_plan(self, plan: RuntimePlan, config: RuntimeConfig) -> RuntimePlan:
         del config
         return plan
-
-    def supports_provider_discovery(self, provider_name: str) -> bool:
-        del provider_name
-        return False
-
-    def discover_provider_models(
-        self,
-        provider_name: str,
-        provider_endpoint: str | None = None,
-    ) -> tuple[DiscoveredProviderModel, ...]:
-        del provider_name, provider_endpoint
-        return ()
 
     @abstractmethod
     def load(self, plan: RuntimePlan, config: RuntimeConfig) -> BackendRuntime:

@@ -243,9 +243,6 @@ class RuntimeExecutor:
         return metadata
 
     def _status_message(self, runtime: LoadedRuntime) -> str:
-        provider_name = runtime.plan.resolved_model.provider_name
-        if provider_name is not None:
-            return f"Running {runtime.config.model_reference} via provider backend {runtime.plan.backend_id}"
         return f"Running {runtime.config.model_reference} on {runtime.config.device} via {runtime.plan.backend_id}"
 
 

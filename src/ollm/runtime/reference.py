@@ -3,15 +3,12 @@
 from dataclasses import dataclass
 from pathlib import Path
 import re
+from typing import Self
 
 
 KNOWN_REFERENCE_SCHEMES = {
     "hf",
     "path",
-    "ollama",
-    "openai-compatible",
-    "lmstudio",
-    "msty",
 }
 _WINDOWS_PATH_RE = re.compile(r"^[A-Za-z]:[\\/].+")
 
@@ -27,7 +24,7 @@ class ModelReference:
     local_path: Path | None
 
     @classmethod
-    def parse(cls, raw_reference: str) -> "ModelReference":
+    def parse(cls, raw_reference: str) -> Self:
         """Parse a raw model reference into a structured form."""
         raw = raw_reference.strip()
         if not raw:
@@ -62,10 +59,6 @@ class ModelReference:
             revision=revision,
             local_path=None,
         )
-
-    def has_provider_scheme(self) -> bool:
-        """Return whether the reference points at a provider-backed model."""
-        return self.scheme in {"ollama", "openai-compatible", "lmstudio", "msty"}
 
     def is_huggingface_reference(self) -> bool:
         """Return whether the reference should be treated as a Hugging Face repo ID."""

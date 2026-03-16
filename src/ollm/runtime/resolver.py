@@ -7,7 +7,6 @@ from pathlib import Path
 from ollm.runtime.capabilities import (
     CapabilityProfile,
     capabilities_from_catalog_entry,
-    provider_capabilities,
     unsupported_capabilities,
 )
 from ollm.runtime.capability_discovery import CapabilityDiscovery, GenericModelKind
@@ -25,7 +24,6 @@ class ModelSourceKind(str, Enum):
     BUILTIN = "builtin"
     HUGGING_FACE = "hugging-face"
     LOCAL_PATH = "local-path"
-    PROVIDER = "provider"
     OPAQUE = "opaque"
 
 
@@ -49,7 +47,6 @@ class ResolvedModel:
     model_path: Path | None
     repo_id: str | None
     revision: str | None
-    provider_name: str | None
     catalog_entry: ModelCatalogEntry | None
     capabilities: CapabilityProfile
     native_family: NativeFamily | None
@@ -64,7 +61,7 @@ class ResolvedModel:
 
 
 class ModelResolver:
-    """Resolve model references into built-in, local, Hugging Face, or provider-backed forms."""
+    """Resolve model references into built-in, local, or Hugging Face forms."""
 
     def __init__(self, capability_discovery: CapabilityDiscovery | None = None):
         self._capability_discovery = capability_discovery or CapabilityDiscovery()
@@ -73,25 +70,6 @@ class ModelResolver:
         """Resolve a raw model reference without loading model weights."""
         reference = ModelReference.parse(raw_reference)
         model_root = models_dir.expanduser().resolve()
-
-        if reference.has_provider_scheme():
-            provider_name = reference.scheme or "provider"
-            return ResolvedModel(
-                reference=reference,
-                source_kind=ModelSourceKind.PROVIDER,
-                normalized_name=reference.identifier,
-                model_path=None,
-                repo_id=None,
-                revision=None,
-                provider_name=provider_name,
-                catalog_entry=None,
-                capabilities=provider_capabilities(provider_name),
-                native_family=None,
-                resolution_message=f"Provider-backed model reference for {provider_name}.",
-                architecture=None,
-                model_type=None,
-                generic_model_kind=None,
-            )
 
         if reference.local_path is not None:
             return self._resolve_local_path(reference)
@@ -105,7 +83,6 @@ class ModelResolver:
                 model_path=model_root / catalog_entry.model_id,
                 repo_id=catalog_entry.repo_id,
                 revision=reference.revision,
-                provider_name=None,
                 catalog_entry=catalog_entry,
                 capabilities=capabilities_from_catalog_entry(catalog_entry),
                 native_family=_native_family_from_catalog_entry(catalog_entry),
@@ -136,10 +113,9 @@ class ModelResolver:
             model_path=None,
             repo_id=None,
             revision=reference.revision,
-            provider_name=None,
             catalog_entry=None,
             capabilities=unsupported_capabilities(
-                f"Model reference '{reference.raw}' is not a built-in alias, local directory, Hugging Face repository, or provider-prefixed reference."
+                f"Model reference '{reference.raw}' is not a built-in alias, local directory, or Hugging Face repository."
             ),
             native_family=None,
             resolution_message=(
@@ -171,7 +147,6 @@ class ModelResolver:
         source_kind: ModelSourceKind,
         repo_id: str | None,
         revision: str | None,
-        provider_name: str | None,
         catalog_entry: ModelCatalogEntry | None,
     ) -> ResolvedModel:
         """Inspect a materialized local model directory and derive runtime capabilities."""
@@ -200,7 +175,6 @@ class ModelResolver:
             model_path=model_path,
             repo_id=repo_id,
             revision=revision,
-            provider_name=provider_name,
             catalog_entry=catalog_entry,
             capabilities=capabilities,
             native_family=native_family,
@@ -220,7 +194,6 @@ class ModelResolver:
             source_kind=ModelSourceKind.LOCAL_PATH,
             repo_id=None,
             revision=None,
-            provider_name=None,
             catalog_entry=catalog_entry,
         )
 
@@ -239,7 +212,6 @@ class ModelResolver:
                 model_path=model_path,
                 repo_id=reference.identifier,
                 revision=reference.revision,
-                provider_name=None,
                 catalog_entry=catalog_entry,
                 capabilities=capabilities_from_catalog_entry(catalog_entry),
                 native_family=_native_family_from_catalog_entry(catalog_entry),
@@ -258,7 +230,6 @@ class ModelResolver:
                 source_kind=ModelSourceKind.HUGGING_FACE,
                 repo_id=reference.identifier,
                 revision=reference.revision,
-                provider_name=None,
                 catalog_entry=None,
             )
 
@@ -275,7 +246,6 @@ class ModelResolver:
             model_path=model_path,
             repo_id=reference.identifier,
             revision=reference.revision,
-            provider_name=None,
             catalog_entry=None,
             capabilities=capabilities,
             native_family=None,

@@ -209,7 +209,6 @@ def _build_capabilities(
         requires_processor=has_processor,
         supports_disk_cache=False,
         supports_local_materialization=True,
-        supports_provider_execution=False,
         supports_specialization=False,
         details=details,
     )
@@ -233,7 +232,6 @@ def _unsupported_capabilities(reason: str) -> CapabilityProfile:
         requires_processor=False,
         supports_disk_cache=False,
         supports_local_materialization=True,
-        supports_provider_execution=False,
         supports_specialization=False,
         details={"reason": reason},
     )

@@ -13,7 +13,6 @@
 
 - `--model`
 - `--backend`
-- `--provider-endpoint`
 - `--multimodal`
 - `--resume`
 - `--save`

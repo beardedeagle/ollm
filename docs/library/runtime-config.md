@@ -10,7 +10,6 @@ Use `RuntimeConfig` to describe:
 - local materialization root
 - device
 - backend override
-- provider endpoint
 - multimodal enablement
 - specialization enablement
 - cache and offload behavior

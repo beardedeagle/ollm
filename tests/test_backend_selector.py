@@ -24,7 +24,6 @@ def build_catalog_resolved_model() -> ResolvedModel:
         model_path=Path("/tmp/llama3-1B-chat"),
         repo_id="repo",
         revision=None,
-        provider_name=None,
         catalog_entry=catalog_entry,
         capabilities=CapabilityProfile(support_level=SupportLevel.OPTIMIZED),
         native_family=NativeFamily.LLAMA,
@@ -91,7 +90,6 @@ def test_backend_selector_prefers_optimized_native_for_local_native_family() -> 
         model_path=Path("/tmp/llama"),
         repo_id=None,
         revision=None,
-        provider_name=None,
         catalog_entry=None,
         capabilities=CapabilityProfile(
             support_level=SupportLevel.GENERIC,
@@ -124,7 +122,6 @@ def test_backend_selector_falls_back_to_generic_when_no_specialization_matches()
         model_path=resolved_model.model_path,
         repo_id=resolved_model.repo_id,
         revision=resolved_model.revision,
-        provider_name=resolved_model.provider_name,
         catalog_entry=resolved_model.catalog_entry,
         capabilities=resolved_model.capabilities,
         native_family=None,
@@ -136,12 +133,3 @@ def test_backend_selector_falls_back_to_generic_when_no_specialization_matches()
     plan = BackendSelector().select(resolved_model, RuntimeConfig())
     assert plan.backend_id == "transformers-generic"
     assert plan.support_level is SupportLevel.GENERIC
-
-
-def test_backend_selector_rejects_provider_backend_override_for_local_models() -> None:
-    plan = BackendSelector().select(
-        build_catalog_resolved_model(),
-        RuntimeConfig(backend="openai-compatible"),
-    )
-    assert plan.backend_id is None
-    assert "only supports openai-compatible: or lmstudio:" in plan.reason
