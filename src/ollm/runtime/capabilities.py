@@ -7,7 +7,6 @@ from ollm.runtime.catalog import ModelCatalogEntry, ModelModality
 class SupportLevel(str, Enum):
     GENERIC = "generic"
     OPTIMIZED = "optimized"
-    PROVIDER_BACKED = "provider-backed"
     UNSUPPORTED = "unsupported"
 
 
@@ -18,7 +17,6 @@ class CapabilityProfile:
     requires_processor: bool = False
     supports_disk_cache: bool = True
     supports_local_materialization: bool = False
-    supports_provider_execution: bool = False
     supports_specialization: bool = False
     details: dict[str, str] = field(default_factory=dict)
 
@@ -32,7 +30,6 @@ class CapabilityProfile:
             "requires_processor": self.requires_processor,
             "supports_disk_cache": self.supports_disk_cache,
             "supports_local_materialization": self.supports_local_materialization,
-            "supports_provider_execution": self.supports_provider_execution,
             "supports_specialization": self.supports_specialization,
             "details": dict(self.details),
         }
@@ -45,7 +42,6 @@ def capabilities_from_catalog_entry(entry: ModelCatalogEntry) -> CapabilityProfi
         requires_processor=entry.requires_processor,
         supports_disk_cache=entry.supports_disk_cache,
         supports_local_materialization=True,
-        supports_provider_execution=False,
         supports_specialization=True,
         details={"source": "catalog", "repo_id": entry.repo_id},
     )
@@ -64,28 +60,8 @@ def generic_capabilities(
         requires_processor=requires_processor,
         supports_disk_cache=supports_disk_cache,
         supports_local_materialization=True,
-        supports_provider_execution=False,
         supports_specialization=False,
         details={} if details is None else details,
-    )
-
-
-def provider_capabilities(
-    provider_name: str,
-    *,
-    modalities: tuple[ModelModality, ...] = (ModelModality.TEXT,),
-    requires_processor: bool = False,
-    details: dict[str, str] | None = None,
-) -> CapabilityProfile:
-    return CapabilityProfile(
-        support_level=SupportLevel.PROVIDER_BACKED,
-        modalities=modalities,
-        requires_processor=requires_processor,
-        supports_disk_cache=False,
-        supports_local_materialization=False,
-        supports_provider_execution=True,
-        supports_specialization=False,
-        details={"provider": provider_name, **({} if details is None else details)},
     )
 
 
@@ -96,7 +72,6 @@ def unsupported_capabilities(reason: str) -> CapabilityProfile:
         requires_processor=False,
         supports_disk_cache=False,
         supports_local_materialization=False,
-        supports_provider_execution=False,
         supports_specialization=False,
         details={"reason": reason},
     )

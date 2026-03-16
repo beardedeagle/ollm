@@ -1,19 +1,16 @@
 # oLLM
 
-oLLM is a Python library and terminal interface for local and provider-backed LLM inference. It combines:
+oLLM is a Python library and terminal interface for local LLM inference. It combines:
 
-- **optimized-native runtimes** for built-in aliases when a specialization matches
-- a **generic Transformers-backed path** for compatible local or materialized models
-- **provider-backed execution** for Ollama, Msty Local AI, LM Studio, and generic OpenAI-compatible endpoints
-- **runtime inspection** so you can see which backend will run, why it was selected, and what the current support level is
+- optimized-native runtimes for built-in aliases when a specialization matches
+- a generic Transformers-backed path for compatible local or materialized models
+- runtime inspection so you can see which backend will run, why it was selected, and what the current support level is
 
 ## Audience
 
-This documentation site is split for three common readers:
-
-- **operators and end users** who want to run prompts, inspect models, and use providers safely
-- **Python developers** who want to embed oLLM through `RuntimeClient` or the low-level optimized-native helpers
-- **contributors** who need architecture, verification, and docs-build guidance
+- operators and end users who want to run prompts and inspect local models
+- Python developers who want to embed oLLM through `RuntimeClient` or the low-level optimized-native helpers
+- contributors who need architecture, verification, and docs-build guidance
 
 ## Documentation map
 
@@ -25,7 +22,6 @@ This documentation site is split for three common readers:
 ### User Guide
 - [Terminal Interface](terminal-interface.md)
 - [Model References](guides/model-references.md)
-- [Providers](guides/providers.md)
 - [Multimodal Workflows](guides/multimodal.md)
 - [Runtime Planning and Inspection](guides/runtime-planning.md)
 - [Model Discovery](guides/models-discovery.md)
@@ -55,33 +51,27 @@ This documentation site is split for three common readers:
 
 ### Model references
 
-`--model` accepts **opaque model references**, not just a fixed built-in list. A reference may be:
+`--model` accepts opaque model references, not just a fixed built-in list. Supported forms include:
 
 - a built-in alias such as `llama3-1B-chat`
 - a Hugging Face repository ID such as `Qwen/Qwen2.5-7B-Instruct`
 - a local model directory
-- a provider-backed reference such as `ollama:llama3.2` or `openai-compatible:local-model`
-
-See [Model References](guides/model-references.md).
 
 ### Support levels
 
-oLLM reports one of four support levels:
+oLLM reports one of three active support levels:
 
 - `optimized`
 - `generic`
-- `provider-backed`
 - `unsupported`
-
-See [Terminal Interface](terminal-interface.md#support-levels).
 
 ### Safety model
 
 oLLM intentionally stays conservative in several places:
 
-- provider endpoints must be absolute `http` or `https` URLs without embedded credentials
 - the generic runtime only loads local or materialized weights from `safetensors`
-- provider feature reporting stays truthful when upstream `/models` probes do not expose enough detail to prove a capability per model
+- unsupported references fail with an explicit reason instead of silently leaving the local runtime boundary
+- planning and execution report specialization and fallback state explicitly
 
 ## Quick examples
 

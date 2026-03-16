@@ -24,25 +24,15 @@ ollm prompt --model llama3-8B-chat --plan-json
 ollm prompt --model llama3-8B-chat --backend transformers-generic --no-specialization "Summarize this file"
 ```
 
-## Provider-backed prompt
-
-```bash
-ollm prompt --model openai-compatible:local-model \
-  --provider-endpoint http://127.0.0.1:1234/v1 \
-  "Say hello"
-```
-
 ## Discover available model references
 
 ```bash
 ollm models list
 ollm models list --installed
-ollm models list --discover-provider openai-compatible --provider-endpoint http://127.0.0.1:1234/v1
 ```
 
 ## Run diagnostics
 
 ```bash
 ollm doctor --json
-ollm doctor --model ollama:llava --json
 ```

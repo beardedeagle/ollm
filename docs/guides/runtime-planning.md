@@ -35,10 +35,6 @@ A plan includes:
 
 Planning-only surfaces report the **planned** state. Actual prompt response metadata reports the finalized execution state.
 
-## Provider inspection
-
-`ollm doctor --model <provider-ref>` and `ollm models info <provider-ref>` probe provider endpoints and report executability truthfully.
-
 ## Why this matters
 
 This makes it possible to distinguish:

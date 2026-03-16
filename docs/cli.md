@@ -15,7 +15,6 @@ These commands share the same runtime-planning vocabulary:
 - `--models-dir`
 - `--device`
 - `--backend`
-- `--provider-endpoint`
 - `--multimodal`
 - `--no-specialization`
 - `--plan-json`

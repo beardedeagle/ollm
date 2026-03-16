@@ -15,14 +15,12 @@ Discovery view over:
 
 - built-in aliases
 - local materialized models
-- provider-discovered entries
 
 Examples:
 
 ```bash
 ollm models list
 ollm models list --installed
-ollm models list --discover-provider openai-compatible --provider-endpoint http://127.0.0.1:1234/v1
 ```
 
 ## `info`
@@ -31,7 +29,7 @@ Inspect a single model reference and its runtime-plan truth:
 
 ```bash
 ollm models info llama3-1B-chat --json
-ollm models info openai-compatible:local-model --provider-endpoint http://127.0.0.1:1234/v1 --json
+ollm models info Qwen/Qwen2.5-7B-Instruct --json
 ```
 
 ## `download`

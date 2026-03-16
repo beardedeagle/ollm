@@ -10,7 +10,7 @@ oLLM is organized around a resolver-and-plan model instead of a fixed allowlist 
 4. select a backend and support level
 5. refine the runtime plan through backend-specific probes
 6. load the runtime or expose the plan as inspection output
-7. execute through either a local runtime or a provider transport
+7. execute through a local runtime
 
 ## Main subsystems
 
@@ -22,4 +22,3 @@ oLLM is organized around a resolver-and-plan model instead of a fixed allowlist 
 - `RuntimeLoader`
 - `RuntimeExecutor`
 - specialization registry / matching / application
-- provider backends

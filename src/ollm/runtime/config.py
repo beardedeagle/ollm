@@ -3,7 +3,6 @@
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from urllib.parse import urlparse
 
 DEFAULT_MODEL_REFERENCE = "llama3-1B-chat"
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
@@ -20,27 +19,7 @@ def _platform_default_device() -> str:
 
 
 DEFAULT_DEVICE = _platform_default_device()
-KNOWN_BACKEND_IDS = (
-    "optimized-native",
-    "transformers-generic",
-    "ollama",
-    "openai-compatible",
-)
-
-
-def normalize_provider_endpoint(provider_endpoint: str | None) -> str | None:
-    """Validate and normalize a provider API root URL."""
-    if provider_endpoint is None:
-        return None
-    normalized_endpoint = provider_endpoint.strip().rstrip("/")
-    if not normalized_endpoint:
-        raise ValueError("--provider-endpoint cannot be empty")
-    parsed_endpoint = urlparse(normalized_endpoint)
-    if parsed_endpoint.scheme not in {"http", "https"} or not parsed_endpoint.netloc:
-        raise ValueError("--provider-endpoint must be an absolute http or https URL")
-    if parsed_endpoint.username is not None or parsed_endpoint.password is not None:
-        raise ValueError("--provider-endpoint must not include credentials")
-    return normalized_endpoint
+KNOWN_BACKEND_IDS = ("optimized-native", "transformers-generic")
 
 
 def normalize_backend(backend: str | None) -> str | None:
@@ -64,7 +43,6 @@ class RuntimeConfig:
     models_dir: Path = field(default_factory=lambda: Path("models"))
     device: str = DEFAULT_DEVICE
     backend: str | None = None
-    provider_endpoint: str | None = None
     adapter_dir: Path | None = None
     multimodal: bool = False
     use_specialization: bool = True
@@ -85,10 +63,6 @@ class RuntimeConfig:
         """Return the normalized backend override when provided."""
         return normalize_backend(self.backend)
 
-    def resolved_provider_endpoint(self) -> str | None:
-        """Return the normalized provider endpoint when provided."""
-        return normalize_provider_endpoint(self.provider_endpoint)
-
     def resolved_cache_dir(self) -> Path:
         """Return the absolute cache directory."""
         return self.cache_dir.expanduser().resolve()
@@ -105,8 +79,6 @@ class RuntimeConfig:
             raise ValueError("--model cannot be empty")
         if self.backend is not None:
             normalize_backend(self.backend)
-        if self.provider_endpoint is not None:
-            normalize_provider_endpoint(self.provider_endpoint)
         if self.verbose and self.quiet:
             raise ValueError("--verbose and --quiet cannot be used together")
         if (

@@ -18,9 +18,6 @@ Current native families:
 ### Transformers-generic
 Used for compatible local or materialized models that can run through the generic Transformers-backed path.
 
-### Provider-backed
-Used when the execution boundary is a provider endpoint.
-
 ## Specialization passes
 
 Optimized-native planning can record reusable passes such as:
@@ -51,6 +48,7 @@ When supported by the selected backend, oLLM can expose:
 - mixed GPU / CPU layer placement
 
 These controls are backend-dependent. Provider-backed runtimes do not expose the same low-level layer-placement controls as optimized-native runtimes.
+These controls are backend-dependent. The generic path does not expose the same low-level layer-placement controls as optimized-native runtimes.
 
 ## GPT-OSS `gds_export` requirement
 

@@ -30,10 +30,9 @@ This project treats docs as part of the product surface:
 - keep README and `docs/` aligned
 - keep CLI/help text and docs terminology aligned
 - avoid internal implementation-plan language in user-facing docs
-- prefer truthful statements over broad claims that cannot be proved on the current host or upstream provider contract
+- prefer truthful statements over broad claims that cannot be proved on the current host
 
 ## Testing style
 
 - prefer fakes and tiny real fixtures over mocks
-- keep provider tests isolated and explicit
 - use targeted CLI or script smokes when touching runtime-heavy flows

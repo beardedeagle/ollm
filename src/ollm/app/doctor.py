@@ -9,7 +9,7 @@ from ollm.runtime.backend_selector import BackendSelector
 from ollm.runtime.capabilities import SupportLevel
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.loader import RuntimeLoader
-from ollm.runtime.resolver import ModelResolver, ModelSourceKind
+from ollm.runtime.resolver import ModelResolver
 
 
 @dataclass(slots=True)
@@ -123,36 +123,6 @@ class DoctorService:
 
     def _check_runtime(self, runtime_config: RuntimeConfig) -> list[DoctorCheck]:
         device_checks: list[DoctorCheck] = []
-        resolved_model = self._runtime_loader.resolve(
-            runtime_config.model_reference,
-            runtime_config.resolved_models_dir(),
-        )
-        if resolved_model.source_kind is ModelSourceKind.PROVIDER:
-            device_checks.append(
-                DoctorCheck(
-                    name="runtime:requested-device",
-                    ok=True,
-                    message=(
-                        f"Provider-backed model references for {resolved_model.provider_name} ignore "
-                        f"local device '{runtime_config.device}'."
-                    ),
-                    details={
-                        "provider": ""
-                        if resolved_model.provider_name is None
-                        else resolved_model.provider_name
-                    },
-                )
-            )
-            device_checks.append(
-                DoctorCheck(
-                    name="runtime:cpu",
-                    ok=True,
-                    message="CPU runtime available",
-                    details={"threads": str(torch.get_num_threads())},
-                )
-            )
-            return device_checks
-
         cuda_available = torch.cuda.is_available()
         cuda_device_count = torch.cuda.device_count() if cuda_available else 0
         mps_backend = getattr(torch.backends, "mps", None)
@@ -256,23 +226,6 @@ class DoctorService:
         )
 
     def _check_paths(self, runtime_config: RuntimeConfig) -> list[DoctorCheck]:
-        resolved_model = self._runtime_loader.resolve(
-            runtime_config.model_reference,
-            runtime_config.resolved_models_dir(),
-        )
-        if resolved_model.source_kind is ModelSourceKind.PROVIDER:
-            return [
-                DoctorCheck(
-                    name="path:models-dir",
-                    ok=True,
-                    message="Provider-backed model references do not use the local models directory",
-                    details={
-                        "provider": ""
-                        if resolved_model.provider_name is None
-                        else resolved_model.provider_name
-                    },
-                )
-            ]
         checks: list[DoctorCheck] = []
         checks.append(
             self._path_check(
@@ -329,14 +282,10 @@ class DoctorService:
             resolution_ok = True
         elif (
             not resolution_ok
-            and execution_model.source_kind is not ModelSourceKind.PROVIDER
             and execution_model.capabilities.support_level
             is not SupportLevel.UNSUPPORTED
         ):
             resolution_ok = True
-        audio_input_support = runtime_plan.details.get("audio_input_support", "")
-        if not isinstance(audio_input_support, str):
-            audio_input_support = ""
         backend_override = runtime_config.resolved_backend() or ""
         backend_id = runtime_plan.backend_id or ""
         specialization_provider_id = runtime_plan.specialization_provider_id or ""
@@ -353,7 +302,6 @@ class DoctorService:
                         modality.value
                         for modality in runtime_plan.resolved_model.capabilities.modalities
                     ),
-                    "audio_input_support": audio_input_support,
                     "backend_override": backend_override,
                     "use_specialization": str(
                         runtime_config.use_specialization
@@ -371,22 +319,6 @@ class DoctorService:
                 },
             )
         ]
-
-        if execution_model.source_kind is ModelSourceKind.PROVIDER:
-            checks.append(
-                DoctorCheck(
-                    name="model:path",
-                    ok=True,
-                    message="Provider-backed model references do not use a local materialization path",
-                    details={
-                        "model_reference": runtime_config.model_reference,
-                        "provider": ""
-                        if execution_model.provider_name is None
-                        else execution_model.provider_name,
-                    },
-                )
-            )
-            return checks
 
         if execution_model.model_path is None:
             checks.append(

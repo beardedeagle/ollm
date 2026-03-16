@@ -14,7 +14,6 @@
 
 - `--model`
 - `--backend`
-- `--provider-endpoint`
 - `--multimodal`
 - `--image`
 - `--audio`
@@ -29,10 +28,6 @@
 ollm prompt --model llama3-8B-chat "Summarize this file"
 cat notes.txt | ollm prompt --stdin --model llama3-8B-chat
 ollm prompt --model gemma3-12B --multimodal --image ./diagram.png "Describe this image"
-ollm prompt --model openai-compatible:audio-model \
-  --provider-endpoint http://127.0.0.1:1234/v1 \
-  --multimodal \
-  --audio ./sample.wav \
-  "Describe this clip"
+ollm prompt --model voxtral-small-24B --multimodal --audio ./sample.wav "Describe this clip"
 ollm prompt --model llama3-8B-chat --plan-json
 ```

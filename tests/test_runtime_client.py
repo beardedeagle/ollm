@@ -67,9 +67,8 @@ def test_runtime_client_prompt_enables_multimodal_when_parts_require_it(
 ) -> None:
     client, loader, _ = build_client()
     runtime_config = RuntimeConfig(
-        model_reference="openai-compatible:local-model",
+        model_reference="llama3-1B-chat",
         models_dir=tmp_path / "models",
-        provider_endpoint="http://127.0.0.1:8000/v1",
         multimodal=False,
     )
 

@@ -1,4 +1,4 @@
-"""Runtime loading, planning, provider discovery, and safe fallback orchestration."""
+"""Runtime loading, planning, and safe fallback orchestration."""
 
 from collections.abc import Callable
 from dataclasses import dataclass, replace
@@ -9,8 +9,6 @@ from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
 from ollm.runtime.backend_selector import BackendSelector
 from ollm.runtime.backends.base import BackendRuntime, ExecutionBackend
 from ollm.runtime.backends.native_optimized import NativeOptimizedBackend
-from ollm.runtime.backends.openai_compatible import OpenAICompatibleBackend
-from ollm.runtime.backends.ollama import OllamaBackend
 from ollm.runtime.backends.transformers_generic import TransformersGenericBackend
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.plan import RuntimePlan, SpecializationState
@@ -51,7 +49,6 @@ class LoadedRuntime:
             requires_processor=resolved_capabilities.requires_processor,
             supports_disk_cache=self.plan.supports_disk_cache,
             supports_local_materialization=resolved_capabilities.supports_local_materialization,
-            supports_provider_execution=resolved_capabilities.supports_provider_execution,
             supports_specialization=resolved_capabilities.supports_specialization,
             details=details,
         )
@@ -77,18 +74,8 @@ class LoadedRuntime:
         return self.backend.device
 
 
-@dataclass(frozen=True, slots=True)
-class DiscoveredRuntimeModel:
-    """Provider-discovered model reference plus its resolution context."""
-
-    model_reference: str
-    provider_name: str
-    provider_endpoint: str | None
-    resolved_model: ResolvedModel
-
-
 class RuntimeLoader:
-    """Resolve, plan, discover, materialize, and load runtimes for model references."""
+    """Resolve, plan, materialize, and load runtimes for model references."""
 
     def __init__(
         self,
@@ -112,8 +99,6 @@ class RuntimeLoader:
                 specialization_registry=self._specialization_registry
             ),
             TransformersGenericBackend(),
-            OpenAICompatibleBackend(),
-            OllamaBackend(),
         )
         self._backends = {backend.backend_id: backend for backend in backend_list}
         self._snapshot_downloader = (
@@ -127,61 +112,6 @@ class RuntimeLoader:
     def discover_local_models(self, models_dir: Path) -> tuple[ResolvedModel, ...]:
         """Discover local materialized models under a models directory."""
         return self._resolver.discover_local_models(models_dir)
-
-    def discover_provider_models(
-        self,
-        models_dir: Path,
-        provider_names: tuple[str, ...],
-        provider_endpoint: str | None = None,
-        *,
-        strict: bool = False,
-    ) -> tuple[DiscoveredRuntimeModel, ...]:
-        """Discover models exposed by the configured provider backends."""
-        model_root = models_dir.expanduser().resolve()
-        discovered_models: list[DiscoveredRuntimeModel] = []
-        seen_references: set[str] = set()
-        discovery_errors: list[str] = []
-
-        for provider_name in provider_names:
-            provider_discovered = False
-            provider_handled = False
-            for backend in self._backends.values():
-                if backend.supports_provider_discovery(provider_name):
-                    provider_handled = True
-                try:
-                    discovered_entries = backend.discover_provider_models(
-                        provider_name, provider_endpoint
-                    )
-                except (RuntimeError, ValueError) as exc:
-                    if strict:
-                        discovery_errors.append(f"{provider_name}: {exc}")
-                    discovered_entries = ()
-                if not discovered_entries:
-                    continue
-                provider_discovered = True
-                for discovered_entry in discovered_entries:
-                    if discovered_entry.model_reference in seen_references:
-                        continue
-                    seen_references.add(discovered_entry.model_reference)
-                    discovered_models.append(
-                        DiscoveredRuntimeModel(
-                            model_reference=discovered_entry.model_reference,
-                            provider_name=discovered_entry.provider_name,
-                            provider_endpoint=discovered_entry.provider_endpoint,
-                            resolved_model=self.resolve(
-                                discovered_entry.model_reference, model_root
-                            ),
-                        )
-                    )
-                break
-            if strict and not provider_discovered and not provider_handled:
-                discovery_errors.append(
-                    f"{provider_name}: no discovery backend is registered"
-                )
-
-        if discovery_errors:
-            raise ValueError("; ".join(discovery_errors))
-        return tuple(discovered_models)
 
     def download(
         self, model_reference: str, models_dir: Path, force_download: bool = False
@@ -220,13 +150,13 @@ class RuntimeLoader:
         resolved_model = self.resolve(
             config.model_reference, config.resolved_models_dir()
         )
-        model_path: Path | None = None
-        execution_model = resolved_model
-        if resolved_model.source_kind is not ModelSourceKind.PROVIDER:
-            model_path = self._ensure_local_model(resolved_model, config.force_download)
-            execution_model = self._refresh_materialized_model(
-                resolved_model, model_path
-            )
+        if (
+            resolved_model.model_path is None
+            and resolved_model.capabilities.support_level is SupportLevel.UNSUPPORTED
+        ):
+            raise ValueError(resolved_model.resolution_message)
+        model_path = self._ensure_local_model(resolved_model, config.force_download)
+        execution_model = self._refresh_materialized_model(resolved_model, model_path)
 
         runtime_plan = self._refine_runtime_plan(
             self._selector.select(execution_model, config), config
@@ -262,10 +192,6 @@ class RuntimeLoader:
         resolved_model = self.resolve(
             config.model_reference, config.resolved_models_dir()
         )
-        if resolved_model.source_kind is ModelSourceKind.PROVIDER:
-            return self._refine_runtime_plan(
-                self._selector.select(resolved_model, config), config
-            )
         if resolved_model.model_path is None or not resolved_model.model_path.exists():
             return self._refine_runtime_plan(
                 self._selector.select(resolved_model, config), config
@@ -286,7 +212,6 @@ class RuntimeLoader:
             source_kind=resolved_model.source_kind,
             repo_id=resolved_model.repo_id,
             revision=resolved_model.revision,
-            provider_name=resolved_model.provider_name,
             catalog_entry=resolved_model.catalog_entry,
         )
 

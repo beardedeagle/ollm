@@ -44,14 +44,6 @@ Examples:
 /absolute/path/to/model
 ```
 
-### Provider references
-Examples:
-
-- `ollama:llama3.2`
-- `msty:llama3.2`
-- `lmstudio:qwen2.5`
-- `openai-compatible:local-model`
-
 ## Resolution outcomes
 
 oLLM resolves a model reference into one of these source kinds:
@@ -59,16 +51,6 @@ oLLM resolves a model reference into one of these source kinds:
 - `builtin`
 - `hugging-face`
 - `local-path`
-- `provider`
 - `opaque`
 
 Opaque references are parsed, but not currently resolvable to a runnable runtime or materialization path.
-
-## Availability terminology
-
-For local and provider references, oLLM intentionally uses different terms:
-
-- local refs: `materialized` / `not-materialized`
-- provider refs: `available` / `unavailable`
-
-This keeps provider executability separate from local on-disk presence.

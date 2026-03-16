@@ -35,9 +35,6 @@ class BackendSelector:
                 resolved_model, config, backend_override
             )
 
-        if resolved_model.source_kind is ModelSourceKind.PROVIDER:
-            return self._select_provider_backend(resolved_model)
-
         if config.use_specialization:
             specialization_plan = self._planned_specialization(resolved_model, config)
             if specialization_plan is not None:
@@ -58,12 +55,6 @@ class BackendSelector:
         backend_override: str,
     ) -> RuntimePlan:
         if backend_override == "optimized-native":
-            if resolved_model.source_kind is ModelSourceKind.PROVIDER:
-                return self._override_failure(
-                    resolved_model,
-                    backend_override,
-                    f"Backend override '{backend_override}' does not support provider-backed references.",
-                )
             specialization_plan = self._planned_specialization(resolved_model, config)
             if specialization_plan is not None:
                 return self._with_override_detail(specialization_plan, backend_override)
@@ -74,12 +65,6 @@ class BackendSelector:
             )
 
         if backend_override == "transformers-generic":
-            if resolved_model.source_kind is ModelSourceKind.PROVIDER:
-                return self._override_failure(
-                    resolved_model,
-                    backend_override,
-                    f"Backend override '{backend_override}' does not support provider-backed references.",
-                )
             return self._with_override_detail(
                 self._select_generic_backend(
                     resolved_model,
@@ -92,114 +77,10 @@ class BackendSelector:
                 backend_override,
             )
 
-        if backend_override == "ollama":
-            if resolved_model.provider_name in {"ollama", "msty"}:
-                return self._with_override_detail(
-                    self._provider_runtime_plan(
-                        resolved_model,
-                        backend_id="ollama",
-                        provider_name=resolved_model.provider_name or "ollama",
-                    ),
-                    backend_override,
-                )
-            return self._override_failure(
-                resolved_model,
-                backend_override,
-                f"Backend override '{backend_override}' only supports ollama: or msty: references.",
-            )
-
-        if backend_override == "openai-compatible":
-            if resolved_model.provider_name in {"openai-compatible", "lmstudio"}:
-                return self._with_override_detail(
-                    self._provider_runtime_plan(
-                        resolved_model,
-                        backend_id="openai-compatible",
-                        provider_name=resolved_model.provider_name
-                        or "openai-compatible",
-                    ),
-                    backend_override,
-                )
-            return self._override_failure(
-                resolved_model,
-                backend_override,
-                (
-                    f"Backend override '{backend_override}' only supports "
-                    "openai-compatible: or lmstudio: references."
-                ),
-            )
-
         return self._override_failure(
             resolved_model,
             backend_override,
             f"Backend override '{backend_override}' is not registered.",
-        )
-
-    def _select_provider_backend(self, resolved_model: ResolvedModel) -> RuntimePlan:
-        provider_name = resolved_model.provider_name or "provider"
-        if provider_name in {"ollama", "msty"}:
-            return self._provider_runtime_plan(
-                resolved_model,
-                backend_id="ollama",
-                provider_name=provider_name,
-            )
-        if provider_name in {"openai-compatible", "lmstudio"}:
-            return self._provider_runtime_plan(
-                resolved_model,
-                backend_id="openai-compatible",
-                provider_name=provider_name,
-            )
-        return RuntimePlan(
-            resolved_model=resolved_model,
-            backend_id=None,
-            model_path=None,
-            support_level=SupportLevel.PROVIDER_BACKED,
-            generic_model_kind=resolved_model.generic_model_kind,
-            supports_disk_cache=False,
-            supports_cpu_offload=False,
-            supports_gpu_offload=False,
-            specialization_enabled=False,
-            specialization_applied=False,
-            specialization_provider_id=None,
-            specialization_state=SpecializationState.NOT_PLANNED,
-            specialization_pass_ids=(),
-            reason=(
-                f"Provider-backed model references are not executable yet for provider "
-                f"'{resolved_model.provider_name}': {resolved_model.reference.raw}"
-            ),
-            details={
-                "source_kind": resolved_model.source_kind.value,
-                "provider_name": ""
-                if resolved_model.provider_name is None
-                else resolved_model.provider_name,
-            },
-        )
-
-    def _provider_runtime_plan(
-        self,
-        resolved_model: ResolvedModel,
-        *,
-        backend_id: str,
-        provider_name: str,
-    ) -> RuntimePlan:
-        return RuntimePlan(
-            resolved_model=resolved_model,
-            backend_id=backend_id,
-            model_path=None,
-            support_level=SupportLevel.PROVIDER_BACKED,
-            generic_model_kind=resolved_model.generic_model_kind,
-            supports_disk_cache=False,
-            supports_cpu_offload=False,
-            supports_gpu_offload=False,
-            specialization_enabled=False,
-            specialization_applied=False,
-            specialization_provider_id=None,
-            specialization_state=SpecializationState.NOT_PLANNED,
-            specialization_pass_ids=(),
-            reason=f"{provider_name} provider-backed model reference for {resolved_model.reference.raw}.",
-            details={
-                "source_kind": resolved_model.source_kind.value,
-                "provider_name": provider_name,
-            },
         )
 
     def _planned_specialization(
@@ -207,8 +88,6 @@ class BackendSelector:
         resolved_model: ResolvedModel,
         config: RuntimeConfig,
     ) -> RuntimePlan | None:
-        if resolved_model.source_kind is ModelSourceKind.PROVIDER:
-            return None
         if config.resolved_adapter_dir() is not None:
             return None
         specialization_match = self._specialization_registry.select(
@@ -329,8 +208,6 @@ class BackendSelector:
         )
 
     def _supports_generic_backend(self, resolved_model: ResolvedModel) -> bool:
-        if resolved_model.source_kind is ModelSourceKind.PROVIDER:
-            return False
         if resolved_model.generic_model_kind is not None:
             return True
         return resolved_model.is_downloadable()
@@ -345,8 +222,6 @@ class BackendSelector:
             "source_kind": resolved_model.source_kind.value,
             "backend_override": backend_override,
         }
-        if resolved_model.provider_name is not None:
-            details["provider_name"] = resolved_model.provider_name
         return RuntimePlan(
             resolved_model=resolved_model,
             backend_id=None,
