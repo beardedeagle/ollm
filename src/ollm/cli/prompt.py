@@ -14,6 +14,7 @@ from ollm.cli.common import (
     print_json,
 )
 from ollm.cli.services import CommandServices
+from ollm.runtime.config import DEFAULT_DEVICE
 from ollm.runtime.inspection import plan_json_payload
 from ollm.runtime.streaming import StreamSink
 
@@ -48,7 +49,9 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
         models_dir: Path = typer.Option(
             Path("models"), "--models-dir", help="Directory containing model data."
         ),
-        device: str = typer.Option("cuda:0", "--device", help="Torch device string."),
+        device: str = typer.Option(
+            DEFAULT_DEVICE, "--device", help="Torch device string."
+        ),
         backend: str | None = typer.Option(None, "--backend", help="Backend override."),
         provider_endpoint: str | None = typer.Option(
             None, "--provider-endpoint", help="Provider API root URL."

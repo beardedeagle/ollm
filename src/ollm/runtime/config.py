@@ -1,5 +1,6 @@
 """Runtime and generation configuration types used by the CLI and library APIs."""
 
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlparse
@@ -7,6 +8,18 @@ from urllib.parse import urlparse
 DEFAULT_MODEL_REFERENCE = "llama3-1B-chat"
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 DEFAULT_MAX_NEW_TOKENS = 500
+
+
+def _platform_default_device() -> str:
+    """Return a sensible default device based on the host platform."""
+    if sys.platform == "darwin":
+        return "mps"
+    if sys.platform in ("linux", "win32"):
+        return "cuda:0"
+    return "cpu"
+
+
+DEFAULT_DEVICE = _platform_default_device()
 KNOWN_BACKEND_IDS = (
     "optimized-native",
     "transformers-generic",
@@ -49,7 +62,7 @@ class RuntimeConfig:
 
     model_reference: str = DEFAULT_MODEL_REFERENCE
     models_dir: Path = field(default_factory=lambda: Path("models"))
-    device: str = "cuda:0"
+    device: str = DEFAULT_DEVICE
     backend: str | None = None
     provider_endpoint: str | None = None
     adapter_dir: Path | None = None
