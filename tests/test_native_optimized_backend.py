@@ -1,4 +1,6 @@
+import logging
 from pathlib import Path
+import sys
 import types
 
 import pytest
@@ -98,6 +100,54 @@ class RuntimeErrorProvider(SpecializationProvider):
     ) -> OptimizedModelArtifacts:
         del resolved_model, config, stats
         raise RuntimeError("simulated optimized load failure")
+
+
+class NoisyProvider(SpecializationProvider):
+    provider_id = "noisy-llama"
+    native_family = NativeFamily.LLAMA
+
+    def __init__(self):
+        self._module = sys.modules[__name__]
+
+    def match(
+        self, resolved_model: ResolvedModel, config: RuntimeConfig
+    ) -> SpecializationMatch | None:
+        del resolved_model, config
+        return SpecializationMatch(
+            provider_id=self.provider_id,
+            native_family=self.native_family,
+            reason="noisy match",
+            traits=SpecializationTraits(
+                supports_disk_cache=True,
+                supports_cpu_offload=False,
+                supports_gpu_offload=False,
+            ),
+        )
+
+    def load(
+        self,
+        resolved_model: ResolvedModel,
+        config: RuntimeConfig,
+        stats,
+    ) -> OptimizedModelArtifacts:
+        del resolved_model, config, stats
+        print("stdout-noise")
+        sys.stderr.write("stderr-noise")
+        logging.getLogger("transformers").warning("logger-noise")
+        return OptimizedModelArtifacts(
+            model=object(),
+            tokenizer=object(),
+            processor=None,
+            device=torch.device("cpu"),
+            stats=None,
+            supports_disk_cache=True,
+            supports_cpu_offload=False,
+            supports_gpu_offload=False,
+            print_suppression_modules=(self._module,),
+            create_cache=lambda cache_dir: None,
+            apply_cpu_offload=None,
+            apply_gpu_offload=None,
+        )
 
 
 def test_native_optimized_backend_loads_through_specialization_registry(
@@ -242,3 +292,53 @@ def test_native_optimized_backend_wraps_runtime_error_load_failures(
         NativeOptimizedBackend(specialization_registry=registry).load(
             plan, RuntimeConfig(device="cpu")
         )
+
+
+def test_native_optimized_backend_suppresses_external_load_noise_by_default(
+    tmp_path: Path, monkeypatch, capfd
+) -> None:
+    provider = NoisyProvider()
+    registry = SpecializationRegistry((provider,))
+    resolved_model = ResolvedModel(
+        reference=ModelReference.parse("llama3-1B-chat"),
+        source_kind=ModelSourceKind.BUILTIN,
+        normalized_name="llama3-1B-chat",
+        model_path=tmp_path / "llama3-1B-chat",
+        repo_id="repo",
+        revision=None,
+        catalog_entry=None,
+        capabilities=CapabilityProfile(support_level=SupportLevel.OPTIMIZED),
+        native_family=NativeFamily.LLAMA,
+        resolution_message="built-in",
+        architecture="LlamaForCausalLM",
+        model_type="llama",
+        generic_model_kind=GenericModelKind.CAUSAL_LM,
+    )
+    plan = RuntimePlan(
+        resolved_model=resolved_model,
+        backend_id="optimized-native",
+        model_path=resolved_model.model_path,
+        support_level=SupportLevel.OPTIMIZED,
+        generic_model_kind=GenericModelKind.CAUSAL_LM,
+        supports_disk_cache=True,
+        supports_cpu_offload=False,
+        supports_gpu_offload=False,
+        specialization_enabled=True,
+        specialization_applied=False,
+        specialization_provider_id="noisy-llama",
+        specialization_state=SpecializationState.PLANNED,
+        reason="stub",
+        specialization_pass_ids=(SpecializationPassId.DISK_CACHE,),
+    )
+    monkeypatch.setattr(
+        "ollm.runtime.backends.native_optimized._modules_for_provider_id",
+        lambda provider_id: (provider._module,),
+    )
+
+    NativeOptimizedBackend(specialization_registry=registry).load(
+        plan, RuntimeConfig(device="cpu")
+    )
+
+    captured = capfd.readouterr()
+    assert captured.out == ""
+    assert captured.err == ""

@@ -14,14 +14,14 @@ def validate_safe_model_artifacts(model_path: Path) -> None:
         {"pytorch_model.bin", "pytorch_model.bin.index.json"}
     ) or _contains_unsafe_weight_files(model_path):
         raise ValueError(
-            f"The generic backend refuses unsafe model artifacts in {model_path}. "
+            f"The runtime refuses unsafe model artifacts in {model_path}. "
             "Use safetensors weights only."
         )
     if not present_files.intersection(
         {SAFE_WEIGHTS_NAME, SAFE_WEIGHTS_INDEX_NAME}
     ) and not any(model_path.glob("*.safetensors")):
         raise ValueError(
-            f"The generic backend requires safetensors weights in {model_path}. "
+            f"The runtime requires safetensors weights in {model_path}. "
             "Materialize or convert the model to safetensors before loading."
         )
 

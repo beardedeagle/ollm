@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol, cast
 
@@ -126,27 +127,48 @@ class RuntimeExecutor:
 
         if hasattr(runtime.tokenizer, "apply_chat_template"):
             try:
-                input_ids = runtime.tokenizer.apply_chat_template(
+                inputs = runtime.tokenizer.apply_chat_template(
                     transformers_messages,
                     reasoning_effort="minimal",
                     tokenize=True,
                     add_generation_prompt=True,
                     return_tensors="pt",
-                    return_dict=False,
-                ).to(runtime.device)
-                return {"input_ids": input_ids}
+                    return_dict=True,
+                )
+                return _prepare_text_inputs(inputs, runtime.device)
             except (TypeError, ValueError, AttributeError):
                 try:
-                    input_ids = runtime.tokenizer.apply_chat_template(
+                    inputs = runtime.tokenizer.apply_chat_template(
                         transformers_messages,
                         tokenize=True,
                         add_generation_prompt=True,
                         return_tensors="pt",
-                        return_dict=False,
-                    ).to(runtime.device)
-                    return {"input_ids": input_ids}
+                        return_dict=True,
+                    )
+                    return _prepare_text_inputs(inputs, runtime.device)
                 except (TypeError, ValueError, AttributeError):
-                    pass
+                    try:
+                        input_ids = runtime.tokenizer.apply_chat_template(
+                            transformers_messages,
+                            reasoning_effort="minimal",
+                            tokenize=True,
+                            add_generation_prompt=True,
+                            return_tensors="pt",
+                            return_dict=False,
+                        ).to(runtime.device)
+                        return _prepare_text_inputs(input_ids, runtime.device)
+                    except (TypeError, ValueError, AttributeError):
+                        try:
+                            input_ids = runtime.tokenizer.apply_chat_template(
+                                transformers_messages,
+                                tokenize=True,
+                                add_generation_prompt=True,
+                                return_tensors="pt",
+                                return_dict=False,
+                            ).to(runtime.device)
+                            return _prepare_text_inputs(input_ids, runtime.device)
+                        except (TypeError, ValueError, AttributeError):
+                            pass
 
         rendered_prompt = _render_plain_prompt(messages)
         tokenized = runtime.tokenizer(rendered_prompt, return_tensors="pt")
@@ -261,3 +283,36 @@ def _require_tensor(value: object) -> torch.Tensor:
     if not isinstance(value, torch.Tensor):
         raise PromptExecutionError("Expected tensor-backed model inputs")
     return value
+
+
+def _prepare_text_inputs(
+    value: object, device: torch.device
+) -> dict[str, torch.Tensor | object]:
+    if isinstance(value, torch.Tensor):
+        input_ids = value.to(device)
+        return {
+            "input_ids": input_ids,
+            "attention_mask": torch.ones_like(input_ids, device=device),
+        }
+
+    if isinstance(value, Mapping):
+        prepared_inputs: dict[str, torch.Tensor | object] = {}
+        for key, item in value.items():
+            if isinstance(item, torch.Tensor):
+                prepared_inputs[str(key)] = item.to(device)
+            else:
+                prepared_inputs[str(key)] = item
+        if "input_ids" not in prepared_inputs:
+            raise PromptExecutionError(
+                "Tokenizer chat template did not return input_ids"
+            )
+        input_ids = _require_tensor(prepared_inputs["input_ids"])
+        if "attention_mask" not in prepared_inputs:
+            prepared_inputs["attention_mask"] = torch.ones_like(
+                input_ids, device=device
+            )
+        return prepared_inputs
+
+    raise PromptExecutionError(
+        "Tokenizer chat template returned unsupported model inputs"
+    )

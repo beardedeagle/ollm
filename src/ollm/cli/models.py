@@ -213,7 +213,9 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
     def download_model(
         model: str = typer.Argument(..., help="Model reference."),
         models_dir: Path = typer.Option(
-            Path("models"), "--models-dir", help="Directory to store model data."
+            Path("models"),
+            "--models-dir",
+            help="Directory to store materialized runtime artifacts.",
         ),
         force: bool = typer.Option(False, "--force", help="Force redownload."),
         no_color: bool = typer.Option(
@@ -224,7 +226,7 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             model, models_dir.expanduser().resolve(), force_download=force
         )
         console = build_console(no_color=no_color)
-        console.print(f"Materialized {model} to {model_path}")
+        console.print(f"Materialized runtime artifacts for {model} to {model_path}")
 
     @models_app.command("path")
     def model_path(

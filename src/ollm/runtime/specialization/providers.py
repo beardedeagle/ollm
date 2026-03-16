@@ -1,8 +1,10 @@
+from collections.abc import Callable
 import importlib
 import logging
 from functools import lru_cache
 from importlib import import_module
 from pathlib import Path
+from typing import Any, cast
 
 import torch
 from transformers import AutoProcessor, AutoTokenizer
@@ -38,7 +40,7 @@ def _get_attention_implementation() -> str | None:
         importlib.import_module("flash_attn")
         return "flash_attention_2"
     except ImportError:
-        LOGGER.warning(
+        LOGGER.debug(
             "flash_attention_2 is not imported. The context length will be limited."
         )
         return None
@@ -120,6 +122,45 @@ def _is_sharded_model_dir(model_path: Path) -> bool:
     )
 
 
+def _load_specialized_model(
+    loader: Callable[..., object],
+    model_path: Path,
+    *,
+    torch_dtype: torch.dtype | str,
+    attn_implementation: str | None = None,
+) -> object:
+    loader_kwargs: dict[str, object] = {
+        "pretrained_model_name_or_path": str(model_path),
+        "torch_dtype": torch_dtype,
+        "device_map": "cpu",
+        "trust_remote_code": False,
+        "use_safetensors": True,
+        "low_cpu_mem_usage": True,
+        "ignore_mismatched_sizes": True,
+    }
+    if attn_implementation is not None:
+        loader_kwargs["attn_implementation"] = attn_implementation
+    return _load_specialized_model_with_fallbacks(loader, loader_kwargs)
+
+
+def _load_specialized_model_with_fallbacks(
+    loader: Callable[..., object],
+    loader_kwargs: dict[str, object],
+) -> object:
+    try:
+        return loader(**loader_kwargs)
+    except (TypeError, ValueError) as exc:
+        if "attn_implementation" in loader_kwargs and "attn_implementation" in str(exc):
+            refined_kwargs = dict(loader_kwargs)
+            refined_kwargs.pop("attn_implementation")
+            return _load_specialized_model_with_fallbacks(loader, refined_kwargs)
+        if "low_cpu_mem_usage" in loader_kwargs and "low_cpu_mem_usage" in str(exc):
+            refined_kwargs = dict(loader_kwargs)
+            refined_kwargs.pop("low_cpu_mem_usage")
+            return _load_specialized_model_with_fallbacks(loader, refined_kwargs)
+        raise
+
+
 class LlamaSpecializationProvider(SpecializationProvider):
     provider_id = "llama-native"
     native_family = NativeFamily.LLAMA
@@ -166,14 +207,14 @@ class LlamaSpecializationProvider(SpecializationProvider):
                 SingleDenseWeightsLoader(str(model_path), device=str(device)),
             )
         setattr(module, "stats", stats)
-        model = module.MyLlamaForCausalLM.from_pretrained(
-            str(model_path),
-            torch_dtype=torch.bfloat16,
-            device_map="cpu",
-            trust_remote_code=False,
-            use_safetensors=True,
-            attn_implementation=_get_attention_implementation(),
-            low_cpu_mem_usage=True,
+        model = cast(
+            Any,
+            _load_specialized_model(
+                module.MyLlamaForCausalLM.from_pretrained,
+                model_path,
+                torch_dtype=torch.bfloat16,
+                attn_implementation=_get_attention_implementation(),
+            ),
         )
         tokenizer = AutoTokenizer.from_pretrained(
             str(model_path), trust_remote_code=False
@@ -244,14 +285,14 @@ class Gemma3SpecializationProvider(SpecializationProvider):
             if config.multimodal
             else module.MyGemma3ForCausalLM
         )
-        model = model_class.from_pretrained(
-            str(model_path),
-            torch_dtype=torch.bfloat16,
-            device_map="cpu",
-            trust_remote_code=False,
-            use_safetensors=True,
-            attn_implementation=_get_attention_implementation(),
-            low_cpu_mem_usage=True,
+        model = cast(
+            Any,
+            _load_specialized_model(
+                model_class.from_pretrained,
+                model_path,
+                torch_dtype=torch.bfloat16,
+                attn_implementation=_get_attention_implementation(),
+            ),
         )
         tokenizer = AutoTokenizer.from_pretrained(
             str(model_path), trust_remote_code=False
@@ -318,14 +359,14 @@ class Qwen3NextSpecializationProvider(SpecializationProvider):
         device = torch.device(config.device)
         setattr(module, "loader", MoEWeightsLoader(str(model_path), device=str(device)))
         setattr(module, "stats", stats)
-        model = module.MyQwen3NextForCausalLM.from_pretrained(
-            str(model_path),
-            torch_dtype=torch.bfloat16,
-            device_map="cpu",
-            trust_remote_code=False,
-            use_safetensors=True,
-            attn_implementation=_get_attention_implementation(),
-            low_cpu_mem_usage=True,
+        model = cast(
+            Any,
+            _load_specialized_model(
+                module.MyQwen3NextForCausalLM.from_pretrained,
+                model_path,
+                torch_dtype=torch.bfloat16,
+                attn_implementation=_get_attention_implementation(),
+            ),
         )
         tokenizer = AutoTokenizer.from_pretrained(
             str(model_path), trust_remote_code=False
@@ -413,13 +454,13 @@ class GptOssSpecializationProvider(SpecializationProvider):
         device = torch.device(config.device)
         setattr(module, "loader", GDSWeights(str(export_path), device=str(device)))
         setattr(module, "stats", stats)
-        model = module.MyGptOssForCausalLM.from_pretrained(
-            str(model_path),
-            torch_dtype=torch.bfloat16,
-            device_map="cpu",
-            trust_remote_code=False,
-            use_safetensors=True,
-            low_cpu_mem_usage=True,
+        model = cast(
+            Any,
+            _load_specialized_model(
+                module.MyGptOssForCausalLM.from_pretrained,
+                model_path,
+                torch_dtype=torch.bfloat16,
+            ),
         )
         tokenizer = AutoTokenizer.from_pretrained(
             str(model_path), trust_remote_code=False
@@ -487,14 +528,14 @@ class VoxtralSpecializationProvider(SpecializationProvider):
             module, "loader", DenseWeightsLoader(str(model_path), device=str(device))
         )
         setattr(module, "stats", stats)
-        model = module.MyVoxtralForConditionalGeneration.from_pretrained(
-            str(model_path),
-            torch_dtype="auto",
-            device_map="cpu",
-            trust_remote_code=False,
-            use_safetensors=True,
-            attn_implementation=_get_attention_implementation(),
-            low_cpu_mem_usage=True,
+        model = cast(
+            Any,
+            _load_specialized_model(
+                module.MyVoxtralForConditionalGeneration.from_pretrained,
+                model_path,
+                torch_dtype="auto",
+                attn_implementation=_get_attention_implementation(),
+            ),
         )
         processor = AutoProcessor.from_pretrained(
             str(model_path), trust_remote_code=False

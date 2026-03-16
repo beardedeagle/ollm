@@ -7,7 +7,12 @@ from pathlib import Path
 import pytest
 import torch
 
-from ollm.inference import AutoInference, Inference
+from ollm.inference import (
+    HF_RUNTIME_ARTIFACT_PATTERNS,
+    AutoInference,
+    Inference,
+    download_hf_snapshot,
+)
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.resolver import ModelSourceKind, NativeFamily, ResolvedModel
 from ollm.runtime.specialization import SpecializationRegistry
@@ -131,6 +136,30 @@ def test_inference_load_model_delegates_to_specialization_registry(
     assert inference.loaded_applied_specialization_pass_ids == ()
 
 
+def test_inference_load_model_does_not_prune_caller_owned_local_files(
+    tmp_path: Path,
+) -> None:
+    model_dir = tmp_path / "llama3-1B-chat"
+    model_dir.mkdir()
+    (model_dir / "config.json").write_text(
+        json.dumps({"model_type": "llama", "architectures": ["LlamaForCausalLM"]}),
+        encoding="utf-8",
+    )
+    (model_dir / "training_args.bin").write_text("leave me alone", encoding="utf-8")
+    provider = FakeProvider()
+    registry = SpecializationRegistry((provider,))
+
+    inference = Inference(
+        "llama3-1B-chat",
+        device="cpu",
+        logging=False,
+        specialization_registry=registry,
+    )
+    inference.load_model(str(model_dir))
+
+    assert (model_dir / "training_args.bin").exists()
+
+
 def test_auto_inference_preserves_local_path_reference_for_optimized_loads(
     tmp_path: Path,
 ) -> None:
@@ -212,3 +241,35 @@ def test_get_attn_implementation_does_not_write_to_stdout(capfd) -> None:
     assert get_attn_implementation() is None
     captured = capfd.readouterr()
     assert captured.out == ""
+
+
+def test_download_hf_snapshot_uses_runtime_allowlist_and_repairs_target_dir(
+    tmp_path: Path, monkeypatch
+) -> None:
+    captured_call: dict[str, object] = {}
+    target_dir = tmp_path / "model"
+    target_dir.mkdir()
+    (target_dir / "training_args.bin").write_text("unsafe", encoding="utf-8")
+
+    def fake_snapshot_download(**kwargs) -> None:
+        captured_call.update(kwargs)
+        local_dir = Path(str(kwargs["local_dir"]))
+        local_dir.mkdir(parents=True, exist_ok=True)
+        (local_dir / "config.json").write_text("{}", encoding="utf-8")
+        (local_dir / "model.safetensors").write_text("safe", encoding="utf-8")
+        (local_dir / "README.md").write_text("docs", encoding="utf-8")
+
+    monkeypatch.setattr("ollm.inference.snapshot_download", fake_snapshot_download)
+
+    download_hf_snapshot("repo/model", str(target_dir), revision="main")
+
+    assert captured_call["repo_id"] == "repo/model"
+    assert captured_call["revision"] == "main"
+    assert captured_call["local_dir"] == str(target_dir.resolve())
+    allow_patterns = captured_call["allow_patterns"]
+    assert isinstance(allow_patterns, list)
+    assert tuple(allow_patterns) == HF_RUNTIME_ARTIFACT_PATTERNS
+    assert (target_dir / "config.json").exists()
+    assert (target_dir / "model.safetensors").exists()
+    assert not (target_dir / "training_args.bin").exists()
+    assert not (target_dir / "README.md").exists()

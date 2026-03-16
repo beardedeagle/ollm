@@ -121,7 +121,7 @@ ollm prompt --model llama3-8B-chat --backend transformers-generic --no-specializ
 ollm prompt --model llama3-8B-chat --plan-json
 ```
 
-`ollm doctor` reports missing optional extras, runtime availability, path issues, and model readiness. `ollm models` provides `list`, `info`, `download`, and `path` subcommands for both built-in aliases and arbitrary model references. `ollm models list` acts as a discovery view over built-in aliases and local materialized models under `--models-dir`.
+`ollm doctor` reports missing optional extras, runtime availability, path issues, and model readiness. `ollm models` provides `list`, `info`, `download`, and `path` subcommands for both built-in aliases and arbitrary model references. `ollm models download` materializes only runtime-critical local artifacts rather than a full Hugging Face repository snapshot, and `ollm models list` acts as a discovery view over built-in aliases and local materialized models under `--models-dir`.
 
 Runtime selection and inspection controls:
 - `--backend` lets you force one of `optimized-native` or `transformers-generic` when that backend is valid for the resolved model reference
@@ -278,6 +278,7 @@ The harness is designed to stay truthful on hardware-constrained machines:
 - it always measures specialization planner overhead without loading model weights
 - it measures the extra planning cost when no specialization applies by using a tiny local T5 fixture created on the fly
 - it reports a runtime-comparison matrix for the current optimized families, using any locally materialized built-in aliases it finds and marking missing families as unavailable instead of fabricating results
+- runtime comparisons now include end-to-end latency plus load/generation breakdowns, generated output tokens, output tokens/sec, process RSS snapshots, and accelerator memory snapshots when the runtime exposes them
 - it also benchmarks the requested `--model-reference` directly and reports `comparison_available: false` when the optimized path cannot execute on the current host
 
 Only the runtime comparison loads requested model weights. The planning and no-specialization fallback measurements are low-RAM and safe to run on development laptops.
