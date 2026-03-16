@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Local and provider-backed LLM inference for large-context workloads">
+        <meta name="description" content="Local LLM inference for large-context workloads">
       
       
       
@@ -623,8 +623,6 @@
       
         
       
-        
-      
     
     
     
@@ -713,34 +711,6 @@
     
   
     Model References
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/providers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Providers
   
 
     
@@ -1338,8 +1308,6 @@
       
         
       
-        
-      
     
     
     
@@ -1484,34 +1452,6 @@
     
   
     Specialization
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/provider-backends/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Provider Backends
   
 
     
@@ -2235,20 +2175,18 @@ without loading model weights.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/ollm/runtime/resolver.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">22</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">21</span>
+<span class="normal">22</span>
 <span class="normal">23</span>
 <span class="normal">24</span>
 <span class="normal">25</span>
 <span class="normal">26</span>
-<span class="normal">27</span>
-<span class="normal">28</span>
-<span class="normal">29</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ModelSourceKind</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+<span class="normal">27</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ModelSourceKind</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Describe where a model reference originates from.&quot;&quot;&quot;</span>
 
     <span class="n">BUILTIN</span> <span class="o">=</span> <span class="s2">&quot;builtin&quot;</span>
     <span class="n">HUGGING_FACE</span> <span class="o">=</span> <span class="s2">&quot;hugging-face&quot;</span>
     <span class="n">LOCAL_PATH</span> <span class="o">=</span> <span class="s2">&quot;local-path&quot;</span>
-    <span class="n">PROVIDER</span> <span class="o">=</span> <span class="s2">&quot;provider&quot;</span>
     <span class="n">OPAQUE</span> <span class="o">=</span> <span class="s2">&quot;opaque&quot;</span>
 </code></pre></div></td></tr></table></div>
               </details>
@@ -2296,14 +2234,14 @@ without loading model weights.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/ollm/runtime/resolver.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">32</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">30</span>
+<span class="normal">31</span>
+<span class="normal">32</span>
 <span class="normal">33</span>
 <span class="normal">34</span>
 <span class="normal">35</span>
 <span class="normal">36</span>
-<span class="normal">37</span>
-<span class="normal">38</span>
-<span class="normal">39</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">NativeFamily</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
+<span class="normal">37</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">NativeFamily</span><span class="p">(</span><span class="nb">str</span><span class="p">,</span> <span class="n">Enum</span><span class="p">):</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Known optimized-native model families.&quot;&quot;&quot;</span>
 
     <span class="n">LLAMA</span> <span class="o">=</span> <span class="s2">&quot;llama&quot;</span>
@@ -2355,7 +2293,9 @@ without loading model weights.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/ollm/runtime/resolver.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">42</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
 <span class="normal">43</span>
 <span class="normal">44</span>
 <span class="normal">45</span>
@@ -2373,10 +2313,7 @@ without loading model weights.</p>
 <span class="normal">57</span>
 <span class="normal">58</span>
 <span class="normal">59</span>
-<span class="normal">60</span>
-<span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="normal">60</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ResolvedModel</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolved model metadata used by planning, inspection, and loading.&quot;&quot;&quot;</span>
 
@@ -2386,7 +2323,6 @@ without loading model weights.</p>
     <span class="n">model_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span>
     <span class="n">repo_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
     <span class="n">revision</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
-    <span class="n">provider_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span>
     <span class="n">catalog_entry</span><span class="p">:</span> <span class="n">ModelCatalogEntry</span> <span class="o">|</span> <span class="kc">None</span>
     <span class="n">capabilities</span><span class="p">:</span> <span class="n">CapabilityProfile</span>
     <span class="n">native_family</span><span class="p">:</span> <span class="n">NativeFamily</span> <span class="o">|</span> <span class="kc">None</span>
@@ -2432,9 +2368,9 @@ without loading model weights.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/runtime/resolver.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">is_downloadable</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">is_downloadable</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether the resolved model can be materialized locally.&quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">repo_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 </code></pre></div></td></tr></table></div>
@@ -2460,7 +2396,7 @@ without loading model weights.</p>
 
 
 
-        <p>Resolve model references into built-in, local, Hugging Face, or provider-backed forms.</p>
+        <p>Resolve model references into built-in, local, or Hugging Face forms.</p>
 
 
 
@@ -2471,7 +2407,10 @@ without loading model weights.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/ollm/runtime/resolver.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 66</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 63</span>
+<span class="normal"> 64</span>
+<span class="normal"> 65</span>
+<span class="normal"> 66</span>
 <span class="normal"> 67</span>
 <span class="normal"> 68</span>
 <span class="normal"> 69</span>
@@ -2661,38 +2600,8 @@ without loading model weights.</p>
 <span class="normal">253</span>
 <span class="normal">254</span>
 <span class="normal">255</span>
-<span class="normal">256</span>
-<span class="normal">257</span>
-<span class="normal">258</span>
-<span class="normal">259</span>
-<span class="normal">260</span>
-<span class="normal">261</span>
-<span class="normal">262</span>
-<span class="normal">263</span>
-<span class="normal">264</span>
-<span class="normal">265</span>
-<span class="normal">266</span>
-<span class="normal">267</span>
-<span class="normal">268</span>
-<span class="normal">269</span>
-<span class="normal">270</span>
-<span class="normal">271</span>
-<span class="normal">272</span>
-<span class="normal">273</span>
-<span class="normal">274</span>
-<span class="normal">275</span>
-<span class="normal">276</span>
-<span class="normal">277</span>
-<span class="normal">278</span>
-<span class="normal">279</span>
-<span class="normal">280</span>
-<span class="normal">281</span>
-<span class="normal">282</span>
-<span class="normal">283</span>
-<span class="normal">284</span>
-<span class="normal">285</span>
-<span class="normal">286</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ModelResolver</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve model references into built-in, local, Hugging Face, or provider-backed forms.&quot;&quot;&quot;</span>
+<span class="normal">256</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ModelResolver</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve model references into built-in, local, or Hugging Face forms.&quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">capability_discovery</span><span class="p">:</span> <span class="n">CapabilityDiscovery</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_capability_discovery</span> <span class="o">=</span> <span class="n">capability_discovery</span> <span class="ow">or</span> <span class="n">CapabilityDiscovery</span><span class="p">()</span>
@@ -2701,25 +2610,6 @@ without loading model weights.</p>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve a raw model reference without loading model weights.&quot;&quot;&quot;</span>
         <span class="n">reference</span> <span class="o">=</span> <span class="n">ModelReference</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">raw_reference</span><span class="p">)</span>
         <span class="n">model_root</span> <span class="o">=</span> <span class="n">models_dir</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
-
-        <span class="k">if</span> <span class="n">reference</span><span class="o">.</span><span class="n">has_provider_scheme</span><span class="p">():</span>
-            <span class="n">provider_name</span> <span class="o">=</span> <span class="n">reference</span><span class="o">.</span><span class="n">scheme</span> <span class="ow">or</span> <span class="s2">&quot;provider&quot;</span>
-            <span class="k">return</span> <span class="n">ResolvedModel</span><span class="p">(</span>
-                <span class="n">reference</span><span class="o">=</span><span class="n">reference</span><span class="p">,</span>
-                <span class="n">source_kind</span><span class="o">=</span><span class="n">ModelSourceKind</span><span class="o">.</span><span class="n">PROVIDER</span><span class="p">,</span>
-                <span class="n">normalized_name</span><span class="o">=</span><span class="n">reference</span><span class="o">.</span><span class="n">identifier</span><span class="p">,</span>
-                <span class="n">model_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">repo_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">revision</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">provider_name</span><span class="o">=</span><span class="n">provider_name</span><span class="p">,</span>
-                <span class="n">catalog_entry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">capabilities</span><span class="o">=</span><span class="n">provider_capabilities</span><span class="p">(</span><span class="n">provider_name</span><span class="p">),</span>
-                <span class="n">native_family</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">resolution_message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Provider-backed model reference for </span><span class="si">{</span><span class="n">provider_name</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">,</span>
-                <span class="n">architecture</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">model_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-                <span class="n">generic_model_kind</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="p">)</span>
 
         <span class="k">if</span> <span class="n">reference</span><span class="o">.</span><span class="n">local_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_local_path</span><span class="p">(</span><span class="n">reference</span><span class="p">)</span>
@@ -2733,7 +2623,6 @@ without loading model weights.</p>
                 <span class="n">model_path</span><span class="o">=</span><span class="n">model_root</span> <span class="o">/</span> <span class="n">catalog_entry</span><span class="o">.</span><span class="n">model_id</span><span class="p">,</span>
                 <span class="n">repo_id</span><span class="o">=</span><span class="n">catalog_entry</span><span class="o">.</span><span class="n">repo_id</span><span class="p">,</span>
                 <span class="n">revision</span><span class="o">=</span><span class="n">reference</span><span class="o">.</span><span class="n">revision</span><span class="p">,</span>
-                <span class="n">provider_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">catalog_entry</span><span class="o">=</span><span class="n">catalog_entry</span><span class="p">,</span>
                 <span class="n">capabilities</span><span class="o">=</span><span class="n">capabilities_from_catalog_entry</span><span class="p">(</span><span class="n">catalog_entry</span><span class="p">),</span>
                 <span class="n">native_family</span><span class="o">=</span><span class="n">_native_family_from_catalog_entry</span><span class="p">(</span><span class="n">catalog_entry</span><span class="p">),</span>
@@ -2764,10 +2653,9 @@ without loading model weights.</p>
             <span class="n">model_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">repo_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">revision</span><span class="o">=</span><span class="n">reference</span><span class="o">.</span><span class="n">revision</span><span class="p">,</span>
-            <span class="n">provider_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">catalog_entry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">capabilities</span><span class="o">=</span><span class="n">unsupported_capabilities</span><span class="p">(</span>
-                <span class="sa">f</span><span class="s2">&quot;Model reference &#39;</span><span class="si">{</span><span class="n">reference</span><span class="o">.</span><span class="n">raw</span><span class="si">}</span><span class="s2">&#39; is not a built-in alias, local directory, Hugging Face repository, or provider-prefixed reference.&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;Model reference &#39;</span><span class="si">{</span><span class="n">reference</span><span class="o">.</span><span class="n">raw</span><span class="si">}</span><span class="s2">&#39; is not a built-in alias, local directory, or Hugging Face repository.&quot;</span>
             <span class="p">),</span>
             <span class="n">native_family</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">resolution_message</span><span class="o">=</span><span class="p">(</span>
@@ -2799,7 +2687,6 @@ without loading model weights.</p>
         <span class="n">source_kind</span><span class="p">:</span> <span class="n">ModelSourceKind</span><span class="p">,</span>
         <span class="n">repo_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">revision</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">provider_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">catalog_entry</span><span class="p">:</span> <span class="n">ModelCatalogEntry</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedModel</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Inspect a materialized local model directory and derive runtime capabilities.&quot;&quot;&quot;</span>
@@ -2828,7 +2715,6 @@ without loading model weights.</p>
             <span class="n">model_path</span><span class="o">=</span><span class="n">model_path</span><span class="p">,</span>
             <span class="n">repo_id</span><span class="o">=</span><span class="n">repo_id</span><span class="p">,</span>
             <span class="n">revision</span><span class="o">=</span><span class="n">revision</span><span class="p">,</span>
-            <span class="n">provider_name</span><span class="o">=</span><span class="n">provider_name</span><span class="p">,</span>
             <span class="n">catalog_entry</span><span class="o">=</span><span class="n">catalog_entry</span><span class="p">,</span>
             <span class="n">capabilities</span><span class="o">=</span><span class="n">capabilities</span><span class="p">,</span>
             <span class="n">native_family</span><span class="o">=</span><span class="n">native_family</span><span class="p">,</span>
@@ -2848,7 +2734,6 @@ without loading model weights.</p>
             <span class="n">source_kind</span><span class="o">=</span><span class="n">ModelSourceKind</span><span class="o">.</span><span class="n">LOCAL_PATH</span><span class="p">,</span>
             <span class="n">repo_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">revision</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="n">provider_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">catalog_entry</span><span class="o">=</span><span class="n">catalog_entry</span><span class="p">,</span>
         <span class="p">)</span>
 
@@ -2867,7 +2752,6 @@ without loading model weights.</p>
                 <span class="n">model_path</span><span class="o">=</span><span class="n">model_path</span><span class="p">,</span>
                 <span class="n">repo_id</span><span class="o">=</span><span class="n">reference</span><span class="o">.</span><span class="n">identifier</span><span class="p">,</span>
                 <span class="n">revision</span><span class="o">=</span><span class="n">reference</span><span class="o">.</span><span class="n">revision</span><span class="p">,</span>
-                <span class="n">provider_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">catalog_entry</span><span class="o">=</span><span class="n">catalog_entry</span><span class="p">,</span>
                 <span class="n">capabilities</span><span class="o">=</span><span class="n">capabilities_from_catalog_entry</span><span class="p">(</span><span class="n">catalog_entry</span><span class="p">),</span>
                 <span class="n">native_family</span><span class="o">=</span><span class="n">_native_family_from_catalog_entry</span><span class="p">(</span><span class="n">catalog_entry</span><span class="p">),</span>
@@ -2886,7 +2770,6 @@ without loading model weights.</p>
                 <span class="n">source_kind</span><span class="o">=</span><span class="n">ModelSourceKind</span><span class="o">.</span><span class="n">HUGGING_FACE</span><span class="p">,</span>
                 <span class="n">repo_id</span><span class="o">=</span><span class="n">reference</span><span class="o">.</span><span class="n">identifier</span><span class="p">,</span>
                 <span class="n">revision</span><span class="o">=</span><span class="n">reference</span><span class="o">.</span><span class="n">revision</span><span class="p">,</span>
-                <span class="n">provider_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
                 <span class="n">catalog_entry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="p">)</span>
 
@@ -2903,7 +2786,6 @@ without loading model weights.</p>
             <span class="n">model_path</span><span class="o">=</span><span class="n">model_path</span><span class="p">,</span>
             <span class="n">repo_id</span><span class="o">=</span><span class="n">reference</span><span class="o">.</span><span class="n">identifier</span><span class="p">,</span>
             <span class="n">revision</span><span class="o">=</span><span class="n">reference</span><span class="o">.</span><span class="n">revision</span><span class="p">,</span>
-            <span class="n">provider_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">catalog_entry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">capabilities</span><span class="o">=</span><span class="n">capabilities</span><span class="p">,</span>
             <span class="n">native_family</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
@@ -2948,7 +2830,10 @@ without loading model weights.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/runtime/resolver.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 72</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 69</span>
+<span class="normal"> 70</span>
+<span class="normal"> 71</span>
+<span class="normal"> 72</span>
 <span class="normal"> 73</span>
 <span class="normal"> 74</span>
 <span class="normal"> 75</span>
@@ -3003,53 +2888,10 @@ without loading model weights.</p>
 <span class="normal">124</span>
 <span class="normal">125</span>
 <span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_reference</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedModel</span><span class="p">:</span>
+<span class="normal">127</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_reference</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedModel</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a raw model reference without loading model weights.&quot;&quot;&quot;</span>
     <span class="n">reference</span> <span class="o">=</span> <span class="n">ModelReference</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">raw_reference</span><span class="p">)</span>
     <span class="n">model_root</span> <span class="o">=</span> <span class="n">models_dir</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
-
-    <span class="k">if</span> <span class="n">reference</span><span class="o">.</span><span class="n">has_provider_scheme</span><span class="p">():</span>
-        <span class="n">provider_name</span> <span class="o">=</span> <span class="n">reference</span><span class="o">.</span><span class="n">scheme</span> <span class="ow">or</span> <span class="s2">&quot;provider&quot;</span>
-        <span class="k">return</span> <span class="n">ResolvedModel</span><span class="p">(</span>
-            <span class="n">reference</span><span class="o">=</span><span class="n">reference</span><span class="p">,</span>
-            <span class="n">source_kind</span><span class="o">=</span><span class="n">ModelSourceKind</span><span class="o">.</span><span class="n">PROVIDER</span><span class="p">,</span>
-            <span class="n">normalized_name</span><span class="o">=</span><span class="n">reference</span><span class="o">.</span><span class="n">identifier</span><span class="p">,</span>
-            <span class="n">model_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="n">repo_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="n">revision</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="n">provider_name</span><span class="o">=</span><span class="n">provider_name</span><span class="p">,</span>
-            <span class="n">catalog_entry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="n">capabilities</span><span class="o">=</span><span class="n">provider_capabilities</span><span class="p">(</span><span class="n">provider_name</span><span class="p">),</span>
-            <span class="n">native_family</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="n">resolution_message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Provider-backed model reference for </span><span class="si">{</span><span class="n">provider_name</span><span class="si">}</span><span class="s2">.&quot;</span><span class="p">,</span>
-            <span class="n">architecture</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="n">model_type</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-            <span class="n">generic_model_kind</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
-        <span class="p">)</span>
 
     <span class="k">if</span> <span class="n">reference</span><span class="o">.</span><span class="n">local_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolve_local_path</span><span class="p">(</span><span class="n">reference</span><span class="p">)</span>
@@ -3063,7 +2905,6 @@ without loading model weights.</p>
             <span class="n">model_path</span><span class="o">=</span><span class="n">model_root</span> <span class="o">/</span> <span class="n">catalog_entry</span><span class="o">.</span><span class="n">model_id</span><span class="p">,</span>
             <span class="n">repo_id</span><span class="o">=</span><span class="n">catalog_entry</span><span class="o">.</span><span class="n">repo_id</span><span class="p">,</span>
             <span class="n">revision</span><span class="o">=</span><span class="n">reference</span><span class="o">.</span><span class="n">revision</span><span class="p">,</span>
-            <span class="n">provider_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
             <span class="n">catalog_entry</span><span class="o">=</span><span class="n">catalog_entry</span><span class="p">,</span>
             <span class="n">capabilities</span><span class="o">=</span><span class="n">capabilities_from_catalog_entry</span><span class="p">(</span><span class="n">catalog_entry</span><span class="p">),</span>
             <span class="n">native_family</span><span class="o">=</span><span class="n">_native_family_from_catalog_entry</span><span class="p">(</span><span class="n">catalog_entry</span><span class="p">),</span>
@@ -3094,10 +2935,9 @@ without loading model weights.</p>
         <span class="n">model_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">repo_id</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">revision</span><span class="o">=</span><span class="n">reference</span><span class="o">.</span><span class="n">revision</span><span class="p">,</span>
-        <span class="n">provider_name</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">catalog_entry</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">capabilities</span><span class="o">=</span><span class="n">unsupported_capabilities</span><span class="p">(</span>
-            <span class="sa">f</span><span class="s2">&quot;Model reference &#39;</span><span class="si">{</span><span class="n">reference</span><span class="o">.</span><span class="n">raw</span><span class="si">}</span><span class="s2">&#39; is not a built-in alias, local directory, Hugging Face repository, or provider-prefixed reference.&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot;Model reference &#39;</span><span class="si">{</span><span class="n">reference</span><span class="o">.</span><span class="n">raw</span><span class="si">}</span><span class="s2">&#39; is not a built-in alias, local directory, or Hugging Face repository.&quot;</span>
         <span class="p">),</span>
         <span class="n">native_family</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
         <span class="n">resolution_message</span><span class="o">=</span><span class="p">(</span>
@@ -3133,18 +2973,18 @@ without loading model weights.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/runtime/resolver.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span>
-<span class="normal">164</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">discover_local_models</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ResolvedModel</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">discover_local_models</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ResolvedModel</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Inspect local materialized model directories under a models root.&quot;&quot;&quot;</span>
     <span class="n">model_root</span> <span class="o">=</span> <span class="n">models_dir</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">model_root</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">model_root</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
@@ -3177,7 +3017,6 @@ without loading model weights.</p>
     <span class="n">source_kind</span><span class="p">:</span> <span class="n"><a class="autorefs autorefs-internal" title="ollm.runtime.resolver.ModelSourceKind" href="#ollm.runtime.resolver.ModelSourceKind">ModelSourceKind</a></span><span class="p">,</span>
     <span class="n">repo_id</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">revision</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">provider_name</span><span class="p">:</span> <span class="n"><span title="str">str</span></span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">catalog_entry</span><span class="p">:</span> <span class="n"><span title="ollm.runtime.catalog.ModelCatalogEntry">ModelCatalogEntry</span></span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n"><a class="autorefs autorefs-internal" title="ollm.runtime.resolver.ResolvedModel" href="#ollm.runtime.resolver.ResolvedModel">ResolvedModel</a></span>
 </code></pre></div>
@@ -3189,7 +3028,31 @@ without loading model weights.</p>
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/runtime/resolver.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">166</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
 <span class="normal">167</span>
 <span class="normal">168</span>
 <span class="normal">169</span>
@@ -3208,33 +3071,7 @@ without loading model weights.</p>
 <span class="normal">182</span>
 <span class="normal">183</span>
 <span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span>
-<span class="normal">187</span>
-<span class="normal">188</span>
-<span class="normal">189</span>
-<span class="normal">190</span>
-<span class="normal">191</span>
-<span class="normal">192</span>
-<span class="normal">193</span>
-<span class="normal">194</span>
-<span class="normal">195</span>
-<span class="normal">196</span>
-<span class="normal">197</span>
-<span class="normal">198</span>
-<span class="normal">199</span>
-<span class="normal">200</span>
-<span class="normal">201</span>
-<span class="normal">202</span>
-<span class="normal">203</span>
-<span class="normal">204</span>
-<span class="normal">205</span>
-<span class="normal">206</span>
-<span class="normal">207</span>
-<span class="normal">208</span>
-<span class="normal">209</span>
-<span class="normal">210</span>
-<span class="normal">211</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">inspect_materialized_model</span><span class="p">(</span>
+<span class="normal">185</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">inspect_materialized_model</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">reference</span><span class="p">:</span> <span class="n">ModelReference</span><span class="p">,</span>
     <span class="n">model_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
@@ -3242,7 +3079,6 @@ without loading model weights.</p>
     <span class="n">source_kind</span><span class="p">:</span> <span class="n">ModelSourceKind</span><span class="p">,</span>
     <span class="n">repo_id</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">revision</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
-    <span class="n">provider_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">catalog_entry</span><span class="p">:</span> <span class="n">ModelCatalogEntry</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedModel</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Inspect a materialized local model directory and derive runtime capabilities.&quot;&quot;&quot;</span>
@@ -3271,7 +3107,6 @@ without loading model weights.</p>
         <span class="n">model_path</span><span class="o">=</span><span class="n">model_path</span><span class="p">,</span>
         <span class="n">repo_id</span><span class="o">=</span><span class="n">repo_id</span><span class="p">,</span>
         <span class="n">revision</span><span class="o">=</span><span class="n">revision</span><span class="p">,</span>
-        <span class="n">provider_name</span><span class="o">=</span><span class="n">provider_name</span><span class="p">,</span>
         <span class="n">catalog_entry</span><span class="o">=</span><span class="n">catalog_entry</span><span class="p">,</span>
         <span class="n">capabilities</span><span class="o">=</span><span class="n">capabilities</span><span class="p">,</span>
         <span class="n">native_family</span><span class="o">=</span><span class="n">native_family</span><span class="p">,</span>

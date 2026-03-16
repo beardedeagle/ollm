@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Local and provider-backed LLM inference for large-context workloads">
+        <meta name="description" content="Local LLM inference for large-context workloads">
       
       
       
@@ -625,8 +625,6 @@
       
         
       
-        
-      
     
     
     
@@ -718,34 +716,6 @@
     
   
     Model References
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../providers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Providers
   
 
     
@@ -1436,8 +1406,6 @@
       
         
       
-        
-      
     
     
     
@@ -1582,34 +1550,6 @@
     
   
     Specialization
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/provider-backends/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Provider Backends
   
 
     
@@ -2126,24 +2066,19 @@
 <ul>
 <li><code>built-in</code> — shipped aliases</li>
 <li><code>discovered-local</code> — local materialized models found under <code>--models-dir</code></li>
-<li><code>discovered-provider</code> — entries returned by provider discovery</li>
 </ul>
 <h2 id="availability-terms">Availability terms<a class="headerlink" href="#availability-terms" title="Permanent link">&para;</a></h2>
-<p>For local entries:
-- <code>materialized</code>
-- <code>not-materialized</code></p>
-<p>For provider entries:
-- <code>available</code>
-- <code>unavailable</code></p>
-<p>This keeps on-disk presence separate from provider reachability.</p>
+<ul>
+<li><code>materialized</code></li>
+<li><code>not-materialized</code></li>
+</ul>
 <h2 id="installed-filter">Installed filter<a class="headerlink" href="#installed-filter" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code>ollm<span class="w"> </span>models<span class="w"> </span>list<span class="w"> </span>--installed
 </code></pre></div>
-<p><code>--installed</code> filters to <strong>materialized local entries only</strong>. Provider references are never treated as installed.</p>
+<p><code>--installed</code> filters to materialized local entries only.</p>
 <h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code>ollm<span class="w"> </span>models<span class="w"> </span>list<span class="w"> </span>--json
-ollm<span class="w"> </span>models<span class="w"> </span>list<span class="w"> </span>--discover-provider<span class="w"> </span>ollama<span class="w"> </span>--json
-ollm<span class="w"> </span>models<span class="w"> </span>list<span class="w"> </span>--discover-provider<span class="w"> </span>openai-compatible<span class="w"> </span>--provider-endpoint<span class="w"> </span>http://127.0.0.1:1234/v1<span class="w"> </span>--json
+ollm<span class="w"> </span>models<span class="w"> </span>list<span class="w"> </span>--installed
 </code></pre></div>
 
 

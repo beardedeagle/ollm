@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Local and provider-backed LLM inference for large-context workloads">
+        <meta name="description" content="Local LLM inference for large-context workloads">
       
       
       
@@ -641,17 +641,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#provider-endpoints" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provider endpoints
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -704,8 +693,6 @@
   
     
     
-      
-        
       
         
       
@@ -811,34 +798,6 @@
     
   
     Model References
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../providers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Providers
   
 
     
@@ -1436,8 +1395,6 @@
       
         
       
-        
-      
     
     
     
@@ -1582,34 +1539,6 @@
     
   
     Specialization
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/provider-backends/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Provider Backends
   
 
     
@@ -2083,17 +2012,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#provider-endpoints" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provider endpoints
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -2129,7 +2047,6 @@
 <li><code>models_dir</code> — root for local materialized models</li>
 <li><code>device</code> — torch device such as <code>cpu</code> or <code>cuda:0</code></li>
 <li><code>backend</code> — optional backend override</li>
-<li><code>provider_endpoint</code> — provider API root URL when required</li>
 <li><code>multimodal</code> — enable multimodal planning when non-text inputs are expected</li>
 <li><code>use_specialization</code> — whether optimized-native specialization is allowed</li>
 <li><code>cache_dir</code> / <code>use_cache</code> — disk KV cache controls</li>
@@ -2150,8 +2067,6 @@
 <ul>
 <li><code>optimized-native</code></li>
 <li><code>transformers-generic</code></li>
-<li><code>ollama</code></li>
-<li><code>openai-compatible</code></li>
 </ul>
 <p>The override is validated against the resolved model reference. If the backend is incompatible, oLLM fails with a structured error instead of silently switching to something else.</p>
 <h2 id="specialization-toggle">Specialization toggle<a class="headerlink" href="#specialization-toggle" title="Permanent link">&para;</a></h2>
@@ -2160,19 +2075,6 @@
 <ul>
 <li><code>--backend optimized-native</code> cannot be combined with <code>--no-specialization</code></li>
 </ul>
-<h2 id="provider-endpoints">Provider endpoints<a class="headerlink" href="#provider-endpoints" title="Permanent link">&para;</a></h2>
-<p>Provider endpoints must be:</p>
-<ul>
-<li>absolute <code>http</code> or <code>https</code> URLs</li>
-<li>credential-free in the URL itself</li>
-</ul>
-<p>Examples:</p>
-<div class="language-bash highlight"><pre><span></span><code><span class="c1"># good</span>
---provider-endpoint<span class="w"> </span>http://127.0.0.1:1234/v1
-
-<span class="c1"># rejected</span>
---provider-endpoint<span class="w"> </span>https://user:pass@example.test/v1
-</code></pre></div>
 
 
 

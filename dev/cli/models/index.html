@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Local and provider-backed LLM inference for large-context workloads">
+        <meta name="description" content="Local LLM inference for large-context workloads">
       
       
       
@@ -623,8 +623,6 @@
       
         
       
-        
-      
     
     
     
@@ -713,34 +711,6 @@
     
   
     Model References
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/providers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Providers
   
 
     
@@ -1447,8 +1417,6 @@
       
         
       
-        
-      
     
     
     
@@ -1593,34 +1561,6 @@
     
   
     Specialization
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/provider-backends/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Provider Backends
   
 
     
@@ -2156,17 +2096,15 @@
 <ul>
 <li>built-in aliases</li>
 <li>local materialized models</li>
-<li>provider-discovered entries</li>
 </ul>
 <p>Examples:</p>
 <div class="language-bash highlight"><pre><span></span><code>ollm<span class="w"> </span>models<span class="w"> </span>list
 ollm<span class="w"> </span>models<span class="w"> </span>list<span class="w"> </span>--installed
-ollm<span class="w"> </span>models<span class="w"> </span>list<span class="w"> </span>--discover-provider<span class="w"> </span>openai-compatible<span class="w"> </span>--provider-endpoint<span class="w"> </span>http://127.0.0.1:1234/v1
 </code></pre></div>
 <h2 id="info"><code>info</code><a class="headerlink" href="#info" title="Permanent link">&para;</a></h2>
 <p>Inspect a single model reference and its runtime-plan truth:</p>
 <div class="language-bash highlight"><pre><span></span><code>ollm<span class="w"> </span>models<span class="w"> </span>info<span class="w"> </span>llama3-1B-chat<span class="w"> </span>--json
-ollm<span class="w"> </span>models<span class="w"> </span>info<span class="w"> </span>openai-compatible:local-model<span class="w"> </span>--provider-endpoint<span class="w"> </span>http://127.0.0.1:1234/v1<span class="w"> </span>--json
+ollm<span class="w"> </span>models<span class="w"> </span>info<span class="w"> </span>Qwen/Qwen2.5-7B-Instruct<span class="w"> </span>--json
 </code></pre></div>
 <h2 id="download"><code>download</code><a class="headerlink" href="#download" title="Permanent link">&para;</a></h2>
 <p>Materialize a downloadable model reference locally:</p>

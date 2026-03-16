@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Local and provider-backed LLM inference for large-context workloads">
+        <meta name="description" content="Local LLM inference for large-context workloads">
       
       
       
@@ -625,8 +625,6 @@
       
         
       
-        
-      
     
     
     
@@ -718,34 +716,6 @@
     
   
     Model References
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../providers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Providers
   
 
     
@@ -882,17 +852,6 @@
     <span class="md-ellipsis">
       
         Specialization states
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#provider-inspection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provider inspection
       
     </span>
   </a>
@@ -1447,8 +1406,6 @@
       
         
       
-        
-      
     
     
     
@@ -1593,34 +1550,6 @@
     
   
     Specialization
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/provider-backends/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Provider Backends
   
 
     
@@ -2095,17 +2024,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#provider-inspection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provider inspection
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#why-this-matters" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2171,8 +2089,6 @@ ollm<span class="w"> </span>models<span class="w"> </span>info<span class="w"> <
 <li><code>fallback</code></li>
 </ul>
 <p>Planning-only surfaces report the <strong>planned</strong> state. Actual prompt response metadata reports the finalized execution state.</p>
-<h2 id="provider-inspection">Provider inspection<a class="headerlink" href="#provider-inspection" title="Permanent link">&para;</a></h2>
-<p><code>ollm doctor --model &lt;provider-ref&gt;</code> and <code>ollm models info &lt;provider-ref&gt;</code> probe provider endpoints and report executability truthfully.</p>
 <h2 id="why-this-matters">Why this matters<a class="headerlink" href="#why-this-matters" title="Permanent link">&para;</a></h2>
 <p>This makes it possible to distinguish:</p>
 <ul>

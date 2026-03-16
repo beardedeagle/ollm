@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Local and provider-backed LLM inference for large-context workloads">
+        <meta name="description" content="Local LLM inference for large-context workloads">
       
       
       
@@ -625,8 +625,6 @@
       
         
       
-        
-      
     
     
     
@@ -799,10 +797,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#generic-optimized-and-provider-backed-execution" class="md-nav__link">
+  <a href="#generic-and-optimized-execution" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Generic, optimized, and provider-backed execution
+        Generic and optimized execution
       
     </span>
   </a>
@@ -814,17 +812,6 @@
     <span class="md-ellipsis">
       
         Specialization visibility and fallback
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#provider-specific-notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provider-specific notes
       
     </span>
   </a>
@@ -855,34 +842,6 @@
     
   
     Model References
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../guides/providers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Providers
   
 
     
@@ -1480,8 +1439,6 @@
       
         
       
-        
-      
     
     
     
@@ -1626,34 +1583,6 @@
     
   
     Specialization
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../architecture/provider-backends/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Provider Backends
   
 
     
@@ -2150,10 +2079,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#generic-optimized-and-provider-backed-execution" class="md-nav__link">
+  <a href="#generic-and-optimized-execution" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Generic, optimized, and provider-backed execution
+        Generic and optimized execution
       
     </span>
   </a>
@@ -2165,17 +2094,6 @@
     <span class="md-ellipsis">
       
         Specialization visibility and fallback
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#provider-specific-notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provider-specific notes
       
     </span>
   </a>
@@ -2214,15 +2132,14 @@
 ollm<span class="w"> </span>chat<span class="w">                    </span><span class="c1"># explicit alias for interactive chat</span>
 ollm<span class="w"> </span>prompt<span class="w"> </span><span class="s2">&quot;List planets&quot;</span><span class="w">   </span><span class="c1"># one-shot prompt</span>
 ollm<span class="w"> </span>doctor<span class="w"> </span>--json<span class="w">           </span><span class="c1"># environment and runtime diagnostics</span>
-ollm<span class="w"> </span>models<span class="w"> </span>list<span class="w">             </span><span class="c1"># built-in, local, and provider-discovered model references</span>
+ollm<span class="w"> </span>models<span class="w"> </span>list<span class="w">             </span><span class="c1"># built-in and discovered local model references</span>
 </code></pre></div>
 <p>Use <code>ollm</code> or <code>ollm chat</code> only from an interactive terminal. For scripts, pipes, and automation use <code>ollm prompt</code>.</p>
 <h2 id="runtime-controls">Runtime controls<a class="headerlink" href="#runtime-controls" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>--backend</code> forces a valid backend for the resolved model reference</li>
+<li><code>--backend</code> forces a valid local backend for the resolved model reference</li>
 <li><code>--no-specialization</code> disables optimized-native specialization and prefers the generic path when available</li>
 <li><code>--plan-json</code> prints the resolved runtime plan and exits without running generation</li>
-<li><code>--provider-endpoint</code> sets the provider API root URL and must be an absolute <code>http</code> or <code>https</code> URL without embedded credentials</li>
 </ul>
 <p><code>ollm prompt</code>, <code>ollm chat</code>, <code>ollm doctor</code>, and <code>ollm models info</code> all honor these controls.</p>
 <h2 id="model-references">Model references<a class="headerlink" href="#model-references" title="Permanent link">&para;</a></h2>
@@ -2231,18 +2148,13 @@ ollm<span class="w"> </span>models<span class="w"> </span>list<span class="w">  
 <li>built-in aliases such as <code>llama3-1B-chat</code> and <code>gemma3-12B</code></li>
 <li>Hugging Face repo IDs such as <code>Qwen/Qwen2.5-7B-Instruct</code></li>
 <li>local model directories</li>
-<li>provider references such as:</li>
-<li><code>ollama:llama3.2</code></li>
-<li><code>msty:llama3.2</code></li>
-<li><code>lmstudio:qwen2.5</code></li>
-<li><code>openai-compatible:local-model</code></li>
 </ul>
+<p>Provider-prefixed references are rejected so execution stays inside oLLM's local runtime boundary.</p>
 <h2 id="support-levels">Support levels<a class="headerlink" href="#support-levels" title="Permanent link">&para;</a></h2>
-<p>oLLM reports one of four support levels for a resolved model reference:</p>
+<p>oLLM reports one of three active support levels for a resolved model reference:</p>
 <ul>
 <li><code>optimized</code> — a native specialization provider can run the reference</li>
 <li><code>generic</code> — the Transformers-backed generic runtime can run the reference</li>
-<li><code>provider-backed</code> — execution goes through a provider API</li>
 <li><code>unsupported</code> — the reference resolves, but the current runtime cannot execute it</li>
 </ul>
 <h2 id="discovery-and-availability-terms">Discovery and availability terms<a class="headerlink" href="#discovery-and-availability-terms" title="Permanent link">&para;</a></h2>
@@ -2250,15 +2162,14 @@ ollm<span class="w"> </span>models<span class="w"> </span>list<span class="w">  
 <ul>
 <li><code>built-in</code> entries shipped by oLLM</li>
 <li><code>discovered-local</code> entries found under <code>--models-dir</code></li>
-<li><code>discovered-provider</code> entries returned by provider discovery</li>
 </ul>
-<p>Availability terms are intentionally different for local and provider references:</p>
+<p>Availability for local references uses:</p>
 <ul>
-<li><code>materialized</code> / <code>not-materialized</code> describe whether local weights are present on disk</li>
-<li><code>available</code> / <code>unavailable</code> describe whether a provider reference is currently reachable and executable</li>
+<li><code>materialized</code></li>
+<li><code>not-materialized</code></li>
 </ul>
-<p><code>ollm models list --installed</code> filters to materialized local entries only. Provider references are never treated as installed.</p>
-<h2 id="generic-optimized-and-provider-backed-execution">Generic, optimized, and provider-backed execution<a class="headerlink" href="#generic-optimized-and-provider-backed-execution" title="Permanent link">&para;</a></h2>
+<p><code>ollm models list --installed</code> filters to materialized local entries only.</p>
+<h2 id="generic-and-optimized-execution">Generic and optimized execution<a class="headerlink" href="#generic-and-optimized-execution" title="Permanent link">&para;</a></h2>
 <p>The generic execution path covers compatible local or materialized Transformers-backed:</p>
 <ul>
 <li>causal language models</li>
@@ -2266,13 +2177,6 @@ ollm<span class="w"> </span>models<span class="w"> </span>list<span class="w">  
 <li>image-text conditional generation models that expose a processor-backed <code>vision_config</code></li>
 </ul>
 <p>When the resolved model matches a native family specialization (<code>llama</code>, <code>gemma3</code>, <code>qwen3-next</code>, <code>gpt-oss</code>, or <code>voxtral</code>), oLLM records and selects an optimized-native specialization provider through the runtime plan instead of hard-coding model-family branches in <code>Inference.load_model()</code>.</p>
-<p>Provider-backed execution currently supports:</p>
-<ul>
-<li>Ollama on <code>http://127.0.0.1:11434</code></li>
-<li>Msty Local AI through the existing Ollama transport when <code>--provider-endpoint</code> is supplied</li>
-<li>LM Studio on <code>http://127.0.0.1:1234/v1</code></li>
-<li>arbitrary OpenAI-compatible endpoints when <code>--provider-endpoint</code> is supplied</li>
-</ul>
 <h2 id="specialization-visibility-and-fallback">Specialization visibility and fallback<a class="headerlink" href="#specialization-visibility-and-fallback" title="Permanent link">&para;</a></h2>
 <p>Planning-only surfaces such as <code>ollm doctor</code> and <code>ollm models info --json</code> expose the resolved backend, specialization state, and planned specialization pass ids without loading a runtime.</p>
 <p>Execution surfaces follow the finalized runtime plan. Prompt response metadata includes:</p>
@@ -2283,14 +2187,6 @@ ollm<span class="w"> </span>models<span class="w"> </span>list<span class="w">  
 <li>any recorded fallback reason</li>
 </ul>
 <p>If an optimized specialization cannot satisfy its planned pass contract and a compatible generic path exists, oLLM falls back safely to <code>transformers-generic</code> instead of pretending the optimized path succeeded.</p>
-<h2 id="provider-specific-notes">Provider-specific notes<a class="headerlink" href="#provider-specific-notes" title="Permanent link">&para;</a></h2>
-<ul>
-<li><code>ollama:&lt;model&gt;</code> supports vision requests with local files, base64 data URLs, and remote <code>http</code> / <code>https</code> image URLs</li>
-<li><code>msty:&lt;model&gt;</code> reuses the Ollama transport and requires an explicit <code>--provider-endpoint</code></li>
-<li><code>openai-compatible:&lt;model&gt;</code> supports audio request inputs from local <code>.wav</code> / <code>.mp3</code> files, base64 data URLs, and remote WAV/MP3 URLs when <code>--provider-endpoint</code> is supplied</li>
-<li><code>lmstudio:&lt;model&gt;</code> remains text-only in oLLM because the current LM Studio OpenAI-compatible docs do not provide a verified audio input contract for this repo</li>
-</ul>
-<p>Provider-backed execution rejects <code>--top-k</code>, PEFT adapters, and custom layer offload controls.</p>
 
 
 

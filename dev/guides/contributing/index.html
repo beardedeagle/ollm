@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Local and provider-backed LLM inference for large-context workloads">
+        <meta name="description" content="Local LLM inference for large-context workloads">
       
       
       
@@ -621,8 +621,6 @@
       
         
       
-        
-      
     
     
     
@@ -711,34 +709,6 @@
     
   
     Model References
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../providers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Providers
   
 
     
@@ -1336,8 +1306,6 @@
       
         
       
-        
-      
     
     
     
@@ -1482,34 +1450,6 @@
     
   
     Specialization
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/provider-backends/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Provider Backends
   
 
     
@@ -2139,12 +2079,11 @@ uv<span class="w"> </span>run<span class="w"> </span>--group<span class="w"> </s
 <li>keep README and <code>docs/</code> aligned</li>
 <li>keep CLI/help text and docs terminology aligned</li>
 <li>avoid internal implementation-plan language in user-facing docs</li>
-<li>prefer truthful statements over broad claims that cannot be proved on the current host or upstream provider contract</li>
+<li>prefer truthful statements over broad claims that cannot be proved on the current host</li>
 </ul>
 <h2 id="testing-style">Testing style<a class="headerlink" href="#testing-style" title="Permanent link">&para;</a></h2>
 <ul>
 <li>prefer fakes and tiny real fixtures over mocks</li>
-<li>keep provider tests isolated and explicit</li>
 <li>use targeted CLI or script smokes when touching runtime-heavy flows</li>
 </ul>
 

@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Local and provider-backed LLM inference for large-context workloads">
+        <meta name="description" content="Local LLM inference for large-context workloads">
       
       
       
@@ -624,67 +624,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#optional-provider-prerequisites" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional provider prerequisites
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Optional provider prerequisites">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#ollama" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Ollama
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#msty-local-ai" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Msty Local AI
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#lm-studio" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        LM Studio
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#generic-openai-compatible" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Generic OpenAI-compatible
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -765,8 +704,6 @@
   
     
     
-      
-        
       
         
       
@@ -872,34 +809,6 @@
     
   
     Model References
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../providers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Providers
   
 
     
@@ -1497,8 +1406,6 @@
       
         
       
-        
-      
     
     
     
@@ -1643,34 +1550,6 @@
     
   
     Specialization
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/provider-backends/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Provider Backends
   
 
     
@@ -2155,67 +2034,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#optional-provider-prerequisites" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optional provider prerequisites
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Optional provider prerequisites">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#ollama" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Ollama
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#msty-local-ai" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Msty Local AI
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#lm-studio" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        LM Studio
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#generic-openai-compatible" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Generic OpenAI-compatible
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -2250,7 +2068,6 @@
 <li>a supported runtime environment for your chosen backend:</li>
 <li>local Transformers-backed execution</li>
 <li>optimized-native execution for built-in aliases</li>
-<li>provider-backed execution for Ollama, Msty Local AI, LM Studio, or an OpenAI-compatible endpoint</li>
 </ul>
 <h2 id="recommended-setup-with-uv">Recommended setup with <code>uv</code><a class="headerlink" href="#recommended-setup-with-uv" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code>git<span class="w"> </span>clone<span class="w"> </span>https://github.com/Mega4alik/ollm.git
@@ -2276,28 +2093,6 @@ uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </sp
 uv<span class="w"> </span>run<span class="w"> </span>ollm<span class="w"> </span>doctor<span class="w"> </span>--imports<span class="w"> </span>--json<span class="w"> </span>--no-color
 uv<span class="w"> </span>run<span class="w"> </span>ollm<span class="w"> </span>prompt<span class="w"> </span>--help
 </code></pre></div>
-<h2 id="optional-provider-prerequisites">Optional provider prerequisites<a class="headerlink" href="#optional-provider-prerequisites" title="Permanent link">&para;</a></h2>
-<h3 id="ollama">Ollama<a class="headerlink" href="#ollama" title="Permanent link">&para;</a></h3>
-<ul>
-<li>local default endpoint: <code>http://127.0.0.1:11434</code></li>
-<li>model references look like <code>ollama:&lt;model&gt;</code></li>
-</ul>
-<h3 id="msty-local-ai">Msty Local AI<a class="headerlink" href="#msty-local-ai" title="Permanent link">&para;</a></h3>
-<ul>
-<li>uses the Ollama transport in oLLM</li>
-<li>requires an explicit <code>--provider-endpoint</code></li>
-<li>oLLM does <strong>not</strong> guess the endpoint because the service URL is user-configurable</li>
-</ul>
-<h3 id="lm-studio">LM Studio<a class="headerlink" href="#lm-studio" title="Permanent link">&para;</a></h3>
-<ul>
-<li>default endpoint: <code>http://127.0.0.1:1234/v1</code></li>
-<li>model references look like <code>lmstudio:&lt;model&gt;</code></li>
-</ul>
-<h3 id="generic-openai-compatible">Generic OpenAI-compatible<a class="headerlink" href="#generic-openai-compatible" title="Permanent link">&para;</a></h3>
-<ul>
-<li>requires an explicit <code>--provider-endpoint</code></li>
-<li>model references look like <code>openai-compatible:&lt;model&gt;</code></li>
-</ul>
 
 
 

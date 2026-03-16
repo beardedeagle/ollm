@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Local and provider-backed LLM inference for large-context workloads">
+        <meta name="description" content="Local LLM inference for large-context workloads">
       
       
       
@@ -625,8 +625,6 @@
       
         
       
-        
-      
     
     
     
@@ -718,34 +716,6 @@
     
   
     Model References
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../providers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Providers
   
 
     
@@ -939,17 +909,6 @@
     <span class="md-ellipsis">
       
         Transformers-generic
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#provider-backed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provider-backed
       
     </span>
   </a>
@@ -1497,8 +1456,6 @@
       
         
       
-        
-      
     
     
     
@@ -1643,34 +1600,6 @@
     
   
     Specialization
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/provider-backends/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Provider Backends
   
 
     
@@ -2145,17 +2074,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#provider-backed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provider-backed
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -2257,8 +2175,6 @@
 </ul>
 <h3 id="transformers-generic">Transformers-generic<a class="headerlink" href="#transformers-generic" title="Permanent link">&para;</a></h3>
 <p>Used for compatible local or materialized models that can run through the generic Transformers-backed path.</p>
-<h3 id="provider-backed">Provider-backed<a class="headerlink" href="#provider-backed" title="Permanent link">&para;</a></h3>
-<p>Used when the execution boundary is a provider endpoint.</p>
 <h2 id="specialization-passes">Specialization passes<a class="headerlink" href="#specialization-passes" title="Permanent link">&para;</a></h2>
 <p>Optimized-native planning can record reusable passes such as:</p>
 <ul>
@@ -2282,7 +2198,8 @@
 <li>CPU layer offload</li>
 <li>mixed GPU / CPU layer placement</li>
 </ul>
-<p>These controls are backend-dependent. Provider-backed runtimes do not expose the same low-level layer-placement controls as optimized-native runtimes.</p>
+<p>These controls are backend-dependent. Provider-backed runtimes do not expose the same low-level layer-placement controls as optimized-native runtimes.
+These controls are backend-dependent. The generic path does not expose the same low-level layer-placement controls as optimized-native runtimes.</p>
 <h2 id="gpt-oss-gds_export-requirement">GPT-OSS <code>gds_export</code> requirement<a class="headerlink" href="#gpt-oss-gds_export-requirement" title="Permanent link">&para;</a></h2>
 <p>The optimized GPT-OSS path is intentionally strict:</p>
 <ul>

@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Local and provider-backed LLM inference for large-context workloads">
+        <meta name="description" content="Local LLM inference for large-context workloads">
       
       
       
@@ -14,7 +14,7 @@
         <link rel="prev" href="../../terminal-interface/">
       
       
-        <link rel="next" href="../providers/">
+        <link rel="next" href="../multimodal/">
       
       
         
@@ -625,8 +625,6 @@
       
         
       
-        
-      
     
     
     
@@ -827,17 +825,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#provider-references" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provider references
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -854,49 +841,10 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#availability-terminology" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Availability terminology
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../providers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Providers
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -1486,8 +1434,6 @@
       
         
       
-        
-      
     
     
     
@@ -1632,34 +1578,6 @@
     
   
     Specialization
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/provider-backends/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Provider Backends
   
 
     
@@ -2156,17 +2074,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#provider-references" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provider references
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -2177,17 +2084,6 @@
     <span class="md-ellipsis">
       
         Resolution outcomes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#availability-terminology" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Availability terminology
       
     </span>
   </a>
@@ -2254,31 +2150,15 @@ Qwen/Qwen2.5-7B-Instruct@refs/pr/12
 ~/models/custom-model
 /absolute/path/to/model
 </code></pre></div>
-<h3 id="provider-references">Provider references<a class="headerlink" href="#provider-references" title="Permanent link">&para;</a></h3>
-<p>Examples:</p>
-<ul>
-<li><code>ollama:llama3.2</code></li>
-<li><code>msty:llama3.2</code></li>
-<li><code>lmstudio:qwen2.5</code></li>
-<li><code>openai-compatible:local-model</code></li>
-</ul>
 <h2 id="resolution-outcomes">Resolution outcomes<a class="headerlink" href="#resolution-outcomes" title="Permanent link">&para;</a></h2>
 <p>oLLM resolves a model reference into one of these source kinds:</p>
 <ul>
 <li><code>builtin</code></li>
 <li><code>hugging-face</code></li>
 <li><code>local-path</code></li>
-<li><code>provider</code></li>
 <li><code>opaque</code></li>
 </ul>
 <p>Opaque references are parsed, but not currently resolvable to a runnable runtime or materialization path.</p>
-<h2 id="availability-terminology">Availability terminology<a class="headerlink" href="#availability-terminology" title="Permanent link">&para;</a></h2>
-<p>For local and provider references, oLLM intentionally uses different terms:</p>
-<ul>
-<li>local refs: <code>materialized</code> / <code>not-materialized</code></li>
-<li>provider refs: <code>available</code> / <code>unavailable</code></li>
-</ul>
-<p>This keeps provider executability separate from local on-disk presence.</p>
 
 
 

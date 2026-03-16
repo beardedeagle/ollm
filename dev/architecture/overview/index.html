@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Local and provider-backed LLM inference for large-context workloads">
+        <meta name="description" content="Local LLM inference for large-context workloads">
       
       
       
@@ -623,8 +623,6 @@
       
         
       
-        
-      
     
     
     
@@ -713,34 +711,6 @@
     
   
     Model References
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../guides/providers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Providers
   
 
     
@@ -1340,8 +1310,6 @@
       
         
       
-        
-      
     
     
     
@@ -1560,34 +1528,6 @@
     
   
     Specialization
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../provider-backends/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Provider Backends
   
 
     
@@ -2086,7 +2026,7 @@
 <li>select a backend and support level</li>
 <li>refine the runtime plan through backend-specific probes</li>
 <li>load the runtime or expose the plan as inspection output</li>
-<li>execute through either a local runtime or a provider transport</li>
+<li>execute through a local runtime</li>
 </ol>
 <h2 id="main-subsystems">Main subsystems<a class="headerlink" href="#main-subsystems" title="Permanent link">&para;</a></h2>
 <ul>
@@ -2098,7 +2038,6 @@
 <li><code>RuntimeLoader</code></li>
 <li><code>RuntimeExecutor</code></li>
 <li>specialization registry / matching / application</li>
-<li>provider backends</li>
 </ul>
 
 

@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Local and provider-backed LLM inference for large-context workloads">
+        <meta name="description" content="Local LLM inference for large-context workloads">
       
       
       
@@ -626,8 +626,6 @@
       
         
       
-        
-      
     
     
     
@@ -716,34 +714,6 @@
     
   
     Model References
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="guides/providers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Providers
   
 
     
@@ -1341,8 +1311,6 @@
       
         
       
-        
-      
     
     
     
@@ -1487,34 +1455,6 @@
     
   
     Specialization
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="architecture/provider-backends/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Provider Backends
   
 
     
@@ -2137,19 +2077,17 @@
 
 
 <h1 id="ollm">oLLM<a class="headerlink" href="#ollm" title="Permanent link">&para;</a></h1>
-<p>oLLM is a Python library and terminal interface for local and provider-backed LLM inference. It combines:</p>
+<p>oLLM is a Python library and terminal interface for local LLM inference. It combines:</p>
 <ul>
-<li><strong>optimized-native runtimes</strong> for built-in aliases when a specialization matches</li>
-<li>a <strong>generic Transformers-backed path</strong> for compatible local or materialized models</li>
-<li><strong>provider-backed execution</strong> for Ollama, Msty Local AI, LM Studio, and generic OpenAI-compatible endpoints</li>
-<li><strong>runtime inspection</strong> so you can see which backend will run, why it was selected, and what the current support level is</li>
+<li>optimized-native runtimes for built-in aliases when a specialization matches</li>
+<li>a generic Transformers-backed path for compatible local or materialized models</li>
+<li>runtime inspection so you can see which backend will run, why it was selected, and what the current support level is</li>
 </ul>
 <h2 id="audience">Audience<a class="headerlink" href="#audience" title="Permanent link">&para;</a></h2>
-<p>This documentation site is split for three common readers:</p>
 <ul>
-<li><strong>operators and end users</strong> who want to run prompts, inspect models, and use providers safely</li>
-<li><strong>Python developers</strong> who want to embed oLLM through <code>RuntimeClient</code> or the low-level optimized-native helpers</li>
-<li><strong>contributors</strong> who need architecture, verification, and docs-build guidance</li>
+<li>operators and end users who want to run prompts and inspect local models</li>
+<li>Python developers who want to embed oLLM through <code>RuntimeClient</code> or the low-level optimized-native helpers</li>
+<li>contributors who need architecture, verification, and docs-build guidance</li>
 </ul>
 <h2 id="documentation-map">Documentation map<a class="headerlink" href="#documentation-map" title="Permanent link">&para;</a></h2>
 <h3 id="getting-started">Getting Started<a class="headerlink" href="#getting-started" title="Permanent link">&para;</a></h3>
@@ -2162,7 +2100,6 @@
 <ul>
 <li><a href="terminal-interface/">Terminal Interface</a></li>
 <li><a href="guides/model-references/">Model References</a></li>
-<li><a href="guides/providers/">Providers</a></li>
 <li><a href="guides/multimodal/">Multimodal Workflows</a></li>
 <li><a href="guides/runtime-planning/">Runtime Planning and Inspection</a></li>
 <li><a href="guides/models-discovery/">Model Discovery</a></li>
@@ -2193,29 +2130,25 @@
 </ul>
 <h2 id="core-concepts">Core concepts<a class="headerlink" href="#core-concepts" title="Permanent link">&para;</a></h2>
 <h3 id="model-references">Model references<a class="headerlink" href="#model-references" title="Permanent link">&para;</a></h3>
-<p><code>--model</code> accepts <strong>opaque model references</strong>, not just a fixed built-in list. A reference may be:</p>
+<p><code>--model</code> accepts opaque model references, not just a fixed built-in list. Supported forms include:</p>
 <ul>
 <li>a built-in alias such as <code>llama3-1B-chat</code></li>
 <li>a Hugging Face repository ID such as <code>Qwen/Qwen2.5-7B-Instruct</code></li>
 <li>a local model directory</li>
-<li>a provider-backed reference such as <code>ollama:llama3.2</code> or <code>openai-compatible:local-model</code></li>
 </ul>
-<p>See <a href="guides/model-references/">Model References</a>.</p>
 <h3 id="support-levels">Support levels<a class="headerlink" href="#support-levels" title="Permanent link">&para;</a></h3>
-<p>oLLM reports one of four support levels:</p>
+<p>oLLM reports one of three active support levels:</p>
 <ul>
 <li><code>optimized</code></li>
 <li><code>generic</code></li>
-<li><code>provider-backed</code></li>
 <li><code>unsupported</code></li>
 </ul>
-<p>See <a href="terminal-interface/#support-levels">Terminal Interface</a>.</p>
 <h3 id="safety-model">Safety model<a class="headerlink" href="#safety-model" title="Permanent link">&para;</a></h3>
 <p>oLLM intentionally stays conservative in several places:</p>
 <ul>
-<li>provider endpoints must be absolute <code>http</code> or <code>https</code> URLs without embedded credentials</li>
 <li>the generic runtime only loads local or materialized weights from <code>safetensors</code></li>
-<li>provider feature reporting stays truthful when upstream <code>/models</code> probes do not expose enough detail to prove a capability per model</li>
+<li>unsupported references fail with an explicit reason instead of silently leaving the local runtime boundary</li>
+<li>planning and execution report specialization and fallback state explicitly</li>
 </ul>
 <h2 id="quick-examples">Quick examples<a class="headerlink" href="#quick-examples" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code>ollm<span class="w"> </span>prompt<span class="w"> </span>--model<span class="w"> </span>llama3-8B-chat<span class="w"> </span><span class="s2">&quot;Summarize this file&quot;</span>

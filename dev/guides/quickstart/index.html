@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Local and provider-backed LLM inference for large-context workloads">
+        <meta name="description" content="Local LLM inference for large-context workloads">
       
       
       
@@ -681,17 +681,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#provider-backed-prompt" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provider-backed prompt
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#discover-available-model-references" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -737,8 +726,6 @@
   
     
     
-      
-        
       
         
       
@@ -844,34 +831,6 @@
     
   
     Model References
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../providers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Providers
   
 
     
@@ -1469,8 +1428,6 @@
       
         
       
-        
-      
     
     
     
@@ -1615,34 +1572,6 @@
     
   
     Specialization
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/provider-backends/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Provider Backends
   
 
     
@@ -2128,17 +2057,6 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#provider-backed-prompt" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provider-backed prompt
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#discover-available-model-references" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2199,19 +2117,12 @@
 <h2 id="force-the-generic-path">Force the generic path<a class="headerlink" href="#force-the-generic-path" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code>ollm<span class="w"> </span>prompt<span class="w"> </span>--model<span class="w"> </span>llama3-8B-chat<span class="w"> </span>--backend<span class="w"> </span>transformers-generic<span class="w"> </span>--no-specialization<span class="w"> </span><span class="s2">&quot;Summarize this file&quot;</span>
 </code></pre></div>
-<h2 id="provider-backed-prompt">Provider-backed prompt<a class="headerlink" href="#provider-backed-prompt" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code>ollm<span class="w"> </span>prompt<span class="w"> </span>--model<span class="w"> </span>openai-compatible:local-model<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--provider-endpoint<span class="w"> </span>http://127.0.0.1:1234/v1<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span><span class="s2">&quot;Say hello&quot;</span>
-</code></pre></div>
 <h2 id="discover-available-model-references">Discover available model references<a class="headerlink" href="#discover-available-model-references" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code>ollm<span class="w"> </span>models<span class="w"> </span>list
 ollm<span class="w"> </span>models<span class="w"> </span>list<span class="w"> </span>--installed
-ollm<span class="w"> </span>models<span class="w"> </span>list<span class="w"> </span>--discover-provider<span class="w"> </span>openai-compatible<span class="w"> </span>--provider-endpoint<span class="w"> </span>http://127.0.0.1:1234/v1
 </code></pre></div>
 <h2 id="run-diagnostics">Run diagnostics<a class="headerlink" href="#run-diagnostics" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code>ollm<span class="w"> </span>doctor<span class="w"> </span>--json
-ollm<span class="w"> </span>doctor<span class="w"> </span>--model<span class="w"> </span>ollama:llava<span class="w"> </span>--json
 </code></pre></div>
 
 

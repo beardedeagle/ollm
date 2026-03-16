@@ -6,12 +6,12 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Local and provider-backed LLM inference for large-context workloads">
+        <meta name="description" content="Local LLM inference for large-context workloads">
       
       
       
       
-        <link rel="prev" href="../providers/">
+        <link rel="prev" href="../model-references/">
       
       
         <link rel="next" href="../runtime-planning/">
@@ -625,8 +625,6 @@
       
         
       
-        
-      
     
     
     
@@ -735,34 +733,6 @@
                 
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../providers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Providers
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
     
   
   
@@ -850,17 +820,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#ollama-vision-models" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Ollama vision models
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -883,28 +842,6 @@
     <span class="md-ellipsis">
       
         Optimized-native local audio
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#openai-compatible-provider-audio-requests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OpenAI-compatible provider audio requests
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#current-exclusions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Current exclusions
       
     </span>
   </a>
@@ -1492,8 +1429,6 @@
       
         
       
-        
-      
     
     
     
@@ -1638,34 +1573,6 @@
     
   
     Specialization
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/provider-backends/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Provider Backends
   
 
     
@@ -2129,17 +2036,6 @@
   
 </li>
         
-          <li class="md-nav__item">
-  <a href="#ollama-vision-models" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Ollama vision models
-      
-    </span>
-  </a>
-  
-</li>
-        
       </ul>
     </nav>
   
@@ -2162,28 +2058,6 @@
     <span class="md-ellipsis">
       
         Optimized-native local audio
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#openai-compatible-provider-audio-requests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        OpenAI-compatible provider audio requests
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#current-exclusions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Current exclusions
       
     </span>
   </a>
@@ -2238,31 +2112,9 @@
 <p>Use <code>--multimodal</code> plus <code>--image</code> with a compatible model such as <code>gemma3-12B</code>.</p>
 <div class="language-bash highlight"><pre><span></span><code>ollm<span class="w"> </span>prompt<span class="w"> </span>--model<span class="w"> </span>gemma3-12B<span class="w"> </span>--multimodal<span class="w"> </span>--image<span class="w"> </span>./diagram.png<span class="w"> </span><span class="s2">&quot;Describe this image&quot;</span>
 </code></pre></div>
-<h3 id="ollama-vision-models">Ollama vision models<a class="headerlink" href="#ollama-vision-models" title="Permanent link">&para;</a></h3>
-<p>For <code>ollama:&lt;model&gt;</code> refs that advertise vision capability, oLLM supports:</p>
-<ul>
-<li>local image files</li>
-<li>base64 image data URLs</li>
-<li>remote <code>http</code> / <code>https</code> image URLs</li>
-</ul>
-<p>Remote image URLs are fetched client-side with bounded downloads and content-type validation before being base64-forwarded to the Ollama chat API.</p>
 <h2 id="audio">Audio<a class="headerlink" href="#audio" title="Permanent link">&para;</a></h2>
 <h3 id="optimized-native-local-audio">Optimized-native local audio<a class="headerlink" href="#optimized-native-local-audio" title="Permanent link">&para;</a></h3>
 <p><code>voxtral-small-24B</code> supports audio through the optimized-native path.</p>
-<h3 id="openai-compatible-provider-audio-requests">OpenAI-compatible provider audio requests<a class="headerlink" href="#openai-compatible-provider-audio-requests" title="Permanent link">&para;</a></h3>
-<p>For generic <code>openai-compatible:&lt;model&gt;</code> refs, <code>--audio</code> may contain:</p>
-<ul>
-<li>local <code>.wav</code> or <code>.mp3</code> files</li>
-<li>base64 audio data URLs</li>
-<li>remote <code>http</code> / <code>https</code> WAV/MP3 URLs</li>
-</ul>
-<p>Remote audio is fetched and validated client-side before it is forwarded as OpenAI-compatible <code>input_audio</code>.</p>
-<h3 id="current-exclusions">Current exclusions<a class="headerlink" href="#current-exclusions" title="Permanent link">&para;</a></h3>
-<ul>
-<li><code>ollama:</code> does <strong>not</strong> support audio inputs in oLLM</li>
-<li><code>msty:</code> does <strong>not</strong> support audio inputs in oLLM</li>
-<li><code>lmstudio:</code> remains text-only in oLLM</li>
-</ul>
 <h2 id="interactive-chat-attachments">Interactive chat attachments<a class="headerlink" href="#interactive-chat-attachments" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code>ollm<span class="w"> </span>chat<span class="w"> </span>--model<span class="w"> </span>gemma3-12B<span class="w"> </span>--multimodal
 /image<span class="w"> </span>./diagram.png

@@ -6,7 +6,7 @@
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1">
       
-        <meta name="description" content="Local and provider-backed LLM inference for large-context workloads">
+        <meta name="description" content="Local LLM inference for large-context workloads">
       
       
       
@@ -625,8 +625,6 @@
       
         
       
-        
-      
     
     
     
@@ -718,34 +716,6 @@
     
   
     Model References
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../providers/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Providers
   
 
     
@@ -963,17 +933,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#-provider-endpoint-must-not-include-credentials" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        --provider-endpoint must not include credentials
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#-backend-optimized-native-cannot-be-combined-with-no-specialization" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -996,10 +955,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#provider-model-is-discovered-but-unavailable" class="md-nav__link">
+  <a href="#provider-prefixed-refs-are-rejected" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Provider model is discovered but unavailable
+        Provider-prefixed refs are rejected
       
     </span>
   </a>
@@ -1011,17 +970,6 @@
     <span class="md-ellipsis">
       
         Generic runtime rejects a checkpoint
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#lm-studio-audio-is-rejected" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        LM Studio audio is rejected
       
     </span>
   </a>
@@ -1486,8 +1434,6 @@
       
         
       
-        
-      
     
     
     
@@ -1632,34 +1578,6 @@
     
   
     Specialization
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../architecture/provider-backends/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Provider Backends
   
 
     
@@ -2124,17 +2042,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#-provider-endpoint-must-not-include-credentials" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        --provider-endpoint must not include credentials
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#-backend-optimized-native-cannot-be-combined-with-no-specialization" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2157,10 +2064,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#provider-model-is-discovered-but-unavailable" class="md-nav__link">
+  <a href="#provider-prefixed-refs-are-rejected" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Provider model is discovered but unavailable
+        Provider-prefixed refs are rejected
       
     </span>
   </a>
@@ -2172,17 +2079,6 @@
     <span class="md-ellipsis">
       
         Generic runtime rejects a checkpoint
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#lm-studio-audio-is-rejected" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        LM Studio audio is rejected
       
     </span>
   </a>
@@ -2227,26 +2123,16 @@
 <p>Useful variants:</p>
 <div class="language-bash highlight"><pre><span></span><code>ollm<span class="w"> </span>doctor<span class="w"> </span>--imports<span class="w"> </span>--json
 ollm<span class="w"> </span>doctor<span class="w"> </span>--runtime<span class="w"> </span>--json
-ollm<span class="w"> </span>doctor<span class="w"> </span>--model<span class="w"> </span>openai-compatible:local-model<span class="w"> </span>--provider-endpoint<span class="w"> </span>http://127.0.0.1:1234/v1<span class="w"> </span>--json
 </code></pre></div>
 <h2 id="common-issues">Common issues<a class="headerlink" href="#common-issues" title="Permanent link">&para;</a></h2>
-<h3 id="-provider-endpoint-must-not-include-credentials"><code>--provider-endpoint must not include credentials</code><a class="headerlink" href="#-provider-endpoint-must-not-include-credentials" title="Permanent link">&para;</a></h3>
-<p>Put credentials in provider configuration or environment instead of embedding them in the URL.</p>
 <h3 id="-backend-optimized-native-cannot-be-combined-with-no-specialization"><code>--backend optimized-native cannot be combined with --no-specialization</code><a class="headerlink" href="#-backend-optimized-native-cannot-be-combined-with-no-specialization" title="Permanent link">&para;</a></h3>
 <p><code>optimized-native</code> explicitly means you want specialization. Use <code>transformers-generic</code> if you want a non-specialized path.</p>
 <h3 id="a-hugging-face-repo-resolves-but-will-not-execute-yet">A Hugging Face repo resolves but will not execute yet<a class="headerlink" href="#a-hugging-face-repo-resolves-but-will-not-execute-yet" title="Permanent link">&para;</a></h3>
 <p>Some Hugging Face refs must be materialized locally before generic capability discovery can inspect them.</p>
-<h3 id="provider-model-is-discovered-but-unavailable">Provider model is discovered but unavailable<a class="headerlink" href="#provider-model-is-discovered-but-unavailable" title="Permanent link">&para;</a></h3>
-<p>The provider can return a model name even when it is not currently executable from the endpoint oLLM is probing. Check:</p>
-<ul>
-<li>service availability</li>
-<li>endpoint URL</li>
-<li>provider-side model presence</li>
-</ul>
+<h3 id="provider-prefixed-refs-are-rejected">Provider-prefixed refs are rejected<a class="headerlink" href="#provider-prefixed-refs-are-rejected" title="Permanent link">&para;</a></h3>
+<p>That is intentional. oLLM now executes only locally managed models. Use a built-in alias, a local model directory, or a Hugging Face repository reference.</p>
 <h3 id="generic-runtime-rejects-a-checkpoint">Generic runtime rejects a checkpoint<a class="headerlink" href="#generic-runtime-rejects-a-checkpoint" title="Permanent link">&para;</a></h3>
 <p>The generic runtime intentionally refuses unsafe <code>.bin</code> or pickle-backed local weights. Use <code>safetensors</code> artifacts for the generic local path.</p>
-<h3 id="lm-studio-audio-is-rejected">LM Studio audio is rejected<a class="headerlink" href="#lm-studio-audio-is-rejected" title="Permanent link">&para;</a></h3>
-<p>That is currently intentional in oLLM because the current LM Studio OpenAI-compatible docs do not provide a verified audio-input contract for this repo.</p>
 
 
 
