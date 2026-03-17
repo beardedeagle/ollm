@@ -19,6 +19,10 @@ from transformers.models.llama.modeling_llama import (
     create_causal_mask,
 )
 
+from ollm.device_staging import (
+    restore_static_modules_after_forward,
+    stage_static_modules_on_host,
+)
 from ollm.utils import _assign_tensor_to_module, _set_meta_placeholder, _walk_to_parent
 
 
@@ -36,11 +40,6 @@ class _LayerLoaderContext(Protocol):
 
 class _OffloadProtocol(Protocol):
     num_hidden_layers: int
-
-
-class _DeviceStagingTarget(Protocol):
-    def cpu(self) -> object: ...
-    def to(self, device: torch.device) -> object: ...
 
 
 loader: _LoaderProtocol | None = None
@@ -68,28 +67,6 @@ def _unwrap_base_layer(parent: object) -> object:
     if hasattr(parent, "base_layer"):
         return getattr(parent, "base_layer")
     return parent
-
-
-def _stage_static_modules_on_host(
-    embed_tokens: _DeviceStagingTarget,
-    lm_head: _DeviceStagingTarget,
-    device: torch.device,
-) -> None:
-    if device.type != "cpu":
-        return
-    embed_tokens.cpu()
-    lm_head.cpu()
-
-
-def _restore_static_modules_after_forward(
-    embed_tokens: _DeviceStagingTarget,
-    lm_head: _DeviceStagingTarget,
-    device: torch.device,
-) -> None:
-    if device.type != "cpu":
-        return
-    embed_tokens.to(device)
-    lm_head.to(device)
 
 
 class loaderLayer:
@@ -214,7 +191,7 @@ class MyLlamaModel(LlamaModel):
 
         hidden_states = inputs_embeds
         position_embeddings = self.rotary_emb(hidden_states, position_ids)
-        _stage_static_modules_on_host(
+        stage_static_modules_on_host(
             self.embed_tokens,
             self.parent_lm_head,
             hidden_states.device,
@@ -236,7 +213,7 @@ class MyLlamaModel(LlamaModel):
             )
 
         hidden_states = self.norm(hidden_states)
-        _restore_static_modules_after_forward(
+        restore_static_modules_after_forward(
             self.embed_tokens,
             self.parent_lm_head,
             hidden_states.device,

@@ -23,6 +23,10 @@ from transformers.models.gpt_oss.modeling_gpt_oss import (
     repeat_kv,
 )
 
+from ollm.device_staging import (
+    restore_static_modules_after_forward,
+    stage_static_modules_on_host,
+)
 from ollm.utils import _assign_tensor_to_module, _set_meta_placeholder, _walk_to_parent
 
 try:
@@ -218,8 +222,11 @@ class MyGptOssModel(GptOssModel):
         position_embeddings = self.rotary_emb(hidden_states, position_ids)
 
         # ===== meine ========================
-        self.embed_tokens.cpu()
-        self.parent_lm_head.cpu()
+        stage_static_modules_on_host(
+            self.embed_tokens,
+            self.parent_lm_head,
+            hidden_states.device,
+        )
 
         for layer_idx in range(self.config.num_hidden_layers):
             decoder_layer = self.layers[layer_idx % 2]
@@ -243,8 +250,11 @@ class MyGptOssModel(GptOssModel):
                 stats.print_and_clean() if stats else "",
             )
         hidden_states = self.norm(hidden_states)
-        self.embed_tokens.to(hidden_states.device)
-        self.parent_lm_head.to(hidden_states.device)
+        restore_static_modules_after_forward(
+            self.embed_tokens,
+            self.parent_lm_head,
+            hidden_states.device,
+        )
         # ./===================================
 
         return MoeModelOutputWithPast(

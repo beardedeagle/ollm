@@ -1,8 +1,10 @@
+from typing import Self
+
 import torch
 
-from ollm.llama import (
-    _restore_static_modules_after_forward,
-    _stage_static_modules_on_host,
+from ollm.device_staging import (
+    restore_static_modules_after_forward,
+    stage_static_modules_on_host,
 )
 
 
@@ -11,11 +13,11 @@ class RecordingModule:
         self.cpu_calls = 0
         self.to_calls: list[torch.device] = []
 
-    def cpu(self) -> "RecordingModule":
+    def cpu(self) -> Self:
         self.cpu_calls += 1
         return self
 
-    def to(self, device: torch.device) -> "RecordingModule":
+    def to(self, device: torch.device) -> Self:
         self.to_calls.append(device)
         return self
 
@@ -25,8 +27,8 @@ def test_llama_static_modules_stay_on_accelerators() -> None:
     lm_head = RecordingModule()
     execution_device = torch.device("mps")
 
-    _stage_static_modules_on_host(embed_tokens, lm_head, execution_device)
-    _restore_static_modules_after_forward(embed_tokens, lm_head, execution_device)
+    stage_static_modules_on_host(embed_tokens, lm_head, execution_device)
+    restore_static_modules_after_forward(embed_tokens, lm_head, execution_device)
 
     assert embed_tokens.cpu_calls == 0
     assert lm_head.cpu_calls == 0
@@ -39,8 +41,8 @@ def test_llama_static_modules_use_host_path_on_cpu() -> None:
     lm_head = RecordingModule()
     execution_device = torch.device("cpu")
 
-    _stage_static_modules_on_host(embed_tokens, lm_head, execution_device)
-    _restore_static_modules_after_forward(embed_tokens, lm_head, execution_device)
+    stage_static_modules_on_host(embed_tokens, lm_head, execution_device)
+    restore_static_modules_after_forward(embed_tokens, lm_head, execution_device)
 
     assert embed_tokens.cpu_calls == 1
     assert lm_head.cpu_calls == 1
