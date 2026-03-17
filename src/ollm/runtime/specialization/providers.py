@@ -27,6 +27,7 @@ from ollm.runtime.specialization.passes.base import SpecializationPassId
 from ollm.runtime.specialization.provider_support import (
     _CpuOffloadModel,
     _GpuCpuOffloadModel,
+    build_execution_device_details,
     build_match,
     finalize_model,
     get_attention_implementation,
@@ -47,7 +48,6 @@ class LlamaSpecializationProvider(SpecializationProvider):
     def match(
         self, resolved_model: ResolvedModel, config: RuntimeConfig
     ) -> SpecializationMatch | None:
-        del config
         if not matches_architecture(resolved_model, ("LlamaForCausalLM",)):
             return None
         supports_disk_cache = (
@@ -61,6 +61,7 @@ class LlamaSpecializationProvider(SpecializationProvider):
             supports_disk_cache=supports_disk_cache,
             supports_cpu_offload=True,
             supports_gpu_offload=False,
+            details=build_execution_device_details(config.device),
         )
 
     def load(
@@ -126,7 +127,6 @@ class Gemma3SpecializationProvider(SpecializationProvider):
     def match(
         self, resolved_model: ResolvedModel, config: RuntimeConfig
     ) -> SpecializationMatch | None:
-        del config
         if not matches_architecture(
             resolved_model,
             ("Gemma3ForConditionalGeneration", "Gemma3ForCausalLM"),
@@ -143,6 +143,7 @@ class Gemma3SpecializationProvider(SpecializationProvider):
             supports_disk_cache=supports_disk_cache,
             supports_cpu_offload=True,
             supports_gpu_offload=False,
+            details=build_execution_device_details(config.device),
         )
 
     def load(
@@ -207,7 +208,6 @@ class Qwen3NextSpecializationProvider(SpecializationProvider):
     def match(
         self, resolved_model: ResolvedModel, config: RuntimeConfig
     ) -> SpecializationMatch | None:
-        del config
         if not matches_architecture(
             resolved_model,
             ("Qwen3NextForCausalLM", "Qwen3MoeForCausalLM"),
@@ -224,6 +224,7 @@ class Qwen3NextSpecializationProvider(SpecializationProvider):
             supports_disk_cache=supports_disk_cache,
             supports_cpu_offload=True,
             supports_gpu_offload=True,
+            details=build_execution_device_details(config.device),
         )
 
     def load(
@@ -288,7 +289,6 @@ class GptOssSpecializationProvider(SpecializationProvider):
     def match(
         self, resolved_model: ResolvedModel, config: RuntimeConfig
     ) -> SpecializationMatch | None:
-        del config
         if not matches_architecture(
             resolved_model,
             ("GptOssForCausalLM", "OpenAIGptOssForCausalLM"),
@@ -313,6 +313,7 @@ class GptOssSpecializationProvider(SpecializationProvider):
             supports_disk_cache=False,
             supports_cpu_offload=True,
             supports_gpu_offload=False,
+            details=build_execution_device_details(config.device),
         )
 
     def load(
@@ -374,7 +375,6 @@ class VoxtralSpecializationProvider(SpecializationProvider):
     def match(
         self, resolved_model: ResolvedModel, config: RuntimeConfig
     ) -> SpecializationMatch | None:
-        del config
         if not matches_architecture(
             resolved_model,
             ("VoxtralForConditionalGeneration", "VoxtralForSpeechSeq2Seq"),
@@ -391,6 +391,7 @@ class VoxtralSpecializationProvider(SpecializationProvider):
             supports_disk_cache=supports_disk_cache,
             supports_cpu_offload=True,
             supports_gpu_offload=False,
+            details=build_execution_device_details(config.device),
         )
 
     def load(

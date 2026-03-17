@@ -17,6 +17,12 @@ class _StatsProtocol(Protocol):
     def print_and_clean(self) -> str: ...
 
 
+PLAN_METADATA_DETAIL_KEYS = (
+    "execution_device_type",
+    "specialization_device_profile",
+)
+
+
 @dataclass(slots=True)
 class RuntimeExecutor:
     def execute(
@@ -259,6 +265,10 @@ class RuntimeExecutor:
             ),
             "fallback_reason": runtime.plan.fallback_reason or "",
         }
+        for detail_key in PLAN_METADATA_DETAIL_KEYS:
+            detail_value = runtime.plan.details.get(detail_key)
+            if detail_value is not None:
+                metadata[detail_key] = detail_value
         stats = cast(_StatsProtocol | None, runtime.backend.stats)
         if stats is not None:
             metadata["stats"] = stats.print_and_clean()

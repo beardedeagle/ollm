@@ -61,9 +61,13 @@ def build_match(
     supports_disk_cache: bool,
     supports_cpu_offload: bool,
     supports_gpu_offload: bool,
+    details: dict[str, str] | None = None,
 ) -> SpecializationMatch | None:
     if resolved_model.native_family is not native_family:
         return None
+    match_details = {"native_family": native_family.value}
+    if details is not None:
+        match_details.update(details)
     return SpecializationMatch(
         provider_id=provider_id,
         native_family=native_family,
@@ -75,7 +79,7 @@ def build_match(
             supports_disk_cache=supports_disk_cache,
             supports_cpu_offload=supports_cpu_offload,
             supports_gpu_offload=supports_gpu_offload,
-            details={"native_family": native_family.value},
+            details=match_details,
         ),
     )
 
@@ -96,6 +100,16 @@ def finalize_model(model: object, device: torch.device) -> object:
     if callable(move_method):
         move_method(device)
     return model
+
+
+def build_execution_device_details(device: str | torch.device) -> dict[str, str]:
+    resolved_device = torch.device(device)
+    return {
+        "execution_device_type": resolved_device.type,
+        "specialization_device_profile": (
+            "host" if resolved_device.type == "cpu" else "accelerator-resident"
+        ),
+    }
 
 
 def unsupported_disk_cache_factory(model_reference: str):
