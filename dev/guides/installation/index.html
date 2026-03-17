@@ -2139,12 +2139,14 @@ uv<span class="w"> </span>sync
 uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>audio<span class="w">      </span><span class="c1"># voxtral audio example</span>
 uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>cuda<span class="w">       </span><span class="c1"># flash-attn + triton acceleration</span>
 uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span><span class="nb">export</span><span class="w">     </span><span class="c1"># export scripts</span>
+uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>server<span class="w">     </span><span class="c1"># local-only FastAPI server scaffold</span>
 uv<span class="w"> </span>sync<span class="w"> </span>--group<span class="w"> </span>dev<span class="w">        </span><span class="c1"># pytest and contributor tooling</span>
 uv<span class="w"> </span>sync<span class="w"> </span>--group<span class="w"> </span>docs<span class="w">       </span><span class="c1"># MkDocs Material docs site + API docs</span>
 </code></pre></div>
 <h2 id="editable-install-with-pip">Editable install with <code>pip</code><a class="headerlink" href="#editable-install-with-pip" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code>pip<span class="w"> </span>install<span class="w"> </span>--no-build-isolation<span class="w"> </span>-e<span class="w"> </span>.
 pip<span class="w"> </span>install<span class="w"> </span>--no-build-isolation<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[adapters]&quot;</span>
+pip<span class="w"> </span>install<span class="w"> </span>--no-build-isolation<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[server]&quot;</span>
 </code></pre></div>
 <p><code>kvikio</code> remains a manual install because the package name depends on your CUDA version.</p>
 <h2 id="verify-the-install">Verify the install<a class="headerlink" href="#verify-the-install" title="Permanent link">&para;</a></h2>
