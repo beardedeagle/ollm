@@ -1,6 +1,8 @@
 # llama3-1B/3B/8B-chat
 
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Protocol, Unpack, cast
 
 import torch
@@ -23,7 +25,11 @@ from ollm.device_staging import (
     restore_static_modules_after_forward,
     stage_static_modules_on_host,
 )
-from ollm.utils import _assign_tensor_to_module, _set_meta_placeholder, _walk_to_parent
+from ollm.utils import (
+    _assign_tensor_to_module,
+    _set_meta_placeholder,
+    _walk_to_parent,
+)
 
 
 class _LoaderProtocol(Protocol):
@@ -223,9 +229,25 @@ class MyLlamaModel(LlamaModel):
         )
 
 
-setattr(llama_modeling, "LlamaMLP", MyLlamaMLP)
-setattr(llama_modeling, "LlamaDecoderLayer", MyLlamaDecoderLayer)
-setattr(llama_modeling, "LlamaModel", MyLlamaModel)
+@contextmanager
+def _temporary_llama_modeling_patch() -> Iterator[None]:
+    original_llama_mlp = llama_modeling.LlamaMLP
+    original_llama_decoder_layer = llama_modeling.LlamaDecoderLayer
+    original_llama_model = llama_modeling.LlamaModel
+    override_llama_mlp = cast(type[LlamaMLP], globals()["MyLlamaMLP"])
+    override_llama_decoder_layer = cast(
+        type[LlamaDecoderLayer], globals()["MyLlamaDecoderLayer"]
+    )
+    override_llama_model = cast(type[LlamaModel], globals()["MyLlamaModel"])
+    setattr(llama_modeling, "LlamaMLP", override_llama_mlp)
+    setattr(llama_modeling, "LlamaDecoderLayer", override_llama_decoder_layer)
+    setattr(llama_modeling, "LlamaModel", override_llama_model)
+    try:
+        yield
+    finally:
+        setattr(llama_modeling, "LlamaMLP", original_llama_mlp)
+        setattr(llama_modeling, "LlamaDecoderLayer", original_llama_decoder_layer)
+        setattr(llama_modeling, "LlamaModel", original_llama_model)
 
 
 class oForGeneration:
@@ -243,6 +265,7 @@ class oForGeneration:
 
 class MyLlamaForCausalLM(LlamaForCausalLM, oForGeneration):
     def __init__(self, config: LlamaConfig):
-        super().__init__(config)
+        with _temporary_llama_modeling_patch():
+            super().__init__(config)
         self.model.parent_lm_head = self.lm_head
         self.num_hidden_layers = _coerce_hidden_layer_count(config.num_hidden_layers)
