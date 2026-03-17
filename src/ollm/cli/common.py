@@ -8,9 +8,10 @@ from rich.console import Console
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
 from ollm.runtime.inspection import runtime_config_payload
 from ollm.runtime.settings import (
+    AppSettings,
     GenerationConfigOverrides,
     RuntimeConfigOverrides,
-    default_app_settings,
+    load_app_settings,
     resolve_generation_config,
     resolve_runtime_config,
 )
@@ -21,24 +22,26 @@ def build_console(no_color: bool = False) -> Console:
 
 
 def build_runtime_config(
-    model: str,
-    models_dir: Path,
-    device: str,
+    model: str | None,
+    models_dir: Path | None,
+    device: str | None,
     backend: str | None,
     adapter_dir: Path | None,
-    multimodal: bool,
-    no_specialization: bool,
-    cache_dir: Path,
-    no_cache: bool,
-    offload_cpu_layers: int,
-    offload_gpu_layers: int,
-    force_download: bool,
-    stats: bool,
-    verbose: bool,
-    quiet: bool,
+    multimodal: bool | None,
+    no_specialization: bool | None,
+    cache_dir: Path | None,
+    no_cache: bool | None,
+    offload_cpu_layers: int | None,
+    offload_gpu_layers: int | None,
+    force_download: bool | None,
+    stats: bool | None,
+    verbose: bool | None,
+    quiet: bool | None,
+    settings: AppSettings | None = None,
 ) -> RuntimeConfig:
+    resolved_settings = load_app_settings() if settings is None else settings
     return resolve_runtime_config(
-        default_app_settings().runtime,
+        resolved_settings.runtime,
         RuntimeConfigOverrides(
             model_reference=model,
             models_dir=models_dir,
@@ -46,9 +49,11 @@ def build_runtime_config(
             backend=backend,
             adapter_dir=adapter_dir,
             multimodal=multimodal,
-            use_specialization=not no_specialization,
+            use_specialization=(
+                None if no_specialization is None else not no_specialization
+            ),
             cache_dir=cache_dir,
-            use_cache=not no_cache,
+            use_cache=None if no_cache is None else not no_cache,
             offload_cpu_layers=offload_cpu_layers,
             offload_gpu_layers=offload_gpu_layers,
             force_download=force_download,
@@ -60,15 +65,17 @@ def build_runtime_config(
 
 
 def build_generation_config(
-    max_new_tokens: int,
-    temperature: float,
+    max_new_tokens: int | None,
+    temperature: float | None,
     top_p: float | None,
     top_k: int | None,
     seed: int | None,
-    stream: bool,
+    stream: bool | None,
+    settings: AppSettings | None = None,
 ) -> GenerationConfig:
+    resolved_settings = load_app_settings() if settings is None else settings
     return resolve_generation_config(
-        default_app_settings().generation,
+        resolved_settings.generation,
         GenerationConfigOverrides(
             max_new_tokens=max_new_tokens,
             temperature=temperature,

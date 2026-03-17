@@ -1,42 +1,8 @@
 import json
-import re
 import stat
 from pathlib import Path
-from typing import cast
 
-from typer.testing import CliRunner
-
-from ollm.app.doctor import DoctorService
-from ollm.cli.main import create_app
-from ollm.cli.services import CommandServices
-from ollm.runtime.generation import RuntimeExecutor
-from ollm.runtime.loader import RuntimeLoader
-from tests.fakes import FakeDoctorService, FakeRuntimeExecutor, FakeRuntimeLoader
-
-
-def _strip_ansi(text: str) -> str:
-    """Remove ANSI escape sequences so assertions work regardless of terminal."""
-    return re.sub(r"\x1b\[[0-9;]*m", "", text)
-
-
-def build_test_app():
-    loader = FakeRuntimeLoader()
-    services = CommandServices(
-        runtime_loader=cast(RuntimeLoader, loader),
-        runtime_executor=cast(RuntimeExecutor, FakeRuntimeExecutor()),
-        doctor_service=cast(DoctorService, FakeDoctorService()),
-    )
-    return CliRunner(), loader, create_app(services)
-
-
-def build_real_app():
-    runtime_loader = RuntimeLoader()
-    services = CommandServices(
-        runtime_loader=runtime_loader,
-        runtime_executor=RuntimeExecutor(),
-        doctor_service=DoctorService(runtime_loader=runtime_loader),
-    )
-    return CliRunner(), create_app(services)
+from tests.cli_support import build_real_app, build_test_app, strip_ansi
 
 
 def test_prompt_command_supports_text_and_json_output(tmp_path: Path) -> None:
@@ -97,7 +63,7 @@ def test_prompt_command_validates_multimodal_and_json_stream() -> None:
         app, ["prompt", "hello", "--image", "image.png", "--no-stream", "--no-color"]
     )
     assert multimodal_error.exit_code != 0
-    assert "--image and --audio require --multimodal" in _strip_ansi(
+    assert "--image and --audio require --multimodal" in strip_ansi(
         multimodal_error.output
     )
 
@@ -120,7 +86,7 @@ def test_prompt_command_validates_multimodal_and_json_stream() -> None:
         app, ["prompt", "hello", "--format", "json", "--no-color"]
     )
     assert json_stream_error.exit_code != 0
-    assert "--format json cannot be combined with --stream" in _strip_ansi(
+    assert "--format json cannot be combined with --stream" in strip_ansi(
         json_stream_error.output
     )
 
@@ -424,4 +390,4 @@ def test_prompt_command_rejects_opaque_model_reference(
         ],
     )
     assert result.exit_code == 1
-    assert "could not be resolved" in _strip_ansi(result.output)
+    assert "could not be resolved" in strip_ansi(result.output)

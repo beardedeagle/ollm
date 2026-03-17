@@ -13,7 +13,7 @@ from ollm.runtime.inspection import (
 )
 from ollm.runtime.settings import (
     RuntimeConfigOverrides,
-    default_app_settings,
+    load_app_settings,
     resolve_runtime_config,
 )
 
@@ -41,20 +41,25 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         backend: str | None = typer.Option(
             None, "--backend", help="Backend override for runtime planning output."
         ),
-        no_specialization: bool = typer.Option(
-            False,
+        no_specialization: bool | None = typer.Option(
+            None,
             "--no-specialization",
             help="Disable optimized specialization selection for runtime planning output.",
         ),
         json_output: bool = typer.Option(False, "--json", help="Output JSON."),
-        models_dir: Path = typer.Option(
-            Path("models"), "--models-dir", help="Directory containing model data."
+        models_dir: Path | None = typer.Option(
+            None, "--models-dir", help="Directory containing model data."
         ),
         no_color: bool = typer.Option(
             False, "--no-color", help="Disable ANSI color output."
         ),
     ) -> None:
-        model_dir = models_dir.expanduser().resolve()
+        settings = load_app_settings()
+        model_dir = (
+            (settings.runtime.models_dir if models_dir is None else models_dir)
+            .expanduser()
+            .resolve()
+        )
         entries: list[dict[str, object]] = []
         seen_paths: set[str] = set()
 
@@ -66,12 +71,14 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             )
             runtime_plan = services.runtime_loader.plan(
                 resolve_runtime_config(
-                    default_app_settings().runtime,
+                    settings.runtime,
                     RuntimeConfigOverrides(
                         model_reference=entry.model_id,
                         models_dir=model_dir,
                         backend=backend,
-                        use_specialization=not no_specialization,
+                        use_specialization=(
+                            None if no_specialization is None else not no_specialization
+                        ),
                     ),
                 )
             )
@@ -103,12 +110,14 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             )
             runtime_plan = services.runtime_loader.plan(
                 resolve_runtime_config(
-                    default_app_settings().runtime,
+                    settings.runtime,
                     RuntimeConfigOverrides(
                         model_reference=resolved_model.reference.raw,
                         models_dir=model_dir,
                         backend=backend,
-                        use_specialization=not no_specialization,
+                        use_specialization=(
+                            None if no_specialization is None else not no_specialization
+                        ),
                     ),
                 )
             )
@@ -142,17 +151,17 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
     @models_app.command("info")
     def model_info(
         model: str = typer.Argument(..., help="Model reference."),
-        models_dir: Path = typer.Option(
-            Path("models"), "--models-dir", help="Directory containing model data."
+        models_dir: Path | None = typer.Option(
+            None, "--models-dir", help="Directory containing model data."
         ),
         backend: str | None = typer.Option(None, "--backend", help="Backend override."),
-        multimodal: bool = typer.Option(
-            False,
+        multimodal: bool | None = typer.Option(
+            None,
             "--multimodal/--no-multimodal",
             help="Enable multimodal processor support for runtime planning.",
         ),
-        no_specialization: bool = typer.Option(
-            False,
+        no_specialization: bool | None = typer.Option(
+            None,
             "--no-specialization",
             help="Disable optimized specialization selection.",
         ),
@@ -164,14 +173,21 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             False, "--no-color", help="Disable ANSI color output."
         ),
     ) -> None:
+        settings = load_app_settings()
         runtime_config = resolve_runtime_config(
-            default_app_settings().runtime,
+            settings.runtime,
             RuntimeConfigOverrides(
                 model_reference=model,
-                models_dir=models_dir.expanduser().resolve(),
+                models_dir=(
+                    settings.runtime.models_dir if models_dir is None else models_dir
+                )
+                .expanduser()
+                .resolve(),
                 backend=backend,
                 multimodal=multimodal,
-                use_specialization=not no_specialization,
+                use_specialization=(
+                    None if no_specialization is None else not no_specialization
+                ),
             ),
         )
         resolved_model = services.runtime_loader.resolve(
@@ -225,8 +241,8 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
     @models_app.command("download")
     def download_model(
         model: str = typer.Argument(..., help="Model reference."),
-        models_dir: Path = typer.Option(
-            Path("models"),
+        models_dir: Path | None = typer.Option(
+            None,
             "--models-dir",
             help="Directory to store materialized runtime artifacts.",
         ),
@@ -235,8 +251,13 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             False, "--no-color", help="Disable ANSI color output."
         ),
     ) -> None:
+        settings = load_app_settings()
         model_path = services.runtime_loader.download(
-            model, models_dir.expanduser().resolve(), force_download=force
+            model,
+            (settings.runtime.models_dir if models_dir is None else models_dir)
+            .expanduser()
+            .resolve(),
+            force_download=force,
         )
         console = build_console(no_color=no_color)
         console.print(f"Materialized runtime artifacts for {model} to {model_path}")
@@ -244,12 +265,16 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
     @models_app.command("path")
     def model_path(
         model: str = typer.Argument(..., help="Model reference."),
-        models_dir: Path = typer.Option(
-            Path("models"), "--models-dir", help="Directory containing model data."
+        models_dir: Path | None = typer.Option(
+            None, "--models-dir", help="Directory containing model data."
         ),
     ) -> None:
+        settings = load_app_settings()
         resolved_model = services.runtime_loader.resolve(
-            model, models_dir.expanduser().resolve()
+            model,
+            (settings.runtime.models_dir if models_dir is None else models_dir)
+            .expanduser()
+            .resolve(),
         )
         if resolved_model.model_path is None:
             raise typer.BadParameter(

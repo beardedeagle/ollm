@@ -130,6 +130,47 @@ Runtime selection and inspection controls:
 
 `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` now all honor `--backend` and `--no-specialization`. `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` also support `--plan-json` for script-friendly inspection of the resolver/backend decision.
 
+Configuration layering is now first-class:
+
+- built-in defaults remain the lowest-precedence layer
+- `./ollm.toml` is loaded automatically when present
+- `OLLM_*` environment variables override config-file values
+- explicit CLI flags override both env and config-file defaults
+
+You can also point to a different config file with `OLLM_CONFIG_FILE=/path/to/ollm.toml`.
+
+Example `ollm.toml`:
+
+```toml
+[runtime]
+model_reference = "llama3-8B-chat"
+models_dir = "models"
+device = "mps"
+backend = "optimized-native"
+cache_dir = "kv_cache"
+use_cache = true
+
+[generation]
+max_new_tokens = 256
+temperature = 0.0
+stream = true
+
+[server]
+host = "127.0.0.1"
+port = 8000
+reload = false
+```
+
+Example environment overrides:
+
+```bash
+export OLLM_RUNTIME__MODEL_REFERENCE=Qwen/Qwen2.5-7B-Instruct
+export OLLM_RUNTIME__DEVICE=cpu
+export OLLM_GENERATION__MAX_NEW_TOKENS=128
+```
+
+This slice configures runtime, generation, and future server defaults. Request-specific values that are not part of that schema, such as the prompt/chat system message, still remain explicit CLI arguments today.
+
 Runtime vocabulary:
 - support levels:
   - `optimized`: a native specialization provider can run the reference

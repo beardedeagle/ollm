@@ -4,33 +4,33 @@ import typer
 
 from ollm.cli.common import build_console, build_runtime_config, print_json
 from ollm.cli.services import CommandServices
-from ollm.runtime.config import DEFAULT_DEVICE
 from ollm.runtime.inspection import plan_json_payload
+from ollm.runtime.settings import load_app_settings
 
 
 def register_doctor_command(app: typer.Typer, services: CommandServices) -> None:
     @app.command("doctor")
     def doctor_command(
-        model: str = typer.Option(
-            "llama3-1B-chat", "--model", help="Model reference to inspect."
+        model: str | None = typer.Option(
+            None, "--model", help="Model reference to inspect."
         ),
-        models_dir: Path = typer.Option(
-            Path("models"), "--models-dir", help="Directory containing model data."
+        models_dir: Path | None = typer.Option(
+            None, "--models-dir", help="Directory containing model data."
         ),
-        device: str = typer.Option(
-            DEFAULT_DEVICE, "--device", help="Torch device string."
+        device: str | None = typer.Option(
+            None, "--device", help="Torch device string."
         ),
         backend: str | None = typer.Option(None, "--backend", help="Backend override."),
         adapter_dir: Path | None = typer.Option(
             None, "--adapter-dir", help="Optional PEFT adapter directory."
         ),
-        multimodal: bool = typer.Option(
-            False,
+        multimodal: bool | None = typer.Option(
+            None,
             "--multimodal/--no-multimodal",
             help="Enable multimodal processor support for plan checks.",
         ),
-        no_specialization: bool = typer.Option(
-            False,
+        no_specialization: bool | None = typer.Option(
+            None,
             "--no-specialization",
             help="Disable optimized specialization selection.",
         ),
@@ -50,8 +50,8 @@ def register_doctor_command(app: typer.Typer, services: CommandServices) -> None
             "--plan-json",
             help="Print the resolved runtime plan as JSON and exit.",
         ),
-        verbose: bool = typer.Option(
-            False, "--verbose", help="Include verbose output."
+        verbose: bool | None = typer.Option(
+            None, "--verbose", help="Include verbose output."
         ),
         no_color: bool = typer.Option(
             False, "--no-color", help="Disable ANSI color output."
@@ -70,14 +70,15 @@ def register_doctor_command(app: typer.Typer, services: CommandServices) -> None
             adapter_dir=adapter_dir,
             multimodal=multimodal,
             no_specialization=no_specialization,
-            cache_dir=Path("kv_cache"),
-            no_cache=False,
-            offload_cpu_layers=0,
-            offload_gpu_layers=0,
-            force_download=False,
-            stats=False,
+            cache_dir=None,
+            no_cache=None,
+            offload_cpu_layers=None,
+            offload_gpu_layers=None,
+            force_download=None,
+            stats=None,
             verbose=verbose,
-            quiet=False,
+            quiet=None,
+            settings=load_app_settings(),
         )
         console = build_console(no_color=no_color)
         if plan_json_flag:

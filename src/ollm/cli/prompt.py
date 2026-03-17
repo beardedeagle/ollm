@@ -14,8 +14,8 @@ from ollm.cli.common import (
     print_json,
 )
 from ollm.cli.services import CommandServices
-from ollm.runtime.config import DEFAULT_DEVICE
 from ollm.runtime.inspection import plan_json_payload
+from ollm.runtime.settings import load_app_settings
 from ollm.runtime.streaming import StreamSink
 
 
@@ -43,52 +43,55 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
     @app.command("prompt")
     def prompt_command(
         prompt: str | None = typer.Argument(None, help="Prompt text."),
-        model: str = typer.Option(
-            "llama3-1B-chat", "--model", help="Model reference to resolve."
+        model: str | None = typer.Option(
+            None, "--model", help="Model reference to resolve."
         ),
-        models_dir: Path = typer.Option(
-            Path("models"), "--models-dir", help="Directory containing model data."
+        models_dir: Path | None = typer.Option(
+            None, "--models-dir", help="Directory containing model data."
         ),
-        device: str = typer.Option(
-            DEFAULT_DEVICE, "--device", help="Torch device string."
+        device: str | None = typer.Option(
+            None, "--device", help="Torch device string."
         ),
         backend: str | None = typer.Option(None, "--backend", help="Backend override."),
         adapter_dir: Path | None = typer.Option(
             None, "--adapter-dir", help="Optional PEFT adapter directory."
         ),
-        multimodal: bool = typer.Option(
-            False,
+        multimodal: bool | None = typer.Option(
+            None,
             "--multimodal/--no-multimodal",
             help="Enable multimodal processor support.",
         ),
-        no_specialization: bool = typer.Option(
-            False,
+        no_specialization: bool | None = typer.Option(
+            None,
             "--no-specialization",
             help="Disable optimized specialization selection.",
         ),
-        cache_dir: Path = typer.Option(
-            Path("kv_cache"), "--cache-dir", help="KV cache directory."
+        cache_dir: Path | None = typer.Option(
+            None, "--cache-dir", help="KV cache directory."
         ),
-        no_cache: bool = typer.Option(
-            False, "--no-cache", help="Disable disk KV cache."
+        no_cache: bool | None = typer.Option(
+            None, "--no-cache", help="Disable disk KV cache."
         ),
-        offload_cpu_layers: int = typer.Option(
-            0, "--offload-cpu-layers", min=0, help="Number of layers to offload to CPU."
+        offload_cpu_layers: int | None = typer.Option(
+            None,
+            "--offload-cpu-layers",
+            min=0,
+            help="Number of layers to offload to CPU.",
         ),
-        offload_gpu_layers: int = typer.Option(
-            0,
+        offload_gpu_layers: int | None = typer.Option(
+            None,
             "--offload-gpu-layers",
             min=0,
             help="Number of layers to keep on GPU when using mixed offload.",
         ),
-        force_download: bool = typer.Option(
-            False, "--force-download", help="Force redownload of the selected model."
+        force_download: bool | None = typer.Option(
+            None, "--force-download", help="Force redownload of the selected model."
         ),
-        max_new_tokens: int = typer.Option(
-            500, "--max-new-tokens", min=1, help="Maximum generated tokens."
+        max_new_tokens: int | None = typer.Option(
+            None, "--max-new-tokens", min=1, help="Maximum generated tokens."
         ),
-        temperature: float = typer.Option(
-            0.0, "--temperature", min=0.0, help="Sampling temperature."
+        temperature: float | None = typer.Option(
+            None, "--temperature", min=0.0, help="Sampling temperature."
         ),
         top_p: float | None = typer.Option(
             None, "--top-p", min=0.0, max=1.0, help="Top-p sampling cutoff."
@@ -99,14 +102,14 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
         seed: int | None = typer.Option(
             None, "--seed", help="Random seed for sampling."
         ),
-        stats: bool = typer.Option(
-            False, "--stats", help="Enable runtime stats collection."
+        stats: bool | None = typer.Option(
+            None, "--stats", help="Enable runtime stats collection."
         ),
-        verbose: bool = typer.Option(
-            False, "--verbose", help="Enable verbose runtime logging."
+        verbose: bool | None = typer.Option(
+            None, "--verbose", help="Enable verbose runtime logging."
         ),
-        quiet: bool = typer.Option(
-            False, "--quiet", help="Suppress non-essential runtime output."
+        quiet: bool | None = typer.Option(
+            None, "--quiet", help="Suppress non-essential runtime output."
         ),
         system: str = typer.Option(
             "You are a helpful assistant.",
@@ -125,8 +128,8 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
         audio: list[str] | None = typer.Option(
             None, "--audio", help="Audio path or URL. Repeatable."
         ),
-        stream: bool = typer.Option(
-            True,
+        stream: bool | None = typer.Option(
+            None,
             "--stream/--no-stream",
             help="Stream assistant output while generating.",
         ),
@@ -153,6 +156,7 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
             False, "--no-color", help="Disable ANSI color output."
         ),
     ) -> None:
+        settings = load_app_settings()
         runtime_config = build_runtime_config(
             model=model,
             models_dir=models_dir,
@@ -164,11 +168,12 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
             cache_dir=cache_dir,
             no_cache=no_cache,
             offload_cpu_layers=offload_cpu_layers,
-            offload_gpu_layers=0 if offload_gpu_layers is None else offload_gpu_layers,
+            offload_gpu_layers=offload_gpu_layers,
             force_download=force_download,
             stats=stats,
             verbose=verbose,
             quiet=quiet,
+            settings=settings,
         )
         generation_config = build_generation_config(
             max_new_tokens=max_new_tokens,
@@ -177,6 +182,7 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
             top_k=top_k,
             seed=seed,
             stream=stream,
+            settings=settings,
         )
         console = build_console(no_color=no_color)
         if plan_json_flag:

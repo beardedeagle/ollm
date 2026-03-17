@@ -20,6 +20,50 @@ Use `ollm` or `ollm chat` only from an interactive terminal. For scripts, pipes,
 
 `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` all honor these controls.
 
+## Configuration sources
+
+oLLM now resolves runtime, generation, and server defaults through an explicit
+layered settings contract:
+
+1. CLI flags
+2. `OLLM_*` environment variables
+3. TOML config file values
+4. built-in defaults
+
+By default, oLLM checks `./ollm.toml` when it is present. You can point to a
+different config file with `OLLM_CONFIG_FILE=/path/to/ollm.toml`.
+
+Nested environment variables use a double-underscore separator:
+
+- `OLLM_RUNTIME__MODEL_REFERENCE`
+- `OLLM_RUNTIME__MODELS_DIR`
+- `OLLM_RUNTIME__DEVICE`
+- `OLLM_GENERATION__MAX_NEW_TOKENS`
+- `OLLM_GENERATION__STREAM`
+- `OLLM_SERVER__PORT`
+
+Example config file:
+
+```toml
+[runtime]
+model_reference = "llama3-8B-chat"
+models_dir = "models"
+device = "cpu"
+
+[generation]
+max_new_tokens = 256
+temperature = 0.0
+stream = true
+
+[server]
+host = "127.0.0.1"
+port = 8000
+```
+
+The current settings surface covers runtime defaults, generation defaults, and
+future server defaults. Prompt-specific values outside that schema, such as the
+system prompt text, still remain explicit CLI options today.
+
 ## Model references
 
 `--model` accepts opaque model references. Supported forms include:
