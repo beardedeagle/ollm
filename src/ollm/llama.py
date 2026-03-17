@@ -38,6 +38,11 @@ class _OffloadProtocol(Protocol):
     num_hidden_layers: int
 
 
+class _DeviceStagingTarget(Protocol):
+    def cpu(self) -> object: ...
+    def to(self, device: torch.device) -> object: ...
+
+
 loader: _LoaderProtocol | None = None
 stats = None
 
@@ -65,12 +70,26 @@ def _unwrap_base_layer(parent: object) -> object:
     return parent
 
 
-def _coerce_hidden_layer_count(value: object) -> int:
-    if not isinstance(value, int):
-        raise RuntimeError(
-            "Expected transformer config to expose an integer hidden layer count"
-        )
-    return value
+def _stage_static_modules_on_host(
+    embed_tokens: _DeviceStagingTarget,
+    lm_head: _DeviceStagingTarget,
+    device: torch.device,
+) -> None:
+    if device.type != "cpu":
+        return
+    embed_tokens.cpu()
+    lm_head.cpu()
+
+
+def _restore_static_modules_after_forward(
+    embed_tokens: _DeviceStagingTarget,
+    lm_head: _DeviceStagingTarget,
+    device: torch.device,
+) -> None:
+    if device.type != "cpu":
+        return
+    embed_tokens.to(device)
+    lm_head.to(device)
 
 
 class loaderLayer:
@@ -195,8 +214,11 @@ class MyLlamaModel(LlamaModel):
 
         hidden_states = inputs_embeds
         position_embeddings = self.rotary_emb(hidden_states, position_ids)
-        self.embed_tokens.cpu()
-        self.parent_lm_head.cpu()
+        _stage_static_modules_on_host(
+            self.embed_tokens,
+            self.parent_lm_head,
+            hidden_states.device,
+        )
         decoder_layers = list(self.layers.children())[
             : _coerce_hidden_layer_count(self.config.num_hidden_layers)
         ]
@@ -214,8 +236,11 @@ class MyLlamaModel(LlamaModel):
             )
 
         hidden_states = self.norm(hidden_states)
-        self.embed_tokens.to(hidden_states.device)
-        self.parent_lm_head.to(hidden_states.device)
+        _restore_static_modules_after_forward(
+            self.embed_tokens,
+            self.parent_lm_head,
+            hidden_states.device,
+        )
         return BaseModelOutputWithPast(
             last_hidden_state=hidden_states, past_key_values=past_key_values
         )

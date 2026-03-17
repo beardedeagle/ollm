@@ -70,6 +70,8 @@ Execution surfaces follow the finalized runtime plan. Prompt response metadata i
 
 - execution backend
 - specialization state
+- execution device type for optimized-native runs
+- specialization device profile for optimized-native runs
 - applied specialization pass ids
 - any recorded fallback reason
 

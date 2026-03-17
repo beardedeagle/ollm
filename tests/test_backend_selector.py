@@ -35,7 +35,10 @@ def build_catalog_resolved_model() -> ResolvedModel:
 
 
 def test_backend_selector_prefers_optimized_native_for_built_in_aliases() -> None:
-    plan = BackendSelector().select(build_catalog_resolved_model(), RuntimeConfig())
+    plan = BackendSelector().select(
+        build_catalog_resolved_model(),
+        RuntimeConfig(device="cpu"),
+    )
     assert plan.backend_id == "optimized-native"
     assert plan.support_level is SupportLevel.OPTIMIZED
     assert plan.specialization_provider_id == "llama-native"
@@ -46,6 +49,20 @@ def test_backend_selector_prefers_optimized_native_for_built_in_aliases() -> Non
     )
     assert plan.supports_cpu_offload is True
     assert plan.supports_gpu_offload is False
+    assert plan.details["execution_device_type"] == "cpu"
+    assert plan.details["specialization_device_profile"] == "host"
+
+
+def test_backend_selector_records_accelerator_execution_profile_for_mps() -> None:
+    plan = BackendSelector().select(
+        build_catalog_resolved_model(),
+        RuntimeConfig(device="mps"),
+    )
+
+    assert plan.backend_id == "optimized-native"
+    assert plan.specialization_provider_id == "llama-native"
+    assert plan.details["execution_device_type"] == "mps"
+    assert plan.details["specialization_device_profile"] == "accelerator-resident"
 
 
 def test_backend_selector_routes_catalog_models_with_adapters_to_generic_backend() -> (
@@ -101,7 +118,7 @@ def test_backend_selector_prefers_optimized_native_for_local_native_family() -> 
         model_type="llama",
         generic_model_kind=GenericModelKind.CAUSAL_LM,
     )
-    plan = BackendSelector().select(resolved_model, RuntimeConfig())
+    plan = BackendSelector().select(resolved_model, RuntimeConfig(device="cpu"))
     assert plan.backend_id == "optimized-native"
     assert plan.specialization_provider_id == "llama-native"
     assert plan.specialization_pass_ids == (

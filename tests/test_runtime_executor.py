@@ -402,3 +402,38 @@ def test_runtime_executor_synthesizes_attention_mask_for_tensor_chat_template() 
         attention_mask,
         torch.tensor([[1, 1, 1]]),
     )
+
+
+def test_runtime_executor_includes_execution_device_details_in_metadata() -> None:
+    capabilities = CapabilityProfile(support_level=SupportLevel.OPTIMIZED)
+    runtime = build_runtime(capabilities)
+    runtime.plan = RuntimePlan(
+        resolved_model=runtime.plan.resolved_model,
+        backend_id="optimized-native",
+        model_path=runtime.plan.model_path,
+        support_level=SupportLevel.OPTIMIZED,
+        generic_model_kind=None,
+        supports_disk_cache=True,
+        supports_cpu_offload=True,
+        supports_gpu_offload=False,
+        specialization_enabled=True,
+        specialization_applied=True,
+        specialization_provider_id="llama-native",
+        specialization_state=SpecializationState.APPLIED,
+        reason="optimized",
+        specialization_pass_ids=(),
+        applied_specialization_pass_ids=(),
+        details={
+            "execution_device_type": "mps",
+            "specialization_device_profile": "accelerator-resident",
+        },
+    )
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("hello")]),
+    )
+
+    response = RuntimeExecutor().execute(runtime, request)
+
+    assert response.metadata["execution_device_type"] == "mps"
+    assert response.metadata["specialization_device_profile"] == "accelerator-resident"
