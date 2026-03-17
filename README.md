@@ -370,10 +370,20 @@ The harness is designed to stay truthful on hardware-constrained machines:
   - prompt-token and output-token throughput
   - current and peak process RSS
   - accelerator memory, cache footprint, process CPU, best-effort accelerator utilization, and allocator-gap metrics when the host/runtime can measure them truthfully
+  - optimized-native loader and KV IO timing summaries when the runtime exposes them
   - prompt-length scaling, output-length scaling, and repeated-turn session-growth sweeps
 - family-wide comparisons stay bounded to cold-start and warm-runtime generic-vs-optimized results so the harness remains practical on development machines
 - unsupported metrics and non-executable optimized paths remain explicitly unavailable instead of being fabricated
 - peak RSS reports now carry source labels so warm/scaling/session sections can use stage-local sampled peaks instead of misleading process-lifetime maxima
+
+When an optimized-native run emits runtime timing stats, the request metrics now
+also include a `native_runtime_profile` section with:
+
+- event summaries such as `layer_load`, `experts_load`, `kvload`, `kvsave`,
+  `gds_read`, `safetensor_read`, `safetensor_pread`, and
+  `offloaded_cpu_to_cuda`
+- storage-path labels such as `gds`, `safetensor-io`,
+  `cpu-offloaded-artifacts`, `disk-kv-cache`, and `torch-artifact-io`
 
 Useful knobs for the primary-target sweeps:
 

@@ -1,9 +1,12 @@
+import statistics
 import time
 from pathlib import Path
 
 import torch
 
 from ollm.async_io import path_read_text, path_write_text
+
+type StatsSummary = dict[str, int | float]
 
 
 def file_put_contents(filename, st):
@@ -19,20 +22,56 @@ def tensor_size_gb(t: torch.Tensor) -> float:
 
 
 class Stats:
-    def __init__(self):
-        self.d = {}
+    def __init__(self) -> None:
+        self._samples_seconds: dict[str, list[float]] = {}
 
-    def set(self, name, t1):
-        if name not in self.d:
-            self.d[name] = []
-        self.d[name].append(round(time.perf_counter() - t1, 3))
+    def set(self, name: str, started_at: float) -> None:
+        elapsed_seconds = time.perf_counter() - started_at
+        self._samples_seconds.setdefault(name, []).append(elapsed_seconds)
 
-    def print_and_clean(self):
-        st = "Stats:"
-        for name, a in self.d.items():
-            st += f" {name}: {a[:5]} t:{round(sum(a), 3)},"
-        self.d = {}
-        return st
+    def clear(self) -> None:
+        self._samples_seconds.clear()
+
+    def snapshot_seconds(self) -> dict[str, tuple[float, ...]]:
+        return {name: tuple(samples) for name, samples in self._samples_seconds.items()}
+
+    def collect_and_clear_ms(self) -> dict[str, StatsSummary]:
+        snapshot = self.snapshot_seconds()
+        self.clear()
+        return {
+            name: _summarize_elapsed_samples_ms(samples)
+            for name, samples in snapshot.items()
+        }
+
+    def print_and_clean(self) -> str:
+        summaries = self.collect_and_clear_ms()
+        if not summaries:
+            return "Stats: none"
+        parts = []
+        for name in sorted(summaries):
+            summary = summaries[name]
+            parts.append(
+                (
+                    f"{name}: count={summary['count']} total_ms={summary['total_ms']} "
+                    f"mean_ms={summary['mean_ms']} max_ms={summary['max_ms']}"
+                )
+            )
+        return "Stats: " + ", ".join(parts)
+
+
+def _summarize_elapsed_samples_ms(samples_seconds: tuple[float, ...]) -> StatsSummary:
+    samples_ms = sorted(sample * 1000.0 for sample in samples_seconds)
+    p95_index = max(0, int(round((len(samples_ms) - 1) * 0.95)))
+    total_ms = round(sum(samples_ms), 6)
+    return {
+        "count": len(samples_ms),
+        "total_ms": total_ms,
+        "min_ms": round(samples_ms[0], 6),
+        "median_ms": round(statistics.median(samples_ms), 6),
+        "p95_ms": round(samples_ms[p95_index], 6),
+        "max_ms": round(samples_ms[-1], 6),
+        "mean_ms": round(statistics.fmean(samples_ms), 6),
+    }
 
 
 # === Helper utilities ===

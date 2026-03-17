@@ -47,8 +47,8 @@ When supported by the selected backend, oLLM can expose:
 - CPU layer offload
 - mixed GPU / CPU layer placement
 
-These controls are backend-dependent. Provider-backed runtimes do not expose the same low-level layer-placement controls as optimized-native runtimes.
-These controls are backend-dependent. The generic path does not expose the same low-level layer-placement controls as optimized-native runtimes.
+These controls are backend-dependent. The generic path does not expose the same
+low-level layer-placement controls as optimized-native runtimes.
 
 ## GPT-OSS `gds_export` requirement
 
@@ -65,5 +65,10 @@ The benchmark harness is designed to stay truthful on limited-RAM hosts:
 - planner overhead and no-specialization cost do not require large model loads
 - runtime comparisons only load weights when the target actually exists locally
 - the requested primary target now reports cold-start and warm-runtime behavior separately, including TTFT, inter-token latency, prompt/output throughput, peak memory, cache footprint, and supported utilization / allocator-gap metrics
+- optimized-native benchmark requests can also expose native loader and KV IO timing summaries plus the storage paths used by the request
 - prompt-length scaling, output-length scaling, and repeated-turn session growth are measured only for the requested primary target, not for every built-in family alias
 - unavailable optimized comparisons are reported as unavailable instead of being fabricated
+
+When present, the native runtime profile is the most truthful place to inspect
+whether an optimized request actually used GDS, standard safetensor IO,
+CPU-offloaded artifacts, or disk KV cache IO.

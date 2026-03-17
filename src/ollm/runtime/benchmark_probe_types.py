@@ -6,6 +6,34 @@ from ollm.runtime.benchmark_resources import StageResourceSnapshot
 
 
 @dataclass(frozen=True, slots=True)
+class EventTimingSummary:
+    count: int
+    total_ms: float
+    min_ms: float
+    median_ms: float
+    p95_ms: float
+    max_ms: float
+    mean_ms: float
+
+    def to_dict(self) -> dict[str, float | int]:
+        return asdict(self)
+
+
+@dataclass(frozen=True, slots=True)
+class NativeRuntimeProfile:
+    storage_paths: tuple[str, ...]
+    events: dict[str, EventTimingSummary]
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "storage_paths": list(self.storage_paths),
+            "events": {
+                name: summary.to_dict() for name, summary in sorted(self.events.items())
+            },
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class RequestProbeMetrics:
     total_ms: float
     generation_ms: float
@@ -19,11 +47,17 @@ class RequestProbeMetrics:
     cache_dir_size_mb: float | None
     allocator_gap_mb: float | None
     allocator_gap_ratio: float | None
+    native_runtime_profile: NativeRuntimeProfile | None
     resources: StageResourceSnapshot
     text_excerpt: str
 
     def to_dict(self) -> dict[str, object]:
         payload = asdict(self)
+        payload["native_runtime_profile"] = (
+            None
+            if self.native_runtime_profile is None
+            else self.native_runtime_profile.to_dict()
+        )
         payload["resources"] = self.resources.to_dict()
         return payload
 

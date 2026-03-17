@@ -5,6 +5,8 @@ from collections.abc import Mapping
 from typing import cast
 
 from ollm.runtime.benchmark_probe_types import (
+    EventTimingSummary,
+    NativeRuntimeProfile,
     OutputScalingCase,
     OutputScalingProbeResult,
     PromptScalingCase,
@@ -172,6 +174,9 @@ def _parse_request_probe_metrics(payload: Mapping[str, object]) -> RequestProbeM
         cache_dir_size_mb=_optional_float(payload, "cache_dir_size_mb"),
         allocator_gap_mb=_optional_float(payload, "allocator_gap_mb"),
         allocator_gap_ratio=_optional_float(payload, "allocator_gap_ratio"),
+        native_runtime_profile=_parse_native_runtime_profile(
+            payload.get("native_runtime_profile")
+        ),
         resources=_parse_stage_resources(_require_mapping(payload, "resources")),
         text_excerpt=_require_string(payload, "text_excerpt"),
     )
@@ -223,6 +228,39 @@ def _parse_optional_summary(value: object) -> NumericSummary | None:
         p95=_require_float(payload, "p95"),
         max=_require_float(payload, "max"),
         mean=_require_float(payload, "mean"),
+    )
+
+
+def _parse_native_runtime_profile(value: object) -> NativeRuntimeProfile | None:
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise ValueError("native runtime profile must be an object or null")
+    payload = cast(Mapping[str, object], value)
+    storage_paths = tuple(
+        _require_string({"value": item}, "value")
+        for item in _require_sequence(payload, "storage_paths")
+    )
+    raw_events = _require_mapping(payload, "events")
+    events = {
+        event_name: _parse_event_timing_summary(event_payload)
+        for event_name, event_payload in raw_events.items()
+    }
+    return NativeRuntimeProfile(storage_paths=storage_paths, events=events)
+
+
+def _parse_event_timing_summary(value: object) -> EventTimingSummary:
+    if not isinstance(value, Mapping):
+        raise ValueError("event timing summary must be an object")
+    payload = cast(Mapping[str, object], value)
+    return EventTimingSummary(
+        count=_require_int(payload, "count"),
+        total_ms=_require_float(payload, "total_ms"),
+        min_ms=_require_float(payload, "min_ms"),
+        median_ms=_require_float(payload, "median_ms"),
+        p95_ms=_require_float(payload, "p95_ms"),
+        max_ms=_require_float(payload, "max_ms"),
+        mean_ms=_require_float(payload, "mean_ms"),
     )
 
 
