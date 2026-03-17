@@ -16,6 +16,8 @@ dependencies = [
     "accelerate",
     "huggingface-hub",
     "numpy",
+    "pydantic",
+    "pydantic-settings",
     "prompt-toolkit",
     "rich",
     "typer",

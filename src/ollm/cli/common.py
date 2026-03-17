@@ -7,6 +7,13 @@ from rich.console import Console
 
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
 from ollm.runtime.inspection import runtime_config_payload
+from ollm.runtime.settings import (
+    GenerationConfigOverrides,
+    RuntimeConfigOverrides,
+    default_app_settings,
+    resolve_generation_config,
+    resolve_runtime_config,
+)
 
 
 def build_console(no_color: bool = False) -> Console:
@@ -30,25 +37,26 @@ def build_runtime_config(
     verbose: bool,
     quiet: bool,
 ) -> RuntimeConfig:
-    config = RuntimeConfig(
-        model_reference=model,
-        models_dir=models_dir,
-        device=device,
-        backend=backend,
-        adapter_dir=adapter_dir,
-        multimodal=multimodal,
-        use_specialization=not no_specialization,
-        cache_dir=cache_dir,
-        use_cache=not no_cache,
-        offload_cpu_layers=offload_cpu_layers,
-        offload_gpu_layers=offload_gpu_layers,
-        force_download=force_download,
-        stats=stats,
-        verbose=verbose,
-        quiet=quiet,
+    return resolve_runtime_config(
+        default_app_settings().runtime,
+        RuntimeConfigOverrides(
+            model_reference=model,
+            models_dir=models_dir,
+            device=device,
+            backend=backend,
+            adapter_dir=adapter_dir,
+            multimodal=multimodal,
+            use_specialization=not no_specialization,
+            cache_dir=cache_dir,
+            use_cache=not no_cache,
+            offload_cpu_layers=offload_cpu_layers,
+            offload_gpu_layers=offload_gpu_layers,
+            force_download=force_download,
+            stats=stats,
+            verbose=verbose,
+            quiet=quiet,
+        ),
     )
-    config.validate()
-    return config
 
 
 def build_generation_config(
@@ -59,16 +67,17 @@ def build_generation_config(
     seed: int | None,
     stream: bool,
 ) -> GenerationConfig:
-    config = GenerationConfig(
-        max_new_tokens=max_new_tokens,
-        temperature=temperature,
-        top_p=top_p,
-        top_k=top_k,
-        seed=seed,
-        stream=stream,
+    return resolve_generation_config(
+        default_app_settings().generation,
+        GenerationConfigOverrides(
+            max_new_tokens=max_new_tokens,
+            temperature=temperature,
+            top_p=top_p,
+            top_k=top_k,
+            seed=seed,
+            stream=stream,
+        ),
     )
-    config.validate()
-    return config
 
 
 def ensure_interactive_terminal() -> None:
