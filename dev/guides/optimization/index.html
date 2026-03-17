@@ -2348,8 +2348,8 @@
 <li>CPU layer offload</li>
 <li>mixed GPU / CPU layer placement</li>
 </ul>
-<p>These controls are backend-dependent. Provider-backed runtimes do not expose the same low-level layer-placement controls as optimized-native runtimes.
-These controls are backend-dependent. The generic path does not expose the same low-level layer-placement controls as optimized-native runtimes.</p>
+<p>These controls are backend-dependent. The generic path does not expose the same
+low-level layer-placement controls as optimized-native runtimes.</p>
 <h2 id="gpt-oss-gds_export-requirement">GPT-OSS <code>gds_export</code> requirement<a class="headerlink" href="#gpt-oss-gds_export-requirement" title="Permanent link">&para;</a></h2>
 <p>The optimized GPT-OSS path is intentionally strict:</p>
 <ul>
@@ -2363,9 +2363,13 @@ These controls are backend-dependent. The generic path does not expose the same 
 <li>planner overhead and no-specialization cost do not require large model loads</li>
 <li>runtime comparisons only load weights when the target actually exists locally</li>
 <li>the requested primary target now reports cold-start and warm-runtime behavior separately, including TTFT, inter-token latency, prompt/output throughput, peak memory, cache footprint, and supported utilization / allocator-gap metrics</li>
+<li>optimized-native benchmark requests can also expose native loader and KV IO timing summaries plus the storage paths used by the request</li>
 <li>prompt-length scaling, output-length scaling, and repeated-turn session growth are measured only for the requested primary target, not for every built-in family alias</li>
 <li>unavailable optimized comparisons are reported as unavailable instead of being fabricated</li>
 </ul>
+<p>When present, the native runtime profile is the most truthful place to inspect
+whether an optimized request actually used GDS, standard safetensor IO,
+CPU-offloaded artifacts, or disk KV cache IO.</p>
 
 
 
