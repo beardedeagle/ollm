@@ -7,16 +7,12 @@ from typing import Protocol, cast
 
 from ollm.app.service import ApplicationService, build_default_application_service
 from ollm.runtime.settings import ServerSettings
-from ollm.server.routes import HTTPExceptionFactory, register_rest_routes
-
-SERVER_EXTRA_INSTALL_HINT = (
-    "Install server support with `uv sync --extra server` or "
-    '`pip install --no-build-isolation -e ".[server]"`.'
+from ollm.server.dependencies import (
+    SERVER_EXTRA_INSTALL_HINT,
+    ServerDependenciesError,
 )
-
-
-class ServerDependenciesError(RuntimeError):
-    """Raised when optional server transport dependencies are unavailable."""
+from ollm.server.routes import HTTPExceptionFactory, register_rest_routes
+from ollm.server.session_store import ServerSessionStore
 
 
 class FastAPIApplication(Protocol):
@@ -134,6 +130,7 @@ def create_server_app(
     )
     setattr(app.state, "application_service", resolved_application_service)
     setattr(app.state, "server_mode", "scaffold")
+    setattr(app.state, "session_store", ServerSessionStore())
     register_rest_routes(
         app,
         cast(HTTPExceptionFactory, fastapi.HTTPException),

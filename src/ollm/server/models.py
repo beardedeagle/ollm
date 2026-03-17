@@ -190,3 +190,52 @@ class PromptResponseModel(BaseModel):
 
     text: str
     metadata: dict[str, str]
+
+
+class ContentPartResponseModel(BaseModel):
+    """Serialized content part for session responses."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    type: str
+    value: str
+
+
+class MessageResponseModel(BaseModel):
+    """Serialized message payload for session responses."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    role: str
+    content: list[ContentPartResponseModel]
+
+
+class SessionCreateRequestModel(BaseModel):
+    """Request model for server-side session creation."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    session_name: str = "default"
+    system_prompt: str = DEFAULT_SYSTEM_PROMPT
+    runtime: RuntimeRequestModel = Field(default_factory=RuntimeRequestModel)
+    generation: GenerationRequestModel = Field(default_factory=GenerationRequestModel)
+
+
+class SessionResponseModel(BaseModel):
+    """Serialized server-side session state."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    session_id: str
+    session_name: str
+    model_reference: str
+    system_prompt: str
+    messages: list[MessageResponseModel]
+
+
+class SessionPromptRequestModel(BaseModel):
+    """Request model for session prompt execution."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    prompt: str
