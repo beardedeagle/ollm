@@ -189,6 +189,11 @@ The current local REST surface is:
 - `GET /v1/models/{model_reference}`
 - `POST /v1/plan`
 - `POST /v1/prompt`
+- `POST /v1/prompt/stream`
+- `POST /v1/sessions`
+- `GET /v1/sessions/{session_id}`
+- `POST /v1/sessions/{session_id}/prompt`
+- `POST /v1/sessions/{session_id}/prompt/stream`
 
 Example:
 
@@ -197,6 +202,9 @@ curl http://127.0.0.1:8000/v1/health
 curl -X POST http://127.0.0.1:8000/v1/plan \
   -H "content-type: application/json" \
   -d '{"runtime":{"model_reference":"llama3-1B-chat"}}'
+curl -N -X POST http://127.0.0.1:8000/v1/prompt/stream \
+  -H "content-type: application/json" \
+  -d '{"prompt":"List planets","runtime":{"model_reference":"llama3-1B-chat"}}'
 ```
 
 Runtime vocabulary:

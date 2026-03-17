@@ -90,9 +90,15 @@ The current REST surface is:
 - `GET /v1/models/{model_reference}`
 - `POST /v1/plan`
 - `POST /v1/prompt`
+- `POST /v1/prompt/stream`
+- `POST /v1/sessions`
+- `GET /v1/sessions/{session_id}`
+- `POST /v1/sessions/{session_id}/prompt`
+- `POST /v1/sessions/{session_id}/prompt/stream`
 
-This remains a first server lane, not the full long-term API surface. Streaming
-responses and server-side session transport still land in later tasks.
+This remains an early server lane, not the full long-term API surface. The
+streaming transport is SSE-based and the current server-side sessions are
+in-memory only.
 
 ## Model references
 

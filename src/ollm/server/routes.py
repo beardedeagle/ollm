@@ -18,13 +18,19 @@ from ollm.runtime.settings import (
 )
 from ollm.server.models import (
     HealthResponseModel,
+    MessageResponseModel,
     ModelInfoResponseModel,
     ModelsListResponseModel,
     PlanRequestModel,
     PlanResponseModel,
     PromptRequestModel,
     PromptResponseModel,
+    SessionCreateRequestModel,
+    SessionPromptRequestModel,
+    SessionResponseModel,
 )
+from ollm.server.session_store import ServerSessionStore
+from ollm.server.streaming import build_sse_response
 
 
 class HTTPExceptionFactory(Protocol):
@@ -115,6 +121,20 @@ def _build_generation_config(request_generation):
     )
 
 
+def _session_payload(handle) -> SessionResponseModel:
+    transcript = handle.session.transcript()
+    return SessionResponseModel(
+        session_id=handle.session_id,
+        session_name=transcript.session_name,
+        model_reference=transcript.model_reference,
+        system_prompt=transcript.system_prompt,
+        messages=[
+            MessageResponseModel.model_validate(message.as_dict())
+            for message in transcript.messages
+        ],
+    )
+
+
 def _model_dir(models_dir: str | None) -> Path:
     settings = load_app_settings()
     base_dir = settings.runtime.models_dir if models_dir is None else Path(models_dir)
@@ -170,6 +190,10 @@ def register_rest_routes(
     application_service = cast(
         ApplicationService,
         getattr(app.state, "application_service"),
+    )
+    session_store = cast(
+        ServerSessionStore,
+        getattr(app.state, "session_store"),
     )
 
     @app.get(
@@ -303,3 +327,91 @@ def register_rest_routes(
         except ValueError as exc:
             raise _http_bad_request(http_exception, exc) from exc
         return PromptResponseModel(text=response.text, metadata=dict(response.metadata))
+
+    @app.post(
+        "/v1/prompt/stream",
+        response_model=object,
+        summary="Stream a prompt response",
+        tags=["runtime"],
+    )
+    def prompt_stream(request: PromptRequestModel) -> object:
+        try:
+            runtime_config = _build_runtime_config(request.runtime)
+            generation_config = _build_generation_config(request.generation)
+        except ValueError as exc:
+            raise _http_bad_request(http_exception, exc) from exc
+        return build_sse_response(
+            lambda sink: application_service.prompt_parts(
+                [ContentPart.text(request.prompt)],
+                runtime_config=runtime_config,
+                generation_config=generation_config,
+                system_prompt=request.system_prompt,
+                sink=sink,
+            )
+        )
+
+    @app.post(
+        "/v1/sessions",
+        response_model=SessionResponseModel,
+        summary="Create a server-side session",
+        tags=["sessions"],
+    )
+    def create_session(request: SessionCreateRequestModel) -> SessionResponseModel:
+        try:
+            handle = session_store.create(
+                application_service,
+                runtime_config=_build_runtime_config(request.runtime),
+                generation_config=_build_generation_config(request.generation),
+                session_name=request.session_name,
+                system_prompt=request.system_prompt,
+            )
+        except ValueError as exc:
+            raise _http_bad_request(http_exception, exc) from exc
+        return _session_payload(handle)
+
+    @app.get(
+        "/v1/sessions/{session_id}",
+        response_model=SessionResponseModel,
+        summary="Inspect a server-side session",
+        tags=["sessions"],
+    )
+    def get_session(session_id: str) -> SessionResponseModel:
+        try:
+            return _session_payload(session_store.require(session_id))
+        except ValueError as exc:
+            raise _http_bad_request(http_exception, exc) from exc
+
+    @app.post(
+        "/v1/sessions/{session_id}/prompt",
+        response_model=PromptResponseModel,
+        summary="Execute a prompt in a session",
+        tags=["sessions"],
+    )
+    def session_prompt(
+        session_id: str,
+        request: SessionPromptRequestModel,
+    ) -> PromptResponseModel:
+        try:
+            handle = session_store.require(session_id)
+            response = handle.prompt_text(request.prompt)
+        except ValueError as exc:
+            raise _http_bad_request(http_exception, exc) from exc
+        return PromptResponseModel(text=response.text, metadata=dict(response.metadata))
+
+    @app.post(
+        "/v1/sessions/{session_id}/prompt/stream",
+        response_model=object,
+        summary="Stream a prompt response in a session",
+        tags=["sessions"],
+    )
+    def session_prompt_stream(
+        session_id: str,
+        request: SessionPromptRequestModel,
+    ) -> object:
+        try:
+            handle = session_store.require(session_id)
+        except ValueError as exc:
+            raise _http_bad_request(http_exception, exc) from exc
+        return build_sse_response(
+            lambda sink: handle.prompt_text(request.prompt, sink=sink)
+        )
