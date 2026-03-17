@@ -182,6 +182,23 @@ ollm serve
 
 `ollm serve` resolves its host, port, reload, and log-level settings through the same `CLI > env > config file > defaults` contract. The default bind is `127.0.0.1`, and the scaffold intentionally stops short of the full REST endpoint surface that will land in later server tasks.
 
+The current local REST surface is:
+
+- `GET /v1/health`
+- `GET /v1/models`
+- `GET /v1/models/{model_reference}`
+- `POST /v1/plan`
+- `POST /v1/prompt`
+
+Example:
+
+```bash
+curl http://127.0.0.1:8000/v1/health
+curl -X POST http://127.0.0.1:8000/v1/plan \
+  -H "content-type: application/json" \
+  -d '{"runtime":{"model_reference":"llama3-1B-chat"}}'
+```
+
 Runtime vocabulary:
 - support levels:
   - `optimized`: a native specialization provider can run the reference

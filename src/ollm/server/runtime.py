@@ -1,11 +1,13 @@
 """Optional local-only server scaffold and lifecycle boundary for oLLM."""
 
+from collections.abc import Callable
 from importlib import import_module
 from importlib.metadata import PackageNotFoundError, version
 from typing import Protocol, cast
 
 from ollm.app.service import ApplicationService, build_default_application_service
 from ollm.runtime.settings import ServerSettings
+from ollm.server.routes import HTTPExceptionFactory, register_rest_routes
 
 SERVER_EXTRA_INSTALL_HINT = (
     "Install server support with `uv sync --extra server` or "
@@ -21,6 +23,24 @@ class FastAPIApplication(Protocol):
     """Minimal FastAPI application protocol used by the server scaffold."""
 
     state: object
+
+    def get(
+        self,
+        path: str,
+        *,
+        response_model: type[object],
+        summary: str,
+        tags: list[str],
+    ) -> Callable[[Callable[..., object]], Callable[..., object]]: ...
+
+    def post(
+        self,
+        path: str,
+        *,
+        response_model: type[object],
+        summary: str,
+        tags: list[str],
+    ) -> Callable[[Callable[..., object]], Callable[..., object]]: ...
 
 
 class FastAPIFactory(Protocol):
@@ -39,6 +59,7 @@ class FastAPIModule(Protocol):
     """Protocol for the imported FastAPI module."""
 
     FastAPI: FastAPIFactory
+    HTTPException: object
 
 
 class UvicornServer(Protocol):
@@ -113,6 +134,10 @@ def create_server_app(
     )
     setattr(app.state, "application_service", resolved_application_service)
     setattr(app.state, "server_mode", "scaffold")
+    register_rest_routes(
+        app,
+        cast(HTTPExceptionFactory, fastapi.HTTPException),
+    )
     return app
 
 

@@ -81,8 +81,18 @@ ollm serve
 
 `ollm serve` resolves `host`, `port`, `reload`, and `log_level` through the
 same settings-precedence contract as the rest of the CLI. The default bind is
-`127.0.0.1`. This slice adds only the server scaffold and lifecycle entrypoint;
-the full REST surface lands in later server tasks.
+`127.0.0.1`.
+
+The current REST surface is:
+
+- `GET /v1/health`
+- `GET /v1/models`
+- `GET /v1/models/{model_reference}`
+- `POST /v1/plan`
+- `POST /v1/prompt`
+
+This remains a first server lane, not the full long-term API surface. Streaming
+responses and server-side session transport still land in later tasks.
 
 ## Model references
 
