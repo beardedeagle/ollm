@@ -26,6 +26,10 @@ from transformers.models.qwen3_next.modeling_qwen3_next import (
     create_causal_mask,
 )
 
+from ollm.device_staging import (
+    restore_static_modules_after_forward,
+    stage_static_modules_on_host,
+)
 from ollm.kvcache import oCache
 from ollm.utils import _assign_tensor_to_module, _set_meta_placeholder, _walk_to_parent
 
@@ -344,8 +348,11 @@ class MyQwen3NextModel(Qwen3NextModel):
         position_embeddings = self.rotary_emb(hidden_states, position_ids)
 
         # ===============================================
-        self.embed_tokens.cpu()
-        self.parent_lm_head.cpu()
+        stage_static_modules_on_host(
+            self.embed_tokens,
+            self.parent_lm_head,
+            hidden_states.device,
+        )
         for decoder_layer in self.layers:
             # print(decoder_layer.layer_idx, "decoder_layer /", self.config.num_hidden_layers, stats.print_and_clean())
             layer_mask = (
@@ -365,8 +372,11 @@ class MyQwen3NextModel(Qwen3NextModel):
             )
 
         hidden_states = self.norm(hidden_states)
-        self.embed_tokens.to(hidden_states.device)
-        self.parent_lm_head.to(hidden_states.device)
+        restore_static_modules_after_forward(
+            self.embed_tokens,
+            self.parent_lm_head,
+            hidden_states.device,
+        )
         if stats:
             print(
                 "./qwen3_next.forward.",
