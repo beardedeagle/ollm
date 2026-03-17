@@ -1,9 +1,6 @@
 from dataclasses import dataclass
 
-from ollm.app.service import ApplicationService
-from ollm.client import RuntimeClient
-from ollm.runtime.loader import RuntimeLoader
-from ollm.runtime.resolver import ModelResolver
+from ollm.app.service import ApplicationService, build_default_application_service
 
 
 @dataclass(frozen=True, slots=True)
@@ -12,8 +9,6 @@ class CommandServices:
 
 
 def build_default_services() -> CommandServices:
-    resolver = ModelResolver()
-    runtime_client = RuntimeClient(runtime_loader=RuntimeLoader(resolver=resolver))
     return CommandServices(
-        application_service=ApplicationService(runtime_client=runtime_client),
+        application_service=build_default_application_service(),
     )

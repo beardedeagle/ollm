@@ -9,8 +9,9 @@ from ollm.app.types import ContentPart, Message, PromptResponse
 from ollm.client import RuntimeClient
 from ollm.runtime.config import DEFAULT_SYSTEM_PROMPT, GenerationConfig, RuntimeConfig
 from ollm.runtime.inspection import PlanJsonPayload
+from ollm.runtime.loader import RuntimeLoader
 from ollm.runtime.plan import RuntimePlan
-from ollm.runtime.resolver import ResolvedModel
+from ollm.runtime.resolver import ModelResolver, ResolvedModel
 from ollm.runtime.streaming import StreamSink
 
 
@@ -116,3 +117,10 @@ class ApplicationService:
             models_dir.expanduser().resolve(),
             force_download=force_download,
         )
+
+
+def build_default_application_service() -> ApplicationService:
+    """Build the default shared application service for CLI and server surfaces."""
+    resolver = ModelResolver()
+    runtime_client = RuntimeClient(runtime_loader=RuntimeLoader(resolver=resolver))
+    return ApplicationService(runtime_client=runtime_client)
