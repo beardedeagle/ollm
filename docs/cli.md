@@ -1,11 +1,12 @@
 # CLI Overview
 
-The CLI has four main surfaces:
+The CLI has five main surfaces:
 
 - `ollm prompt` — one-shot scripted prompting
 - `ollm chat` — interactive chat
 - `ollm doctor` — diagnostics and runtime inspection
 - `ollm models` — discovery, inspection, download, and path reporting
+- `ollm serve` — local-only REST API server
 
 ## Shared runtime controls
 

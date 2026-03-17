@@ -36,3 +36,13 @@ ollm models list --installed
 ```bash
 ollm doctor --json
 ```
+
+## Start the local API server
+
+```bash
+uv sync --extra server
+ollm serve
+```
+
+Once the server is running locally, inspect the schema at `/openapi.json` or
+open the interactive docs at `/docs`.

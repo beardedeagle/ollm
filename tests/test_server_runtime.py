@@ -6,6 +6,11 @@ from ollm.runtime.settings import (
     ServerSettings,
 )
 from ollm.server.runtime import (
+    LOCAL_SERVER_MODE,
+    OPENAPI_DOCS_PATH,
+    OPENAPI_REDOC_PATH,
+    OPENAPI_SCHEMA_PATH,
+    SERVER_DESCRIPTION,
     SERVER_EXTRA_INSTALL_HINT,
     ServerDependenciesError,
     create_server_app,
@@ -32,9 +37,13 @@ def test_create_server_app_attaches_application_service_to_app_state(
     app = cast(FakeFastAPIApp, create_server_app(application_service))
 
     assert getattr(app.state, "application_service") is application_service
-    assert getattr(app.state, "server_mode") == "scaffold"
+    assert getattr(app.state, "server_mode") == LOCAL_SERVER_MODE
     assert getattr(app.state, "session_store") is not None
     assert fastapi_module.apps[0][0] == "oLLM"
+    assert fastapi_module.apps[0][1] == SERVER_DESCRIPTION
+    assert app.openapi_url == OPENAPI_SCHEMA_PATH
+    assert app.docs_url == OPENAPI_DOCS_PATH
+    assert app.redoc_url == OPENAPI_REDOC_PATH
     assert ("GET", "/v1/health") in app.routes
     assert ("POST", "/v1/prompt/stream") in app.routes
     assert ("POST", "/v1/sessions") in app.routes

@@ -8,7 +8,7 @@ ollm chat                    # explicit alias for interactive chat
 ollm prompt "List planets"   # one-shot prompt
 ollm doctor --json           # environment and runtime diagnostics
 ollm models list             # built-in and discovered local model references
-ollm serve                   # local-only server scaffold
+ollm serve                   # local-only REST API server
 ```
 
 Use `ollm` or `ollm chat` only from an interactive terminal. For scripts, pipes, and automation use `ollm prompt`.
@@ -65,7 +65,7 @@ The current settings surface covers runtime defaults, generation defaults, and
 future server defaults. Prompt-specific values outside that schema, such as the
 system prompt text, still remain explicit CLI options today.
 
-## Local server scaffold
+## Local server
 
 Install the optional server transport stack first:
 
@@ -73,7 +73,7 @@ Install the optional server transport stack first:
 uv sync --extra server
 ```
 
-Then start the local-only scaffold:
+Then start the local-only server:
 
 ```bash
 ollm serve
@@ -81,7 +81,11 @@ ollm serve
 
 `ollm serve` resolves `host`, `port`, `reload`, and `log_level` through the
 same settings-precedence contract as the rest of the CLI. The default bind is
-`127.0.0.1`.
+`127.0.0.1`, and the server also publishes:
+
+- `/openapi.json`
+- `/docs`
+- `/redoc`
 
 The current REST surface is:
 
@@ -96,9 +100,9 @@ The current REST surface is:
 - `POST /v1/sessions/{session_id}/prompt`
 - `POST /v1/sessions/{session_id}/prompt/stream`
 
-This remains an early server lane, not the full long-term API surface. The
-streaming transport is SSE-based and the current server-side sessions are
-in-memory only.
+The streaming transport is SSE-based and the current server-side sessions are
+in-memory only. See [Local Server API](guides/local-server.md) for the complete
+HTTP surface and [CLI `ollm serve`](cli/server.md) for command-specific usage.
 
 ## Model references
 

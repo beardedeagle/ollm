@@ -22,6 +22,7 @@ nav:
       - Quickstart: guides/quickstart.md
   - User Guide:
       - Terminal Interface: terminal-interface.md
+      - Local Server API: guides/local-server.md
       - Model References: guides/model-references.md
       - Multimodal Workflows: guides/multimodal.md
       - Runtime Planning and Inspection: guides/runtime-planning.md
@@ -31,6 +32,7 @@ nav:
       - Benchmarking: benchmarking.md
   - CLI Reference:
       - CLI Overview: cli.md
+      - serve: cli/server.md
       - prompt: cli/prompt.md
       - chat: cli/chat.md
       - doctor: cli/doctor.md
@@ -46,6 +48,7 @@ nav:
       - Backend Selection: architecture/backend-selection.md
       - Specialization: architecture/specialization.md
   - API Reference:
+      - Local Server API: api/server.md
       - Runtime Client: api/client.md
       - Runtime Config: api/config.md
       - Model References: api/reference.md

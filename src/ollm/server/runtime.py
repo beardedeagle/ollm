@@ -1,4 +1,4 @@
-"""Optional local-only server scaffold and lifecycle boundary for oLLM."""
+"""Optional local-only REST server and lifecycle boundary for oLLM."""
 
 from collections.abc import Callable
 from importlib import import_module
@@ -14,11 +14,23 @@ from ollm.server.dependencies import (
 from ollm.server.routes import HTTPExceptionFactory, register_rest_routes
 from ollm.server.session_store import ServerSessionStore
 
+LOCAL_SERVER_MODE = "local-only"
+OPENAPI_SCHEMA_PATH = "/openapi.json"
+OPENAPI_DOCS_PATH = "/docs"
+OPENAPI_REDOC_PATH = "/redoc"
+SERVER_DESCRIPTION = "Local-only oLLM REST API with OpenAPI schema and docs."
+
 
 class FastAPIApplication(Protocol):
-    """Minimal FastAPI application protocol used by the server scaffold."""
+    """Minimal FastAPI application protocol used by the local server."""
 
     state: object
+    routes: object
+    openapi_url: str | None
+    docs_url: str | None
+    redoc_url: str | None
+
+    def openapi(self) -> object: ...
 
     def get(
         self,
@@ -48,6 +60,9 @@ class FastAPIFactory(Protocol):
         title: str,
         description: str,
         version: str,
+        openapi_url: str | None = OPENAPI_SCHEMA_PATH,
+        docs_url: str | None = OPENAPI_DOCS_PATH,
+        redoc_url: str | None = OPENAPI_REDOC_PATH,
     ) -> FastAPIApplication: ...
 
 
@@ -116,12 +131,15 @@ def _load_uvicorn_module() -> UvicornModule:
 def create_server_app(
     application_service: ApplicationService | None = None,
 ) -> FastAPIApplication:
-    """Create the local-only server scaffold application."""
+    """Create the local-only server application."""
     fastapi = _load_fastapi_module()
     app = fastapi.FastAPI(
         title="oLLM",
-        description="Local-only oLLM server scaffold",
+        description=SERVER_DESCRIPTION,
         version=_package_version(),
+        openapi_url=OPENAPI_SCHEMA_PATH,
+        docs_url=OPENAPI_DOCS_PATH,
+        redoc_url=OPENAPI_REDOC_PATH,
     )
     resolved_application_service = (
         build_default_application_service()
@@ -129,7 +147,7 @@ def create_server_app(
         else application_service
     )
     setattr(app.state, "application_service", resolved_application_service)
-    setattr(app.state, "server_mode", "scaffold")
+    setattr(app.state, "server_mode", LOCAL_SERVER_MODE)
     setattr(app.state, "session_store", ServerSessionStore())
     register_rest_routes(
         app,
@@ -142,7 +160,7 @@ def serve_application(
     server_settings: ServerSettings,
     application_service: ApplicationService | None = None,
 ) -> None:
-    """Run the local-only server scaffold through uvicorn."""
+    """Run the local-only server through uvicorn."""
     uvicorn = _load_uvicorn_module()
     if server_settings.reload:
         config = uvicorn.Config(

@@ -1,4 +1,4 @@
-"""Optional local-only server scaffold for oLLM."""
+"""Optional local-only REST server for oLLM."""
 
 from ollm.server.dependencies import (
     SERVER_EXTRA_INSTALL_HINT as SERVER_EXTRA_INSTALL_HINT,

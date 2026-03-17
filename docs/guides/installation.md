@@ -23,7 +23,7 @@ uv sync --extra adapters   # AutoInference with PEFT adapters
 uv sync --extra audio      # voxtral audio example
 uv sync --extra cuda       # flash-attn + triton acceleration
 uv sync --extra export     # export scripts
-uv sync --extra server     # local-only FastAPI server scaffold
+uv sync --extra server     # local-only FastAPI server and OpenAPI docs
 uv sync --group dev        # pytest and contributor tooling
 uv sync --group docs       # MkDocs Material docs site + API docs
 ```
@@ -45,4 +45,5 @@ uv run python -m compileall src tests
 uv run pytest -q
 uv run ollm doctor --imports --json --no-color
 uv run ollm prompt --help
+uv run ollm serve --help
 ```

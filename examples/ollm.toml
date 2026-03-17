@@ -1,0 +1,18 @@
+[runtime]
+model_reference = "llama3-1B-chat"
+models_dir = "models"
+device = "cpu"
+backend = "optimized-native"
+cache_dir = "kv_cache"
+use_cache = true
+
+[generation]
+max_new_tokens = 128
+temperature = 0.0
+stream = false
+
+[server]
+host = "127.0.0.1"
+port = 8000
+reload = false
+log_level = "info"

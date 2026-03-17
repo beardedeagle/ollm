@@ -21,6 +21,7 @@ oLLM is a Python library and terminal interface for local LLM inference. It comb
 
 ### User Guide
 - [Terminal Interface](terminal-interface.md)
+- [Local Server API](guides/local-server.md)
 - [Model References](guides/model-references.md)
 - [Multimodal Workflows](guides/multimodal.md)
 - [Runtime Planning and Inspection](guides/runtime-planning.md)
@@ -31,6 +32,7 @@ oLLM is a Python library and terminal interface for local LLM inference. It comb
 
 ### CLI Reference
 - [CLI Overview](cli.md)
+- [`ollm serve`](cli/server.md)
 - [`ollm prompt`](cli/prompt.md)
 - [`ollm chat`](cli/chat.md)
 - [`ollm doctor`](cli/doctor.md)
@@ -41,6 +43,7 @@ oLLM is a Python library and terminal interface for local LLM inference. It comb
 - [Runtime Configuration](library/runtime-config.md)
 - [Optimized-native Helpers](library/inference.md)
 - [API Reference](api/client.md)
+- [Local Server API Reference](api/server.md)
 
 ### Architecture and Contributing
 - [Architecture Overview](architecture/overview.md)

@@ -13,7 +13,7 @@ from ollm.server.models import (
     SessionPromptRequestModel,
     SessionResponseModel,
 )
-from ollm.server.runtime import create_server_app
+from ollm.server.runtime import LOCAL_SERVER_MODE, create_server_app
 from tests.server_support import (
     FakeFastAPIApp,
     FakeFastAPIModule,
@@ -22,7 +22,7 @@ from tests.server_support import (
 )
 
 
-def test_health_route_returns_scaffold_metadata(monkeypatch) -> None:
+def test_health_route_returns_local_only_metadata(monkeypatch) -> None:
     fastapi_module = FakeFastAPIModule()
     monkeypatch.setattr(
         "ollm.server.runtime._load_fastapi_module",
@@ -38,7 +38,7 @@ def test_health_route_returns_scaffold_metadata(monkeypatch) -> None:
 
     assert payload.ok is True
     assert payload.service == "ollm"
-    assert payload.server_mode == "scaffold"
+    assert payload.server_mode == LOCAL_SERVER_MODE
 
 
 def test_plan_route_uses_application_service_for_runtime_planning(
