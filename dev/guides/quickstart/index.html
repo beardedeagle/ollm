@@ -353,7 +353,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../api/client/" class="md-tabs__link">
+        <a href="../../api/server/" class="md-tabs__link">
           
   
   
@@ -702,6 +702,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#start-the-local-api-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Start the local API server
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -726,6 +737,8 @@
   
     
     
+      
+        
       
         
       
@@ -803,6 +816,34 @@
     
   
     Terminal Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Server API
   
 
     
@@ -1038,6 +1079,8 @@
       
         
       
+        
+      
     
     
     
@@ -1098,6 +1141,34 @@
     
   
     CLI Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    serve
   
 
     
@@ -1615,6 +1686,8 @@
       
         
       
+        
+      
     
     
     
@@ -1659,6 +1732,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Server API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -2138,6 +2239,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#start-the-local-api-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Start the local API server
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2184,6 +2296,12 @@ ollm<span class="w"> </span>models<span class="w"> </span>list<span class="w"> <
 <h2 id="run-diagnostics">Run diagnostics<a class="headerlink" href="#run-diagnostics" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code>ollm<span class="w"> </span>doctor<span class="w"> </span>--json
 </code></pre></div>
+<h2 id="start-the-local-api-server">Start the local API server<a class="headerlink" href="#start-the-local-api-server" title="Permanent link">&para;</a></h2>
+<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>server
+ollm<span class="w"> </span>serve
+</code></pre></div>
+<p>Once the server is running locally, inspect the schema at <code>/openapi.json</code> or
+open the interactive docs at <code>/docs</code>.</p>
 
 
 

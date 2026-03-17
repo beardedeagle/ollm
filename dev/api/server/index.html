@@ -11,8 +11,10 @@
       
       
       
-        <link rel="prev" href="../python-standards/">
+        <link rel="prev" href="../../architecture/specialization/">
       
+      
+        <link rel="next" href="../client/">
       
       
         
@@ -23,7 +25,7 @@
     
     
       
-        <title>Python Standards Audit - oLLM</title>
+        <title>Local Server API - oLLM</title>
       
     
     
@@ -76,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#python-standards-audit" class="md-skip">
+        <a href="#local-server-api-reference" class="md-skip">
           Skip to content
         </a>
       
@@ -114,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Python Standards Audit
+              Local Server API
             
           </span>
         </div>
@@ -345,11 +347,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../api/server/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="./" class="md-tabs__link">
           
   
   
@@ -367,12 +371,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="../../development/" class="md-tabs__link">
           
   
@@ -512,7 +514,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../installation/" class="md-nav__link">
+      <a href="../../guides/installation/" class="md-nav__link">
         
   
   
@@ -540,7 +542,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/" class="md-nav__link">
+      <a href="../../guides/configuration/" class="md-nav__link">
         
   
   
@@ -568,7 +570,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quickstart/" class="md-nav__link">
+      <a href="../../guides/quickstart/" class="md-nav__link">
         
   
   
@@ -703,7 +705,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../local-server/" class="md-nav__link">
+      <a href="../../guides/local-server/" class="md-nav__link">
         
   
   
@@ -731,7 +733,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../model-references/" class="md-nav__link">
+      <a href="../../guides/model-references/" class="md-nav__link">
         
   
   
@@ -759,7 +761,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../multimodal/" class="md-nav__link">
+      <a href="../../guides/multimodal/" class="md-nav__link">
         
   
   
@@ -787,7 +789,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runtime-planning/" class="md-nav__link">
+      <a href="../../guides/runtime-planning/" class="md-nav__link">
         
   
   
@@ -815,7 +817,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../models-discovery/" class="md-nav__link">
+      <a href="../../guides/models-discovery/" class="md-nav__link">
         
   
   
@@ -843,7 +845,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../optimization/" class="md-nav__link">
+      <a href="../../guides/optimization/" class="md-nav__link">
         
   
   
@@ -871,7 +873,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../troubleshooting/" class="md-nav__link">
+      <a href="../../guides/troubleshooting/" class="md-nav__link">
         
   
   
@@ -1534,8 +1536,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -1559,19 +1563,22 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" checked>
         
           
-          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="">
             
   
   
@@ -1589,7 +1596,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_6">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1604,10 +1611,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../api/server/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Server API
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1623,6 +1657,61 @@
   
 
       </a>
+      
+        
+
+  
+
+<nav class="md-nav md-nav--secondary" aria-label="Page contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Page contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#schema-and-docs-endpoints" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Schema and docs endpoints
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#route-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Route reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Semantics
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1635,7 +1724,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/client/" class="md-nav__link">
+      <a href="../client/" class="md-nav__link">
         
   
   
@@ -1663,7 +1752,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/config/" class="md-nav__link">
+      <a href="../config/" class="md-nav__link">
         
   
   
@@ -1691,7 +1780,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/reference/" class="md-nav__link">
+      <a href="../reference/" class="md-nav__link">
         
   
   
@@ -1719,7 +1808,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/resolver/" class="md-nav__link">
+      <a href="../resolver/" class="md-nav__link">
         
   
   
@@ -1747,7 +1836,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/plan/" class="md-nav__link">
+      <a href="../plan/" class="md-nav__link">
         
   
   
@@ -1775,7 +1864,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/loader/" class="md-nav__link">
+      <a href="../loader/" class="md-nav__link">
         
   
   
@@ -1803,7 +1892,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../api/inference/" class="md-nav__link">
+      <a href="../inference/" class="md-nav__link">
         
   
   
@@ -1835,10 +1924,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -1854,22 +1941,19 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
             
   
   
@@ -1887,7 +1971,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1933,7 +2017,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../contributing/" class="md-nav__link">
+      <a href="../../guides/contributing/" class="md-nav__link">
         
   
   
@@ -1961,7 +2045,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../python-standards/" class="md-nav__link">
+      <a href="../../guides/python-standards/" class="md-nav__link">
         
   
   
@@ -1986,37 +2070,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Python Standards Audit
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../guides/python-standards-audit/" class="md-nav__link">
         
   
   
@@ -2032,50 +2089,6 @@
   
 
       </a>
-      
-        
-
-  
-
-<nav class="md-nav md-nav--secondary" aria-label="Page contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Page contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#mechanical-failures" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Mechanical failures
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#audit-findings" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Audit findings
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2117,10 +2130,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#mechanical-failures" class="md-nav__link">
+  <a href="#schema-and-docs-endpoints" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Mechanical failures
+        Schema and docs endpoints
       
     </span>
   </a>
@@ -2128,10 +2141,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#audit-findings" class="md-nav__link">
+  <a href="#route-reference" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Audit findings
+        Route reference
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Semantics
       
     </span>
   </a>
@@ -2164,17 +2188,36 @@
   
 
 
-<h1 id="python-standards-audit">Python Standards Audit<a class="headerlink" href="#python-standards-audit" title="Permanent link">&para;</a></h1>
-<p>This report is generated from <code>scripts/check_python_standards.py</code> against the current branch.</p>
+<h1 id="local-server-api-reference">Local Server API Reference<a class="headerlink" href="#local-server-api-reference" title="Permanent link">&para;</a></h1>
+<p>oLLM's optional server transport is a local-only FastAPI application. Start it
+with <code>ollm serve</code>.</p>
+<h2 id="schema-and-docs-endpoints">Schema and docs endpoints<a class="headerlink" href="#schema-and-docs-endpoints" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Total findings: 0</li>
-<li>Mechanical failures: 0</li>
-<li>Audit-only findings: 0</li>
+<li><code>/openapi.json</code></li>
+<li><code>/docs</code></li>
+<li><code>/redoc</code></li>
 </ul>
-<h2 id="mechanical-failures">Mechanical failures<a class="headerlink" href="#mechanical-failures" title="Permanent link">&para;</a></h2>
-<p>No mechanical failures remain.</p>
-<h2 id="audit-findings">Audit findings<a class="headerlink" href="#audit-findings" title="Permanent link">&para;</a></h2>
-<p>No audit-only findings remain.</p>
+<h2 id="route-reference">Route reference<a class="headerlink" href="#route-reference" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>GET /v1/health</code></li>
+<li><code>GET /v1/models</code></li>
+<li><code>GET /v1/models/{model_reference}</code></li>
+<li><code>POST /v1/plan</code></li>
+<li><code>POST /v1/prompt</code></li>
+<li><code>POST /v1/prompt/stream</code></li>
+<li><code>POST /v1/sessions</code></li>
+<li><code>GET /v1/sessions/{session_id}</code></li>
+<li><code>POST /v1/sessions/{session_id}/prompt</code></li>
+<li><code>POST /v1/sessions/{session_id}/prompt/stream</code></li>
+</ul>
+<h2 id="semantics">Semantics<a class="headerlink" href="#semantics" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The server bind is local-only by default.</li>
+<li>Streaming responses use SSE.</li>
+<li>Server-side sessions are in-memory only.</li>
+<li>The HTTP transport reuses the same <code>ApplicationService</code> runtime planning and
+  prompt execution logic as the CLI.</li>
+</ul>
 
 
 

@@ -353,7 +353,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../api/client/" class="md-tabs__link">
+        <a href="../../api/server/" class="md-tabs__link">
           
   
   
@@ -609,10 +609,32 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#precedence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Precedence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#runtime-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
         Runtime configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment variables
       
     </span>
   </a>
@@ -710,6 +732,8 @@
       
         
       
+        
+      
     
     
     
@@ -770,6 +794,34 @@
     
   
     Terminal Interface
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../local-server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Server API
   
 
     
@@ -1005,6 +1057,8 @@
       
         
       
+        
+      
     
     
     
@@ -1065,6 +1119,34 @@
     
   
     CLI Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../cli/server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    serve
   
 
     
@@ -1582,6 +1664,8 @@
       
         
       
+        
+      
     
     
     
@@ -1626,6 +1710,34 @@
 
           </label>
           <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../api/server/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Local Server API
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
             
               
                 
@@ -2040,10 +2152,32 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#precedence" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Precedence
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#runtime-configuration" class="md-nav__link">
     <span class="md-ellipsis">
       
         Runtime configuration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#environment-variables" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Environment variables
       
     </span>
   </a>
@@ -2099,6 +2233,19 @@
 
 
 <h1 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h1>
+<h2 id="precedence">Precedence<a class="headerlink" href="#precedence" title="Permanent link">&para;</a></h2>
+<p>oLLM resolves runtime, generation, and server defaults through the same
+explicit precedence chain:</p>
+<ol>
+<li>CLI flags</li>
+<li><code>OLLM_*</code> environment variables</li>
+<li>TOML config file values</li>
+<li>built-in defaults</li>
+</ol>
+<p>By default, oLLM loads <code>./ollm.toml</code> when it is present. You can point to a
+different config file with <code>OLLM_CONFIG_FILE=/path/to/ollm.toml</code>.</p>
+<p>An example config file that covers runtime, generation, and server settings
+lives at <code>examples/ollm.toml</code> in the repository root.</p>
 <h2 id="runtime-configuration">Runtime configuration<a class="headerlink" href="#runtime-configuration" title="Permanent link">&para;</a></h2>
 <p>The CLI and the Python library both build on <code>RuntimeConfig</code> and <code>GenerationConfig</code>.</p>
 <p>Key runtime configuration fields:</p>
@@ -2121,7 +2268,26 @@
 <li><code>seed</code></li>
 <li><code>stream</code></li>
 </ul>
+<p>Server configuration fields:</p>
+<ul>
+<li><code>host</code></li>
+<li><code>port</code></li>
+<li><code>reload</code></li>
+<li><code>log_level</code></li>
+</ul>
 <p>See <a href="../../api/config/">API Reference: Runtime Config</a>.</p>
+<h2 id="environment-variables">Environment variables<a class="headerlink" href="#environment-variables" title="Permanent link">&para;</a></h2>
+<p>Nested configuration keys use a double-underscore separator:</p>
+<ul>
+<li><code>OLLM_RUNTIME__MODEL_REFERENCE</code></li>
+<li><code>OLLM_RUNTIME__MODELS_DIR</code></li>
+<li><code>OLLM_RUNTIME__DEVICE</code></li>
+<li><code>OLLM_GENERATION__MAX_NEW_TOKENS</code></li>
+<li><code>OLLM_GENERATION__STREAM</code></li>
+<li><code>OLLM_SERVER__HOST</code></li>
+<li><code>OLLM_SERVER__PORT</code></li>
+<li><code>OLLM_SERVER__LOG_LEVEL</code></li>
+</ul>
 <h2 id="backend-override">Backend override<a class="headerlink" href="#backend-override" title="Permanent link">&para;</a></h2>
 <p><code>--backend</code> lets you force one of:</p>
 <ul>
