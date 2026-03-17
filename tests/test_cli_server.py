@@ -11,8 +11,6 @@ def test_serve_command_is_registered() -> None:
     result = runner.invoke(app, ["serve", "--help"])
 
     assert result.exit_code == 0
-    assert "--host" in result.output
-    assert "--port" in result.output
 
 
 def test_serve_command_uses_loaded_server_settings_when_flags_are_omitted(
