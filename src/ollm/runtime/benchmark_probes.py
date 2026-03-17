@@ -6,6 +6,7 @@ from typing import cast
 from ollm.app.types import ContentPart, Message, MessageRole
 from ollm.client import RuntimeClient
 from ollm.runtime.benchmark_probe_execution import (
+    _clear_backend_stats,
     build_prompt_request,
     build_scaling_prompt,
     execute_request_probe,
@@ -23,6 +24,8 @@ from ollm.runtime.benchmark_probe_serialization import (
     render_warm_runtime_probe_json,
 )
 from ollm.runtime.benchmark_probe_types import (
+    EventTimingSummary,
+    NativeRuntimeProfile,
     OutputScalingCase,
     OutputScalingProbeResult,
     PromptScalingCase,
@@ -39,6 +42,8 @@ from ollm.runtime.config import DEFAULT_SYSTEM_PROMPT, GenerationConfig, Runtime
 from ollm.runtime.loader import LoadedRuntime
 
 __all__ = [
+    "EventTimingSummary",
+    "NativeRuntimeProfile",
     "OutputScalingCase",
     "OutputScalingProbeResult",
     "PromptScalingCase",
@@ -84,6 +89,7 @@ def run_runtime_probe(
         backend=backend,
         use_specialization=use_specialization,
         use_cache=True,
+        stats=True,
     )
     generation_config = GenerationConfig(
         stream=True,
@@ -96,6 +102,7 @@ def run_runtime_probe(
         lambda: client.load(runtime_config),
     )
     runtime = cast(LoadedRuntime, runtime_result[0])
+    _clear_backend_stats(runtime)
     execution = execute_request_probe(
         runtime=runtime,
         request=build_prompt_request(
@@ -136,6 +143,7 @@ def run_warm_runtime_probe(
         backend=backend,
         use_specialization=use_specialization,
         use_cache=True,
+        stats=True,
     )
     generation_config = GenerationConfig(
         stream=True,
@@ -148,6 +156,7 @@ def run_warm_runtime_probe(
         lambda: client.load(runtime_config),
     )
     runtime = cast(LoadedRuntime, runtime_result[0])
+    _clear_backend_stats(runtime)
     request = build_prompt_request(
         runtime_config=runtime_config,
         generation_config=generation_config,
@@ -189,6 +198,7 @@ def run_prompt_scaling_probe(
         backend=backend,
         use_specialization=use_specialization,
         use_cache=True,
+        stats=True,
     )
     generation_config = GenerationConfig(
         stream=True,
@@ -201,6 +211,7 @@ def run_prompt_scaling_probe(
         lambda: client.load(runtime_config),
     )
     runtime = cast(LoadedRuntime, runtime_result[0])
+    _clear_backend_stats(runtime)
     return PromptScalingProbeResult(
         runtime_load_ms=runtime_result[1],
         runtime_load_resources=runtime_result[2],
@@ -253,6 +264,7 @@ def run_output_scaling_probe(
         backend=backend,
         use_specialization=use_specialization,
         use_cache=True,
+        stats=True,
     )
     client = RuntimeClient()
     runtime_result = measure_stage(
@@ -260,6 +272,7 @@ def run_output_scaling_probe(
         lambda: client.load(runtime_config),
     )
     runtime = cast(LoadedRuntime, runtime_result[0])
+    _clear_backend_stats(runtime)
     return OutputScalingProbeResult(
         runtime_load_ms=runtime_result[1],
         runtime_load_resources=runtime_result[2],
@@ -310,6 +323,7 @@ def run_session_growth_probe(
         backend=backend,
         use_specialization=use_specialization,
         use_cache=True,
+        stats=True,
     )
     generation_config = GenerationConfig(
         stream=True,
@@ -322,6 +336,7 @@ def run_session_growth_probe(
         lambda: client.load(runtime_config),
     )
     runtime = cast(LoadedRuntime, runtime_result[0])
+    _clear_backend_stats(runtime)
     history: list[Message] = []
     turns: list[SessionGrowthTurn] = []
     for turn_index in range(1, session_turns + 1):

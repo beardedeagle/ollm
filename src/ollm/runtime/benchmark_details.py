@@ -2,6 +2,7 @@
 
 import statistics
 
+from ollm.runtime.benchmark_probe_types import NativeRuntimeProfile
 from ollm.runtime.benchmark_probes import RequestProbeMetrics, RuntimeProbeResult
 from ollm.runtime.benchmark_resources import (
     StageResourceSnapshot,
@@ -111,6 +112,7 @@ def summarize_request_metrics(
                 ]
             ),
         },
+        "native_runtime_profile": summarize_native_runtime_profiles(samples),
     }
 
 
@@ -209,6 +211,49 @@ def summarize_stage_resources(
         "accelerator_memory_utilization_percent": optional_summary_dict(
             memory_utilization_means
         ),
+    }
+
+
+def summarize_native_runtime_profiles(
+    samples: list[RequestProbeMetrics],
+) -> dict[str, object] | None:
+    profiles = [
+        sample.native_runtime_profile
+        for sample in samples
+        if sample.native_runtime_profile is not None
+    ]
+    if not profiles:
+        return None
+    typed_profiles = [profile for profile in profiles if profile is not None]
+    event_names = sorted(
+        {event_name for profile in typed_profiles for event_name in profile.events}
+    )
+    return {
+        "storage_paths": sorted(
+            {path for profile in typed_profiles for path in profile.storage_paths}
+        ),
+        "events": {
+            event_name: _summarize_native_runtime_event(typed_profiles, event_name)
+            for event_name in event_names
+        },
+    }
+
+
+def _summarize_native_runtime_event(
+    profiles: list[NativeRuntimeProfile],
+    event_name: str,
+) -> dict[str, object]:
+    summaries = [
+        profile.events[event_name]
+        for profile in profiles
+        if event_name in profile.events
+    ]
+    return {
+        "sample_count": len(summaries),
+        "event_count": sum(summary.count for summary in summaries),
+        "total_ms": optional_summary_dict([summary.total_ms for summary in summaries]),
+        "mean_ms": optional_summary_dict([summary.mean_ms for summary in summaries]),
+        "max_ms": optional_summary_dict([summary.max_ms for summary in summaries]),
     }
 
 

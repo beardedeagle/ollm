@@ -116,10 +116,12 @@ class GDSWeights:
         with cupy.cuda.Device(0):
             buffer = cupy.empty(num_elements, dtype=cupy_dtype)
 
+        started_at = time.perf_counter()
         with kvikio.CuFile(path, "r") as file_handle:
             read_bytes = file_handle.read(buffer)
             if read_bytes != nbytes:
                 raise IOError(f"Short read: {read_bytes} of {nbytes} bytes from {path}")
+        _record_stats("gds_read", started_at)
 
         reshaped_buffer = buffer.reshape(shape)
         return from_dlpack(reshaped_buffer.toDlpack())
@@ -128,13 +130,18 @@ class GDSWeights:
         return name in self.manifest
 
     def load_torch_from_disk(self, path: str) -> torch.Tensor:
-        return cast(torch.Tensor, torch_load_file(path, map_location=self.device))
+        started_at = time.perf_counter()
+        tensor = cast(torch.Tensor, torch_load_file(path, map_location=self.device))
+        _record_stats("torch_file_load", started_at)
+        return tensor
 
     def load_mxfp4_from_disk(self, path: str) -> torch.Tensor:
+        started_at = time.perf_counter()
         packed_tensors = cast(
             dict[str, torch.Tensor],
             torch_load_file(path, map_location=self.device),
         )
+        _record_stats("torch_file_load", started_at)
         return convert_moe_packed_tensors(
             packed_tensors["_blocks"], packed_tensors["_scales"]
         ).to(self.device)
@@ -258,8 +265,10 @@ class SafeTensorReader:
         dtype = self._dtype_map[info["dtype"]]
         shape = info["shape"]
         offset_start, offset_end = info["data_offsets"]
+        started_at = time.perf_counter()
         self._file_pointer.seek(self.data_offset + offset_start)
         buffer = self._file_pointer.read(offset_end - offset_start)
+        _record_stats("safetensor_read", started_at)
         writable_buffer = bytearray(buffer)
         return torch.frombuffer(writable_buffer, dtype=dtype).reshape(shape)
 
@@ -309,10 +318,12 @@ class SafeTensorReaderGPU:
         nbytes = offset_end - offset_start
         cupy = _require_cupy()
         buffer = cupy.empty((nbytes,), dtype=cupy.uint8)
+        started_at = time.perf_counter()
         future = self._file_pointer.pread(
             buffer, file_offset=self.data_offset + offset_start
         )
         read_bytes = future.get()
+        _record_stats("safetensor_pread", started_at)
         if read_bytes != nbytes:
             raise IOError(f"Expected {nbytes} bytes, got {read_bytes}")
         tensor = torch.as_tensor(buffer, device=self.device).view(torch.uint8)
@@ -364,10 +375,13 @@ class DenseWeightsLoader:
     def get_offloaded_dict_to_cuda(self, base: str) -> dict[str, torch.Tensor] | None:
         if base not in self.offloaded_map:
             return None
-        return {
+        started_at = time.perf_counter()
+        tensors = {
             attr_path: tensor.to(self.device, non_blocking=True)
             for attr_path, tensor in self.offloaded_map[base].items()
         }
+        _record_stats("offloaded_cpu_to_cuda", started_at)
+        return tensors
 
     def load_dict_from_disk(
         self, base: str, device: torch.device | str = "cpu"

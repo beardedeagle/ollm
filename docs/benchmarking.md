@@ -17,6 +17,7 @@ The harness is designed to stay truthful on hardware-constrained machines:
   - prompt-token and output-token throughput
   - current and peak process RSS
   - accelerator memory, cache footprint, process CPU, best-effort accelerator utilization, and allocator-gap metrics when the host/runtime can measure them truthfully
+  - optimized-native loader and KV IO timing summaries when stats are available
   - prompt-length scaling
   - output-length scaling
   - repeated-turn session growth
@@ -42,3 +43,47 @@ Interpretation notes:
 - output throughput is generated output tokens divided by total generation latency
 - peak RSS includes a source label; long-lived warm/scaling/session probes use stage-local sampled peaks instead of process-lifetime peaks
 - allocator-gap metrics are reported as reserved-minus-allocated style slack when the backend exposes the required counters; unsupported backends serialize them as `null`
+
+## Native loader and KV IO profile
+
+For optimized-native runs, the request metrics can now include a
+`native_runtime_profile` payload. This captures event timing summaries emitted
+by the runtime itself, rather than numbers inferred from high-level wall clock
+latency.
+
+Typical event names include:
+
+- `layer_load`
+- `experts_load`
+- `kvload`
+- `kvsave`
+- `gds_read`
+- `safetensor_read`
+- `safetensor_pread`
+- `offloaded_cpu_to_cuda`
+
+The same profile also reports storage-path labels such as:
+
+- `gds`
+- `safetensor-io`
+- `cpu-offloaded-artifacts`
+- `disk-kv-cache`
+- `torch-artifact-io`
+
+These fields are only present when the selected runtime actually emits native
+stats. Generic Transformers-backed runs may report `null` here.
+
+## Hardware-specific workflow
+
+For a lightweight non-CUDA baseline:
+
+```bash
+uv run python scripts/benchmark_runtime.py --device cpu --output .omx/runtime-benchmark-cpu.json
+```
+
+On a CUDA host with a materialized optimized-native target, run the same
+workflow against `cuda:0` to capture native loader and storage-path behavior:
+
+```bash
+uv run python scripts/benchmark_runtime.py --device cuda:0 --output .omx/runtime-benchmark-cuda.json
+```

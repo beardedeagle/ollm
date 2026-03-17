@@ -7,6 +7,8 @@ import torch
 
 from ollm.app.types import Message, PromptRequest
 from ollm.runtime.benchmark_probe_types import (
+    EventTimingSummary,
+    NativeRuntimeProfile,
     RequestProbeExecution,
     RequestProbeMetrics,
 )
@@ -18,6 +20,17 @@ from ollm.runtime.generation import RuntimeExecutor
 from ollm.runtime.loader import LoadedRuntime
 from ollm.runtime.output_control import suppress_module_prints
 from ollm.runtime.streaming import BufferedTextStreamer
+from ollm.utils import Stats
+
+_STORAGE_PATH_BY_EVENT = {
+    "gds_read": "gds",
+    "safetensor_read": "safetensor-io",
+    "safetensor_pread": "safetensor-io",
+    "offloaded_cpu_to_cuda": "cpu-offloaded-artifacts",
+    "kvload": "disk-kv-cache",
+    "kvsave": "disk-kv-cache",
+    "torch_file_load": "torch-artifact-io",
+}
 
 
 class TimedBufferedTextStreamer(BufferedTextStreamer):
@@ -76,6 +89,7 @@ def execute_request_probe(
     streamer = TimedBufferedTextStreamer(runtime.tokenizer)
     generate_kwargs = executor._build_generate_kwargs(runtime, request, streamer)
     cache_mode = _cache_mode(runtime, request)
+    _clear_backend_stats(runtime)
     generation_result, generation_ms, generation_resources = measure_stage(
         runtime.config.device,
         lambda: _generate_outputs(runtime, inputs, generate_kwargs),
@@ -127,6 +141,7 @@ def execute_request_probe(
                 allocator_gap_mb / generation_resources.accelerator_peak_reserved_mb,
                 6,
             )
+    native_runtime_profile = _collect_native_runtime_profile(runtime)
     return RequestProbeExecution(
         metrics=RequestProbeMetrics(
             total_ms=round(generation_ms, 6),
@@ -141,6 +156,7 @@ def execute_request_probe(
             cache_dir_size_mb=cache_dir_size,
             allocator_gap_mb=allocator_gap_mb,
             allocator_gap_ratio=allocator_gap_ratio,
+            native_runtime_profile=native_runtime_profile,
             resources=generation_resources,
             text_excerpt=_clip_text(response_text, max_chars=120),
         ),
@@ -167,6 +183,46 @@ def build_scaling_prompt(*, target_prompt_tokens: int) -> str:
         "Benchmark scaling probe input. "
         "Repeat and summarize this synthetic workload: "
         f"{repeated_words}"
+    )
+
+
+def _clear_backend_stats(runtime: LoadedRuntime) -> None:
+    if isinstance(runtime.backend.stats, Stats):
+        runtime.backend.stats.clear()
+
+
+def _collect_native_runtime_profile(
+    runtime: LoadedRuntime,
+) -> NativeRuntimeProfile | None:
+    if not isinstance(runtime.backend.stats, Stats):
+        return None
+    raw_summaries = runtime.backend.stats.collect_and_clear_ms()
+    if not raw_summaries:
+        return None
+    storage_paths = tuple(
+        sorted(
+            {
+                storage_path
+                for event_name, storage_path in _STORAGE_PATH_BY_EVENT.items()
+                if event_name in raw_summaries
+            }
+        )
+    )
+    event_summaries = {
+        event_name: EventTimingSummary(
+            count=int(summary["count"]),
+            total_ms=float(summary["total_ms"]),
+            min_ms=float(summary["min_ms"]),
+            median_ms=float(summary["median_ms"]),
+            p95_ms=float(summary["p95_ms"]),
+            max_ms=float(summary["max_ms"]),
+            mean_ms=float(summary["mean_ms"]),
+        )
+        for event_name, summary in raw_summaries.items()
+    }
+    return NativeRuntimeProfile(
+        storage_paths=storage_paths,
+        events=event_summaries,
     )
 
 
