@@ -9,8 +9,9 @@ oLLM is organized around a resolver-and-plan model instead of a fixed allowlist 
 3. discover capabilities
 4. select a backend and support level
 5. refine the runtime plan through backend-specific probes
-6. load the runtime or expose the plan as inspection output
-7. execute through a local runtime
+6. route CLI and future server transports through the internal `ApplicationService`
+7. load the runtime or expose the plan as inspection output
+8. execute through a local runtime
 
 ## Main subsystems
 
@@ -19,6 +20,7 @@ oLLM is organized around a resolver-and-plan model instead of a fixed allowlist 
 - capability discovery
 - `BackendSelector`
 - `RuntimePlan`
+- `ApplicationService`
 - `RuntimeLoader`
 - `RuntimeExecutor`
 - specialization registry / matching / application

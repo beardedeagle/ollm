@@ -5,7 +5,7 @@ from pathlib import Path
 import typer
 
 from ollm.app.history import write_private_text
-from ollm.app.types import ContentKind, ContentPart, Message, MessageRole, PromptRequest
+from ollm.app.types import ContentKind, ContentPart
 from ollm.cli.common import (
     build_console,
     build_generation_config,
@@ -14,7 +14,6 @@ from ollm.cli.common import (
     print_json,
 )
 from ollm.cli.services import CommandServices
-from ollm.runtime.inspection import plan_json_payload
 from ollm.runtime.settings import load_app_settings
 from ollm.runtime.streaming import StreamSink
 
@@ -193,10 +192,7 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
                     "--plan-json cannot be combined with --print-config"
                 )
             print_json(
-                console,
-                plan_json_payload(
-                    runtime_config, services.runtime_loader.plan(runtime_config)
-                ),
+                console, services.application_service.describe_plan(runtime_config)
             )
             return
         if print_config_flag:
@@ -227,18 +223,14 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
             runtime_config.multimodal = True
 
         try:
-            runtime = services.runtime_loader.load(runtime_config)
-            request_messages = [
-                Message(role=MessageRole.SYSTEM, content=[ContentPart.text(system)]),
-                Message(role=MessageRole.USER, content=parts),
-            ]
-            request = PromptRequest(
+            sink = PromptStreamSink(console) if generation_config.stream else None
+            response = services.application_service.prompt_parts(
+                parts,
                 runtime_config=runtime_config,
                 generation_config=generation_config,
-                messages=request_messages,
+                system_prompt=system,
+                sink=sink,
             )
-            sink = PromptStreamSink(console) if generation_config.stream else None
-            response = services.runtime_executor.execute(runtime, request, sink=sink)
         except Exception as exc:
             typer.echo(str(exc), err=True)
             raise typer.Exit(code=1)
