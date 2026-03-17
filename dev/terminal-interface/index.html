@@ -2302,9 +2302,15 @@ same settings-precedence contract as the rest of the CLI. The default bind is
 <li><code>GET /v1/models/{model_reference}</code></li>
 <li><code>POST /v1/plan</code></li>
 <li><code>POST /v1/prompt</code></li>
+<li><code>POST /v1/prompt/stream</code></li>
+<li><code>POST /v1/sessions</code></li>
+<li><code>GET /v1/sessions/{session_id}</code></li>
+<li><code>POST /v1/sessions/{session_id}/prompt</code></li>
+<li><code>POST /v1/sessions/{session_id}/prompt/stream</code></li>
 </ul>
-<p>This remains a first server lane, not the full long-term API surface. Streaming
-responses and server-side session transport still land in later tasks.</p>
+<p>This remains an early server lane, not the full long-term API surface. The
+streaming transport is SSE-based and the current server-side sessions are
+in-memory only.</p>
 <h2 id="model-references">Model references<a class="headerlink" href="#model-references" title="Permanent link">&para;</a></h2>
 <p><code>--model</code> accepts opaque model references. Supported forms include:</p>
 <ul>
