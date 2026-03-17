@@ -2294,8 +2294,17 @@ system prompt text, still remain explicit CLI options today.</p>
 </code></pre></div>
 <p><code>ollm serve</code> resolves <code>host</code>, <code>port</code>, <code>reload</code>, and <code>log_level</code> through the
 same settings-precedence contract as the rest of the CLI. The default bind is
-<code>127.0.0.1</code>. This slice adds only the server scaffold and lifecycle entrypoint;
-the full REST surface lands in later server tasks.</p>
+<code>127.0.0.1</code>.</p>
+<p>The current REST surface is:</p>
+<ul>
+<li><code>GET /v1/health</code></li>
+<li><code>GET /v1/models</code></li>
+<li><code>GET /v1/models/{model_reference}</code></li>
+<li><code>POST /v1/plan</code></li>
+<li><code>POST /v1/prompt</code></li>
+</ul>
+<p>This remains a first server lane, not the full long-term API surface. Streaming
+responses and server-side session transport still land in later tasks.</p>
 <h2 id="model-references">Model references<a class="headerlink" href="#model-references" title="Permanent link">&para;</a></h2>
 <p><code>--model</code> accepts opaque model references. Supported forms include:</p>
 <ul>
