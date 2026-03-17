@@ -1,5 +1,7 @@
-import pytest
 from typing import cast
+
+import pytest
+
 from ollm.server.runtime import (
     LOCAL_SERVER_MODE,
     OPENAPI_DOCS_PATH,
