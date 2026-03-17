@@ -764,6 +764,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#configuration-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#model-references" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2106,6 +2117,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#configuration-sources" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Configuration sources
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#model-references" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2202,6 +2224,44 @@ ollm<span class="w"> </span>models<span class="w"> </span>list<span class="w">  
 <li><code>--plan-json</code> prints the resolved runtime plan and exits without running generation</li>
 </ul>
 <p><code>ollm prompt</code>, <code>ollm chat</code>, <code>ollm doctor</code>, and <code>ollm models info</code> all honor these controls.</p>
+<h2 id="configuration-sources">Configuration sources<a class="headerlink" href="#configuration-sources" title="Permanent link">&para;</a></h2>
+<p>oLLM now resolves runtime, generation, and server defaults through an explicit
+layered settings contract:</p>
+<ol>
+<li>CLI flags</li>
+<li><code>OLLM_*</code> environment variables</li>
+<li>TOML config file values</li>
+<li>built-in defaults</li>
+</ol>
+<p>By default, oLLM checks <code>./ollm.toml</code> when it is present. You can point to a
+different config file with <code>OLLM_CONFIG_FILE=/path/to/ollm.toml</code>.</p>
+<p>Nested environment variables use a double-underscore separator:</p>
+<ul>
+<li><code>OLLM_RUNTIME__MODEL_REFERENCE</code></li>
+<li><code>OLLM_RUNTIME__MODELS_DIR</code></li>
+<li><code>OLLM_RUNTIME__DEVICE</code></li>
+<li><code>OLLM_GENERATION__MAX_NEW_TOKENS</code></li>
+<li><code>OLLM_GENERATION__STREAM</code></li>
+<li><code>OLLM_SERVER__PORT</code></li>
+</ul>
+<p>Example config file:</p>
+<div class="language-toml highlight"><pre><span></span><code><span class="k">[runtime]</span>
+<span class="n">model_reference</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;llama3-8B-chat&quot;</span>
+<span class="n">models_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;models&quot;</span>
+<span class="n">device</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;cpu&quot;</span>
+
+<span class="k">[generation]</span>
+<span class="n">max_new_tokens</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">256</span>
+<span class="n">temperature</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span>
+<span class="n">stream</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="kc">true</span>
+
+<span class="k">[server]</span>
+<span class="n">host</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;127.0.0.1&quot;</span>
+<span class="n">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8000</span>
+</code></pre></div>
+<p>The current settings surface covers runtime defaults, generation defaults, and
+future server defaults. Prompt-specific values outside that schema, such as the
+system prompt text, still remain explicit CLI options today.</p>
 <h2 id="model-references">Model references<a class="headerlink" href="#model-references" title="Permanent link">&para;</a></h2>
 <p><code>--model</code> accepts opaque model references. Supported forms include:</p>
 <ul>
