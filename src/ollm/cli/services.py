@@ -1,23 +1,19 @@
 from dataclasses import dataclass
 
-from ollm.app.doctor import DoctorService
-from ollm.runtime.generation import RuntimeExecutor
+from ollm.app.service import ApplicationService
+from ollm.client import RuntimeClient
 from ollm.runtime.loader import RuntimeLoader
 from ollm.runtime.resolver import ModelResolver
 
 
 @dataclass(frozen=True, slots=True)
 class CommandServices:
-    runtime_loader: RuntimeLoader
-    runtime_executor: RuntimeExecutor
-    doctor_service: DoctorService
+    application_service: ApplicationService
 
 
 def build_default_services() -> CommandServices:
     resolver = ModelResolver()
-    runtime_loader = RuntimeLoader(resolver=resolver)
+    runtime_client = RuntimeClient(runtime_loader=RuntimeLoader(resolver=resolver))
     return CommandServices(
-        runtime_loader=runtime_loader,
-        runtime_executor=RuntimeExecutor(),
-        doctor_service=DoctorService(runtime_loader=runtime_loader),
+        application_service=ApplicationService(runtime_client=runtime_client),
     )

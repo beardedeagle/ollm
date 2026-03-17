@@ -9,7 +9,6 @@ from ollm.runtime.inspection import (
     MergedRuntimePayload,
     RuntimePlanPayload,
     merged_runtime_payload,
-    plan_json_payload,
 )
 from ollm.runtime.settings import (
     RuntimeConfigOverrides,
@@ -64,12 +63,14 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         seen_paths: set[str] = set()
 
         for entry in list_model_catalog():
-            resolved_model = services.runtime_loader.resolve(entry.model_id, model_dir)
+            resolved_model = services.application_service.resolve_model(
+                entry.model_id, model_dir
+            )
             installed_entry = bool(
                 resolved_model.model_path is not None
                 and resolved_model.model_path.exists()
             )
-            runtime_plan = services.runtime_loader.plan(
+            runtime_plan = services.application_service.plan(
                 resolve_runtime_config(
                     settings.runtime,
                     RuntimeConfigOverrides(
@@ -96,7 +97,9 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
             if resolved_model.model_path is not None:
                 seen_paths.add(str(resolved_model.model_path))
 
-        for resolved_model in services.runtime_loader.discover_local_models(model_dir):
+        for resolved_model in services.application_service.discover_local_models(
+            model_dir
+        ):
             path = (
                 None
                 if resolved_model.model_path is None
@@ -108,7 +111,7 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
                 resolved_model.model_path is not None
                 and resolved_model.model_path.exists()
             )
-            runtime_plan = services.runtime_loader.plan(
+            runtime_plan = services.application_service.plan(
                 resolve_runtime_config(
                     settings.runtime,
                     RuntimeConfigOverrides(
@@ -190,13 +193,13 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
                 ),
             ),
         )
-        resolved_model = services.runtime_loader.resolve(
+        resolved_model = services.application_service.resolve_model(
             model, runtime_config.resolved_models_dir()
         )
         materialized = bool(
             resolved_model.model_path is not None and resolved_model.model_path.exists()
         )
-        runtime_plan = services.runtime_loader.plan(runtime_config)
+        runtime_plan = services.application_service.plan(runtime_config)
         payload: MergedRuntimePayload = merged_runtime_payload(
             resolved_model,
             runtime_plan,
@@ -204,7 +207,9 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         )
         console = build_console(no_color=no_color)
         if plan_json_flag:
-            print_json(console, plan_json_payload(runtime_config, runtime_plan))
+            print_json(
+                console, services.application_service.describe_plan(runtime_config)
+            )
             return
         if json_output:
             print_json(console, payload)
@@ -252,11 +257,9 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         ),
     ) -> None:
         settings = load_app_settings()
-        model_path = services.runtime_loader.download(
+        model_path = services.application_service.download_model(
             model,
-            (settings.runtime.models_dir if models_dir is None else models_dir)
-            .expanduser()
-            .resolve(),
+            settings.runtime.models_dir if models_dir is None else models_dir,
             force_download=force,
         )
         console = build_console(no_color=no_color)
@@ -270,7 +273,7 @@ def register_models_command(app: typer.Typer, services: CommandServices) -> None
         ),
     ) -> None:
         settings = load_app_settings()
-        resolved_model = services.runtime_loader.resolve(
+        resolved_model = services.application_service.resolve_model(
             model,
             (settings.runtime.models_dir if models_dir is None else models_dir)
             .expanduser()

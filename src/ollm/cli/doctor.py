@@ -4,7 +4,6 @@ import typer
 
 from ollm.cli.common import build_console, build_runtime_config, print_json
 from ollm.cli.services import CommandServices
-from ollm.runtime.inspection import plan_json_payload
 from ollm.runtime.settings import load_app_settings
 
 
@@ -83,13 +82,10 @@ def register_doctor_command(app: typer.Typer, services: CommandServices) -> None
         console = build_console(no_color=no_color)
         if plan_json_flag:
             print_json(
-                console,
-                plan_json_payload(
-                    runtime_config, services.runtime_loader.plan(runtime_config)
-                ),
+                console, services.application_service.describe_plan(runtime_config)
             )
             raise typer.Exit(code=0)
-        report = services.doctor_service.run(
+        report = services.application_service.run_doctor(
             runtime_config=runtime_config,
             include_imports=imports,
             include_runtime=runtime,

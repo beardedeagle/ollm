@@ -2,7 +2,6 @@ from pathlib import Path
 
 import typer
 
-from ollm.app.session import ChatSession
 from ollm.cli.common import (
     build_console,
     build_generation_config,
@@ -12,7 +11,6 @@ from ollm.cli.common import (
     print_json,
 )
 from ollm.cli.services import CommandServices
-from ollm.runtime.inspection import plan_json_payload
 from ollm.runtime.settings import load_app_settings
 from ollm.ui.chat_shell import InteractiveChatShell
 
@@ -85,12 +83,7 @@ def run_chat_command(
             raise typer.BadParameter(
                 "--plan-json cannot be combined with --print-config"
             )
-        print_json(
-            console,
-            plan_json_payload(
-                runtime_config, services.runtime_loader.plan(runtime_config)
-            ),
-        )
+        print_json(console, services.application_service.describe_plan(runtime_config))
         return
     ensure_interactive_terminal()
     if print_config_flag:
@@ -100,9 +93,7 @@ def run_chat_command(
     history_path = (
         history_file.expanduser().resolve() if history_file is not None else None
     )
-    session = ChatSession(
-        runtime_loader=services.runtime_loader,
-        runtime_executor=services.runtime_executor,
+    session = services.application_service.create_session(
         runtime_config=runtime_config,
         generation_config=generation_config,
         session_name=session_name,

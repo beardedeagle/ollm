@@ -2,6 +2,7 @@ import json
 import stat
 from pathlib import Path
 
+from ollm.cli import chat as chat_module
 from tests.cli_support import build_real_app, build_test_app, strip_ansi
 
 
@@ -187,6 +188,40 @@ def test_chat_command_plan_json_does_not_require_tty() -> None:
     assert '"runtime_plan"' in result.output
 
 
+def test_run_chat_command_executes_session_through_application_service(
+    monkeypatch, tmp_path: Path
+) -> None:
+    runner, loader, app = build_test_app()
+    events: list[str] = []
+
+    class FakeShell:
+        def __init__(self, session, console, history_file, plain):
+            del console, history_file, plain
+            self._session = session
+
+        def run(self) -> None:
+            response = self._session.prompt_text("List planets")
+            events.append(response.text)
+
+    monkeypatch.setattr(chat_module, "ensure_interactive_terminal", lambda: None)
+    monkeypatch.setattr(chat_module, "InteractiveChatShell", FakeShell)
+
+    result = runner.invoke(
+        app,
+        [
+            "chat",
+            "--models-dir",
+            str(tmp_path / "models"),
+            "--no-stream",
+            "--no-color",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert events == ["echo:List planets"]
+    assert loader.load_calls == ["llama3-1B-chat"]
+
+
 def test_root_command_requires_interactive_tty() -> None:
     runner, _, app = build_test_app()
     result = runner.invoke(app, [])
@@ -324,6 +359,27 @@ def test_models_list_applies_backend_override_to_runtime_plans(tmp_path: Path) -
     )
     assert result.exit_code == 0
     assert '"backend_id": "transformers-generic"' in result.output
+
+
+def test_models_path_returns_resolved_local_path(tmp_path: Path) -> None:
+    runner, _, app = build_test_app()
+    model_dir = tmp_path / "models"
+    materialized_path = model_dir / "llama3-1B-chat"
+    materialized_path.mkdir(parents=True)
+
+    result = runner.invoke(
+        app,
+        [
+            "models",
+            "path",
+            "llama3-1B-chat",
+            "--models-dir",
+            str(model_dir),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert result.output.strip() == str(materialized_path)
 
 
 def test_opaque_models_info_and_doctor_commands_are_unsupported(
