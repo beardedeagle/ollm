@@ -14,6 +14,9 @@ class FakeFastAPIApp:
     def __init__(self) -> None:
         self.state = SimpleNamespace()
         self.routes: dict[tuple[str, str], Callable[..., object]] = {}
+        self.openapi_url: str | None = None
+        self.docs_url: str | None = None
+        self.redoc_url: str | None = None
 
     def get(
         self,
@@ -54,7 +57,9 @@ class FakeHTTPException(Exception):
 
 class FakeFastAPIModule:
     def __init__(self) -> None:
-        self.apps: list[tuple[str, str, str, FakeFastAPIApp]] = []
+        self.apps: list[
+            tuple[str, str, str, str | None, str | None, str | None, FakeFastAPIApp]
+        ] = []
         self.HTTPException = FakeHTTPException
 
     def FastAPI(
@@ -63,9 +68,17 @@ class FakeFastAPIModule:
         title: str,
         description: str,
         version: str,
+        openapi_url: str | None = None,
+        docs_url: str | None = None,
+        redoc_url: str | None = None,
     ) -> FakeFastAPIApp:
         app = FakeFastAPIApp()
-        self.apps.append((title, description, version, app))
+        app.openapi_url = openapi_url
+        app.docs_url = docs_url
+        app.redoc_url = redoc_url
+        self.apps.append(
+            (title, description, version, openapi_url, docs_url, redoc_url, app)
+        )
         return app
 
 

@@ -8,7 +8,7 @@ from ollm.runtime.config import DEFAULT_SYSTEM_PROMPT
 
 
 class HealthResponseModel(BaseModel):
-    """Health response for the local server scaffold."""
+    """Health response for the local-only server."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 

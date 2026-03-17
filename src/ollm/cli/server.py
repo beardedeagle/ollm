@@ -21,7 +21,7 @@ def register_server_command(app: typer.Typer, services: CommandServices) -> None
         reload: bool | None = typer.Option(
             None,
             "--reload/--no-reload",
-            help="Enable uvicorn reload mode for the local server scaffold.",
+            help="Enable uvicorn reload mode for the local-only server.",
         ),
         log_level: str | None = typer.Option(
             None, "--log-level", help="Server log level."

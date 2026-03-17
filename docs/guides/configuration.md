@@ -1,5 +1,21 @@
 # Configuration
 
+## Precedence
+
+oLLM resolves runtime, generation, and server defaults through the same
+explicit precedence chain:
+
+1. CLI flags
+2. `OLLM_*` environment variables
+3. TOML config file values
+4. built-in defaults
+
+By default, oLLM loads `./ollm.toml` when it is present. You can point to a
+different config file with `OLLM_CONFIG_FILE=/path/to/ollm.toml`.
+
+An example config file that covers runtime, generation, and server settings
+lives at `examples/ollm.toml` in the repository root.
+
 ## Runtime configuration
 
 The CLI and the Python library both build on `RuntimeConfig` and `GenerationConfig`.
@@ -24,7 +40,27 @@ Generation configuration fields:
 - `seed`
 - `stream`
 
+Server configuration fields:
+
+- `host`
+- `port`
+- `reload`
+- `log_level`
+
 See [API Reference: Runtime Config](../api/config.md).
+
+## Environment variables
+
+Nested configuration keys use a double-underscore separator:
+
+- `OLLM_RUNTIME__MODEL_REFERENCE`
+- `OLLM_RUNTIME__MODELS_DIR`
+- `OLLM_RUNTIME__DEVICE`
+- `OLLM_GENERATION__MAX_NEW_TOKENS`
+- `OLLM_GENERATION__STREAM`
+- `OLLM_SERVER__HOST`
+- `OLLM_SERVER__PORT`
+- `OLLM_SERVER__LOG_LEVEL`
 
 ## Backend override
 

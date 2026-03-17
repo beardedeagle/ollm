@@ -70,7 +70,7 @@ uv sync --extra adapters   # AutoInference with PEFT adapters
 uv sync --extra audio      # voxtral audio example
 uv sync --extra cuda       # flash-attn + triton acceleration
 uv sync --extra export     # export scripts
-uv sync --extra server     # local-only FastAPI server scaffold
+uv sync --extra server     # local-only FastAPI server and OpenAPI docs
 uv sync --group dev        # pytest and contributor tooling
 ```
 
@@ -93,11 +93,14 @@ The primary project documentation now lives under `docs/` and is built with MkDo
 - [Overview](docs/index.md)
 - [Getting Started / Installation](docs/guides/installation.md)
 - [User Guide: Terminal Interface](docs/terminal-interface.md)
+- [User Guide: Local Server API](docs/guides/local-server.md)
 - [User Guide: Model References](docs/guides/model-references.md)
 - [Optimization Guide](docs/guides/optimization.md)
 - [CLI Reference](docs/cli.md)
+- [CLI Reference: ollm serve](docs/cli/server.md)
 - [Architecture](docs/architecture/overview.md)
 - [API Reference](docs/api/client.md)
+- [API Reference: Local Server](docs/api/server.md)
 - [Development](docs/development.md)
 
 ## Terminal Interface
@@ -110,7 +113,7 @@ ollm chat                    # explicit alias for interactive chat
 ollm prompt "List planets"   # one-shot prompt
 ollm doctor --json           # environment and runtime diagnostics
 ollm models list             # known and locally discovered model references
-ollm serve                   # local-only server scaffold
+ollm serve                   # local-only REST API server
 ```
 
 Use `ollm` or `ollm chat` only from an interactive terminal. For scripts, pipes, and automation use `ollm prompt`:
@@ -180,7 +183,7 @@ uv sync --extra server
 ollm serve
 ```
 
-`ollm serve` resolves its host, port, reload, and log-level settings through the same `CLI > env > config file > defaults` contract. The default bind is `127.0.0.1`, and the scaffold intentionally stops short of the full REST endpoint surface that will land in later server tasks.
+`ollm serve` resolves its host, port, reload, and log-level settings through the same `CLI > env > config file > defaults` contract. The default bind is `127.0.0.1`, and the server publishes machine-readable and interactive OpenAPI surfaces at `/openapi.json`, `/docs`, and `/redoc`.
 
 The current local REST surface is:
 
@@ -206,6 +209,9 @@ curl -N -X POST http://127.0.0.1:8000/v1/prompt/stream \
   -H "content-type: application/json" \
   -d '{"prompt":"List planets","runtime":{"model_reference":"llama3-1B-chat"}}'
 ```
+
+The streaming transport is SSE-based and the current server-side sessions are
+in-memory only. A complete example config file lives at `examples/ollm.toml`.
 
 Runtime vocabulary:
 - support levels:
