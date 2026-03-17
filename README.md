@@ -70,6 +70,7 @@ uv sync --extra adapters   # AutoInference with PEFT adapters
 uv sync --extra audio      # voxtral audio example
 uv sync --extra cuda       # flash-attn + triton acceleration
 uv sync --extra export     # export scripts
+uv sync --extra server     # local-only FastAPI server scaffold
 uv sync --group dev        # pytest and contributor tooling
 ```
 
@@ -109,6 +110,7 @@ ollm chat                    # explicit alias for interactive chat
 ollm prompt "List planets"   # one-shot prompt
 ollm doctor --json           # environment and runtime diagnostics
 ollm models list             # known and locally discovered model references
+ollm serve                   # local-only server scaffold
 ```
 
 Use `ollm` or `ollm chat` only from an interactive terminal. For scripts, pipes, and automation use `ollm prompt`:
@@ -170,6 +172,15 @@ export OLLM_GENERATION__MAX_NEW_TOKENS=128
 ```
 
 This slice configures runtime, generation, and future server defaults. Request-specific values that are not part of that schema, such as the prompt/chat system message, still remain explicit CLI arguments today.
+
+Headless server mode is opt-in and local-only by default:
+
+```bash
+uv sync --extra server
+ollm serve
+```
+
+`ollm serve` resolves its host, port, reload, and log-level settings through the same `CLI > env > config file > defaults` contract. The default bind is `127.0.0.1`, and the scaffold intentionally stops short of the full REST endpoint surface that will land in later server tasks.
 
 Runtime vocabulary:
 - support levels:

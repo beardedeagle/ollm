@@ -23,6 +23,7 @@ uv sync --extra adapters   # AutoInference with PEFT adapters
 uv sync --extra audio      # voxtral audio example
 uv sync --extra cuda       # flash-attn + triton acceleration
 uv sync --extra export     # export scripts
+uv sync --extra server     # local-only FastAPI server scaffold
 uv sync --group dev        # pytest and contributor tooling
 uv sync --group docs       # MkDocs Material docs site + API docs
 ```
@@ -32,6 +33,7 @@ uv sync --group docs       # MkDocs Material docs site + API docs
 ```bash
 pip install --no-build-isolation -e .
 pip install --no-build-isolation -e ".[adapters]"
+pip install --no-build-isolation -e ".[server]"
 ```
 
 `kvikio` remains a manual install because the package name depends on your CUDA version.

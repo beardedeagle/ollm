@@ -43,6 +43,10 @@ cuda = [
 export = [
     "safetensors"
 ]
+server = [
+    "fastapi",
+    "uvicorn"
+]
 
 [project.urls]
 "Homepage" = "https://github.com/Mega4alik/ollm"
