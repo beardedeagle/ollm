@@ -129,7 +129,11 @@ class oDecoderLayer:
         return a
 
     def _load_layer_weights(self):
-        for manifest_name, attr_path in self._get_my_manifests():
+        layer_manifests = self._get_my_manifests()
+        loader.preload_params_to_cuda(
+            manifest_name for manifest_name, _attr_path in layer_manifests
+        )
+        for manifest_name, attr_path in layer_manifests:
             try:
                 t1 = time.perf_counter()
                 tensor = loader.load_param_to_cuda(manifest_name)

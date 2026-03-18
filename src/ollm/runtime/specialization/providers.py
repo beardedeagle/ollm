@@ -5,6 +5,7 @@ from typing import cast
 import torch
 from transformers import AutoProcessor, AutoTokenizer
 
+import ollm.gds_loader as gds_loader_module
 from ollm.gds_loader import (
     DenseWeightsLoader,
     GDSWeights,
@@ -41,6 +42,14 @@ from ollm.runtime.specialization.registry import SpecializationRegistry
 from ollm.utils import Stats
 
 
+def _configure_loader_module(
+    module: object, *, loader: object, stats: Stats | None
+) -> None:
+    setattr(module, "loader", loader)
+    setattr(module, "stats", stats)
+    gds_loader_module.stats = stats
+
+
 class LlamaSpecializationProvider(SpecializationProvider):
     provider_id = "llama-native"
     native_family = NativeFamily.LLAMA
@@ -75,18 +84,17 @@ class LlamaSpecializationProvider(SpecializationProvider):
         module = import_module("ollm.llama")
         device = torch.device(config.device)
         if is_sharded_model_dir(model_path):
-            setattr(
+            _configure_loader_module(
                 module,
-                "loader",
-                DenseWeightsLoader(str(model_path), device=str(device)),
+                loader=DenseWeightsLoader(str(model_path), device=str(device)),
+                stats=stats,
             )
         else:
-            setattr(
+            _configure_loader_module(
                 module,
-                "loader",
-                SingleDenseWeightsLoader(str(model_path), device=str(device)),
+                loader=SingleDenseWeightsLoader(str(model_path), device=str(device)),
+                stats=stats,
             )
-        setattr(module, "stats", stats)
         model = cast(
             _CpuOffloadModel,
             load_specialized_model(
@@ -156,10 +164,11 @@ class Gemma3SpecializationProvider(SpecializationProvider):
         validate_safe_model_artifacts(model_path)
         module = import_module("ollm.gemma3")
         device = torch.device(config.device)
-        setattr(
-            module, "loader", DenseWeightsLoader(str(model_path), device=str(device))
+        _configure_loader_module(
+            module,
+            loader=DenseWeightsLoader(str(model_path), device=str(device)),
+            stats=stats,
         )
-        setattr(module, "stats", stats)
         model_class = (
             module.MyGemma3ForConditionalGeneration
             if config.multimodal
@@ -237,8 +246,11 @@ class Qwen3NextSpecializationProvider(SpecializationProvider):
         validate_safe_model_artifacts(model_path)
         module = import_module("ollm.qwen3_next")
         device = torch.device(config.device)
-        setattr(module, "loader", MoEWeightsLoader(str(model_path), device=str(device)))
-        setattr(module, "stats", stats)
+        _configure_loader_module(
+            module,
+            loader=MoEWeightsLoader(str(model_path), device=str(device)),
+            stats=stats,
+        )
         model = cast(
             _GpuCpuOffloadModel,
             load_specialized_model(
@@ -332,8 +344,11 @@ class GptOssSpecializationProvider(SpecializationProvider):
         validate_safe_gds_export_artifacts(export_path)
         module = import_module("ollm.gpt_oss")
         device = torch.device(config.device)
-        setattr(module, "loader", GDSWeights(str(export_path), device=str(device)))
-        setattr(module, "stats", stats)
+        _configure_loader_module(
+            module,
+            loader=GDSWeights(str(export_path), device=str(device)),
+            stats=stats,
+        )
         model = cast(
             _CpuOffloadModel,
             load_specialized_model(
@@ -404,10 +419,11 @@ class VoxtralSpecializationProvider(SpecializationProvider):
         validate_safe_model_artifacts(model_path)
         module = import_module("ollm.voxtral")
         device = torch.device(config.device)
-        setattr(
-            module, "loader", DenseWeightsLoader(str(model_path), device=str(device))
+        _configure_loader_module(
+            module,
+            loader=DenseWeightsLoader(str(model_path), device=str(device)),
+            stats=stats,
         )
-        setattr(module, "stats", stats)
         model = cast(
             _CpuOffloadModel,
             load_specialized_model(

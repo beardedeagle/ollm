@@ -73,6 +73,12 @@ The same profile also reports storage-path labels such as:
 These fields are only present when the selected runtime actually emits native
 stats. Generic Transformers-backed runs may report `null` here.
 
+When the optimized loader uses async submission plus later completion, the
+native event totals represent per-operation storage latency, not a partition of
+request wall time. That means summed `gds_read`, `safetensor_*`, or other
+native event totals can exceed the request's top-level wall-clock latency when
+multiple reads overlap.
+
 ## Hardware-specific workflow
 
 For a lightweight non-CUDA baseline:

@@ -1,17 +1,24 @@
 import importlib
 import json
-import math
 import os
 import re
 import struct
 import time
+from collections.abc import Iterable
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Self, cast
 
 import torch
-from torch.utils.dlpack import from_dlpack
 
 from ollm.async_io import open_binary_file, torch_load_file
+from ollm.gds_async import (
+    PendingCpuTensorRead,
+    PendingGDSTensorRead,
+    PendingGpuTensorRead,
+    PendingTensorRead,
+    read_binary_slice,
+)
 from ollm.gds_loader_types import (
     _CuPyModule,
     _GDSManifestEntry,
@@ -20,6 +27,7 @@ from ollm.gds_loader_types import (
     _SafeTensorHeaderEntry,
     _StatsProtocol,
 )
+from ollm.gds_mxfp4 import convert_moe_packed_tensors
 
 
 def _import_optional_module(module_name: str) -> object | None:
@@ -33,6 +41,7 @@ stats: _StatsProtocol | None = None
 _cupy_module = cast(_CuPyModule | None, _import_optional_module("cupy"))
 _kvikio_module = cast(_KvikioModule | None, _import_optional_module("kvikio"))
 kvikio_available = _cupy_module is not None and _kvikio_module is not None
+_CPU_READ_EXECUTOR = ThreadPoolExecutor(max_workers=min(8, max(2, os.cpu_count() or 2)))
 
 
 def _require_cupy() -> _CuPyModule:
@@ -75,21 +84,36 @@ class GDSWeights:
         self.manifest = cast(dict[str, _GDSManifestEntry], raw_manifest)
         self.device = torch.device(device)
         self.offloaded_map: dict[str, _OffloadedTensorRecord] = {}
+        self._pending_reads: dict[str, PendingTensorRead] = {}
 
     def load_param_to_cuda(self, name: str) -> torch.Tensor:
         meta = self.manifest[name]
-        param_path = os.path.join(self.path, meta["path"])
-        shape = meta["shape"]
-        dtype = meta["dtype"]
         offloaded_tensor = self.get_offloaded_from_cpu_to_cuda(name)
         if offloaded_tensor is not None:
             return offloaded_tensor
 
+        pending = self._pending_reads.pop(name, None)
+        if pending is not None:
+            return pending.result()
+
         if meta.get("packed") == "mxfp4":
+            param_path = os.path.join(self.path, meta["path"])
             return self.load_mxfp4_from_disk(param_path)
         if meta["dtype"].startswith("torch"):
+            param_path = os.path.join(self.path, meta["path"])
             return self.load_torch_from_disk(param_path)
-        return self.load_from_disk_to_cuda(param_path, shape, dtype)
+        return self._submit_param_to_cuda(name).result()
+
+    def preload_params_to_cuda(self, names: Iterable[str]) -> None:
+        for name in names:
+            if name in self._pending_reads:
+                continue
+            if name in self.offloaded_map:
+                continue
+            meta = self.manifest[name]
+            if meta.get("packed") == "mxfp4" or meta["dtype"].startswith("torch"):
+                continue
+            self._pending_reads[name] = self._submit_param_to_cuda(name)
 
     def get_dtype(self, dtype: str) -> object:
         cupy = _require_cupy()
@@ -105,6 +129,20 @@ class GDSWeights:
     def load_from_disk_to_cuda(
         self, path: str, shape: list[int], dtype: str
     ) -> torch.Tensor:
+        return self._submit_read_from_disk_to_cuda(path, shape, dtype).result()
+
+    def _submit_param_to_cuda(self, name: str) -> PendingTensorRead:
+        meta = self.manifest[name]
+        param_path = os.path.join(self.path, meta["path"])
+        return self._submit_read_from_disk_to_cuda(
+            param_path,
+            meta["shape"],
+            meta["dtype"],
+        )
+
+    def _submit_read_from_disk_to_cuda(
+        self, path: str, shape: list[int], dtype: str
+    ) -> PendingTensorRead:
         cupy = _require_cupy()
         kvikio = _require_kvikio()
         cupy_dtype = self.get_dtype(dtype)
@@ -117,14 +155,17 @@ class GDSWeights:
             buffer = cupy.empty(num_elements, dtype=cupy_dtype)
 
         started_at = time.perf_counter()
-        with kvikio.CuFile(path, "r") as file_handle:
-            read_bytes = file_handle.read(buffer)
-            if read_bytes != nbytes:
-                raise IOError(f"Short read: {read_bytes} of {nbytes} bytes from {path}")
-        _record_stats("gds_read", started_at)
-
-        reshaped_buffer = buffer.reshape(shape)
-        return from_dlpack(reshaped_buffer.toDlpack())
+        file_handle = kvikio.CuFile(path, "r")
+        future = file_handle.pread(buffer, file_offset=0)
+        return PendingGDSTensorRead(
+            buffer=buffer,
+            future=future,
+            nbytes=nbytes,
+            shape=tuple(shape),
+            started_at=started_at,
+            file_handle=file_handle,
+            record_stats=_record_stats,
+        )
 
     def has(self, name: str) -> bool:
         return name in self.manifest
@@ -180,61 +221,6 @@ class GDSWeights:
         return tensor
 
 
-FP4_VALUES = [
-    +0.0,
-    +0.5,
-    +1.0,
-    +1.5,
-    +2.0,
-    +3.0,
-    +4.0,
-    +6.0,
-    -0.0,
-    -0.5,
-    -1.0,
-    -1.5,
-    -2.0,
-    -3.0,
-    -4.0,
-    -6.0,
-]
-
-
-def convert_moe_packed_tensors(
-    blocks: torch.Tensor,
-    scales: torch.Tensor,
-    *,
-    dtype: torch.dtype = torch.bfloat16,
-    rows_per_chunk: int = 32768 * 1024,
-) -> torch.Tensor:
-    scales = scales.to(torch.int32) - 127
-    assert blocks.shape[:-1] == scales.shape, (
-        f"{blocks.shape[:-1]=} does not match {scales.shape=}"
-    )
-    lookup_table = torch.tensor(FP4_VALUES, dtype=dtype, device=blocks.device)
-    *prefix_shape, group_count, block_size = blocks.shape
-    rows_total = math.prod(prefix_shape) * group_count
-    blocks = blocks.reshape(rows_total, block_size)
-    scales = scales.reshape(rows_total, 1)
-    output = torch.empty(rows_total, block_size * 2, dtype=dtype, device=blocks.device)
-
-    for row_start in range(0, rows_total, rows_per_chunk):
-        row_end = min(row_start + rows_per_chunk, rows_total)
-        block_slice = blocks[row_start:row_end]
-        exponent_slice = scales[row_start:row_end]
-        index_low = (block_slice & 0x0F).to(torch.long)
-        index_high = (block_slice >> 4).to(torch.long)
-        output_slice = output[row_start:row_end]
-        output_slice[:, 0::2] = lookup_table[index_low]
-        output_slice[:, 1::2] = lookup_table[index_high]
-        torch.ldexp(output_slice, exponent_slice, out=output_slice)
-
-    output = output.reshape(*prefix_shape, group_count, block_size * 2).view(
-        *prefix_shape, group_count * block_size * 2
-    )
-    return output.transpose(1, 2).contiguous()
-
-
 class SafeTensorReader:
     def __init__(self, path: str):
         self.path = path
@@ -245,7 +231,7 @@ class SafeTensorReader:
                 json.loads(handle.read(header_length)),
             )
             self.data_offset = 8 + header_length
-        self._file_pointer = open_binary_file(path)
+        self._pending_reads: dict[str, PendingTensorRead] = {}
         self._dtype_map = {
             "F32": torch.float32,
             "F16": torch.float16,
@@ -255,22 +241,43 @@ class SafeTensorReader:
         }
 
     def close(self) -> None:
-        self._file_pointer.close()
+        self._pending_reads.clear()
 
     def keys(self) -> list[str]:
         return list(self.header.keys())
 
-    def get_tensor(self, name: str) -> torch.Tensor:
+    def preload_tensors(self, names: Iterable[str]) -> None:
+        for name in names:
+            if name in self._pending_reads:
+                continue
+            self._pending_reads[name] = self._submit_tensor_read(name)
+
+    def _submit_tensor_read(self, name: str) -> PendingTensorRead:
         info = self.header[name]
         dtype = self._dtype_map[info["dtype"]]
-        shape = info["shape"]
+        shape = tuple(info["shape"])
         offset_start, offset_end = info["data_offsets"]
+        nbytes = offset_end - offset_start
         started_at = time.perf_counter()
-        self._file_pointer.seek(self.data_offset + offset_start)
-        buffer = self._file_pointer.read(offset_end - offset_start)
-        _record_stats("safetensor_read", started_at)
-        writable_buffer = bytearray(buffer)
-        return torch.frombuffer(writable_buffer, dtype=dtype).reshape(shape)
+        future = _CPU_READ_EXECUTOR.submit(
+            read_binary_slice,
+            self.path,
+            offset=self.data_offset + offset_start,
+            nbytes=nbytes,
+        )
+        return PendingCpuTensorRead(
+            future=future,
+            dtype=dtype,
+            shape=shape,
+            started_at=started_at,
+            record_stats=_record_stats,
+        )
+
+    def get_tensor(self, name: str) -> torch.Tensor:
+        pending = self._pending_reads.pop(name, None)
+        if pending is None:
+            pending = self._submit_tensor_read(name)
+        return pending.result()
 
 
 class SafeTensorReaderGPU:
@@ -290,6 +297,7 @@ class SafeTensorReaderGPU:
             )
             self.data_offset = 8 + header_length
         self._file_pointer = _require_kvikio().CuFile(path, "rb")
+        self._pending_reads: dict[str, PendingTensorRead] = {}
 
     def __enter__(self) -> Self:
         return self
@@ -303,12 +311,19 @@ class SafeTensorReaderGPU:
         self.close()
 
     def close(self) -> None:
+        self._pending_reads.clear()
         self._file_pointer.close()
 
     def keys(self) -> list[str]:
         return list(self.header.keys())
 
-    def get_tensor(self, name: str) -> torch.Tensor:
+    def preload_tensors(self, names: Iterable[str]) -> None:
+        for name in names:
+            if name in self._pending_reads:
+                continue
+            self._pending_reads[name] = self._submit_tensor_read(name)
+
+    def _submit_tensor_read(self, name: str) -> PendingTensorRead:
         if name not in self.header:
             raise KeyError(f"Tensor '{name}' not found in {self.path}")
         info = self.header[name]
@@ -322,12 +337,22 @@ class SafeTensorReaderGPU:
         future = self._file_pointer.pread(
             buffer, file_offset=self.data_offset + offset_start
         )
-        read_bytes = future.get()
-        _record_stats("safetensor_pread", started_at)
-        if read_bytes != nbytes:
-            raise IOError(f"Expected {nbytes} bytes, got {read_bytes}")
-        tensor = torch.as_tensor(buffer, device=self.device).view(torch.uint8)
-        return tensor.view(dtype).reshape(shape)
+        return PendingGpuTensorRead(
+            buffer=buffer,
+            future=future,
+            nbytes=nbytes,
+            dtype=dtype,
+            shape=shape,
+            device=self.device,
+            started_at=started_at,
+            record_stats=_record_stats,
+        )
+
+    def get_tensor(self, name: str) -> torch.Tensor:
+        pending = self._pending_reads.pop(name, None)
+        if pending is None:
+            pending = self._submit_tensor_read(name)
+        return pending.result()
 
 
 ReaderType = SafeTensorReader | SafeTensorReaderGPU
@@ -362,6 +387,18 @@ class DenseWeightsLoader:
         self.device = torch.device(device)
         self.offloaded_map: dict[str, dict[str, torch.Tensor]] = {}
 
+    def _preload_base_tensors(self, base: str) -> None:
+        filenames_by_tensor: dict[str, list[str]] = {}
+        for attr_path, filename in self.manifest[base].items():
+            filenames_by_tensor.setdefault(filename, []).append(base + attr_path)
+        for filename, tensor_names in filenames_by_tensor.items():
+            if filename not in self.safetensors:
+                filepath = os.path.join(self.path, filename)
+                self.safetensors[filename] = get_optimal_safetensor_reader(
+                    filepath, device=self.device
+                )
+            self.safetensors[filename].preload_tensors(tensor_names)
+
     def load_dict_to_cuda(self, base: str) -> dict[str, torch.Tensor]:
         offloaded = self.get_offloaded_dict_to_cuda(base)
         if offloaded is not None:
@@ -394,13 +431,7 @@ class DenseWeightsLoader:
         }
 
     def preload_layer_safetensors(self, base: str) -> None:
-        for filename in self.manifest[base].values():
-            if filename in self.safetensors:
-                continue
-            filepath = os.path.join(self.path, filename)
-            self.safetensors[filename] = get_optimal_safetensor_reader(
-                filepath, device=self.device
-            )
+        self._preload_base_tensors(base)
 
 
 class SingleDenseWeightsLoader(DenseWeightsLoader):
@@ -425,7 +456,7 @@ class SingleDenseWeightsLoader(DenseWeightsLoader):
             )
 
     def preload_layer_safetensors(self, base: str) -> None:
-        return None
+        self._preload_base_tensors(base)
 
 
 class MoEWeightsLoader(DenseWeightsLoader):
@@ -454,8 +485,4 @@ class MoEWeightsLoader(DenseWeightsLoader):
         for nested_base in list(self.manifest.keys()):
             if not nested_base.startswith(base):
                 continue
-            for filename in self.manifest[nested_base].values():
-                if filename in self.safetensors:
-                    continue
-                filepath = os.path.join(self.path, filename)
-                self.safetensors[filename] = get_optimal_safetensor_reader(filepath)
+            self._preload_base_tensors(nested_base)

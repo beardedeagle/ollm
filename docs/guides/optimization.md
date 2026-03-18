@@ -72,3 +72,8 @@ The benchmark harness is designed to stay truthful on limited-RAM hosts:
 When present, the native runtime profile is the most truthful place to inspect
 whether an optimized request actually used GDS, standard safetensor IO,
 CPU-offloaded artifacts, or disk KV cache IO.
+
+Those native event totals are operation-level timings. On runtimes that submit
+multiple storage reads before waiting for completion, the summed native IO
+event totals can exceed the enclosing request wall-clock time because the reads
+can overlap.
