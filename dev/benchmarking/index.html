@@ -2251,6 +2251,11 @@ latency.</p>
 </ul>
 <p>These fields are only present when the selected runtime actually emits native
 stats. Generic Transformers-backed runs may report <code>null</code> here.</p>
+<p>When the optimized loader uses async submission plus later completion, the
+native event totals represent per-operation storage latency, not a partition of
+request wall time. That means summed <code>gds_read</code>, <code>safetensor_*</code>, or other
+native event totals can exceed the request's top-level wall-clock latency when
+multiple reads overlap.</p>
 <h2 id="hardware-specific-workflow">Hardware-specific workflow<a class="headerlink" href="#hardware-specific-workflow" title="Permanent link">&para;</a></h2>
 <p>For a lightweight non-CUDA baseline:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span>--device<span class="w"> </span>cpu<span class="w"> </span>--output<span class="w"> </span>.omx/runtime-benchmark-cpu.json
