@@ -120,6 +120,7 @@ class loaderLayer:
     def _load_expert_weights(self):
         t1 = time.perf_counter()
         base = f"model.layers.{self.layer_idx}.mlp.experts.{self.expert_idx}."
+        loader.preload_layer_safetensors(base)
         d = loader.load_dict_to_cuda(base)
         for attr_path, tensor in d.items():
             parent, leaf = _walk_to_parent(self, attr_path)
@@ -134,6 +135,9 @@ class loaderLayer:
             _set_meta_placeholder(parent, leaf)
 
     def _load_experts_weights(self, experts_idx):
+        for expert_idx in experts_idx:
+            base = f"model.layers.{self.layer_idx}.mlp.experts.{expert_idx}."
+            loader.preload_layer_safetensors(base)
         for expert_idx in experts_idx:
             self.experts[expert_idx]._load_expert_weights()
 
