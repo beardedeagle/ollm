@@ -4,50 +4,58 @@ from pathlib import Path
 import torch
 from transformers import DynamicCache
 
-from ollm.async_io import (
-    path_exists,
-    path_mkdir,
-    remove_tree,
-    torch_load_file,
-    torch_save_file,
-)
+from ollm.async_io import path_exists, path_mkdir, remove_tree
+from ollm.kv_cache_store import ChunkedKVStore
+from ollm.utils import Stats
+
+_EMPTY_CACHE_PLACEHOLDER = torch.empty(0)
 
 
 class oCache:
-    def ini_ocache(self, cache_dir, device, stats):
+    def ini_ocache(
+        self,
+        cache_dir: str | Path,
+        device: str | torch.device,
+        stats: Stats | None,
+    ) -> None:
         if not cache_dir:
             raise ValueError(
                 "cache_dir can not be empty. If you are trying to not use DiskCache, simply set past_key_values=None. This will use default DynamicCache"
             )
         self.cache_folder = Path(cache_dir) / "kv_cache"
-        self.key_cache2, self.value_cache2 = [], []
         if path_exists(self.cache_folder):
             remove_tree(self.cache_folder)
         path_mkdir(self.cache_folder, parents=True, exist_ok=True)
-        self.device = device
+        self.device = torch.device(device)
         self.stats = stats
+        self._cache_store = ChunkedKVStore(self.cache_folder)
+        self._cache_store.initialize()
 
-    def load_from_disk(self, layer_idx):
-        path = self.cache_folder / f"layer_{layer_idx}.pt"
-        if not path_exists(path):
-            return None
-        t1 = time.perf_counter()
-        tensors = torch_load_file(path, map_location=self.device)
-        if self.stats:
-            self.stats.set("kvload", t1)
+    def load_from_disk(
+        self, layer_idx: int
+    ) -> tuple[torch.Tensor, torch.Tensor] | None:
+        started_at = time.perf_counter()
+        tensors = self._cache_store.load_layer(layer_idx, device=self.device)
+        if tensors is not None and self.stats is not None:
+            self.stats.set("kvload", started_at)
         return tensors
 
-    def save_to_disk(self, tensors, layer_idx):
-        t1 = time.perf_counter()
-        path = self.cache_folder / f"layer_{layer_idx}.pt"
-        tensors = (tensors[0].cpu(), tensors[1].cpu())
-        torch_save_file(tensors, path)
-        if self.stats:
-            self.stats.set("kvsave", t1)
+    def save_to_disk(
+        self, tensors: tuple[torch.Tensor, torch.Tensor], layer_idx: int
+    ) -> None:
+        started_at = time.perf_counter()
+        self._cache_store.append_layer_chunk(layer_idx, tensors)
+        if self.stats is not None:
+            self.stats.set("kvsave", started_at)
 
 
-class KVCache(DynamicCache, oCache):  # DiskCache
-    def __init__(self, cache_dir="./kv_cache", device="cuda:0", stats=None):
+class KVCache(DynamicCache, oCache):
+    def __init__(
+        self,
+        cache_dir: str | Path = "./kv_cache",
+        device: str | torch.device = "cuda:0",
+        stats: Stats | None = None,
+    ) -> None:
         super().__init__()
         self.ini_ocache(cache_dir, device, stats)
 
@@ -61,33 +69,11 @@ class KVCache(DynamicCache, oCache):  # DiskCache
         tensors = self.load_from_disk(layer_idx)
         if tensors is not None:
             self.layers[layer_idx].keys, self.layers[layer_idx].values = tensors
-            if layer_idx < len(self.key_cache2):
-                self.layers[layer_idx].keys = torch.cat(
-                    [self.layers[layer_idx].keys, self.key_cache2[layer_idx]], dim=-2
-                )
-                self.layers[layer_idx].values = torch.cat(
-                    [self.layers[layer_idx].values, self.value_cache2[layer_idx]],
-                    dim=-2,
-                )
-                self.key_cache2[layer_idx] = torch.cat(
-                    [self.key_cache2[layer_idx], key_states], dim=-2
-                )
-                self.value_cache2[layer_idx] = torch.cat(
-                    [self.value_cache2[layer_idx], value_states], dim=-2
-                )
-            else:
-                self.key_cache2.append(key_states)
-                self.value_cache2.append(value_states)
 
-        out = super().update(
-            key_states, value_states, layer_idx, cache_kwargs
-        )  # tuple of (self.key_cache[layer_idx], self.value_cache[layer_idx])
-        if tensors is None:
-            self.save_to_disk(
-                out, layer_idx
-            )  # save only first time cause it's slow to save
+        out = super().update(key_states, value_states, layer_idx, cache_kwargs)
+        self.save_to_disk((key_states, value_states), layer_idx)
         self.layers[layer_idx].keys, self.layers[layer_idx].values = (
-            torch.empty(0),
-            torch.empty(0),
+            _EMPTY_CACHE_PLACEHOLDER,
+            _EMPTY_CACHE_PLACEHOLDER,
         )
         return out

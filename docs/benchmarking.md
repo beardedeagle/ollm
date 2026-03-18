@@ -73,6 +73,10 @@ The same profile also reports storage-path labels such as:
 These fields are only present when the selected runtime actually emits native
 stats. Generic Transformers-backed runs may report `null` here.
 
+For disk KV requests, `disk-kv-cache` now refers to the manifest-backed chunked
+cache format under `cache_dir/kv_cache`, not to pickle-backed `.pt` layer
+artifacts.
+
 When the optimized loader uses async submission plus later completion, the
 native event totals represent per-operation storage latency, not a partition of
 request wall time. That means summed `gds_read`, `safetensor_*`, or other

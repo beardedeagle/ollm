@@ -50,6 +50,11 @@ When supported by the selected backend, oLLM can expose:
 These controls are backend-dependent. The generic path does not expose the same
 low-level layer-placement controls as optimized-native runtimes.
 
+The optimized-native disk KV cache now persists an explicit manifest-backed
+chunk store under `cache_dir/kv_cache`. Each layer writes typed raw chunk
+payloads plus JSON metadata for dtype, shape, sequence range, and layout. The
+runtime no longer uses opaque pickle-backed `.pt` cache blobs for this path.
+
 ## GPT-OSS `gds_export` requirement
 
 The optimized GPT-OSS path is intentionally strict:
@@ -72,6 +77,10 @@ The benchmark harness is designed to stay truthful on limited-RAM hosts:
 When present, the native runtime profile is the most truthful place to inspect
 whether an optimized request actually used GDS, standard safetensor IO,
 CPU-offloaded artifacts, or disk KV cache IO.
+
+For disk KV specifically, `kvload` and `kvsave` now represent reads and writes
+against that manifest-backed chunk store rather than whole-layer torch
+artifacts.
 
 Those native event totals are operation-level timings. On runtimes that submit
 multiple storage reads before waiting for completion, the summed native IO

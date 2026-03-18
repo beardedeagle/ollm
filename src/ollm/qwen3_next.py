@@ -66,32 +66,12 @@ class Qwen3NextDiskCache(Qwen3NextDynamicCache, oCache):
         tensors = self.load_from_disk(layer_idx)
         if tensors is not None:
             self.key_cache[layer_idx], self.value_cache[layer_idx] = tensors
-            if layer_idx < len(self.key_cache2):
-                self.key_cache[layer_idx] = torch.cat(
-                    [self.key_cache[layer_idx], self.key_cache2[layer_idx]], dim=-2
-                )
-                self.value_cache[layer_idx] = torch.cat(
-                    [self.value_cache[layer_idx], self.value_cache2[layer_idx]], dim=-2
-                )
-                self.key_cache2[layer_idx] = torch.cat(
-                    [self.key_cache2[layer_idx], key_states], dim=-2
-                )
-                self.value_cache2[layer_idx] = torch.cat(
-                    [self.value_cache2[layer_idx], value_states], dim=-2
-                )
-            else:
-                self.key_cache2.append(key_states)
-                self.value_cache2.append(value_states)
 
         out = super().update(
             key_states, value_states, layer_idx, cache_kwargs
         )  # tuple of (self.key_cache[layer_idx], self.value_cache[layer_idx])
         self.seq_lengths[layer_idx] = out[0].shape[-2]
-        # print(len(out), out[0].shape, "-- k shape" )
-        if tensors is None:
-            self.save_to_disk(
-                out, layer_idx
-            )  # save only first time cause it's slow to save
+        self.save_to_disk((key_states, value_states), layer_idx)
         self.key_cache[layer_idx], self.value_cache[layer_idx] = (
             torch.empty(0),
             torch.empty(0),

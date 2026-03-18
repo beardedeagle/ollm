@@ -306,6 +306,10 @@ past_key_values = o.DiskCache(cache_dir="./kv_cache/")
 text_streamer = TextStreamer(o.tokenizer, skip_prompt=True, skip_special_tokens=False)
 ```
 
+That disk cache path now writes a manifest-backed chunk store under
+`cache_dir/kv_cache`, using typed raw chunk payloads plus JSON metadata instead
+of opaque torch cache blobs.
+
 For compatible local Llama or Gemma3 directories, `AutoInference` remains the direct optimized-native helper:
 
 ```python
@@ -384,6 +388,9 @@ also include a `native_runtime_profile` section with:
   `offloaded_cpu_to_cuda`
 - storage-path labels such as `gds`, `safetensor-io`,
   `cpu-offloaded-artifacts`, `disk-kv-cache`, and `torch-artifact-io`
+
+For disk KV requests, `disk-kv-cache` now refers to the manifest-backed chunked
+cache format under `cache_dir/kv_cache`, not to legacy `.pt` layer artifacts.
 
 Useful knobs for the primary-target sweeps:
 

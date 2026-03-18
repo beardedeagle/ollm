@@ -50,6 +50,14 @@ def path_read_text(path: Path, *, encoding: str = "utf-8") -> str:
     return run_async_operation(path_read_text_async(path, encoding=encoding))
 
 
+async def path_read_bytes_async(path: Path) -> bytes:
+    return await asyncio.to_thread(path.read_bytes)
+
+
+def path_read_bytes(path: Path) -> bytes:
+    return run_async_operation(path_read_bytes_async(path))
+
+
 async def path_write_text_async(
     path: Path, content: str, *, encoding: str = "utf-8"
 ) -> None:
@@ -58,6 +66,14 @@ async def path_write_text_async(
 
 def path_write_text(path: Path, content: str, *, encoding: str = "utf-8") -> None:
     run_async_operation(path_write_text_async(path, content, encoding=encoding))
+
+
+async def path_write_bytes_async(path: Path, content: bytes) -> None:
+    await asyncio.to_thread(path.write_bytes, content)
+
+
+def path_write_bytes(path: Path, content: bytes) -> None:
+    run_async_operation(path_write_bytes_async(path, content))
 
 
 async def path_exists_async(path: Path) -> bool:

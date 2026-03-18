@@ -52,6 +52,10 @@ past_key_values = o.DiskCache(cache_dir="./kv_cache/")
 text_streamer = TextStreamer(o.tokenizer, skip_prompt=True, skip_special_tokens=False)
 ```
 
+`Inference.DiskCache()` now materializes a manifest-backed chunk store under
+`cache_dir/kv_cache`, with typed raw chunk payloads and JSON manifests instead
+of opaque torch cache blobs.
+
 For compatible local Llama or Gemma3 directories, `AutoInference` remains the direct optimized-native helper:
 
 ```python

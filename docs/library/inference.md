@@ -26,6 +26,10 @@ past_key_values = o.DiskCache(cache_dir="./kv_cache/")
 text_streamer = TextStreamer(o.tokenizer, skip_prompt=True, skip_special_tokens=False)
 ```
 
+That disk cache path now uses a manifest-backed chunk store under
+`cache_dir/kv_cache`, with explicit dtype/shape/sequence metadata and raw chunk
+payloads instead of pickle-backed torch artifacts.
+
 ## Typical `AutoInference` example
 
 ```python
