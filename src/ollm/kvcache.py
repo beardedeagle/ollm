@@ -23,7 +23,7 @@ class oCache:
         self.key_cache2, self.value_cache2 = [], []
         if path_exists(self.cache_folder):
             remove_tree(self.cache_folder)
-        path_mkdir(self.cache_folder)
+        path_mkdir(self.cache_folder, parents=True, exist_ok=True)
         self.device = device
         self.stats = stats
 

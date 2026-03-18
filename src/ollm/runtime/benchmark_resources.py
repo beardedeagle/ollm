@@ -284,22 +284,23 @@ def measure_stage(
 def reset_accelerator_metrics(device: str) -> None:
     resolved_device = torch.device(device)
     if resolved_device.type == "cuda" and torch.cuda.is_available():
-        torch.cuda.reset_peak_memory_stats(resolved_device)
+        _ensure_cuda_initialized()
+        torch.cuda.reset_peak_memory_stats(_cuda_device_index(resolved_device))
 
 
 def capture_accelerator_memory(device: str) -> _AcceleratorMemorySnapshot:
     resolved_device = torch.device(device)
     if resolved_device.type == "cuda" and torch.cuda.is_available():
-        torch.cuda.synchronize(resolved_device)
+        _ensure_cuda_initialized()
+        device_index = _cuda_device_index(resolved_device)
+        torch.cuda.synchronize(device_index)
         return _AcceleratorMemorySnapshot(
             accelerator_kind="cuda",
-            current_mb=bytes_to_mb(float(torch.cuda.memory_allocated(resolved_device))),
-            peak_mb=bytes_to_mb(
-                float(torch.cuda.max_memory_allocated(resolved_device))
-            ),
-            reserved_mb=bytes_to_mb(float(torch.cuda.memory_reserved(resolved_device))),
+            current_mb=bytes_to_mb(float(torch.cuda.memory_allocated(device_index))),
+            peak_mb=bytes_to_mb(float(torch.cuda.max_memory_allocated(device_index))),
+            reserved_mb=bytes_to_mb(float(torch.cuda.memory_reserved(device_index))),
             peak_reserved_mb=bytes_to_mb(
-                float(torch.cuda.max_memory_reserved(resolved_device))
+                float(torch.cuda.max_memory_reserved(device_index))
             ),
             peak_source="native",
         )
@@ -331,7 +332,8 @@ def capture_accelerator_memory(device: str) -> _AcceleratorMemorySnapshot:
 def synchronize_device(device: str) -> None:
     resolved_device = torch.device(device)
     if resolved_device.type == "cuda" and torch.cuda.is_available():
-        torch.cuda.synchronize(resolved_device)
+        _ensure_cuda_initialized()
+        torch.cuda.synchronize(_cuda_device_index(resolved_device))
         return
     if (
         resolved_device.type == "mps"
@@ -408,3 +410,13 @@ def _mps_memory_stat(name: str) -> float | None:
     if not isinstance(value, int | float):
         return None
     return bytes_to_mb(float(value))
+
+
+def _cuda_device_index(device: torch.device) -> int:
+    if device.index is not None:
+        return device.index
+    return torch.cuda.current_device()
+
+
+def _ensure_cuda_initialized() -> None:
+    torch.cuda.current_device()
