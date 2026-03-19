@@ -2257,6 +2257,7 @@ lives at <code>examples/ollm.toml</code> in the repository root.</p>
 <li><code>multimodal</code> — enable multimodal planning when non-text inputs are expected</li>
 <li><code>use_specialization</code> — whether optimized-native specialization is allowed</li>
 <li><code>cache_dir</code> / <code>use_cache</code> — disk KV cache controls</li>
+<li><code>kv_cache_strategy</code> — explicit disk KV backend selection (<code>chunked</code>, <code>streamed-segmented</code>, <code>log-structured-journal</code>, or <code>tiered-write-back</code>)</li>
 <li><code>offload_cpu_layers</code> / <code>offload_gpu_layers</code> — native offload controls when supported</li>
 </ul>
 <p>Generation configuration fields:</p>
@@ -2282,6 +2283,7 @@ lives at <code>examples/ollm.toml</code> in the repository root.</p>
 <li><code>OLLM_RUNTIME__MODEL_REFERENCE</code></li>
 <li><code>OLLM_RUNTIME__MODELS_DIR</code></li>
 <li><code>OLLM_RUNTIME__DEVICE</code></li>
+<li><code>OLLM_RUNTIME__KV_CACHE_STRATEGY</code></li>
 <li><code>OLLM_GENERATION__MAX_NEW_TOKENS</code></li>
 <li><code>OLLM_GENERATION__STREAM</code></li>
 <li><code>OLLM_SERVER__HOST</code></li>

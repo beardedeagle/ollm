@@ -2350,6 +2350,33 @@
 </ul>
 <p>These controls are backend-dependent. The generic path does not expose the same
 low-level layer-placement controls as optimized-native runtimes.</p>
+<p>The optimized-native disk KV cache now exposes three explicit
+strategies:</p>
+<ul>
+<li><code>chunked</code></li>
+<li><code>streamed-segmented</code></li>
+<li><code>log-structured-journal</code></li>
+<li><code>tiered-write-back</code></li>
+</ul>
+<p><code>chunked</code> persists a manifest-backed chunk store under
+<code>cache_dir/kv_cache_chunked</code>. <code>streamed-segmented</code> persists a sequential
+segment-backed store under <code>cache_dir/kv_cache_streamed_segmented</code>.
+<code>log-structured-journal</code> persists a single append-oriented journal per layer
+under <code>cache_dir/kv_cache_log_structured_journal</code> and compacts entry metadata
+deterministically once the journal crosses its configured entry threshold.
+<code>tiered-write-back</code> persists only the colder KV prefix under
+<code>cache_dir/kv_cache_tiered_write_back</code> while keeping a bounded hot region in
+memory; its cold tier now uses a journal-backed append store. All four use
+typed raw tensor payloads plus explicit metadata, and none uses opaque
+pickle-backed <code>.pt</code> cache blobs. The runtime also applies a
+platform/resource-aware buffering or spill policy on top of the selected
+strategy so the cache can trade write amplification against memory headroom
+instead of flushing every delta identically on every machine.</p>
+<p>Within one loaded runtime, the cache layer now also keeps a resident in-process
+snapshot of the reconstructed per-layer KV state so repeated updates do not
+need to reread and rebuild the same on-disk history every token. For the
+<code>streamed-segmented</code> store specifically, readback now coalesces extents by
+segment file instead of replaying a separate file-range read for every extent.</p>
 <h2 id="gpt-oss-gds_export-requirement">GPT-OSS <code>gds_export</code> requirement<a class="headerlink" href="#gpt-oss-gds_export-requirement" title="Permanent link">&para;</a></h2>
 <p>The optimized GPT-OSS path is intentionally strict:</p>
 <ul>
@@ -2370,6 +2397,18 @@ low-level layer-placement controls as optimized-native runtimes.</p>
 <p>When present, the native runtime profile is the most truthful place to inspect
 whether an optimized request actually used GDS, standard safetensor IO,
 CPU-offloaded artifacts, or disk KV cache IO.</p>
+<p>For disk KV specifically, <code>kvload</code> and <code>kvsave</code> now represent reads and writes
+against the selected explicit disk-KV store rather than whole-layer torch
+artifacts. Benchmark/runtime output also reports <code>kv_cache_strategy</code> so the
+active backend is visible during A/B runs, and <code>cache_state</code> exposes the
+hot/cold split, persisted artifact count, compaction count, and cold-store
+format for tier-aware strategies.
+The reported disk-cache footprint reflects the persisted chunk store only. A
+selected KV policy may keep a bounded tail in memory until its spill or flush
+threshold is reached.
+When a request is satisfied from the resident in-process KV snapshot rather
+than from disk, <code>kvload</code> can legitimately be absent for that step even though
+disk KV remains the selected strategy.</p>
 <p>Those native event totals are operation-level timings. On runtimes that submit
 multiple storage reads before waiting for completion, the summed native IO
 event totals can exceed the enclosing request wall-clock time because the reads

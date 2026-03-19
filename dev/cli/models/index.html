@@ -2259,7 +2259,10 @@ ollm<span class="w"> </span>models<span class="w"> </span>info<span class="w"> <
 <h2 id="download"><code>download</code><a class="headerlink" href="#download" title="Permanent link">&para;</a></h2>
 <p>Materialize a downloadable model reference locally. The downloader stores only the
 runtime-critical artifacts that <code>ollm</code> needs to inspect, plan, and execute the
-model locally rather than a full Hugging Face repository snapshot:</p>
+model locally rather than a full Hugging Face repository snapshot. For sharded
+repos, the managed materialization is only considered complete when every shard
+referenced by the safetensor index is present. Gated Hugging Face repos still
+require accepted terms and a token with weight access:</p>
 <div class="language-bash highlight"><pre><span></span><code>ollm<span class="w"> </span>models<span class="w"> </span>download<span class="w"> </span>llama3-3B-chat
 ollm<span class="w"> </span>models<span class="w"> </span>download<span class="w"> </span>Qwen/Qwen2.5-7B-Instruct
 </code></pre></div>

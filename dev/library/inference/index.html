@@ -2227,9 +2227,27 @@
 <span class="n">o</span> <span class="o">=</span> <span class="n">Inference</span><span class="p">(</span><span class="s2">&quot;llama3-1B-chat&quot;</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="n">logging</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">o</span><span class="o">.</span><span class="n">ini_model</span><span class="p">(</span><span class="n">models_dir</span><span class="o">=</span><span class="s2">&quot;./models/&quot;</span><span class="p">,</span> <span class="n">force_download</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 <span class="n">o</span><span class="o">.</span><span class="n">offload_layers_to_cpu</span><span class="p">(</span><span class="n">layers_num</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-<span class="n">past_key_values</span> <span class="o">=</span> <span class="n">o</span><span class="o">.</span><span class="n">DiskCache</span><span class="p">(</span><span class="n">cache_dir</span><span class="o">=</span><span class="s2">&quot;./kv_cache/&quot;</span><span class="p">)</span>
+<span class="n">past_key_values</span> <span class="o">=</span> <span class="n">o</span><span class="o">.</span><span class="n">DiskCache</span><span class="p">(</span>
+    <span class="n">cache_dir</span><span class="o">=</span><span class="s2">&quot;./kv_cache/&quot;</span><span class="p">,</span>
+    <span class="n">cache_strategy</span><span class="o">=</span><span class="s2">&quot;streamed-segmented&quot;</span><span class="p">,</span>
+<span class="p">)</span>
 <span class="n">text_streamer</span> <span class="o">=</span> <span class="n">TextStreamer</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">tokenizer</span><span class="p">,</span> <span class="n">skip_prompt</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">skip_special_tokens</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
+<p>That disk cache path now uses an explicit disk-KV store under
+<code>cache_dir/kv_cache_chunked</code> by default, with explicit
+dtype/shape/sequence metadata and raw payloads instead of pickle-backed torch
+artifacts. When the selected runtime uses
+<code>kv_cache_strategy="streamed-segmented"</code>, it writes to
+<code>cache_dir/kv_cache_streamed_segmented</code> instead. When it uses
+<code>kv_cache_strategy="log-structured-journal"</code>, it writes to
+<code>cache_dir/kv_cache_log_structured_journal</code> and compacts journal metadata
+deterministically once the configured entry threshold is reached. When it uses
+<code>kv_cache_strategy="tiered-write-back"</code>, it writes the cold tier to
+<code>cache_dir/kv_cache_tiered_write_back</code> through a journal-backed append store
+while keeping a bounded hot tail in memory. The active runtime then applies a
+platform/resource-aware buffering or spill policy on top of the selected
+store. <code>Inference.DiskCache()</code> accepts the same switch through
+<code>cache_strategy=...</code>.</p>
 <h2 id="typical-autoinference-example">Typical <code>AutoInference</code> example<a class="headerlink" href="#typical-autoinference-example" title="Permanent link">&para;</a></h2>
 <div class="language-python highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">ollm</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoInference</span>
 
