@@ -311,6 +311,9 @@ def main() -> int:
                     max_new_tokens=args.probe_max_new_tokens,
                     iterations=args.probe_iterations,
                     warmup_iterations=args.probe_warmup_iterations,
+                    prompt_token_targets=prompt_token_targets,
+                    output_token_targets=output_token_targets,
+                    session_turns=args.probe_session_turns,
                 ),
             )
             _emit_history_status(history_result)

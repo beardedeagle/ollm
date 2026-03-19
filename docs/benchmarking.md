@@ -162,6 +162,9 @@ For `log-structured-journal`, compaction is visible both through
 runtime profile timing under `kvcompact`. `kvsave` now measures append-path
 write cost without double-counting compaction rewrite time; when compaction
 occurs, `kvcompact` reports that rewrite separately.
+Cold, warm, prompt-scaling, output-scaling, and session-growth probes all use
+the same persistent benchmark-history ledger, so bounded proof runs remain
+recorded and comparable instead of becoming ad hoc local artifacts.
 
 When the optimized loader uses async submission plus later completion, the
 native event totals represent per-operation storage latency, not a partition of

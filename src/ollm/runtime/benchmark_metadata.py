@@ -66,6 +66,9 @@ def probe_comparison_key(
     max_new_tokens: int,
     iterations: int,
     warmup_iterations: int,
+    prompt_token_targets: tuple[int, ...],
+    output_token_targets: tuple[int, ...],
+    session_turns: int,
 ) -> dict[str, object]:
     """Build a stable comparison key for one probe run shape."""
 
@@ -80,6 +83,9 @@ def probe_comparison_key(
         "max_new_tokens": max_new_tokens,
         "iterations": iterations,
         "warmup_iterations": warmup_iterations,
+        "prompt_token_targets": list(prompt_token_targets),
+        "output_token_targets": list(output_token_targets),
+        "session_turns": session_turns,
     }
 
 
