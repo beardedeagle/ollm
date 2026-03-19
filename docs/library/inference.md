@@ -22,13 +22,22 @@ from ollm import Inference, TextStreamer
 o = Inference("llama3-1B-chat", device="cuda:0", logging=True)
 o.ini_model(models_dir="./models/", force_download=False)
 o.offload_layers_to_cpu(layers_num=2)
-past_key_values = o.DiskCache(cache_dir="./kv_cache/")
+past_key_values = o.DiskCache(
+    cache_dir="./kv_cache/",
+    cache_strategy="streamed-segmented",
+)
 text_streamer = TextStreamer(o.tokenizer, skip_prompt=True, skip_special_tokens=False)
 ```
 
-That disk cache path now uses a manifest-backed chunk store under
-`cache_dir/kv_cache`, with explicit dtype/shape/sequence metadata and raw chunk
-payloads instead of pickle-backed torch artifacts.
+That disk cache path now uses an explicit disk-KV store under
+`cache_dir/kv_cache_chunked` by default, with explicit
+dtype/shape/sequence metadata and raw payloads instead of pickle-backed torch
+artifacts. When the selected runtime uses
+`kv_cache_strategy="streamed-segmented"`, it writes to
+`cache_dir/kv_cache_streamed_segmented` instead so the strategies remain
+isolated. The active runtime then applies a platform/resource-aware buffering
+policy on top of the selected store. `Inference.DiskCache()` accepts the same
+switch through `cache_strategy=...`.
 
 ## Typical `AutoInference` example
 

@@ -9,9 +9,16 @@ from collections.abc import Coroutine
 from pathlib import Path
 from typing import TypeVar, cast
 
+import anyio
 import torch
+from anyio import to_thread
 
 T = TypeVar("T")
+_REMOVE_TREE_SYNC = shutil.rmtree
+_TORCH_LOAD_SYNC = torch.load
+_TORCH_SAVE_SYNC = torch.save
+_SUBPROCESS_RUN_SYNC = subprocess.run
+_SUBPROCESS_POPEN_SYNC = subprocess.Popen
 
 
 def run_async_operation(operation: Coroutine[object, object, T]) -> T:
@@ -20,7 +27,7 @@ def run_async_operation(operation: Coroutine[object, object, T]) -> T:
     try:
         asyncio.get_running_loop()
     except RuntimeError:
-        return asyncio.run(operation)
+        return anyio.run(lambda: operation)
 
     result: list[T] = []
     errors: list[BaseException] = []
@@ -28,7 +35,7 @@ def run_async_operation(operation: Coroutine[object, object, T]) -> T:
 
     def runner() -> None:
         try:
-            result.append(asyncio.run(operation))
+            result.append(anyio.run(lambda: operation))
         except BaseException as exc:  # pragma: no cover - passthrough
             errors.append(exc)
         finally:
@@ -43,7 +50,7 @@ def run_async_operation(operation: Coroutine[object, object, T]) -> T:
 
 
 async def path_read_text_async(path: Path, *, encoding: str = "utf-8") -> str:
-    return await asyncio.to_thread(path.read_text, encoding=encoding)
+    return await to_thread.run_sync(lambda: path.read_text(encoding=encoding))
 
 
 def path_read_text(path: Path, *, encoding: str = "utf-8") -> str:
@@ -51,17 +58,37 @@ def path_read_text(path: Path, *, encoding: str = "utf-8") -> str:
 
 
 async def path_read_bytes_async(path: Path) -> bytes:
-    return await asyncio.to_thread(path.read_bytes)
+    return await to_thread.run_sync(path.read_bytes)
 
 
 def path_read_bytes(path: Path) -> bytes:
     return run_async_operation(path_read_bytes_async(path))
 
 
+async def path_read_bytes_range_async(path: Path, *, offset: int, length: int) -> bytes:
+    if offset < 0:
+        raise ValueError("offset must be zero or greater")
+    if length < 0:
+        raise ValueError("length must be zero or greater")
+
+    def _read_range() -> bytes:
+        with path.open("rb") as handle:
+            handle.seek(offset)
+            return handle.read(length)
+
+    return await to_thread.run_sync(_read_range)
+
+
+def path_read_bytes_range(path: Path, *, offset: int, length: int) -> bytes:
+    return run_async_operation(
+        path_read_bytes_range_async(path, offset=offset, length=length)
+    )
+
+
 async def path_write_text_async(
     path: Path, content: str, *, encoding: str = "utf-8"
 ) -> None:
-    await asyncio.to_thread(path.write_text, content, encoding=encoding)
+    await to_thread.run_sync(lambda: path.write_text(content, encoding=encoding))
 
 
 def path_write_text(path: Path, content: str, *, encoding: str = "utf-8") -> None:
@@ -69,19 +96,41 @@ def path_write_text(path: Path, content: str, *, encoding: str = "utf-8") -> Non
 
 
 async def path_write_bytes_async(path: Path, content: bytes) -> None:
-    await asyncio.to_thread(path.write_bytes, content)
+    await to_thread.run_sync(lambda: path.write_bytes(content))
 
 
 def path_write_bytes(path: Path, content: bytes) -> None:
     run_async_operation(path_write_bytes_async(path, content))
 
 
+async def path_append_bytes_async(path: Path, content: bytes) -> int:
+    def _append() -> int:
+        with path.open("ab") as handle:
+            offset = handle.tell()
+            handle.write(content)
+            return offset
+
+    return await to_thread.run_sync(_append)
+
+
+def path_append_bytes(path: Path, content: bytes) -> int:
+    return run_async_operation(path_append_bytes_async(path, content))
+
+
 async def path_exists_async(path: Path) -> bool:
-    return await asyncio.to_thread(path.exists)
+    return await to_thread.run_sync(path.exists)
 
 
 def path_exists(path: Path) -> bool:
     return run_async_operation(path_exists_async(path))
+
+
+async def path_file_size_async(path: Path) -> int:
+    return await to_thread.run_sync(lambda: path.stat().st_size)
+
+
+def path_file_size(path: Path) -> int:
+    return run_async_operation(path_file_size_async(path))
 
 
 async def path_mkdir_async(
@@ -91,7 +140,9 @@ async def path_mkdir_async(
     exist_ok: bool = False,
     mode: int = 0o777,
 ) -> None:
-    await asyncio.to_thread(path.mkdir, parents=parents, exist_ok=exist_ok, mode=mode)
+    await to_thread.run_sync(
+        lambda: path.mkdir(parents=parents, exist_ok=exist_ok, mode=mode)
+    )
 
 
 def path_mkdir(
@@ -107,7 +158,7 @@ def path_mkdir(
 
 
 async def path_touch_async(path: Path, *, exist_ok: bool = True) -> None:
-    await asyncio.to_thread(path.touch, exist_ok=exist_ok)
+    await to_thread.run_sync(lambda: path.touch(exist_ok=exist_ok))
 
 
 def path_touch(path: Path, *, exist_ok: bool = True) -> None:
@@ -115,7 +166,7 @@ def path_touch(path: Path, *, exist_ok: bool = True) -> None:
 
 
 async def path_replace_async(source: Path, target: Path) -> None:
-    await asyncio.to_thread(source.replace, target)
+    await to_thread.run_sync(lambda: source.replace(target))
 
 
 def path_replace(source: Path, target: Path) -> None:
@@ -123,7 +174,7 @@ def path_replace(source: Path, target: Path) -> None:
 
 
 async def chmod_async(path: Path, mode: int) -> None:
-    await asyncio.to_thread(path.chmod, mode)
+    await to_thread.run_sync(lambda: path.chmod(mode))
 
 
 def chmod_path(path: Path, mode: int) -> None:
@@ -131,7 +182,7 @@ def chmod_path(path: Path, mode: int) -> None:
 
 
 async def remove_tree_async(path: Path) -> None:
-    await asyncio.to_thread(shutil.rmtree, path)
+    await to_thread.run_sync(lambda: _REMOVE_TREE_SYNC(path))
 
 
 def remove_tree(path: Path) -> None:
@@ -141,7 +192,9 @@ def remove_tree(path: Path) -> None:
 async def torch_load_async(
     path: str | Path, *, map_location: str | torch.device
 ) -> object:
-    return await asyncio.to_thread(torch.load, path, map_location=map_location)
+    return await to_thread.run_sync(
+        lambda: _TORCH_LOAD_SYNC(path, map_location=map_location)
+    )
 
 
 def torch_load_file(path: str | Path, *, map_location: str | torch.device) -> object:
@@ -149,7 +202,7 @@ def torch_load_file(path: str | Path, *, map_location: str | torch.device) -> ob
 
 
 async def torch_save_async(value: object, path: str | Path) -> None:
-    await asyncio.to_thread(torch.save, value, path)
+    await to_thread.run_sync(lambda: _TORCH_SAVE_SYNC(value, path))
 
 
 def torch_save_file(value: object, path: str | Path) -> None:
@@ -157,7 +210,9 @@ def torch_save_file(value: object, path: str | Path) -> None:
 
 
 async def open_binary_file_async(path: str | Path) -> io.BufferedReader:
-    return cast(io.BufferedReader, await asyncio.to_thread(io.open, path, "rb"))
+    return cast(
+        io.BufferedReader, await to_thread.run_sync(lambda: io.open(path, "rb"))
+    )
 
 
 def open_binary_file(path: str | Path) -> io.BufferedReader:
@@ -165,25 +220,35 @@ def open_binary_file(path: str | Path) -> io.BufferedReader:
 
 
 async def subprocess_run_async(
-    command: tuple[str, ...], *, cwd: str | None = None
+    command: tuple[str, ...],
+    *,
+    cwd: str | None = None,
+    timeout_seconds: float | None = None,
 ) -> subprocess.CompletedProcess[str]:
     return cast(
         subprocess.CompletedProcess[str],
-        await asyncio.to_thread(
-            subprocess.run,
-            command,
-            cwd=cwd,
-            capture_output=True,
-            text=True,
-            check=False,
+        await to_thread.run_sync(
+            lambda: _SUBPROCESS_RUN_SYNC(
+                command,
+                cwd=cwd,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=timeout_seconds,
+            )
         ),
     )
 
 
 def subprocess_run_process(
-    command: tuple[str, ...], *, cwd: str | None = None
+    command: tuple[str, ...],
+    *,
+    cwd: str | None = None,
+    timeout_seconds: float | None = None,
 ) -> subprocess.CompletedProcess[str]:
-    return run_async_operation(subprocess_run_async(command, cwd=cwd))
+    return run_async_operation(
+        subprocess_run_async(command, cwd=cwd, timeout_seconds=timeout_seconds)
+    )
 
 
 async def subprocess_popen_async(
@@ -191,12 +256,13 @@ async def subprocess_popen_async(
 ) -> subprocess.Popen[str]:
     return cast(
         subprocess.Popen[str],
-        await asyncio.to_thread(
-            subprocess.Popen,
-            command,
-            stdout=stdout,
-            stderr=stderr,
-            text=text,
+        await to_thread.run_sync(
+            lambda: _SUBPROCESS_POPEN_SYNC(
+                command,
+                stdout=stdout,
+                stderr=stderr,
+                text=text,
+            )
         ),
     )
 

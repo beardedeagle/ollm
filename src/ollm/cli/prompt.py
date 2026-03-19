@@ -71,6 +71,11 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
         no_cache: bool | None = typer.Option(
             None, "--no-cache", help="Disable disk KV cache."
         ),
+        kv_cache_strategy: str | None = typer.Option(
+            None,
+            "--kv-cache-strategy",
+            help="Disk KV strategy: chunked or streamed-segmented.",
+        ),
         offload_cpu_layers: int | None = typer.Option(
             None,
             "--offload-cpu-layers",
@@ -166,6 +171,7 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
             no_specialization=no_specialization,
             cache_dir=cache_dir,
             no_cache=no_cache,
+            kv_cache_strategy=kv_cache_strategy,
             offload_cpu_layers=offload_cpu_layers,
             offload_gpu_layers=offload_gpu_layers,
             force_download=force_download,

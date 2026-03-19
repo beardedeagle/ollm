@@ -96,6 +96,7 @@ def _build_runtime_config(
             use_specialization=request_runtime.use_specialization,
             cache_dir=request_runtime.cache_dir,
             use_cache=request_runtime.use_cache,
+            kv_cache_strategy=request_runtime.kv_cache_strategy,
             offload_cpu_layers=request_runtime.offload_cpu_layers,
             offload_gpu_layers=request_runtime.offload_gpu_layers,
             force_download=request_runtime.force_download,

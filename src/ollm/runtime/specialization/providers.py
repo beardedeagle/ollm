@@ -117,8 +117,17 @@ class LlamaSpecializationProvider(SpecializationProvider):
             supports_cpu_offload=True,
             supports_gpu_offload=False,
             print_suppression_modules=(module,),
-            create_cache=lambda cache_dir: KVCache(
-                cache_dir=str(cache_dir), device=device, stats=stats
+            create_cache=(
+                lambda cache_dir, cache_strategy=None: KVCache(
+                    cache_dir=str(cache_dir),
+                    device=device,
+                    stats=stats,
+                    cache_strategy=(
+                        config.kv_cache_strategy
+                        if cache_strategy is None
+                        else cache_strategy
+                    ),
+                )
             ),
             apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(
                 layers_num=layers_num
@@ -199,8 +208,17 @@ class Gemma3SpecializationProvider(SpecializationProvider):
             supports_cpu_offload=True,
             supports_gpu_offload=False,
             print_suppression_modules=(module,),
-            create_cache=lambda cache_dir: KVCache(
-                cache_dir=str(cache_dir), device=device, stats=stats
+            create_cache=(
+                lambda cache_dir, cache_strategy=None: KVCache(
+                    cache_dir=str(cache_dir),
+                    device=device,
+                    stats=stats,
+                    cache_strategy=(
+                        config.kv_cache_strategy
+                        if cache_strategy is None
+                        else cache_strategy
+                    ),
+                )
             ),
             apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(
                 layers_num=layers_num
@@ -274,11 +292,16 @@ class Qwen3NextSpecializationProvider(SpecializationProvider):
             supports_gpu_offload=True,
             print_suppression_modules=(module,),
             create_cache=(
-                lambda cache_dir: module.Qwen3NextDiskCache(
+                lambda cache_dir, cache_strategy=None: module.Qwen3NextDiskCache(
                     model.config,
                     cache_dir=str(cache_dir),
                     device=device,
                     stats=stats,
+                    cache_strategy=(
+                        config.kv_cache_strategy
+                        if cache_strategy is None
+                        else cache_strategy
+                    ),
                 )
             ),
             apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(
@@ -447,8 +470,17 @@ class VoxtralSpecializationProvider(SpecializationProvider):
             supports_cpu_offload=True,
             supports_gpu_offload=False,
             print_suppression_modules=(module,),
-            create_cache=lambda cache_dir: KVCache(
-                cache_dir=str(cache_dir), device=device, stats=stats
+            create_cache=(
+                lambda cache_dir, cache_strategy=None: KVCache(
+                    cache_dir=str(cache_dir),
+                    device=device,
+                    stats=stats,
+                    cache_strategy=(
+                        config.kv_cache_strategy
+                        if cache_strategy is None
+                        else cache_strategy
+                    ),
+                )
             ),
             apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(
                 layers_num=layers_num

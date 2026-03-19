@@ -14,6 +14,7 @@ license = { file="LICENSE" }
 requires-python = ">=3.12"
 dependencies = [
     "accelerate",
+    "anyio",
     "huggingface-hub",
     "numpy",
     "pydantic",
@@ -21,8 +22,8 @@ dependencies = [
     "prompt-toolkit",
     "rich",
     "typer",
-    "torch>2.6.0", #tested: 2.8.0
-    "transformers>=4.57.0" #tested: 4.55.4, 4.56.1
+    "torch",
+    "transformers"
 ]
 
 [project.scripts]
@@ -37,7 +38,7 @@ audio = [
     "mistral-common[audio]"
 ]
 cuda = [
-    "flash-attn", #tested: 2.7.4.post1
+    "flash-attn",
     "triton"
 ]
 export = [
@@ -57,7 +58,7 @@ dev = [
     "pip-audit",
     "pytest",
     "ruff",
-    "ty>=0.0.23",
+    "ty",
 ]
 docs = [
     "mkdocs>=1.6.1,<2.0.0",

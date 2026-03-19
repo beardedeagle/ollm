@@ -5,6 +5,7 @@ from typing import cast
 
 from ollm.app.types import ContentPart, Message, MessageRole
 from ollm.client import RuntimeClient
+from ollm.kv_cache_strategy import DEFAULT_KV_CACHE_STRATEGY
 from ollm.runtime.benchmark_probe_execution import (
     _clear_backend_stats,
     build_prompt_request,
@@ -81,6 +82,7 @@ def run_runtime_probe(
     use_specialization: bool,
     prompt: str,
     max_new_tokens: int,
+    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
 ) -> RuntimeProbeResult:
     runtime_config = RuntimeConfig(
         model_reference=model_reference,
@@ -89,6 +91,7 @@ def run_runtime_probe(
         backend=backend,
         use_specialization=use_specialization,
         use_cache=True,
+        kv_cache_strategy=kv_cache_strategy,
         stats=True,
     )
     generation_config = GenerationConfig(
@@ -135,6 +138,7 @@ def run_warm_runtime_probe(
     max_new_tokens: int,
     iterations: int,
     warmup_iterations: int,
+    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
 ) -> WarmRuntimeProbeResult:
     runtime_config = RuntimeConfig(
         model_reference=model_reference,
@@ -143,6 +147,7 @@ def run_warm_runtime_probe(
         backend=backend,
         use_specialization=use_specialization,
         use_cache=True,
+        kv_cache_strategy=kv_cache_strategy,
         stats=True,
     )
     generation_config = GenerationConfig(
@@ -190,6 +195,7 @@ def run_prompt_scaling_probe(
     use_specialization: bool,
     prompt_token_targets: tuple[int, ...],
     max_new_tokens: int,
+    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
 ) -> PromptScalingProbeResult:
     runtime_config = RuntimeConfig(
         model_reference=model_reference,
@@ -198,6 +204,7 @@ def run_prompt_scaling_probe(
         backend=backend,
         use_specialization=use_specialization,
         use_cache=True,
+        kv_cache_strategy=kv_cache_strategy,
         stats=True,
     )
     generation_config = GenerationConfig(
@@ -256,6 +263,7 @@ def run_output_scaling_probe(
     use_specialization: bool,
     prompt: str,
     output_token_targets: tuple[int, ...],
+    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
 ) -> OutputScalingProbeResult:
     runtime_config = RuntimeConfig(
         model_reference=model_reference,
@@ -264,6 +272,7 @@ def run_output_scaling_probe(
         backend=backend,
         use_specialization=use_specialization,
         use_cache=True,
+        kv_cache_strategy=kv_cache_strategy,
         stats=True,
     )
     client = RuntimeClient()
@@ -315,6 +324,7 @@ def run_session_growth_probe(
     use_specialization: bool,
     session_turns: int,
     max_new_tokens: int,
+    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
 ) -> SessionGrowthProbeResult:
     runtime_config = RuntimeConfig(
         model_reference=model_reference,
@@ -323,6 +333,7 @@ def run_session_growth_probe(
         backend=backend,
         use_specialization=use_specialization,
         use_cache=True,
+        kv_cache_strategy=kv_cache_strategy,
         stats=True,
     )
     generation_config = GenerationConfig(

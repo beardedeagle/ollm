@@ -44,6 +44,7 @@ class RequestProbeMetrics:
     output_tokens: int
     output_tokens_per_second: float | None
     cache_mode: str
+    kv_cache_strategy: str | None
     cache_dir_size_mb: float | None
     allocator_gap_mb: float | None
     allocator_gap_ratio: float | None

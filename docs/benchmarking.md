@@ -6,6 +6,15 @@ oLLM ships a dedicated runtime benchmark harness:
 uv run python scripts/benchmark_runtime.py --device cpu --output .omx/runtime-benchmark.json
 ```
 
+For disk-KV A/B work, select the optimized-native store explicitly:
+
+```bash
+uv run python scripts/benchmark_runtime.py \
+  --device cpu \
+  --kv-cache-strategy streamed-segmented \
+  --output .omx/runtime-benchmark-streamed.json
+```
+
 The harness is designed to stay truthful on hardware-constrained machines:
 
 - it always measures specialization planner overhead without loading model weights
@@ -74,8 +83,13 @@ These fields are only present when the selected runtime actually emits native
 stats. Generic Transformers-backed runs may report `null` here.
 
 For disk KV requests, `disk-kv-cache` now refers to the manifest-backed chunked
-cache format under `cache_dir/kv_cache`, not to pickle-backed `.pt` layer
-artifacts.
+or streamed-segmented cache roots under `cache_dir/kv_cache_chunked` or
+`cache_dir/kv_cache_streamed_segmented`, not to pickle-backed `.pt` layer
+artifacts. The request metrics also report `kv_cache_strategy` so benchmark
+comparisons can distinguish `chunked` from `streamed-segmented` directly.
+Those cache-size metrics describe the persisted on-disk portion of the cache.
+When the selected KV policy is buffering a tail in memory, that pending tail is
+not counted in `cache_dir_size_mb`.
 
 When the optimized loader uses async submission plus later completion, the
 native event totals represent per-operation storage latency, not a partition of

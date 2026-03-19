@@ -4,17 +4,18 @@ from collections.abc import Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from ollm.inference import (
-    download_hf_snapshot,
-    hf_runtime_artifacts_complete,
-    prune_hf_runtime_artifacts,
-)
 from ollm.runtime.backend_selector import BackendSelector
 from ollm.runtime.backends.base import BackendRuntime, ExecutionBackend
 from ollm.runtime.backends.native_optimized import NativeOptimizedBackend
 from ollm.runtime.backends.transformers_generic import TransformersGenericBackend
 from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
 from ollm.runtime.config import RuntimeConfig
+from ollm.runtime.materialization import (
+    _runtime_artifact_gaps,
+    download_hf_snapshot,
+    hf_runtime_artifacts_complete,
+    prune_hf_runtime_artifacts,
+)
 from ollm.runtime.plan import RuntimePlan, SpecializationState
 from ollm.runtime.resolver import ModelResolver, ModelSourceKind, ResolvedModel
 from ollm.runtime.specialization import (
@@ -266,10 +267,15 @@ class RuntimeLoader:
         return hf_runtime_artifacts_complete(model_path)
 
     def _validate_managed_model_dir(self, resolved_model: ResolvedModel) -> None:
-        if self._managed_model_dir_is_complete(resolved_model):
+        model_path = resolved_model.model_path
+        if model_path is None:
+            return
+        artifact_gaps = _runtime_artifact_gaps(model_path)
+        if not artifact_gaps:
             return
         raise ValueError(
-            f"Managed model directory is missing required runtime artifacts: {resolved_model.model_path}"
+            "Managed model directory is missing required runtime artifacts: "
+            f"{model_path} ({'; '.join(artifact_gaps)})"
         )
 
     def _validate_runtime_plan(

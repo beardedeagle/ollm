@@ -36,7 +36,10 @@ ollm models info Qwen/Qwen2.5-7B-Instruct --json
 
 Materialize a downloadable model reference locally. The downloader stores only the
 runtime-critical artifacts that `ollm` needs to inspect, plan, and execute the
-model locally rather than a full Hugging Face repository snapshot:
+model locally rather than a full Hugging Face repository snapshot. For sharded
+repos, the managed materialization is only considered complete when every shard
+referenced by the safetensor index is present. Gated Hugging Face repos still
+require accepted terms and a token with weight access:
 
 ```bash
 ollm models download llama3-3B-chat

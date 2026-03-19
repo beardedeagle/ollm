@@ -171,6 +171,7 @@ def _parse_request_probe_metrics(payload: Mapping[str, object]) -> RequestProbeM
         output_tokens=_require_int(payload, "output_tokens"),
         output_tokens_per_second=_optional_float(payload, "output_tokens_per_second"),
         cache_mode=_require_string(payload, "cache_mode"),
+        kv_cache_strategy=_optional_string(payload, "kv_cache_strategy"),
         cache_dir_size_mb=_optional_float(payload, "cache_dir_size_mb"),
         allocator_gap_mb=_optional_float(payload, "allocator_gap_mb"),
         allocator_gap_ratio=_optional_float(payload, "allocator_gap_ratio"),

@@ -50,10 +50,20 @@ When supported by the selected backend, oLLM can expose:
 These controls are backend-dependent. The generic path does not expose the same
 low-level layer-placement controls as optimized-native runtimes.
 
-The optimized-native disk KV cache now persists an explicit manifest-backed
-chunk store under `cache_dir/kv_cache`. Each layer writes typed raw chunk
-payloads plus JSON metadata for dtype, shape, sequence range, and layout. The
-runtime no longer uses opaque pickle-backed `.pt` cache blobs for this path.
+The optimized-native disk KV cache now exposes two explicit persistent
+strategies:
+
+- `chunked`
+- `streamed-segmented`
+
+`chunked` persists a manifest-backed chunk store under
+`cache_dir/kv_cache_chunked`. `streamed-segmented` persists a sequential
+segment-backed store under `cache_dir/kv_cache_streamed_segmented`. Both use
+typed raw tensor payloads plus explicit metadata, and neither uses opaque
+pickle-backed `.pt` cache blobs. The runtime also applies a
+platform/resource-aware buffering policy on top of the selected format so the
+cache can trade write amplification against memory headroom instead of flushing
+every delta identically on every machine.
 
 ## GPT-OSS `gds_export` requirement
 
@@ -79,8 +89,12 @@ whether an optimized request actually used GDS, standard safetensor IO,
 CPU-offloaded artifacts, or disk KV cache IO.
 
 For disk KV specifically, `kvload` and `kvsave` now represent reads and writes
-against that manifest-backed chunk store rather than whole-layer torch
-artifacts.
+against the selected explicit disk-KV store rather than whole-layer torch
+artifacts. Benchmark/runtime output also reports `kv_cache_strategy` so the
+active backend is visible during A/B runs.
+The reported disk-cache footprint reflects the persisted chunk store only. A
+selected KV policy may keep a bounded tail in memory until its flush threshold
+is reached.
 
 Those native event totals are operation-level timings. On runtimes that submit
 multiple storage reads before waiting for completion, the summed native IO

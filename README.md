@@ -126,7 +126,7 @@ ollm prompt --model llama3-8B-chat --backend transformers-generic --no-specializ
 ollm prompt --model llama3-8B-chat --plan-json
 ```
 
-`ollm doctor` reports missing optional extras, runtime availability, path issues, and model readiness. `ollm models` provides `list`, `info`, `download`, and `path` subcommands for both built-in aliases and arbitrary model references. `ollm models download` materializes only runtime-critical local artifacts rather than a full Hugging Face repository snapshot, and `ollm models list` acts as a discovery view over built-in aliases and local materialized models under `--models-dir`.
+`ollm doctor` reports missing optional extras, runtime availability, path issues, and model readiness. `ollm models` provides `list`, `info`, `download`, and `path` subcommands for both built-in aliases and arbitrary model references. `ollm models download` materializes only runtime-critical local artifacts rather than a full Hugging Face repository snapshot, validates sharded safetensor completeness, and fails clearly when a managed download is left incomplete. `ollm models list` acts as a discovery view over built-in aliases and local materialized models under `--models-dir`.
 
 Runtime selection and inspection controls:
 - `--backend` lets you force one of `optimized-native` or `transformers-generic` when that backend is valid for the resolved model reference
@@ -134,6 +134,9 @@ Runtime selection and inspection controls:
 - `--plan-json` prints the resolved runtime plan as JSON and exits without running generation
 
 `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` now all honor `--backend` and `--no-specialization`. `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` also support `--plan-json` for script-friendly inspection of the resolver/backend decision.
+`ollm prompt` and `ollm chat` also honor `--kv-cache-strategy` to switch the
+optimized-native disk KV backend between `chunked` and
+`streamed-segmented`.
 
 Configuration layering is now first-class:
 
@@ -154,6 +157,7 @@ device = "mps"
 backend = "optimized-native"
 cache_dir = "kv_cache"
 use_cache = true
+kv_cache_strategy = "chunked"
 
 [generation]
 max_new_tokens = 256
@@ -306,9 +310,13 @@ past_key_values = o.DiskCache(cache_dir="./kv_cache/")
 text_streamer = TextStreamer(o.tokenizer, skip_prompt=True, skip_special_tokens=False)
 ```
 
-That disk cache path now writes a manifest-backed chunk store under
-`cache_dir/kv_cache`, using typed raw chunk payloads plus JSON metadata instead
-of opaque torch cache blobs.
+That disk cache path now writes to `cache_dir/kv_cache_chunked` by default,
+using typed raw chunk payloads plus JSON metadata instead of opaque torch cache
+blobs. When `kv_cache_strategy="streamed-segmented"` is selected, the runtime
+uses `cache_dir/kv_cache_streamed_segmented` instead so the two strategies
+never share on-disk state. The runtime now also applies a
+platform/resource-aware buffering policy on top of the selected format, so
+small KV deltas do not have to flush to disk on every update.
 
 For compatible local Llama or Gemma3 directories, `AutoInference` remains the direct optimized-native helper:
 
@@ -390,12 +398,18 @@ also include a `native_runtime_profile` section with:
   `cpu-offloaded-artifacts`, `disk-kv-cache`, and `torch-artifact-io`
 
 For disk KV requests, `disk-kv-cache` now refers to the manifest-backed chunked
-cache format under `cache_dir/kv_cache`, not to legacy `.pt` layer artifacts.
+or streamed-segmented cache roots under `cache_dir/kv_cache_chunked` or
+`cache_dir/kv_cache_streamed_segmented`, not to legacy `.pt` layer artifacts.
+The request metrics also report `kv_cache_strategy`, and the reported cache
+footprint is the persisted on-disk portion of the selected cache; a buffered
+in-memory tail may still exist when the selected KV policy has not yet crossed
+its flush threshold.
 
 Useful knobs for the primary-target sweeps:
 
 ```bash
 uv run python scripts/benchmark_runtime.py \
+  --kv-cache-strategy streamed-segmented \
   --prompt-scale-tokens 32,128,512 \
   --output-scale-tokens 16,64,128 \
   --session-turns 4

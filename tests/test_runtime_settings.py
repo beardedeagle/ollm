@@ -30,6 +30,7 @@ def _write_settings_file(path: Path) -> None:
                 'backend = "transformers-generic"',
                 'cache_dir = "file-cache"',
                 "use_cache = false",
+                'kv_cache_strategy = "streamed-segmented"',
                 "",
                 "[generation]",
                 "max_new_tokens = 64",
@@ -58,6 +59,7 @@ def test_default_app_settings_match_current_runtime_defaults() -> None:
     assert settings.runtime.cache_dir == Path("kv_cache")
     assert settings.runtime.use_specialization is True
     assert settings.runtime.use_cache is True
+    assert settings.runtime.kv_cache_strategy == "chunked"
     assert settings.generation.max_new_tokens == DEFAULT_MAX_NEW_TOKENS
     assert settings.generation.stream is True
     assert settings.server.host == DEFAULT_SERVER_HOST
@@ -90,6 +92,7 @@ def test_load_app_settings_reads_toml_defaults_from_explicit_file(
     assert settings.runtime.backend == "transformers-generic"
     assert settings.runtime.cache_dir == Path("file-cache")
     assert settings.runtime.use_cache is False
+    assert settings.runtime.kv_cache_strategy == "streamed-segmented"
     assert settings.generation.max_new_tokens == 64
     assert settings.generation.temperature == 0.25
     assert settings.generation.stream is False
@@ -177,6 +180,7 @@ def test_resolve_runtime_config_prefers_explicit_overrides() -> None:
         device="cpu",
         cache_dir=Path("/tmp/default-cache"),
         use_cache=True,
+        kv_cache_strategy="chunked",
         verbose=False,
     )
 
@@ -186,6 +190,7 @@ def test_resolve_runtime_config_prefers_explicit_overrides() -> None:
             model_reference="override-model",
             device="mps",
             use_cache=False,
+            kv_cache_strategy="streamed-segmented",
             verbose=True,
         ),
     )
@@ -195,6 +200,7 @@ def test_resolve_runtime_config_prefers_explicit_overrides() -> None:
     assert resolved.device == "mps"
     assert resolved.cache_dir == Path("/tmp/default-cache")
     assert resolved.use_cache is False
+    assert resolved.kv_cache_strategy == "streamed-segmented"
     assert resolved.verbose is True
 
 
@@ -211,12 +217,14 @@ def test_resolve_runtime_config_cli_overrides_beat_loaded_settings(
             model_reference="cli-model",
             device="mps",
             use_cache=True,
+            kv_cache_strategy="chunked",
         ),
     )
 
     assert resolved.model_reference == "cli-model"
     assert resolved.device == "mps"
     assert resolved.use_cache is True
+    assert resolved.kv_cache_strategy == "chunked"
     assert resolved.backend == "transformers-generic"
 
 

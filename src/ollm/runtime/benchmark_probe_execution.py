@@ -6,6 +6,7 @@ from typing import cast
 import torch
 
 from ollm.app.types import Message, PromptRequest
+from ollm.kv_cache_strategy import kv_cache_root
 from ollm.runtime.benchmark_probe_types import (
     EventTimingSummary,
     NativeRuntimeProfile,
@@ -16,7 +17,7 @@ from ollm.runtime.benchmark_resources import cache_dir_size_mb, measure_stage
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
 from ollm.runtime.errors import PromptExecutionError
-from ollm.runtime.generation import RuntimeExecutor
+from ollm.runtime.generation import RuntimeExecutor, _normalize_generate_inputs
 from ollm.runtime.loader import LoadedRuntime
 from ollm.runtime.output_control import suppress_module_prints
 from ollm.runtime.streaming import BufferedTextStreamer
@@ -89,10 +90,12 @@ def execute_request_probe(
     streamer = TimedBufferedTextStreamer(runtime.tokenizer)
     generate_kwargs = executor._build_generate_kwargs(runtime, request, streamer)
     cache_mode = _cache_mode(runtime, request)
+    kv_cache_strategy = _kv_cache_strategy(runtime, request)
     _clear_backend_stats(runtime)
+    normalized_inputs = _normalize_generate_inputs(inputs)
     generation_result, generation_ms, generation_resources = measure_stage(
         runtime.config.device,
-        lambda: _generate_outputs(runtime, inputs, generate_kwargs),
+        lambda: _generate_outputs(runtime, normalized_inputs, generate_kwargs),
         sample_accelerator_utilization=True,
     )
     output_tensor = cast(torch.Tensor, cast(tuple[object, float], generation_result)[0])
@@ -121,9 +124,11 @@ def execute_request_probe(
             6,
         )
     cache_dir_size = None
-    if cache_mode == "disk-kv":
+    if kv_cache_strategy is not None:
         cache_dir_size = cache_dir_size_mb(
-            request.runtime_config.resolved_cache_dir() / "kv_cache"
+            kv_cache_root(
+                request.runtime_config.resolved_cache_dir(), kv_cache_strategy
+            )
         )
     allocator_gap_mb = None
     allocator_gap_ratio = None
@@ -153,6 +158,7 @@ def execute_request_probe(
             output_tokens=output_tokens,
             output_tokens_per_second=output_tokens_per_second,
             cache_mode=cache_mode,
+            kv_cache_strategy=kv_cache_strategy,
             cache_dir_size_mb=cache_dir_size,
             allocator_gap_mb=allocator_gap_mb,
             allocator_gap_ratio=allocator_gap_ratio,
@@ -272,6 +278,14 @@ def _cache_mode(runtime: LoadedRuntime, request: PromptRequest) -> str:
     if runtime.plan.supports_disk_cache:
         return "disk-kv"
     return "transformers-dynamic"
+
+
+def _kv_cache_strategy(runtime: LoadedRuntime, request: PromptRequest) -> str | None:
+    if not request.runtime_config.use_cache:
+        return None
+    if not runtime.plan.supports_disk_cache:
+        return None
+    return request.runtime_config.resolved_kv_cache_strategy()
 
 
 def _inter_token_latencies(token_timestamps: tuple[float, ...]) -> tuple[float, ...]:

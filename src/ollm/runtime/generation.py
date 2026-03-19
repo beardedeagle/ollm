@@ -54,14 +54,16 @@ class RuntimeExecutor:
 
         generate_kwargs = self._build_generate_kwargs(runtime, request, streamer)
 
+        filtered_inputs = _normalize_generate_inputs(inputs)
+
         with torch.inference_mode():
             with suppress_module_prints(runtime.backend.print_suppression_modules):
-                outputs = runtime.model.generate(**inputs, **generate_kwargs)
+                outputs = runtime.model.generate(**filtered_inputs, **generate_kwargs)
 
         if hasattr(outputs, "detach"):
             outputs = outputs.detach()
         outputs = outputs.cpu()
-        response_text = self._decode_response(runtime, inputs, outputs)
+        response_text = self._decode_response(runtime, filtered_inputs, outputs)
         if streamer is not None and not response_text.strip():
             response_text = streamer.text
         assistant_message = Message.assistant_text(response_text)
@@ -112,7 +114,10 @@ class RuntimeExecutor:
         self, runtime: LoadedRuntime, messages: list[Message]
     ) -> dict[str, object]:
         transformers_messages = [
-            message.as_transformers_message() for message in messages
+            message.as_transformers_message(
+                structured_content=runtime.processor is not None
+            )
+            for message in messages
         ]
         if runtime.processor is not None:
             inputs = runtime.processor.apply_chat_template(
@@ -191,7 +196,8 @@ class RuntimeExecutor:
 
         if request.runtime_config.use_cache:
             cache = runtime.backend.create_cache(
-                request.runtime_config.resolved_cache_dir()
+                request.runtime_config.resolved_cache_dir(),
+                request.runtime_config.resolved_kv_cache_strategy(),
             )
             if cache is not None:
                 generate_kwargs["past_key_values"] = cache
@@ -264,6 +270,11 @@ class RuntimeExecutor:
                 for pass_id in runtime.plan.applied_specialization_pass_ids
             ),
             "fallback_reason": runtime.plan.fallback_reason or "",
+            "kv_cache_strategy": (
+                runtime.config.resolved_kv_cache_strategy()
+                if runtime.config.use_cache and runtime.plan.supports_disk_cache
+                else "none"
+            ),
         }
         for detail_key in PLAN_METADATA_DETAIL_KEYS:
             detail_value = runtime.plan.details.get(detail_key)
@@ -326,3 +337,9 @@ def _prepare_text_inputs(
     raise PromptExecutionError(
         "Tokenizer chat template returned unsupported model inputs"
     )
+
+
+def _normalize_generate_inputs(inputs: dict[str, object]) -> dict[str, object]:
+    normalized_inputs = dict(inputs)
+    normalized_inputs.pop("token_type_ids", None)
+    return normalized_inputs

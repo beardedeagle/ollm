@@ -1,6 +1,5 @@
 # type: ignore
 # Dynamic Qwen3-Next specialization module: expert routing and transformer monkey-patching are runtime-driven.
-# 4.57.0.dev qwen3_next
 
 import time
 from datetime import datetime
@@ -30,17 +29,26 @@ from ollm.device_staging import (
     restore_static_modules_after_forward,
     stage_static_modules_on_host,
 )
+from ollm.kv_cache_policy import KVCachePolicy
+from ollm.kv_cache_strategy import DEFAULT_KV_CACHE_STRATEGY
 from ollm.kvcache import oCache
 from ollm.utils import _assign_tensor_to_module, _set_meta_placeholder, _walk_to_parent
 
-# global vars
 loader, stats = None, None
 
 
 class Qwen3NextDiskCache(Qwen3NextDynamicCache, oCache):
-    def __init__(self, config, cache_dir="./kv_cache", device="cuda:0", stats=None):
+    def __init__(
+        self,
+        config,
+        cache_dir="./kv_cache",
+        device="cuda:0",
+        stats=None,
+        policy: KVCachePolicy | None = None,
+        cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
+    ):
         super().__init__(config)
-        self.ini_ocache(cache_dir, device, stats)
+        self.ini_ocache(cache_dir, device, stats, policy, cache_strategy)
         self.seq_lengths = [0 for _ in range(len(self.key_cache))]
 
     def get_seq_length(self, layer_idx: int | None = 0) -> int:

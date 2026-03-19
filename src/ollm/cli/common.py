@@ -37,6 +37,7 @@ def build_runtime_config(
     stats: bool | None,
     verbose: bool | None,
     quiet: bool | None,
+    kv_cache_strategy: str | None = None,
     settings: AppSettings | None = None,
 ) -> RuntimeConfig:
     resolved_settings = load_app_settings() if settings is None else settings
@@ -54,6 +55,7 @@ def build_runtime_config(
             ),
             cache_dir=cache_dir,
             use_cache=None if no_cache is None else not no_cache,
+            kv_cache_strategy=kv_cache_strategy,
             offload_cpu_layers=offload_cpu_layers,
             offload_gpu_layers=offload_gpu_layers,
             force_download=force_download,

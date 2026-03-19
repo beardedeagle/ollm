@@ -88,6 +88,13 @@ def summarize_request_metrics(
             "cache_mode": single_optional_string(
                 [sample.cache_mode for sample in samples]
             ),
+            "kv_cache_strategy": single_optional_string(
+                [
+                    sample.kv_cache_strategy
+                    for sample in samples
+                    if sample.kv_cache_strategy is not None
+                ]
+            ),
             "cache_dir_size_mb": optional_summary_dict(
                 [
                     sample.cache_dir_size_mb

@@ -32,6 +32,7 @@ class RuntimeConfigResponseModel(BaseModel):
     use_specialization: bool
     cache_dir: str
     use_cache: bool
+    kv_cache_strategy: str
     offload_cpu_layers: int
     offload_gpu_layers: int
     force_download: bool
@@ -144,6 +145,7 @@ class RuntimeRequestModel(BaseModel):
     use_specialization: bool | None = None
     cache_dir: Path | None = None
     use_cache: bool | None = None
+    kv_cache_strategy: str | None = None
     offload_cpu_layers: int | None = Field(default=None, ge=0)
     offload_gpu_layers: int | None = Field(default=None, ge=0)
     force_download: bool | None = None

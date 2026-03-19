@@ -1,12 +1,13 @@
 """Benchmark command execution and sample summarization helpers."""
 
-import asyncio
 import statistics
+import subprocess
 import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import TypeVar
 
+from ollm.async_io import subprocess_run_process
 from ollm.runtime.benchmark_details import build_cold_probe_details, clip_text
 from ollm.runtime.benchmark_probes import parse_runtime_probe_result
 from ollm.runtime.benchmark_types import (
@@ -139,20 +140,23 @@ def run_command(
 ) -> CommandExecutionResult:
     """Run a benchmark subprocess and capture its stdout and stderr."""
 
-    return asyncio.run(
-        _run_command_async(command=command, cwd=cwd, timeout_seconds=timeout_seconds)
-    )
-
-
-async def _run_command_async(
-    *, command: tuple[str, ...], cwd: Path, timeout_seconds: float
-) -> CommandExecutionResult:
     try:
-        process = await asyncio.create_subprocess_exec(
-            *command,
+        completed = subprocess_run_process(
+            command,
             cwd=str(cwd),
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+            timeout_seconds=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired as exc:
+        timeout_message = f"Command timed out after {timeout_seconds} seconds."
+        stderr_text = coerce_subprocess_output(exc.stderr or "")
+        stderr_text = (
+            timeout_message if not stderr_text else f"{stderr_text}\n{timeout_message}"
+        )
+        return CommandExecutionResult(
+            returncode=124,
+            stdout=coerce_subprocess_output(exc.stdout or ""),
+            stderr=stderr_text,
+            timed_out=True,
         )
     except OSError as exc:
         return CommandExecutionResult(
@@ -161,28 +165,10 @@ async def _run_command_async(
             stderr=str(exc),
             timed_out=False,
         )
-    try:
-        stdout, stderr = await asyncio.wait_for(
-            process.communicate(), timeout=timeout_seconds
-        )
-    except TimeoutError:
-        process.kill()
-        stdout, stderr = await process.communicate()
-        timeout_message = f"Command timed out after {timeout_seconds} seconds."
-        stderr_text = coerce_subprocess_output(stderr)
-        stderr_text = (
-            timeout_message if not stderr_text else f"{stderr_text}\n{timeout_message}"
-        )
-        return CommandExecutionResult(
-            returncode=124,
-            stdout=coerce_subprocess_output(stdout),
-            stderr=stderr_text,
-            timed_out=True,
-        )
     return CommandExecutionResult(
-        returncode=process.returncode or 0,
-        stdout=coerce_subprocess_output(stdout),
-        stderr=coerce_subprocess_output(stderr),
+        returncode=completed.returncode or 0,
+        stdout=coerce_subprocess_output(completed.stdout),
+        stderr=coerce_subprocess_output(completed.stderr),
         timed_out=False,
     )
 

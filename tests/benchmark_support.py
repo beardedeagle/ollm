@@ -59,6 +59,7 @@ def build_request_probe_metrics() -> RequestProbeMetrics:
         output_tokens=4,
         output_tokens_per_second=200.0,
         cache_mode="disk-kv",
+        kv_cache_strategy="chunked",
         cache_dir_size_mb=12.0,
         allocator_gap_mb=20.0,
         allocator_gap_ratio=0.066667,

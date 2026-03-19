@@ -45,6 +45,10 @@ class FakeModel:
     def __init__(self):
         self.generate_kwargs: dict[str, object] = {}
 
+    def forward(self, input_ids, attention_mask=None):
+        del input_ids, attention_mask
+        return None
+
     def generate(self, **kwargs):
         self.generate_kwargs = kwargs
         return torch.tensor([[1, 2, 3, 4, 5]])
@@ -120,6 +124,44 @@ class TensorOnlyChatTemplateTokenizer:
         return "tensor-decoded"
 
 
+class FakeProcessorInputs(dict):
+    def __init__(self):
+        super().__init__(
+            {
+                "input_ids": torch.tensor([[1, 2, 3]]),
+                "attention_mask": torch.tensor([[1, 1, 1]]),
+                "token_type_ids": torch.tensor([[0, 0, 0]]),
+            }
+        )
+        self.to_calls: list[tuple[torch.device, torch.dtype | None]] = []
+
+    def to(self, device, dtype=None):
+        self.to_calls.append((device, dtype))
+        return self
+
+
+class RecordingProcessor:
+    def __init__(self):
+        self.messages = None
+        self.inputs = FakeProcessorInputs()
+
+    def apply_chat_template(
+        self,
+        messages,
+        add_generation_prompt,
+        tokenize,
+        return_dict,
+        return_tensors,
+    ):
+        del add_generation_prompt, tokenize, return_dict, return_tensors
+        self.messages = messages
+        return self.inputs
+
+    def batch_decode(self, outputs, skip_special_tokens=False):
+        del outputs, skip_special_tokens
+        return ["plain-decoded"]
+
+
 class Seq2SeqModel(FakeModel):
     def generate(self, **kwargs):
         del kwargs
@@ -182,7 +224,7 @@ def build_runtime(capabilities: CapabilityProfile, tokenizer=None) -> LoadedRunt
         device=torch.device("cpu"),
         stats=None,
         print_suppression_modules=(),
-        create_cache=lambda cache_dir: None,
+        create_cache=lambda cache_dir, cache_strategy=None: None,
         apply_offload=lambda runtime_config: None,
     )
     return LoadedRuntime(
@@ -192,6 +234,24 @@ def build_runtime(capabilities: CapabilityProfile, tokenizer=None) -> LoadedRunt
         backend=backend,
         model_path=resolved_model.model_path,
     )
+
+
+def build_runtime_with_processor(
+    capabilities: CapabilityProfile, processor: RecordingProcessor
+) -> LoadedRuntime:
+    runtime = build_runtime(capabilities, tokenizer=PlainTokenizer())
+    runtime.backend = BackendRuntime(
+        backend_id=runtime.backend.backend_id,
+        model=FakeModel(),
+        tokenizer=PlainTokenizer(),
+        processor=processor,
+        device=torch.device("cpu"),
+        stats=None,
+        print_suppression_modules=(),
+        create_cache=lambda cache_dir, cache_strategy=None: None,
+        apply_offload=lambda runtime_config: None,
+    )
+    return runtime
 
 
 def build_runtime_with_model(
@@ -206,7 +266,7 @@ def build_runtime_with_model(
         device=torch.device("cpu"),
         stats=None,
         print_suppression_modules=(),
-        create_cache=lambda cache_dir: None,
+        create_cache=lambda cache_dir, cache_strategy=None: None,
         apply_offload=lambda runtime_config: None,
     )
     return runtime
@@ -225,7 +285,7 @@ def build_runtime_with_printing_module(
         device=torch.device("cpu"),
         stats=None,
         print_suppression_modules=(module,),
-        create_cache=lambda cache_dir: None,
+        create_cache=lambda cache_dir, cache_strategy=None: None,
         apply_offload=lambda runtime_config: None,
     )
     return runtime
@@ -274,7 +334,7 @@ def build_seq2seq_runtime() -> LoadedRuntime:
         device=torch.device("cpu"),
         stats=None,
         print_suppression_modules=(),
-        create_cache=lambda cache_dir: None,
+        create_cache=lambda cache_dir, cache_strategy=None: None,
         apply_offload=lambda runtime_config: None,
     )
     return LoadedRuntime(
@@ -305,6 +365,32 @@ def test_runtime_executor_executes_text_request() -> None:
     assert response.text == "decoded-response"
     assert response.assistant_message.text_content() == "decoded-response"
     assert response.metadata["specialization_state"] == "not-planned"
+
+
+def test_runtime_executor_uses_structured_content_for_processor_text_requests() -> None:
+    processor = RecordingProcessor()
+    capabilities = CapabilityProfile(
+        support_level=SupportLevel.OPTIMIZED,
+        modalities=(ModelModality.TEXT, ModelModality.IMAGE),
+        requires_processor=True,
+    )
+    runtime = build_runtime_with_processor(capabilities, processor)
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("hello")]),
+    )
+
+    response = RuntimeExecutor().execute(runtime, request)
+
+    assert response.text == "plain-decoded"
+    assert processor.messages == [
+        {
+            "role": "user",
+            "content": [{"type": "text", "text": "hello"}],
+        }
+    ]
+    assert processor.inputs.to_calls == [(torch.device("cpu"), None)]
+    assert "token_type_ids" not in runtime.model.generate_kwargs
 
 
 def test_runtime_executor_rejects_unsupported_image_input() -> None:

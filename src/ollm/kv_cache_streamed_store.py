@@ -1,19 +1,27 @@
+"""Streamed append/read disk KV store with explicit segment metadata."""
+
 import json
 from dataclasses import dataclass
 from pathlib import Path
 
 import torch
 
-from ollm.async_io import path_exists, path_mkdir
+from ollm.async_io import (
+    path_append_bytes,
+    path_exists,
+    path_file_size,
+    path_mkdir,
+    path_read_bytes_range,
+)
 from ollm.kv_cache_store_common import (
     CACHE_SCHEMA_VERSION,
     PERSISTED_DEVICE,
     SEQUENCE_AXIS,
-    atomic_write_bytes,
     atomic_write_text,
+    decode_tensor_bytes,
+    dtype_from_name,
     dtype_name,
     encode_tensor_bytes,
-    read_and_decode_tensor,
     read_json_object,
     require_int,
     require_int_value,
@@ -25,12 +33,13 @@ from ollm.kv_cache_store_common import (
     shape_prefix,
 )
 
-_CACHE_FORMAT = "ollm-kv-chunked"
-_CACHE_LAYOUT = "contiguous"
+_CACHE_FORMAT = "ollm-kv-streamed-segmented"
+_CACHE_LAYOUT = "streamed-segmented"
+_DEFAULT_SEGMENT_BYTES_TARGET = 8 * 1024 * 1024
 
 
 @dataclass(slots=True, frozen=True)
-class KVChunkMetadata:
+class KVStreamExtentMetadata:
     start_token: int
     end_token: int
     key_dtype: str
@@ -39,6 +48,10 @@ class KVChunkMetadata:
     value_shape: tuple[int, ...]
     key_path: str
     value_path: str
+    key_offset: int
+    value_offset: int
+    key_nbytes: int
+    value_nbytes: int
 
     @property
     def token_count(self) -> int:
@@ -54,6 +67,10 @@ class KVChunkMetadata:
             "value_shape": list(self.value_shape),
             "key_path": self.key_path,
             "value_path": self.value_path,
+            "key_offset": self.key_offset,
+            "value_offset": self.value_offset,
+            "key_nbytes": self.key_nbytes,
+            "value_nbytes": self.value_nbytes,
         }
 
     @classmethod
@@ -62,8 +79,16 @@ class KVChunkMetadata:
         end_token = require_int(payload, "end_token")
         if end_token <= start_token:
             raise ValueError(
-                f"Invalid KV chunk token range: start={start_token} end={end_token}"
+                f"Invalid KV extent token range: start={start_token} end={end_token}"
             )
+        key_offset = require_int(payload, "key_offset")
+        value_offset = require_int(payload, "value_offset")
+        key_nbytes = require_int(payload, "key_nbytes")
+        value_nbytes = require_int(payload, "value_nbytes")
+        if key_offset < 0 or value_offset < 0:
+            raise ValueError("KV extent offsets must be zero or greater")
+        if key_nbytes <= 0 or value_nbytes <= 0:
+            raise ValueError("KV extent byte lengths must be greater than zero")
         return cls(
             start_token=start_token,
             end_token=end_token,
@@ -73,16 +98,21 @@ class KVChunkMetadata:
             value_shape=require_shape(payload, "value_shape"),
             key_path=require_relative_path(payload, "key_path"),
             value_path=require_relative_path(payload, "value_path"),
+            key_offset=key_offset,
+            value_offset=value_offset,
+            key_nbytes=key_nbytes,
+            value_nbytes=value_nbytes,
         )
 
 
 @dataclass(slots=True, frozen=True)
-class KVLayerManifest:
+class KVStreamLayerManifest:
     layer_idx: int
     layout: str
     sequence_axis: int
     persisted_tokens: int
-    chunks: tuple[KVChunkMetadata, ...]
+    segment_bytes_target: int
+    extents: tuple[KVStreamExtentMetadata, ...]
 
     def to_dict(self) -> dict[str, object]:
         return {
@@ -90,17 +120,19 @@ class KVLayerManifest:
             "layout": self.layout,
             "sequence_axis": self.sequence_axis,
             "persisted_tokens": self.persisted_tokens,
-            "chunks": [chunk.to_dict() for chunk in self.chunks],
+            "segment_bytes_target": self.segment_bytes_target,
+            "extents": [extent.to_dict() for extent in self.extents],
         }
 
     @classmethod
-    def new(cls, layer_idx: int):
+    def new(cls, layer_idx: int, *, segment_bytes_target: int):
         return cls(
             layer_idx=layer_idx,
             layout=_CACHE_LAYOUT,
             sequence_axis=SEQUENCE_AXIS,
             persisted_tokens=0,
-            chunks=(),
+            segment_bytes_target=segment_bytes_target,
+            extents=(),
         )
 
     @classmethod
@@ -110,10 +142,11 @@ class KVLayerManifest:
             layout=require_str(payload, "layout"),
             sequence_axis=require_int(payload, "sequence_axis"),
             persisted_tokens=require_int(payload, "persisted_tokens"),
-            chunks=tuple(
-                KVChunkMetadata.from_dict(chunk_payload)
-                for chunk_payload in require_object_list(
-                    payload.get("chunks"), "chunks"
+            segment_bytes_target=require_int(payload, "segment_bytes_target"),
+            extents=tuple(
+                KVStreamExtentMetadata.from_dict(extent_payload)
+                for extent_payload in require_object_list(
+                    payload.get("extents"), "extents"
                 )
             ),
         )
@@ -121,61 +154,69 @@ class KVLayerManifest:
         return manifest
 
 
-def _validate_layer_manifest(manifest: KVLayerManifest) -> None:
+def _validate_layer_manifest(manifest: KVStreamLayerManifest) -> None:
     if manifest.layout != _CACHE_LAYOUT:
-        raise ValueError(f"Unsupported KV cache layout: {manifest.layout!r}")
+        raise ValueError(f"Unsupported streamed KV layout: {manifest.layout!r}")
     if manifest.sequence_axis != SEQUENCE_AXIS:
         raise ValueError(
-            f"Unsupported KV cache sequence axis: {manifest.sequence_axis}"
+            f"Unsupported streamed KV sequence axis: {manifest.sequence_axis}"
         )
-    if not manifest.chunks:
-        raise ValueError(f"KV layer manifest {manifest.layer_idx} has no chunks")
+    if manifest.segment_bytes_target <= 0:
+        raise ValueError("segment_bytes_target must be greater than zero")
+    if not manifest.extents:
+        raise ValueError(f"KV layer manifest {manifest.layer_idx} has no extents")
     next_expected_start = 0
-    reference_key_dtype = manifest.chunks[0].key_dtype
-    reference_value_dtype = manifest.chunks[0].value_dtype
-    reference_key_prefix = shape_prefix(manifest.chunks[0].key_shape)
-    reference_value_prefix = shape_prefix(manifest.chunks[0].value_shape)
-    for chunk in manifest.chunks:
-        if chunk.start_token != next_expected_start:
+    reference_key_dtype = manifest.extents[0].key_dtype
+    reference_value_dtype = manifest.extents[0].value_dtype
+    reference_key_prefix = shape_prefix(manifest.extents[0].key_shape)
+    reference_value_prefix = shape_prefix(manifest.extents[0].value_shape)
+    for extent in manifest.extents:
+        if extent.start_token != next_expected_start:
             raise ValueError(
-                f"KV layer {manifest.layer_idx} has non-contiguous chunk ranges"
+                f"KV layer {manifest.layer_idx} has non-contiguous extent ranges"
             )
-        if sequence_length(chunk.key_shape) != chunk.token_count:
+        if sequence_length(extent.key_shape) != extent.token_count:
             raise ValueError(
-                f"KV key chunk shape does not match token range for layer {manifest.layer_idx}"
+                f"KV key extent shape does not match token range for layer {manifest.layer_idx}"
             )
-        if sequence_length(chunk.value_shape) != chunk.token_count:
+        if sequence_length(extent.value_shape) != extent.token_count:
             raise ValueError(
-                f"KV value chunk shape does not match token range for layer {manifest.layer_idx}"
+                f"KV value extent shape does not match token range for layer {manifest.layer_idx}"
             )
-        if chunk.key_dtype != reference_key_dtype:
+        if extent.key_dtype != reference_key_dtype:
             raise ValueError(
-                f"KV layer {manifest.layer_idx} key dtype changed across chunks"
+                f"KV layer {manifest.layer_idx} key dtype changed across extents"
             )
-        if chunk.value_dtype != reference_value_dtype:
+        if extent.value_dtype != reference_value_dtype:
             raise ValueError(
-                f"KV layer {manifest.layer_idx} value dtype changed across chunks"
+                f"KV layer {manifest.layer_idx} value dtype changed across extents"
             )
-        if shape_prefix(chunk.key_shape) != reference_key_prefix:
+        if shape_prefix(extent.key_shape) != reference_key_prefix:
             raise ValueError(
-                f"KV layer {manifest.layer_idx} key shape prefix changed across chunks"
+                f"KV layer {manifest.layer_idx} key shape prefix changed across extents"
             )
-        if shape_prefix(chunk.value_shape) != reference_value_prefix:
+        if shape_prefix(extent.value_shape) != reference_value_prefix:
             raise ValueError(
-                f"KV layer {manifest.layer_idx} value shape prefix changed across chunks"
+                f"KV layer {manifest.layer_idx} value shape prefix changed across extents"
             )
-        next_expected_start = chunk.end_token
+        next_expected_start = extent.end_token
     if manifest.persisted_tokens != next_expected_start:
         raise ValueError(
-            f"KV layer {manifest.layer_idx} persisted_tokens does not match chunk coverage"
+            f"KV layer {manifest.layer_idx} persisted_tokens does not match extent coverage"
         )
 
 
-class ChunkedKVStore:
-    def __init__(self, cache_folder: Path) -> None:
+class StreamedSegmentedKVStore:
+    def __init__(
+        self,
+        cache_folder: Path,
+        *,
+        segment_bytes_target: int = _DEFAULT_SEGMENT_BYTES_TARGET,
+    ) -> None:
         self.cache_folder = cache_folder
         self.layers_folder = cache_folder / "layers"
         self.root_manifest_path = cache_folder / "manifest.json"
+        self.segment_bytes_target = segment_bytes_target
 
     def initialize(self, policy_id: str) -> None:
         path_mkdir(self.layers_folder, parents=True, exist_ok=True)
@@ -190,24 +231,29 @@ class ChunkedKVStore:
         _ = self._read_root_manifest()
         key_chunks: list[torch.Tensor] = []
         value_chunks: list[torch.Tensor] = []
-        for chunk in layer_manifest.chunks:
+        for extent in layer_manifest.extents:
             key_chunks.append(
-                self._read_chunk_tensor(
-                    self.cache_folder / chunk.key_path,
-                    dtype_name=chunk.key_dtype,
-                    shape=chunk.key_shape,
+                self._read_extent_tensor(
+                    self.cache_folder / extent.key_path,
+                    dtype_name_value=extent.key_dtype,
+                    shape=extent.key_shape,
+                    offset=extent.key_offset,
+                    length=extent.key_nbytes,
                 )
             )
             value_chunks.append(
-                self._read_chunk_tensor(
-                    self.cache_folder / chunk.value_path,
-                    dtype_name=chunk.value_dtype,
-                    shape=chunk.value_shape,
+                self._read_extent_tensor(
+                    self.cache_folder / extent.value_path,
+                    dtype_name_value=extent.value_dtype,
+                    shape=extent.value_shape,
+                    offset=extent.value_offset,
+                    length=extent.value_nbytes,
                 )
             )
-        key_tensor = torch.cat(key_chunks, dim=SEQUENCE_AXIS).to(device)
-        value_tensor = torch.cat(value_chunks, dim=SEQUENCE_AXIS).to(device)
-        return key_tensor, value_tensor
+        return (
+            torch.cat(key_chunks, dim=SEQUENCE_AXIS).to(device),
+            torch.cat(value_chunks, dim=SEQUENCE_AXIS).to(device),
+        )
 
     def append_layer_chunk(
         self, layer_idx: int, tensors: tuple[torch.Tensor, torch.Tensor]
@@ -218,24 +264,25 @@ class ChunkedKVStore:
         token_count = sequence_length(tuple(key_tensor.shape))
         if token_count == 0:
             return
-        layer_manifest = self._read_layer_manifest(layer_idx) or KVLayerManifest.new(
+        key_bytes = encode_tensor_bytes(key_tensor)
+        value_bytes = encode_tensor_bytes(value_tensor)
+        layer_manifest = self._read_layer_manifest(
             layer_idx
+        ) or KVStreamLayerManifest.new(
+            layer_idx,
+            segment_bytes_target=self.segment_bytes_target,
         )
         start_token = layer_manifest.persisted_tokens
         end_token = start_token + token_count
-        layer_folder = self.layers_folder / str(layer_idx)
-        key_folder = layer_folder / "key"
-        value_folder = layer_folder / "value"
-        path_mkdir(key_folder, parents=True, exist_ok=True)
-        path_mkdir(value_folder, parents=True, exist_ok=True)
-
-        chunk_name = f"{start_token:012d}-{end_token:012d}.bin"
-        key_path = key_folder / chunk_name
-        value_path = value_folder / chunk_name
-        atomic_write_bytes(key_path, encode_tensor_bytes(key_tensor))
-        atomic_write_bytes(value_path, encode_tensor_bytes(value_tensor))
-
-        chunk = KVChunkMetadata(
+        key_path, value_path = self._target_segment_paths(
+            layer_idx=layer_idx,
+            key_bytes=len(key_bytes),
+            value_bytes=len(value_bytes),
+            layer_manifest=layer_manifest,
+        )
+        key_offset = path_append_bytes(key_path, key_bytes)
+        value_offset = path_append_bytes(value_path, value_bytes)
+        extent = KVStreamExtentMetadata(
             start_token=start_token,
             end_token=end_token,
             key_dtype=dtype_name(key_tensor.dtype),
@@ -244,13 +291,18 @@ class ChunkedKVStore:
             value_shape=tuple(value_tensor.shape),
             key_path=str(key_path.relative_to(self.cache_folder)),
             value_path=str(value_path.relative_to(self.cache_folder)),
+            key_offset=key_offset,
+            value_offset=value_offset,
+            key_nbytes=len(key_bytes),
+            value_nbytes=len(value_bytes),
         )
-        updated_manifest = KVLayerManifest(
+        updated_manifest = KVStreamLayerManifest(
             layer_idx=layer_idx,
             layout=_CACHE_LAYOUT,
             sequence_axis=SEQUENCE_AXIS,
             persisted_tokens=end_token,
-            chunks=layer_manifest.chunks + (chunk,),
+            segment_bytes_target=layer_manifest.segment_bytes_target,
+            extents=layer_manifest.extents + (extent,),
         )
         _validate_layer_manifest(updated_manifest)
         self._write_layer_manifest(updated_manifest)
@@ -283,6 +335,49 @@ class ChunkedKVStore:
                 f"KV cache chunk token count must be positive for layer {layer_idx}"
             )
 
+    def _target_segment_paths(
+        self,
+        *,
+        layer_idx: int,
+        key_bytes: int,
+        value_bytes: int,
+        layer_manifest: KVStreamLayerManifest,
+    ) -> tuple[Path, Path]:
+        layer_folder = self.layers_folder / str(layer_idx)
+        key_folder = layer_folder / "key"
+        value_folder = layer_folder / "value"
+        path_mkdir(key_folder, parents=True, exist_ok=True)
+        path_mkdir(value_folder, parents=True, exist_ok=True)
+
+        segment_index = 0
+        if layer_manifest.extents:
+            last_extent = layer_manifest.extents[-1]
+            last_key_path = self.cache_folder / last_extent.key_path
+            last_value_path = self.cache_folder / last_extent.value_path
+            segment_index = self._segment_index_from_path(last_key_path)
+            if (
+                path_file_size(last_key_path) + key_bytes
+                > layer_manifest.segment_bytes_target
+                or path_file_size(last_value_path) + value_bytes
+                > layer_manifest.segment_bytes_target
+            ):
+                segment_index += 1
+
+        segment_name = f"segment-{segment_index:06d}.bin"
+        return key_folder / segment_name, value_folder / segment_name
+
+    def _segment_index_from_path(self, path: Path) -> int:
+        stem = path.stem
+        prefix = "segment-"
+        if not stem.startswith(prefix):
+            raise ValueError(f"Unexpected streamed KV segment name: {path.name}")
+        try:
+            return int(stem.removeprefix(prefix))
+        except ValueError as exc:
+            raise ValueError(
+                f"Unexpected streamed KV segment name: {path.name}"
+            ) from exc
+
     def _read_root_manifest(self) -> tuple[tuple[int, ...], str]:
         if not path_exists(self.root_manifest_path):
             raise ValueError(
@@ -304,6 +399,8 @@ class ChunkedKVStore:
                 f"Unsupported KV cache persisted device: {payload['persisted_device']!r}"
             )
         policy_id = require_str(payload, "policy_id")
+        if require_int(payload, "segment_bytes_target") <= 0:
+            raise ValueError("segment_bytes_target must be greater than zero")
         layers_payload = payload.get("layers")
         if not isinstance(layers_payload, list):
             raise ValueError("KV root manifest layers must be a JSON list")
@@ -322,6 +419,7 @@ class ChunkedKVStore:
                     "chunk_axis": SEQUENCE_AXIS,
                     "persisted_device": PERSISTED_DEVICE,
                     "policy_id": policy_id,
+                    "segment_bytes_target": self.segment_bytes_target,
                     "layers": list(layers),
                 },
                 indent=2,
@@ -330,16 +428,16 @@ class ChunkedKVStore:
             + "\n",
         )
 
-    def _read_layer_manifest(self, layer_idx: int) -> KVLayerManifest | None:
+    def _read_layer_manifest(self, layer_idx: int) -> KVStreamLayerManifest | None:
         layer_folder = self.layers_folder / str(layer_idx)
         if not path_exists(layer_folder):
             return None
         manifest_path = layer_folder / "manifest.json"
         if not path_exists(manifest_path):
             raise ValueError(f"KV layer manifest is missing: {manifest_path}")
-        return KVLayerManifest.from_dict(read_json_object(manifest_path))
+        return KVStreamLayerManifest.from_dict(read_json_object(manifest_path))
 
-    def _write_layer_manifest(self, manifest: KVLayerManifest) -> None:
+    def _write_layer_manifest(self, manifest: KVStreamLayerManifest) -> None:
         layer_folder = self.layers_folder / str(manifest.layer_idx)
         path_mkdir(layer_folder, parents=True, exist_ok=True)
         manifest_path = layer_folder / "manifest.json"
@@ -348,8 +446,14 @@ class ChunkedKVStore:
             json.dumps(manifest.to_dict(), indent=2, sort_keys=True) + "\n",
         )
 
-    def _read_chunk_tensor(
-        self, path: Path, *, dtype_name: str, shape: tuple[int, ...]
+    def _read_extent_tensor(
+        self,
+        path: Path,
+        *,
+        dtype_name_value: str,
+        shape: tuple[int, ...],
+        offset: int,
+        length: int,
     ) -> torch.Tensor:
         resolved_path = path.resolve()
         cache_root = self.cache_folder.resolve()
@@ -357,4 +461,8 @@ class ChunkedKVStore:
             raise ValueError(f"KV cache chunk path escapes cache root: {path}")
         if not path_exists(path):
             raise ValueError(f"KV cache chunk file is missing: {path}")
-        return read_and_decode_tensor(path, dtype_name_value=dtype_name, shape=shape)
+        return decode_tensor_bytes(
+            path_read_bytes_range(path, offset=offset, length=length),
+            dtype=dtype_from_name(dtype_name_value),
+            shape=shape,
+        )

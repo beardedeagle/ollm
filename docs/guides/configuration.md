@@ -29,6 +29,7 @@ Key runtime configuration fields:
 - `multimodal` — enable multimodal planning when non-text inputs are expected
 - `use_specialization` — whether optimized-native specialization is allowed
 - `cache_dir` / `use_cache` — disk KV cache controls
+- `kv_cache_strategy` — explicit disk KV backend selection (`chunked` or `streamed-segmented`)
 - `offload_cpu_layers` / `offload_gpu_layers` — native offload controls when supported
 
 Generation configuration fields:
@@ -56,6 +57,7 @@ Nested configuration keys use a double-underscore separator:
 - `OLLM_RUNTIME__MODEL_REFERENCE`
 - `OLLM_RUNTIME__MODELS_DIR`
 - `OLLM_RUNTIME__DEVICE`
+- `OLLM_RUNTIME__KV_CACHE_STRATEGY`
 - `OLLM_GENERATION__MAX_NEW_TOKENS`
 - `OLLM_GENERATION__STREAM`
 - `OLLM_SERVER__HOST`
