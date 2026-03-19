@@ -2,6 +2,7 @@ import argparse
 import json
 import sys
 from pathlib import Path
+from typing import cast
 
 from ollm.runtime.benchmark_history import record_benchmark_history
 from ollm.runtime.benchmark_metadata import (
@@ -383,7 +384,8 @@ def _emit_history_status(history_result: dict[str, object]) -> None:
     comparison = history_result.get("comparison_to_previous")
     if not isinstance(comparison, dict):
         return
-    regressions = comparison.get("potential_regressions")
+    comparison_payload = cast(dict[str, object], comparison)
+    regressions = comparison_payload.get("potential_regressions")
     if not isinstance(regressions, list) or not regressions:
         return
     print(
