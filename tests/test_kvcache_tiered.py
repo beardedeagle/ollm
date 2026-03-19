@@ -58,9 +58,11 @@ def test_tiered_write_back_spills_oldest_prefix_and_keeps_hot_tail(
     assert state.strategy_id == "tiered-write-back"
     assert state.policy_id == "test-tiered-write-back"
     assert state.persisted_tokens == 4
+    assert state.persisted_artifact_count == 1
     assert state.hot_tokens == 3
     assert state.spill_count == 1
     assert state.spilled_tokens == 4
+    assert state.cold_store_format == "ollm-kv-journal"
 
     root_manifest = _read_json(cache.cache_folder / "manifest.json")
     cold_root_manifest = _read_json(cache.cache_folder / "cold" / "manifest.json")
@@ -70,8 +72,9 @@ def test_tiered_write_back_spills_oldest_prefix_and_keeps_hot_tail(
 
     assert root_manifest["format"] == "ollm-kv-tiered-write-back"
     assert root_manifest["cold_store_root"] == "cold"
-    assert cold_root_manifest["format"] == "ollm-kv-chunked"
+    assert cold_root_manifest["format"] == "ollm-kv-journal"
     assert cold_layer_manifest["persisted_tokens"] == 4
+    assert cold_layer_manifest["layout"] == "journal-append"
 
 
 def test_tiered_write_back_round_trips_across_repeated_updates(tmp_path: Path) -> None:
@@ -104,9 +107,11 @@ def test_tiered_write_back_round_trips_across_repeated_updates(tmp_path: Path) -
     assert torch.equal(persisted[0], expected_key)
     assert torch.equal(persisted[1], expected_value)
     assert state.persisted_tokens == 7
+    assert state.persisted_artifact_count == 2
     assert state.hot_tokens == 3
     assert state.spill_count == 2
     assert state.spilled_tokens == 7
+    assert state.cold_store_format == "ollm-kv-journal"
 
 
 def test_tiered_write_back_caches_cold_layer_after_first_load(tmp_path: Path) -> None:

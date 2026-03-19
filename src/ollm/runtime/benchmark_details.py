@@ -268,6 +268,9 @@ def summarize_cache_states(
         "persisted_tokens": summarize_numeric_values(
             [float(snapshot.persisted_tokens) for snapshot in snapshots]
         ),
+        "persisted_artifact_count": summarize_numeric_values(
+            [float(snapshot.persisted_artifact_count) for snapshot in snapshots]
+        ),
         "hot_layer_count": summarize_numeric_values(
             [float(snapshot.hot_layer_count) for snapshot in snapshots]
         ),
@@ -276,6 +279,13 @@ def summarize_cache_states(
         ),
         "hot_bytes": summarize_numeric_values(
             [float(snapshot.hot_bytes) for snapshot in snapshots]
+        ),
+        "cold_store_format": single_optional_string(
+            [
+                snapshot.cold_store_format
+                for snapshot in snapshots
+                if snapshot.cold_store_format is not None
+            ]
         ),
         "spill_count": summarize_numeric_values(
             [float(snapshot.spill_count) for snapshot in snapshots]

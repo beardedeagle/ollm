@@ -322,9 +322,10 @@ blobs. When `kv_cache_strategy="streamed-segmented"` is selected, the runtime
 uses `cache_dir/kv_cache_streamed_segmented` instead so the two strategies
 never share on-disk state. `kv_cache_strategy="tiered-write-back"` uses
 `cache_dir/kv_cache_tiered_write_back` and keeps a bounded hot tail in memory
-while spilling colder KV to disk in batches. The runtime now also applies a
-platform/resource-aware buffering or spill policy on top of the selected
-format, so small KV deltas do not have to flush to disk on every update.
+while spilling colder KV to a journal-backed cold tier in batches. The runtime
+now also applies a platform/resource-aware buffering or spill policy on top of
+the selected format, so small KV deltas do not have to flush to disk on every
+update.
 Within one loaded runtime, the cache layer now also keeps a resident
 in-process per-layer KV snapshot so repeated updates do not have to reread and
 reconstruct the same persisted history every token. The streamed store also
@@ -420,8 +421,9 @@ or strategy-specific cache roots under `cache_dir/kv_cache_chunked`,
 `cache_dir/kv_cache_streamed_segmented`, or
 `cache_dir/kv_cache_tiered_write_back`, not to legacy `.pt` layer artifacts.
 The request metrics also report `kv_cache_strategy`, and `cache_state` now
-surfaces the policy id, persisted tokens, hot tokens, and spill counts so the
-reported cache footprint can be interpreted truthfully.
+surfaces the policy id, persisted tokens, persisted artifact count,
+cold-store format, hot tokens, and spill counts so the reported cache
+footprint can be interpreted truthfully.
 If a repeated request is satisfied from the resident in-process KV snapshot
 instead of rereading disk history, `kvload` can legitimately disappear for that
 step even though disk KV remains the active strategy.

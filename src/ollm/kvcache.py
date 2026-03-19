@@ -36,6 +36,10 @@ class _KVCacheStoreProtocol(Protocol):
 
     def persisted_token_count(self) -> int: ...
 
+    def persisted_artifact_count(self) -> int: ...
+
+    def cold_store_format_id(self) -> str | None: ...
+
 
 class oCache:
     def ini_ocache(
@@ -122,11 +126,13 @@ class oCache:
             policy_id=self.policy.policy_id,
             persisted_layer_count=len(self._cache_store.persisted_layer_ids()),
             persisted_tokens=self._cache_store.persisted_token_count(),
+            persisted_artifact_count=self._cache_store.persisted_artifact_count(),
             hot_layer_count=len(hot_tails),
             hot_tokens=sum(_sequence_length(pair[0]) for pair in hot_tails.values()),
             hot_bytes=sum(_tensor_pair_nbytes(pair) for pair in hot_tails.values()),
             spill_count=self._spill_count,
             spilled_tokens=self._spilled_tokens,
+            cold_store_format=self._cache_store.cold_store_format_id(),
         )
 
     def _resident_tail(

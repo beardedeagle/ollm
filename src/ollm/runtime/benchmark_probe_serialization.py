@@ -263,11 +263,13 @@ def _parse_cache_state(value: object) -> KVCacheStateSnapshot | None:
         policy_id=_require_string(payload, "policy_id"),
         persisted_layer_count=_require_int(payload, "persisted_layer_count"),
         persisted_tokens=_require_int(payload, "persisted_tokens"),
+        persisted_artifact_count=_require_int(payload, "persisted_artifact_count"),
         hot_layer_count=_require_int(payload, "hot_layer_count"),
         hot_tokens=_require_int(payload, "hot_tokens"),
         hot_bytes=_require_int(payload, "hot_bytes"),
         spill_count=_require_int(payload, "spill_count"),
         spilled_tokens=_require_int(payload, "spilled_tokens"),
+        cold_store_format=_optional_string(payload, "cold_store_format"),
     )
 
 

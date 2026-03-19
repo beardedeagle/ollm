@@ -6,7 +6,7 @@ from pathlib import Path
 import torch
 
 from ollm.async_io import path_exists, path_mkdir
-from ollm.kv_cache_store import ChunkedKVStore
+from ollm.kv_cache_journal_store import JournaledKVStore
 from ollm.kv_cache_store_common import (
     CACHE_SCHEMA_VERSION,
     PERSISTED_DEVICE,
@@ -20,7 +20,7 @@ from ollm.kv_cache_store_common import (
 
 _CACHE_FORMAT = "ollm-kv-tiered-write-back"
 _COLD_STORE_ROOT = "cold"
-_COLD_STORE_FORMAT = "ollm-kv-chunked"
+_COLD_STORE_FORMAT = "ollm-kv-journal"
 
 
 class TieredWriteBackKVStore:
@@ -30,7 +30,7 @@ class TieredWriteBackKVStore:
         self.cache_folder = cache_folder
         self.root_manifest_path = cache_folder / "manifest.json"
         self.cold_root = cache_folder / _COLD_STORE_ROOT
-        self._cold_store = ChunkedKVStore(self.cold_root)
+        self._cold_store = JournaledKVStore(self.cold_root)
         self._root_manifest_cache: tuple[tuple[int, ...], str] | None = None
 
     def initialize(self, policy_id: str) -> None:
@@ -59,6 +59,12 @@ class TieredWriteBackKVStore:
 
     def persisted_token_count(self) -> int:
         return self._cold_store.persisted_token_count()
+
+    def persisted_artifact_count(self) -> int:
+        return self._cold_store.persisted_artifact_count()
+
+    def cold_store_format_id(self) -> str | None:
+        return _COLD_STORE_FORMAT
 
     def _read_root_manifest(self) -> tuple[tuple[int, ...], str]:
         if self._root_manifest_cache is not None:

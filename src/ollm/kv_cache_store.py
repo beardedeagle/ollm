@@ -278,6 +278,18 @@ class ChunkedKVStore:
             total_tokens += manifest.persisted_tokens
         return total_tokens
 
+    def persisted_artifact_count(self) -> int:
+        total_chunks = 0
+        for layer_idx in self.persisted_layer_ids():
+            manifest = self._read_layer_manifest(layer_idx)
+            if manifest is None:
+                continue
+            total_chunks += len(manifest.chunks)
+        return total_chunks
+
+    def cold_store_format_id(self) -> str | None:
+        return None
+
     def _validate_chunk_pair(
         self, layer_idx: int, key_tensor: torch.Tensor, value_tensor: torch.Tensor
     ) -> None:

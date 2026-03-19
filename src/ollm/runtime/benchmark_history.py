@@ -29,6 +29,7 @@ _HIGHER_IS_WORSE_METRICS = {
     "kvload_ms",
     "kvsave_ms",
     "persisted_tokens",
+    "persisted_artifact_count",
     "hot_tokens",
     "spill_count",
     "spilled_tokens",
@@ -159,8 +160,16 @@ def summarize_benchmark_payload(
             "persisted_tokens": _optional_int(
                 None if cache_state is None else cache_state.get("persisted_tokens")
             ),
+            "persisted_artifact_count": _optional_int(
+                None
+                if cache_state is None
+                else cache_state.get("persisted_artifact_count")
+            ),
             "hot_tokens": _optional_int(
                 None if cache_state is None else cache_state.get("hot_tokens")
+            ),
+            "cold_store_format": (
+                None if cache_state is None else cache_state.get("cold_store_format")
             ),
             "spill_count": _optional_int(
                 None if cache_state is None else cache_state.get("spill_count")
@@ -220,8 +229,18 @@ def summarize_benchmark_payload(
                 None if cache_state is None else cache_state.get("persisted_tokens")
                 for cache_state in cache_states
             ),
+            "persisted_artifact_count": _mean_optional_int(
+                None
+                if cache_state is None
+                else cache_state.get("persisted_artifact_count")
+                for cache_state in cache_states
+            ),
             "hot_tokens": _mean_optional_int(
                 None if cache_state is None else cache_state.get("hot_tokens")
+                for cache_state in cache_states
+            ),
+            "cold_store_format": _single_optional_string(
+                None if cache_state is None else cache_state.get("cold_store_format")
                 for cache_state in cache_states
             ),
             "spill_count": _mean_optional_int(
@@ -410,6 +429,13 @@ def _mean_optional_int(values) -> float | None:
     if not numeric_values:
         return None
     return mean(numeric_values)
+
+
+def _single_optional_string(values) -> str | None:
+    string_values = [value for value in values if isinstance(value, str) and value]
+    if not string_values:
+        return None
+    return string_values[-1]
 
 
 def _is_regression(*, metric_name: str, current: float, previous: float) -> bool:

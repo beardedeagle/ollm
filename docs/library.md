@@ -60,9 +60,10 @@ text_streamer = TextStreamer(o.tokenizer, skip_prompt=True, skip_special_tokens=
 backend explicitly. `chunked` uses `cache_dir/kv_cache_chunked`, while
 `streamed-segmented` uses `cache_dir/kv_cache_streamed_segmented`, and
 `tiered-write-back` uses `cache_dir/kv_cache_tiered_write_back` while keeping a
-bounded hot region in memory. All three use typed raw payloads plus explicit
-metadata instead of opaque torch cache blobs. The active runtime then applies a
-platform/resource-aware buffering or spill policy on top of the selected store.
+bounded hot region in memory and a journal-backed cold tier on disk. All three
+use typed raw payloads plus explicit metadata instead of opaque torch cache
+blobs. The active runtime then applies a platform/resource-aware buffering or
+spill policy on top of the selected store.
 The low-level helper accepts the same switch directly through
 `Inference.DiskCache(cache_strategy=...)`.
 

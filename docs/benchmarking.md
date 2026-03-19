@@ -137,13 +137,17 @@ artifacts. The request metrics report both `kv_cache_strategy` and
 `cache_state`, so benchmark comparisons can distinguish the selected backend
 and, for tier-aware strategies, the current hot/cold split. `cache_dir_size_mb`
 describes only the persisted on-disk portion of the cache, while `cache_state`
-surfaces hot in-memory tokens and spill counts.
+surfaces persisted artifact counts, cold-store format, hot in-memory tokens,
+and spill counts.
 Within one loaded runtime, the cache layer can satisfy repeated requests from
 an in-process resident KV snapshot instead of rereading the same persisted
 history from disk. In those cases, `kvload` may legitimately disappear even
 though disk KV is still the active strategy. The `streamed-segmented` store now
 also coalesces extents by segment file on readback, so fewer file-range reads
 can show up under the same `disk-kv-cache` storage path label.
+For `tiered-write-back`, the persisted cold tier now uses a journal-backed
+append store under `cache_dir/kv_cache_tiered_write_back/cold`, so the tiered
+spill path no longer depends on the chunked cold-store substrate.
 
 When the optimized loader uses async submission plus later completion, the
 native event totals represent per-operation storage latency, not a partition of

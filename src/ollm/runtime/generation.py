@@ -292,12 +292,17 @@ class RuntimeExecutor:
                 {
                     "kv_cache_policy_id": cache_state.policy_id,
                     "kv_cache_persisted_tokens": str(cache_state.persisted_tokens),
+                    "kv_cache_persisted_artifacts": str(
+                        cache_state.persisted_artifact_count
+                    ),
                     "kv_cache_hot_tokens": str(cache_state.hot_tokens),
                     "kv_cache_hot_layers": str(cache_state.hot_layer_count),
                     "kv_cache_spill_count": str(cache_state.spill_count),
                     "kv_cache_spilled_tokens": str(cache_state.spilled_tokens),
                 }
             )
+            if cache_state.cold_store_format is not None:
+                metadata["kv_cache_cold_store_format"] = cache_state.cold_store_format
         stats = cast(_StatsProtocol | None, runtime.backend.stats)
         if stats is not None:
             metadata["stats"] = stats.print_and_clean()

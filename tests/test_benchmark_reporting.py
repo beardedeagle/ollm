@@ -107,6 +107,8 @@ def test_render_runtime_probe_json_round_trips() -> None:
     assert request["output_tokens"] == 4
     assert request["kv_cache_strategy"] == "chunked"
     assert cache_state["strategy_id"] == "chunked"
+    assert cache_state["persisted_artifact_count"] == 2
+    assert cache_state["cold_store_format"] is None
     assert resources["accelerator_kind"] == "cuda"
     assert "kvload" in events
 
@@ -225,6 +227,11 @@ def test_summarize_request_metrics_includes_native_runtime_profile() -> None:
         dict[str, object], cast(dict[str, object], summary["cache"])["cache_state"]
     )
     assert cache_state["policy_id"] == "test-policy"
+    persisted_artifact_count = cast(
+        dict[str, object], cache_state["persisted_artifact_count"]
+    )
+    assert persisted_artifact_count["mean"] == 2.0
+    assert cache_state["cold_store_format"] is None
     assert kvload["event_count"] == 2
 
 

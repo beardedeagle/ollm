@@ -11,11 +11,13 @@ class KVCacheStateSnapshot:
     policy_id: str
     persisted_layer_count: int
     persisted_tokens: int
+    persisted_artifact_count: int
     hot_layer_count: int
     hot_tokens: int
     hot_bytes: int
     spill_count: int
     spilled_tokens: int
+    cold_store_format: str | None
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-serializable dictionary view of the snapshot."""

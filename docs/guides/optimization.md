@@ -62,8 +62,9 @@ strategies:
 segment-backed store under `cache_dir/kv_cache_streamed_segmented`.
 `tiered-write-back` persists only the colder KV prefix under
 `cache_dir/kv_cache_tiered_write_back` while keeping a bounded hot region in
-memory. All three use typed raw tensor payloads plus explicit metadata, and
-none uses opaque pickle-backed `.pt` cache blobs. The runtime also applies a
+memory; its cold tier now uses a journal-backed append store. All three use
+typed raw tensor payloads plus explicit metadata, and none uses opaque
+pickle-backed `.pt` cache blobs. The runtime also applies a
 platform/resource-aware buffering or spill policy on top of the selected
 strategy so the cache can trade write amplification against memory headroom
 instead of flushing every delta identically on every machine.
@@ -101,7 +102,8 @@ For disk KV specifically, `kvload` and `kvsave` now represent reads and writes
 against the selected explicit disk-KV store rather than whole-layer torch
 artifacts. Benchmark/runtime output also reports `kv_cache_strategy` so the
 active backend is visible during A/B runs, and `cache_state` exposes the
-hot/cold split for tier-aware strategies.
+hot/cold split, persisted artifact count, and cold-store format for
+tier-aware strategies.
 The reported disk-cache footprint reflects the persisted chunk store only. A
 selected KV policy may keep a bounded tail in memory until its spill or flush
 threshold is reached.

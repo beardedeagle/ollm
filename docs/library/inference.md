@@ -36,10 +36,11 @@ artifacts. When the selected runtime uses
 `kv_cache_strategy="streamed-segmented"`, it writes to
 `cache_dir/kv_cache_streamed_segmented` instead. When it uses
 `kv_cache_strategy="tiered-write-back"`, it writes the cold tier to
-`cache_dir/kv_cache_tiered_write_back` while keeping a bounded hot tail in
-memory. The active runtime then applies a platform/resource-aware buffering or
-spill policy on top of the selected store. `Inference.DiskCache()` accepts the
-same switch through `cache_strategy=...`.
+`cache_dir/kv_cache_tiered_write_back` through a journal-backed append store
+while keeping a bounded hot tail in memory. The active runtime then applies a
+platform/resource-aware buffering or spill policy on top of the selected
+store. `Inference.DiskCache()` accepts the same switch through
+`cache_strategy=...`.
 
 ## Typical `AutoInference` example
 
