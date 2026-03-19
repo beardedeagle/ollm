@@ -198,7 +198,7 @@ class RuntimeExecutor:
         }
 
         if request.runtime_config.use_cache:
-            cache = runtime.backend.create_cache(
+            cache = runtime.get_or_create_disk_cache(
                 request.runtime_config.resolved_cache_dir(),
                 request.runtime_config.resolved_kv_cache_strategy(),
             )

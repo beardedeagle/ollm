@@ -106,7 +106,12 @@ def test_log_structured_journal_kvcache_compacts_after_threshold(
         cache_dir=tmp_path / "cache-root",
         device="cpu",
         stats=stats,
-        policy=_immediate_flush_policy(),
+        policy=KVCachePolicy(
+            policy_id="test-journal-flush",
+            flush_token_threshold=1,
+            flush_byte_threshold=1,
+            journal_compaction_entry_threshold=4,
+        ),
         cache_strategy="log-structured-journal",
     )
 
@@ -123,11 +128,13 @@ def test_log_structured_journal_kvcache_compacts_after_threshold(
     entries = cast(list[dict[str, object]], layer_manifest["entries"])
 
     assert state.strategy_id == "log-structured-journal"
-    assert state.compaction_count == 1
+    assert state.cold_store_format == "ollm-kv-journal"
+    assert state.compaction_count == 2
     assert state.persisted_tokens == 8
-    assert state.persisted_artifact_count == 1
-    assert layer_manifest["compaction_count"] == 1
-    assert len(entries) == 1
+    assert state.persisted_artifact_count == 2
+    assert layer_manifest["compaction_count"] == 2
+    assert len(entries) == 2
+    assert "kvsave" in summary
     assert "kvcompact" in summary
 
 

@@ -59,3 +59,33 @@ def test_select_kv_cache_policy_uses_tiered_profile_for_mps() -> None:
     assert policy.policy_id == "darwin-mps-tiered"
     assert policy.flush_token_threshold == 16
     assert policy.write_back_retained_tokens == 4
+
+
+def test_select_kv_cache_policy_uses_journal_profile_for_cpu() -> None:
+    policy = select_kv_cache_policy(
+        torch.device("cpu"),
+        strategy="log-structured-journal",
+        resource_snapshot=KVCacheResourceSnapshot(
+            platform="darwin",
+            available_system_memory_bytes=8 * 1024 * 1024 * 1024,
+            available_accelerator_memory_bytes=None,
+        ),
+    )
+
+    assert policy.policy_id == "darwin-cpu-journal"
+    assert policy.journal_compaction_entry_threshold == 4
+
+
+def test_select_kv_cache_policy_uses_larger_journal_threshold_for_roomy_hosts() -> None:
+    policy = select_kv_cache_policy(
+        torch.device("cuda:0"),
+        strategy="log-structured-journal",
+        resource_snapshot=KVCacheResourceSnapshot(
+            platform="win32",
+            available_system_memory_bytes=64 * 1024 * 1024 * 1024,
+            available_accelerator_memory_bytes=24 * 1024 * 1024 * 1024,
+        ),
+    )
+
+    assert policy.policy_id == "windows-cuda-journal"
+    assert policy.journal_compaction_entry_threshold == 6

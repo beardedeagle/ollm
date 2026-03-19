@@ -1,7 +1,7 @@
 """Runtime loading, planning, and safe fallback orchestration."""
 
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from ollm.runtime.backend_selector import BackendSelector
@@ -35,6 +35,7 @@ class LoadedRuntime:
     backend: BackendRuntime
     model_path: Path | None
     plan: RuntimePlan
+    _disk_cache_instances: dict[tuple[Path, str], object] = field(default_factory=dict)
 
     @property
     def capabilities(self) -> CapabilityProfile:
@@ -77,6 +78,17 @@ class LoadedRuntime:
     def device(self):
         """Expose the backend runtime device."""
         return self.backend.device
+
+    def get_or_create_disk_cache(self, cache_dir: Path, strategy: str) -> object | None:
+        """Reuse one disk-cache instance per cache root and strategy."""
+        cache_key = (cache_dir.resolve(), strategy)
+        cache = self._disk_cache_instances.get(cache_key)
+        if cache is not None:
+            return cache
+        created_cache = self.backend.create_cache(cache_dir, strategy)
+        if created_cache is not None:
+            self._disk_cache_instances[cache_key] = created_cache
+        return created_cache
 
 
 class RuntimeLoader:

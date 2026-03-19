@@ -427,6 +427,8 @@ The request metrics also report `kv_cache_strategy`, and `cache_state` now
 surfaces the policy id, persisted tokens, persisted artifact count,
 compaction count, cold-store format, hot tokens, and spill counts so the
 reported cache footprint can be interpreted truthfully.
+For the log-structured journal path, compaction rewrite time is reported
+separately as `kvcompact` instead of being folded into `kvsave`.
 If a repeated request is satisfied from the resident in-process KV snapshot
 instead of rereading disk history, `kvload` can legitimately disappear for that
 step even though disk KV remains the active strategy.

@@ -159,7 +159,9 @@ append store under `cache_dir/kv_cache_tiered_write_back/cold`, so the tiered
 spill path no longer depends on the chunked cold-store substrate.
 For `log-structured-journal`, compaction is visible both through
 `cache_state.compaction_count` and, when it occurs during a request, native
-runtime profile timing under `kvcompact`.
+runtime profile timing under `kvcompact`. `kvsave` now measures append-path
+write cost without double-counting compaction rewrite time; when compaction
+occurs, `kvcompact` reports that rewrite separately.
 
 When the optimized loader uses async submission plus later completion, the
 native event totals represent per-operation storage latency, not a partition of

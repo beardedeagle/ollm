@@ -45,6 +45,7 @@ def test_journal_store_appends_and_replays_layer_round_trip(tmp_path: Path) -> N
     assert len(entries) == 2
     assert store.persisted_artifact_count() == 2
     assert store.compaction_count() == 0
+    assert store.cold_store_format_id() == "ollm-kv-journal"
 
 
 def test_journal_store_rejects_paths_outside_cache_root(tmp_path: Path) -> None:
@@ -85,3 +86,8 @@ def test_journal_store_compacts_after_threshold(tmp_path: Path) -> None:
     assert store.compaction_count() == 1
     assert store.consume_last_compaction_elapsed_seconds() is not None
     assert store.consume_last_compaction_elapsed_seconds() is None
+
+    reopened = JournaledKVStore(tmp_path / "cache-root", compaction_entry_threshold=2)
+    loaded = reopened.load_layer(0, device=torch.device("cpu"))
+    assert loaded is not None
+    assert loaded[0].shape[-2] == 4

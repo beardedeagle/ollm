@@ -24,6 +24,7 @@ class KVCachePolicy:
     flush_byte_threshold: int
     write_back_retained_tokens: int = 64
     write_back_retained_bytes: int = 4 * _MIB
+    journal_compaction_entry_threshold: int = 0
 
     def should_flush(
         self,
@@ -85,6 +86,13 @@ def select_kv_cache_policy(
     available_accelerator = snapshot.available_accelerator_memory_bytes or 0
     if strategy == "tiered-write-back":
         return _select_tiered_write_back_policy(
+            device=device,
+            snapshot=snapshot,
+            available_ram=available_ram,
+            available_accelerator=available_accelerator,
+        )
+    if strategy == "log-structured-journal":
+        return _select_log_structured_journal_policy(
             device=device,
             snapshot=snapshot,
             available_ram=available_ram,
@@ -232,6 +240,94 @@ def _select_tiered_write_back_policy(
         write_back_retained_tokens=4,
         write_back_retained_bytes=128 * 1024,
     )
+
+
+def _select_log_structured_journal_policy(
+    *,
+    device: torch.device,
+    snapshot: KVCacheResourceSnapshot,
+    available_ram: int,
+    available_accelerator: int,
+) -> KVCachePolicy:
+    compaction_entry_threshold = _journal_compaction_entry_threshold(
+        available_ram=available_ram,
+        available_accelerator=available_accelerator,
+    )
+    if device.type == "cpu":
+        if snapshot.platform == "darwin":
+            return KVCachePolicy(
+                policy_id="darwin-cpu-journal",
+                flush_token_threshold=64,
+                flush_byte_threshold=4 * _MIB,
+                write_back_retained_tokens=32,
+                write_back_retained_bytes=2 * _MIB,
+                journal_compaction_entry_threshold=compaction_entry_threshold,
+            )
+        if snapshot.platform == "win32":
+            return KVCachePolicy(
+                policy_id="windows-cpu-journal",
+                flush_token_threshold=128,
+                flush_byte_threshold=8 * _MIB,
+                write_back_retained_tokens=64,
+                write_back_retained_bytes=4 * _MIB,
+                journal_compaction_entry_threshold=compaction_entry_threshold,
+            )
+        return KVCachePolicy(
+            policy_id="cpu-journal",
+            flush_token_threshold=128,
+            flush_byte_threshold=8 * _MIB,
+            write_back_retained_tokens=64,
+            write_back_retained_bytes=4 * _MIB,
+            journal_compaction_entry_threshold=compaction_entry_threshold,
+        )
+
+    if device.type == "cuda":
+        if snapshot.platform == "win32" and available_accelerator >= 12 * _GIB:
+            return KVCachePolicy(
+                policy_id="windows-cuda-journal",
+                flush_token_threshold=128,
+                flush_byte_threshold=8 * _MIB,
+                write_back_retained_tokens=64,
+                write_back_retained_bytes=4 * _MIB,
+                journal_compaction_entry_threshold=compaction_entry_threshold,
+            )
+        return KVCachePolicy(
+            policy_id="cuda-journal",
+            flush_token_threshold=64,
+            flush_byte_threshold=4 * _MIB,
+            write_back_retained_tokens=32,
+            write_back_retained_bytes=2 * _MIB,
+            journal_compaction_entry_threshold=compaction_entry_threshold,
+        )
+
+    if device.type == "mps":
+        return KVCachePolicy(
+            policy_id="darwin-mps-journal",
+            flush_token_threshold=128,
+            flush_byte_threshold=8 * _MIB,
+            write_back_retained_tokens=64,
+            write_back_retained_bytes=4 * _MIB,
+            journal_compaction_entry_threshold=compaction_entry_threshold,
+        )
+
+    return KVCachePolicy(
+        policy_id="default-journal",
+        flush_token_threshold=64,
+        flush_byte_threshold=4 * _MIB,
+        write_back_retained_tokens=32,
+        write_back_retained_bytes=2 * _MIB,
+        journal_compaction_entry_threshold=compaction_entry_threshold,
+    )
+
+
+def _journal_compaction_entry_threshold(
+    *,
+    available_ram: int,
+    available_accelerator: int,
+) -> int:
+    if available_accelerator >= 16 * _GIB or available_ram >= 32 * _GIB:
+        return 6
+    return 4
 
 
 def _available_system_memory_bytes() -> int | None:

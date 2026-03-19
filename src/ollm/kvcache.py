@@ -81,7 +81,9 @@ class oCache:
         self._hot_tails: dict[int, tuple[torch.Tensor, torch.Tensor]] = {}
         self._spill_count = 0
         self._spilled_tokens = 0
-        self._cache_store = _build_cache_store(self.cache_folder, self.cache_strategy)
+        self._cache_store = _build_cache_store(
+            self.cache_folder, self.cache_strategy, self.policy
+        )
         self._cache_store.initialize(self.policy.policy_id)
 
     def load_from_disk(
@@ -117,9 +119,7 @@ class oCache:
         started_at = time.perf_counter()
         self._cache_store.append_layer_chunk(layer_idx, buffered)
         self._pending_tails.pop(layer_idx, None)
-        self._record_compaction_metric()
-        if self.stats is not None:
-            self.stats.set("kvsave", started_at)
+        self._record_cache_write_metrics(started_at)
 
     def cache_state_snapshot(self) -> KVCacheStateSnapshot:
         hot_tails = (
@@ -173,9 +173,7 @@ class oCache:
             self._hot_tails.pop(layer_idx, None)
         else:
             self._hot_tails[layer_idx] = hot_tensors
-        self._record_compaction_metric()
-        if self.stats is not None:
-            self.stats.set("kvsave", started_at)
+        self._record_cache_write_metrics(started_at)
 
     def _load_cold_layer(
         self, layer_idx: int
@@ -195,11 +193,16 @@ class oCache:
             tensors, device=self.device
         )
 
-    def _record_compaction_metric(self) -> None:
+    def _record_cache_write_metrics(self, started_at: float) -> None:
         elapsed_seconds = self._cache_store.consume_last_compaction_elapsed_seconds()
-        if elapsed_seconds is None or self.stats is None:
+        if self.stats is None:
             return
-        self.stats.record_elapsed_seconds("kvcompact", elapsed_seconds)
+        total_elapsed_seconds = time.perf_counter() - started_at
+        append_elapsed_seconds = total_elapsed_seconds
+        if elapsed_seconds is not None:
+            append_elapsed_seconds = max(0.0, total_elapsed_seconds - elapsed_seconds)
+            self.stats.record_elapsed_seconds("kvcompact", elapsed_seconds)
+        self.stats.record_elapsed_seconds("kvsave", append_elapsed_seconds)
 
 
 def _concat_tensor_pairs(
@@ -249,14 +252,17 @@ def _resident_layer_for_device(
 
 
 def _build_cache_store(
-    cache_folder: Path, cache_strategy: str
+    cache_folder: Path, cache_strategy: str, policy: KVCachePolicy
 ) -> _KVCacheStoreProtocol:
     if cache_strategy == "chunked":
         return ChunkedKVStore(cache_folder)
     if cache_strategy == "streamed-segmented":
         return StreamedSegmentedKVStore(cache_folder)
     if cache_strategy == "log-structured-journal":
-        return JournaledKVStore(cache_folder)
+        return JournaledKVStore(
+            cache_folder,
+            compaction_entry_threshold=policy.journal_compaction_entry_threshold,
+        )
     if cache_strategy == "tiered-write-back":
         return TieredWriteBackKVStore(cache_folder)
     raise ValueError(f"Unsupported KV cache strategy: {cache_strategy}")

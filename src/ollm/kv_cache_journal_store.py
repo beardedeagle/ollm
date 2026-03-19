@@ -182,7 +182,7 @@ class JournaledKVStore:
         return total_entries
 
     def cold_store_format_id(self) -> str | None:
-        return None
+        return _CACHE_FORMAT
 
     def compaction_count(self) -> int:
         total_compactions = 0
