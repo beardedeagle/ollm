@@ -418,6 +418,11 @@ The harness is designed to stay truthful on hardware-constrained machines:
 - unsupported metrics and non-executable optimized paths remain explicitly unavailable instead of being fabricated
 - peak RSS reports now carry source labels so warm/scaling/session sections can use stage-local sampled peaks instead of misleading process-lifetime maxima
 
+Session-growth now uses a dedicated small per-turn output cap rather than
+reusing the output-scaling sweep length. That keeps repeated-turn probes focused
+on retained-session growth instead of turning loader-streamed CPU families such
+as Gemma3 into a long-form generation or safetensor-streaming marathon.
+
 When an optimized-native run emits runtime timing stats, the request metrics now
 also include a `native_runtime_profile` section with:
 

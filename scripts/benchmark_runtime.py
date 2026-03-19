@@ -128,6 +128,15 @@ def parse_args() -> argparse.Namespace:
         help="Measured turns for the primary target repeated-session growth sweep.",
     )
     parser.add_argument(
+        "--session-max-new-tokens",
+        type=positive_int,
+        default=None,
+        help=(
+            "Measured max new tokens per turn for the repeated-session growth "
+            "sweep. This is independent from --output-scale-tokens."
+        ),
+    )
+    parser.add_argument(
         "--probe-runtime",
         action="store_true",
         help=argparse.SUPPRESS,
@@ -220,6 +229,7 @@ def main() -> int:
         prompt_token_targets=prompt_scale_tokens,
         output_token_targets=output_scale_tokens,
         session_turns=args.session_turns,
+        session_max_new_tokens=args.session_max_new_tokens,
     )
     if args.probe_runtime:
         if args.probe_model is None:
@@ -348,6 +358,7 @@ def main() -> int:
         prompt_token_targets=profile.prompt_token_targets,
         output_token_targets=profile.output_token_targets,
         session_turns=profile.session_turns,
+        session_max_new_tokens=profile.session_max_new_tokens,
         include_family_results=profile.include_family_results,
         include_primary_extended_scenarios=profile.include_primary_extended_scenarios,
         cold_timeout_seconds=profile.cold_timeout_seconds,
@@ -372,6 +383,7 @@ def main() -> int:
                 prompt_token_targets=profile.prompt_token_targets,
                 output_token_targets=profile.output_token_targets,
                 session_turns=profile.session_turns,
+                session_max_new_tokens=profile.session_max_new_tokens,
             ),
         )
         _emit_history_status(history_result)

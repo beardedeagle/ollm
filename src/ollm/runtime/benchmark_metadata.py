@@ -99,6 +99,7 @@ def report_comparison_key(
     prompt_token_targets: tuple[int, ...],
     output_token_targets: tuple[int, ...],
     session_turns: int,
+    session_max_new_tokens: int,
 ) -> dict[str, object]:
     """Build a stable comparison key for one report run shape."""
 
@@ -112,6 +113,7 @@ def report_comparison_key(
         "prompt_token_targets": list(prompt_token_targets),
         "output_token_targets": list(output_token_targets),
         "session_turns": session_turns,
+        "session_max_new_tokens": session_max_new_tokens,
     }
 
 

@@ -99,16 +99,23 @@ uv run python scripts/benchmark_runtime.py \
   --profile full \
   --prompt-scale-tokens 32,128,512 \
   --output-scale-tokens 16,64,128 \
-  --session-turns 4
+  --session-turns 4 \
+  --session-max-new-tokens 4
 ```
 
 Interpretation notes:
 
 - family-wide results stay limited to cold-start and warm-runtime comparisons so the benchmark remains bounded
+- session-growth uses its own per-turn output cap instead of inheriting the output-scaling sweep, because repeated-turn probes are intended to measure retained-session growth rather than long-form generation throughput
 - prompt throughput is prompt tokens divided by TTFT/prefill latency
 - output throughput is generated output tokens divided by total generation latency
 - peak RSS includes a source label; long-lived warm/scaling/session probes use stage-local sampled peaks instead of process-lifetime peaks
 - allocator-gap metrics are reported as reserved-minus-allocated style slack when the backend exposes the required counters; unsupported backends serialize them as `null`
+
+On loader-streamed families such as optimized Gemma3 on CPU, a long per-turn
+session-growth response can become dominated by repeated safetensor layer reads
+instead of disk-KV behavior. The bounded `--session-max-new-tokens` default is
+there to keep this probe representative and practical on development machines.
 
 ## Native loader and KV IO profile
 

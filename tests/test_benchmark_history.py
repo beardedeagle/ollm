@@ -13,6 +13,7 @@ from ollm.runtime.benchmark_history import (
 from ollm.runtime.benchmark_metadata import (
     normalize_git_remote_url,
     probe_comparison_key,
+    report_comparison_key,
     resolve_history_codebase_label,
 )
 from ollm.runtime.benchmark_probe_types import (
@@ -217,6 +218,33 @@ def test_probe_comparison_key_includes_probe_specific_targets() -> None:
         prompt_token_targets=(32,),
         output_token_targets=(16,),
         session_turns=6,
+    )
+
+    assert first != second
+
+
+def test_report_comparison_key_includes_session_max_new_tokens() -> None:
+    first = report_comparison_key(
+        codebase_label="github.com/beardedeagle/ollm",
+        benchmark_model_reference="gemma3-12B",
+        device="cpu",
+        kv_cache_strategy="chunked",
+        profile_id="full",
+        prompt_token_targets=(32, 128, 512),
+        output_token_targets=(16, 64, 128),
+        session_turns=4,
+        session_max_new_tokens=4,
+    )
+    second = report_comparison_key(
+        codebase_label="github.com/beardedeagle/ollm",
+        benchmark_model_reference="gemma3-12B",
+        device="cpu",
+        kv_cache_strategy="chunked",
+        profile_id="full",
+        prompt_token_targets=(32, 128, 512),
+        output_token_targets=(16, 64, 128),
+        session_turns=4,
+        session_max_new_tokens=8,
     )
 
     assert first != second
