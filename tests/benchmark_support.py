@@ -71,6 +71,7 @@ def build_request_probe_metrics() -> RequestProbeMetrics:
             hot_layer_count=1,
             hot_tokens=16,
             hot_bytes=8192,
+            compaction_count=0,
             spill_count=0,
             spilled_tokens=0,
             cold_store_format=None,

@@ -287,3 +287,11 @@ def test_runtime_settings_accept_tiered_write_back_strategy() -> None:
 
     assert settings.kv_cache_strategy == "tiered-write-back"
     assert overrides.kv_cache_strategy == "tiered-write-back"
+
+
+def test_runtime_settings_accept_log_structured_journal_strategy() -> None:
+    settings = RuntimeSettings(kv_cache_strategy="log-structured-journal")
+    overrides = RuntimeConfigOverrides(kv_cache_strategy="log-structured-journal")
+
+    assert settings.kv_cache_strategy == "log-structured-journal"
+    assert overrides.kv_cache_strategy == "log-structured-journal"

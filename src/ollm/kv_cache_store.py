@@ -290,6 +290,12 @@ class ChunkedKVStore:
     def cold_store_format_id(self) -> str | None:
         return None
 
+    def compaction_count(self) -> int:
+        return 0
+
+    def consume_last_compaction_elapsed_seconds(self) -> float | None:
+        return None
+
     def _validate_chunk_pair(
         self, layer_idx: int, key_tensor: torch.Tensor, value_tensor: torch.Tensor
     ) -> None:

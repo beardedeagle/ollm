@@ -15,6 +15,7 @@ class KVCacheStateSnapshot:
     hot_layer_count: int
     hot_tokens: int
     hot_bytes: int
+    compaction_count: int
     spill_count: int
     spilled_tokens: int
     cold_store_format: str | None

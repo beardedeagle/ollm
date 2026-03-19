@@ -17,7 +17,7 @@ def _read_json(path: Path) -> dict[str, object]:
 
 
 def test_journal_store_appends_and_replays_layer_round_trip(tmp_path: Path) -> None:
-    store = JournaledKVStore(tmp_path / "cache-root")
+    store = JournaledKVStore(tmp_path / "cache-root", compaction_entry_threshold=0)
     store.initialize("test-policy")
 
     store.append_layer_chunk(0, (_chunk_tensor(3), _chunk_tensor(3, offset=100)))
@@ -41,12 +41,14 @@ def test_journal_store_appends_and_replays_layer_round_trip(tmp_path: Path) -> N
     assert torch.equal(loaded[1], expected_value)
     assert layer_manifest["layout"] == "journal-append"
     assert layer_manifest["persisted_tokens"] == 5
+    assert layer_manifest["compaction_count"] == 0
     assert len(entries) == 2
     assert store.persisted_artifact_count() == 2
+    assert store.compaction_count() == 0
 
 
 def test_journal_store_rejects_paths_outside_cache_root(tmp_path: Path) -> None:
-    store = JournaledKVStore(tmp_path / "cache-root")
+    store = JournaledKVStore(tmp_path / "cache-root", compaction_entry_threshold=0)
     store.initialize("test-policy")
     store.append_layer_chunk(0, (_chunk_tensor(3), _chunk_tensor(3, offset=100)))
 
@@ -57,7 +59,29 @@ def test_journal_store_rejects_paths_outside_cache_root(tmp_path: Path) -> None:
         json.dumps(layer_manifest, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
-    reloaded_store = JournaledKVStore(store.cache_folder)
+    reloaded_store = JournaledKVStore(store.cache_folder, compaction_entry_threshold=0)
 
     with pytest.raises(ValueError, match="must stay within the KV cache root"):
         reloaded_store.load_layer(0, device=torch.device("cpu"))
+
+
+def test_journal_store_compacts_after_threshold(tmp_path: Path) -> None:
+    store = JournaledKVStore(tmp_path / "cache-root", compaction_entry_threshold=2)
+    store.initialize("test-policy")
+
+    store.append_layer_chunk(0, (_chunk_tensor(2), _chunk_tensor(2, offset=100)))
+    store.append_layer_chunk(
+        0, (_chunk_tensor(2, offset=1000), _chunk_tensor(2, offset=2000))
+    )
+
+    layer_manifest = _read_json(store.cache_folder / "layers" / "0" / "manifest.json")
+    entries = layer_manifest["entries"]
+    assert isinstance(entries, list)
+
+    assert layer_manifest["persisted_tokens"] == 4
+    assert layer_manifest["compaction_count"] == 1
+    assert len(entries) == 1
+    assert store.persisted_artifact_count() == 1
+    assert store.compaction_count() == 1
+    assert store.consume_last_compaction_elapsed_seconds() is not None
+    assert store.consume_last_compaction_elapsed_seconds() is None

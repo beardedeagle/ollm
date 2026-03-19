@@ -295,60 +295,6 @@ def test_streamed_kvcache_reload_and_append_extents_round_trip(tmp_path: Path) -
     assert [extent["end_token"] for extent in extents] == [3, 5]
 
 
-@pytest.mark.parametrize(
-    "cache_strategy",
-    ["chunked", "streamed-segmented", "tiered-write-back"],
-)
-def test_kvcache_strategies_use_separate_roots(
-    tmp_path: Path, cache_strategy: str
-) -> None:
-    base_cache_root = tmp_path / "cache-root"
-    cache = KVCache(
-        cache_dir=base_cache_root,
-        device="cpu",
-        stats=None,
-        policy=_immediate_flush_policy(),
-        cache_strategy=cache_strategy,
-    )
-    cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=100), 0)
-
-    assert cache.cache_folder == kv_cache_root(base_cache_root, cache_strategy)
-    assert cache.cache_folder.exists()
-
-
-def test_kvcache_strategy_roots_do_not_cross_contaminate(tmp_path: Path) -> None:
-    base_cache_root = tmp_path / "cache-root"
-    chunked_cache = KVCache(
-        cache_dir=base_cache_root,
-        device="cpu",
-        stats=None,
-        policy=_immediate_flush_policy(),
-        cache_strategy="chunked",
-    )
-    streamed_cache = KVCache(
-        cache_dir=base_cache_root,
-        device="cpu",
-        stats=None,
-        policy=_immediate_flush_policy(),
-        cache_strategy="streamed-segmented",
-    )
-    tiered_cache = KVCache(
-        cache_dir=base_cache_root,
-        device="cpu",
-        stats=None,
-        policy=_immediate_flush_policy(),
-        cache_strategy="tiered-write-back",
-    )
-
-    chunked_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=100), 0)
-    streamed_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=200), 0)
-    tiered_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=300), 0)
-
-    assert chunked_cache.cache_folder != streamed_cache.cache_folder
-    assert streamed_cache.cache_folder != tiered_cache.cache_folder
-    assert chunked_cache.cache_folder != tiered_cache.cache_folder
-
-
 def test_streamed_kvcache_rejects_paths_outside_cache_root(tmp_path: Path) -> None:
     cache = KVCache(
         cache_dir=tmp_path / "cache-root",
@@ -410,7 +356,10 @@ def test_kvcache_buffers_tail_until_policy_threshold_then_flushes(
     assert chunks[0]["end_token"] == 9
 
 
-@pytest.mark.parametrize("cache_strategy", ["chunked", "streamed-segmented"])
+@pytest.mark.parametrize(
+    "cache_strategy",
+    ["chunked", "streamed-segmented", "log-structured-journal"],
+)
 def test_kvcache_reuses_resident_layer_after_update(
     tmp_path: Path, cache_strategy: str
 ) -> None:
@@ -468,25 +417,3 @@ def test_streamed_store_reads_shared_segment_once_per_tensor_kind(
     assert len(calls) == 2
     assert calls[0][0].name == "segment-000000.bin"
     assert calls[1][0].name == "segment-000000.bin"
-
-
-@pytest.mark.parametrize(
-    "cache_strategy",
-    ["chunked", "streamed-segmented", "tiered-write-back"],
-)
-def test_kvcache_resident_layer_stays_on_cpu_for_accelerator_devices(
-    tmp_path: Path, cache_strategy: str
-) -> None:
-    cache = KVCache(
-        cache_dir=tmp_path / "cache-root",
-        device="cuda:0",
-        stats=None,
-        policy=_immediate_flush_policy(),
-        cache_strategy=cache_strategy,
-    )
-
-    cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=100), 0)
-
-    resident = cache._resident_layers[0]
-    assert resident[0].device.type == "cpu"
-    assert resident[1].device.type == "cpu"

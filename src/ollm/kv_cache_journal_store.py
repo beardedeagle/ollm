@@ -1,6 +1,7 @@
 """Append-only journal-backed KV store for tiered cold spill."""
 
 import json
+import time
 from pathlib import Path
 
 import torch
@@ -12,6 +13,7 @@ from ollm.async_io import (
     path_read_bytes_range,
 )
 from ollm.kv_cache_journal_manifest import (
+    DEFAULT_JOURNAL_COMPACTION_ENTRY_THRESHOLD,
     JOURNAL_FILE_NAME,
     KVJournalEntryMetadata,
     KVJournalLayerManifest,
@@ -21,6 +23,7 @@ from ollm.kv_cache_store_common import (
     CACHE_SCHEMA_VERSION,
     PERSISTED_DEVICE,
     SEQUENCE_AXIS,
+    atomic_write_bytes,
     atomic_write_text,
     decode_tensor_bytes,
     dtype_from_name,
@@ -38,12 +41,21 @@ _CACHE_FORMAT = "ollm-kv-journal"
 
 
 class JournaledKVStore:
-    def __init__(self, cache_folder: Path) -> None:
+    def __init__(
+        self,
+        cache_folder: Path,
+        *,
+        compaction_entry_threshold: int = DEFAULT_JOURNAL_COMPACTION_ENTRY_THRESHOLD,
+    ) -> None:
+        if compaction_entry_threshold < 0:
+            raise ValueError("compaction_entry_threshold must be zero or greater")
         self.cache_folder = cache_folder
         self.layers_folder = cache_folder / "layers"
         self.root_manifest_path = cache_folder / "manifest.json"
+        self.compaction_entry_threshold = compaction_entry_threshold
         self._root_manifest_cache: tuple[tuple[int, ...], str] | None = None
         self._layer_manifest_cache: dict[int, KVJournalLayerManifest | None] = {}
+        self._last_compaction_elapsed_seconds: float | None = None
 
     def initialize(self, policy_id: str) -> None:
         path_mkdir(self.layers_folder, parents=True, exist_ok=True)
@@ -86,6 +98,7 @@ class JournaledKVStore:
 
         key_bytes = encode_tensor_bytes(key_tensor)
         value_bytes = encode_tensor_bytes(value_tensor)
+        self._last_compaction_elapsed_seconds = None
         layer_manifest = self._read_layer_manifest(layer_idx)
         if layer_manifest is None:
             layer_folder = self.layers_folder / str(layer_idx)
@@ -125,12 +138,19 @@ class JournaledKVStore:
             layout=layer_manifest.layout,
             sequence_axis=SEQUENCE_AXIS,
             persisted_tokens=end_token,
+            compaction_count=layer_manifest.compaction_count,
             key_journal_path=layer_manifest.key_journal_path,
             value_journal_path=layer_manifest.value_journal_path,
             entries=layer_manifest.entries + (entry,),
         )
         validate_journal_layer_manifest(updated_manifest)
         self._write_layer_manifest(updated_manifest)
+        if self._should_compact(updated_manifest):
+            compact_started_at = time.perf_counter()
+            updated_manifest = self._compact_layer(updated_manifest)
+            self._last_compaction_elapsed_seconds = (
+                time.perf_counter() - compact_started_at
+            )
 
         root_layers, policy_id = self._read_root_manifest()
         if layer_idx not in root_layers:
@@ -163,6 +183,20 @@ class JournaledKVStore:
 
     def cold_store_format_id(self) -> str | None:
         return None
+
+    def compaction_count(self) -> int:
+        total_compactions = 0
+        for layer_idx in self.persisted_layer_ids():
+            manifest = self._read_layer_manifest(layer_idx)
+            if manifest is None:
+                continue
+            total_compactions += manifest.compaction_count
+        return total_compactions
+
+    def consume_last_compaction_elapsed_seconds(self) -> float | None:
+        elapsed_seconds = self._last_compaction_elapsed_seconds
+        self._last_compaction_elapsed_seconds = None
+        return elapsed_seconds
 
     def _validate_chunk_pair(
         self, layer_idx: int, key_tensor: torch.Tensor, value_tensor: torch.Tensor
@@ -209,6 +243,12 @@ class JournaledKVStore:
                 f"Unsupported KV cache persisted device: {payload['persisted_device']!r}"
             )
         policy_id = require_str(payload, "policy_id")
+        compaction_entry_threshold = require_int(payload, "compaction_entry_threshold")
+        if compaction_entry_threshold != self.compaction_entry_threshold:
+            raise ValueError(
+                "Unsupported KV journal compaction entry threshold: "
+                f"{compaction_entry_threshold}"
+            )
         layers_payload = payload.get("layers")
         if not isinstance(layers_payload, list):
             raise ValueError("KV root manifest layers must be a JSON list")
@@ -229,6 +269,7 @@ class JournaledKVStore:
                     "chunk_axis": SEQUENCE_AXIS,
                     "persisted_device": PERSISTED_DEVICE,
                     "policy_id": policy_id,
+                    "compaction_entry_threshold": self.compaction_entry_threshold,
                     "layers": list(layers),
                 },
                 indent=2,
@@ -323,3 +364,65 @@ class JournaledKVStore:
             raise ValueError(f"KV cache chunk path escapes cache root: {path}")
         if not path_exists(path):
             raise ValueError(f"KV cache chunk file is missing: {path}")
+
+    def _should_compact(self, manifest: KVJournalLayerManifest) -> bool:
+        if self.compaction_entry_threshold <= 0:
+            return False
+        return len(manifest.entries) >= self.compaction_entry_threshold
+
+    def _compact_layer(
+        self, manifest: KVJournalLayerManifest
+    ) -> KVJournalLayerManifest:
+        key_tensor, value_tensor = self._load_layer_cpu_from_manifest(manifest)
+        key_journal_path = self.cache_folder / manifest.key_journal_path
+        value_journal_path = self.cache_folder / manifest.value_journal_path
+        key_bytes = encode_tensor_bytes(key_tensor)
+        value_bytes = encode_tensor_bytes(value_tensor)
+        atomic_write_bytes(key_journal_path, key_bytes)
+        atomic_write_bytes(value_journal_path, value_bytes)
+        compacted_manifest = KVJournalLayerManifest(
+            layer_idx=manifest.layer_idx,
+            layout=manifest.layout,
+            sequence_axis=manifest.sequence_axis,
+            persisted_tokens=manifest.persisted_tokens,
+            compaction_count=manifest.compaction_count + 1,
+            key_journal_path=manifest.key_journal_path,
+            value_journal_path=manifest.value_journal_path,
+            entries=(
+                KVJournalEntryMetadata(
+                    start_token=0,
+                    end_token=manifest.persisted_tokens,
+                    key_dtype=dtype_name(key_tensor.dtype),
+                    value_dtype=dtype_name(value_tensor.dtype),
+                    key_shape=tuple(key_tensor.shape),
+                    value_shape=tuple(value_tensor.shape),
+                    key_offset=0,
+                    value_offset=0,
+                    key_nbytes=len(key_bytes),
+                    value_nbytes=len(value_bytes),
+                ),
+            ),
+        )
+        validate_journal_layer_manifest(compacted_manifest)
+        self._write_layer_manifest(compacted_manifest)
+        return compacted_manifest
+
+    def _load_layer_cpu_from_manifest(
+        self, manifest: KVJournalLayerManifest
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        key_journal_path = self.cache_folder / manifest.key_journal_path
+        value_journal_path = self.cache_folder / manifest.value_journal_path
+        key_chunks = self._read_journal_chunks(
+            key_journal_path,
+            manifest.entries,
+            kind="key",
+        )
+        value_chunks = self._read_journal_chunks(
+            value_journal_path,
+            manifest.entries,
+            kind="value",
+        )
+        return (
+            torch.cat(key_chunks, dim=SEQUENCE_AXIS),
+            torch.cat(value_chunks, dim=SEQUENCE_AXIS),
+        )

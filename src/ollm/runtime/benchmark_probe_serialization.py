@@ -267,6 +267,7 @@ def _parse_cache_state(value: object) -> KVCacheStateSnapshot | None:
         hot_layer_count=_require_int(payload, "hot_layer_count"),
         hot_tokens=_require_int(payload, "hot_tokens"),
         hot_bytes=_require_int(payload, "hot_bytes"),
+        compaction_count=_require_int(payload, "compaction_count"),
         spill_count=_require_int(payload, "spill_count"),
         spilled_tokens=_require_int(payload, "spilled_tokens"),
         cold_store_format=_optional_string(payload, "cold_store_format"),

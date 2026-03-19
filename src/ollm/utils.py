@@ -27,6 +27,11 @@ class Stats:
 
     def set(self, name: str, started_at: float) -> None:
         elapsed_seconds = time.perf_counter() - started_at
+        self.record_elapsed_seconds(name, elapsed_seconds)
+
+    def record_elapsed_seconds(self, name: str, elapsed_seconds: float) -> None:
+        if elapsed_seconds < 0:
+            raise ValueError("elapsed_seconds must be zero or greater")
         self._samples_seconds.setdefault(name, []).append(elapsed_seconds)
 
     def clear(self) -> None:

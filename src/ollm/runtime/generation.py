@@ -297,6 +297,7 @@ class RuntimeExecutor:
                     ),
                     "kv_cache_hot_tokens": str(cache_state.hot_tokens),
                     "kv_cache_hot_layers": str(cache_state.hot_layer_count),
+                    "kv_cache_compaction_count": str(cache_state.compaction_count),
                     "kv_cache_spill_count": str(cache_state.spill_count),
                     "kv_cache_spilled_tokens": str(cache_state.spilled_tokens),
                 }

@@ -35,6 +35,9 @@ dtype/shape/sequence metadata and raw payloads instead of pickle-backed torch
 artifacts. When the selected runtime uses
 `kv_cache_strategy="streamed-segmented"`, it writes to
 `cache_dir/kv_cache_streamed_segmented` instead. When it uses
+`kv_cache_strategy="log-structured-journal"`, it writes to
+`cache_dir/kv_cache_log_structured_journal` and compacts journal metadata
+deterministically once the configured entry threshold is reached. When it uses
 `kv_cache_strategy="tiered-write-back"`, it writes the cold tier to
 `cache_dir/kv_cache_tiered_write_back` through a journal-backed append store
 while keeping a bounded hot tail in memory. The active runtime then applies a

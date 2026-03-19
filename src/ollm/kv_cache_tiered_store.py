@@ -30,7 +30,9 @@ class TieredWriteBackKVStore:
         self.cache_folder = cache_folder
         self.root_manifest_path = cache_folder / "manifest.json"
         self.cold_root = cache_folder / _COLD_STORE_ROOT
-        self._cold_store = JournaledKVStore(self.cold_root)
+        self._cold_store = JournaledKVStore(
+            self.cold_root, compaction_entry_threshold=0
+        )
         self._root_manifest_cache: tuple[tuple[int, ...], str] | None = None
 
     def initialize(self, policy_id: str) -> None:
@@ -65,6 +67,12 @@ class TieredWriteBackKVStore:
 
     def cold_store_format_id(self) -> str | None:
         return _COLD_STORE_FORMAT
+
+    def compaction_count(self) -> int:
+        return self._cold_store.compaction_count()
+
+    def consume_last_compaction_elapsed_seconds(self) -> float | None:
+        return self._cold_store.consume_last_compaction_elapsed_seconds()
 
     def _read_root_manifest(self) -> tuple[tuple[int, ...], str]:
         if self._root_manifest_cache is not None:

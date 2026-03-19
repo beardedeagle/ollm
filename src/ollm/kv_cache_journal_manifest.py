@@ -18,6 +18,7 @@ from ollm.kv_cache_store_common import (
 
 JOURNAL_CACHE_LAYOUT = "journal-append"
 JOURNAL_FILE_NAME = "journal.bin"
+DEFAULT_JOURNAL_COMPACTION_ENTRY_THRESHOLD = 8
 
 
 @dataclass(slots=True, frozen=True)
@@ -79,6 +80,7 @@ class KVJournalLayerManifest:
     layout: str
     sequence_axis: int
     persisted_tokens: int
+    compaction_count: int
     key_journal_path: str
     value_journal_path: str
     entries: tuple[KVJournalEntryMetadata, ...]
@@ -89,6 +91,7 @@ class KVJournalLayerManifest:
             "layout": self.layout,
             "sequence_axis": self.sequence_axis,
             "persisted_tokens": self.persisted_tokens,
+            "compaction_count": self.compaction_count,
             "key_journal_path": self.key_journal_path,
             "value_journal_path": self.value_journal_path,
             "entries": [entry.to_dict() for entry in self.entries],
@@ -101,6 +104,7 @@ class KVJournalLayerManifest:
             layout=JOURNAL_CACHE_LAYOUT,
             sequence_axis=SEQUENCE_AXIS,
             persisted_tokens=0,
+            compaction_count=0,
             key_journal_path=key_journal_path,
             value_journal_path=value_journal_path,
             entries=(),
@@ -113,6 +117,7 @@ class KVJournalLayerManifest:
             layout=require_str(payload, "layout"),
             sequence_axis=require_int(payload, "sequence_axis"),
             persisted_tokens=require_int(payload, "persisted_tokens"),
+            compaction_count=require_int(payload, "compaction_count"),
             key_journal_path=require_relative_path(payload, "key_journal_path"),
             value_journal_path=require_relative_path(payload, "value_journal_path"),
             entries=tuple(
@@ -133,6 +138,8 @@ def validate_journal_layer_manifest(manifest: KVJournalLayerManifest) -> None:
         raise ValueError(
             f"Unsupported KV cache sequence axis: {manifest.sequence_axis}"
         )
+    if manifest.compaction_count < 0:
+        raise ValueError("compaction_count must be zero or greater")
     if not manifest.entries:
         raise ValueError(f"KV layer manifest {manifest.layer_idx} has no entries")
     next_expected_start = 0

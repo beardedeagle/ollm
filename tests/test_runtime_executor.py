@@ -67,6 +67,7 @@ class FakeCache:
             hot_layer_count=1,
             hot_tokens=8,
             hot_bytes=1024,
+            compaction_count=1,
             spill_count=3,
             spilled_tokens=56,
             cold_store_format="ollm-kv-journal",
@@ -563,4 +564,5 @@ def test_runtime_executor_includes_kv_cache_state_metadata() -> None:
     assert response.metadata["kv_cache_persisted_artifacts"] == "5"
     assert response.metadata["kv_cache_cold_store_format"] == "ollm-kv-journal"
     assert response.metadata["kv_cache_hot_tokens"] == "8"
+    assert response.metadata["kv_cache_compaction_count"] == "1"
     assert response.metadata["kv_cache_spill_count"] == "3"

@@ -31,6 +31,7 @@ _STORAGE_PATH_BY_EVENT = {
     "offloaded_cpu_to_cuda": "cpu-offloaded-artifacts",
     "kvload": "disk-kv-cache",
     "kvsave": "disk-kv-cache",
+    "kvcompact": "disk-kv-cache",
     "torch_file_load": "torch-artifact-io",
 }
 

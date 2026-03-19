@@ -280,6 +280,9 @@ def summarize_cache_states(
         "hot_bytes": summarize_numeric_values(
             [float(snapshot.hot_bytes) for snapshot in snapshots]
         ),
+        "compaction_count": summarize_numeric_values(
+            [float(snapshot.compaction_count) for snapshot in snapshots]
+        ),
         "cold_store_format": single_optional_string(
             [
                 snapshot.cold_store_format

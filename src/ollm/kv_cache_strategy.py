@@ -6,12 +6,14 @@ DEFAULT_KV_CACHE_STRATEGY = "chunked"
 KNOWN_KV_CACHE_STRATEGY_IDS = (
     "chunked",
     "streamed-segmented",
+    "log-structured-journal",
     "tiered-write-back",
 )
 
 _CACHE_ROOT_BY_STRATEGY = {
     "chunked": "kv_cache_chunked",
     "streamed-segmented": "kv_cache_streamed_segmented",
+    "log-structured-journal": "kv_cache_log_structured_journal",
     "tiered-write-back": "kv_cache_tiered_write_back",
 }
 

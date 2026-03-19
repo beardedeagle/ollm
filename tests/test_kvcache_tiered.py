@@ -60,6 +60,7 @@ def test_tiered_write_back_spills_oldest_prefix_and_keeps_hot_tail(
     assert state.persisted_tokens == 4
     assert state.persisted_artifact_count == 1
     assert state.hot_tokens == 3
+    assert state.compaction_count == 0
     assert state.spill_count == 1
     assert state.spilled_tokens == 4
     assert state.cold_store_format == "ollm-kv-journal"
@@ -109,6 +110,7 @@ def test_tiered_write_back_round_trips_across_repeated_updates(tmp_path: Path) -
     assert state.persisted_tokens == 7
     assert state.persisted_artifact_count == 2
     assert state.hot_tokens == 3
+    assert state.compaction_count == 0
     assert state.spill_count == 2
     assert state.spilled_tokens == 7
     assert state.cold_store_format == "ollm-kv-journal"

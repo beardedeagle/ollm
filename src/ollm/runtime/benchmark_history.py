@@ -28,9 +28,11 @@ _HIGHER_IS_WORSE_METRICS = {
     "accelerator_peak_reserved_mb",
     "kvload_ms",
     "kvsave_ms",
+    "kvcompact_ms",
     "persisted_tokens",
     "persisted_artifact_count",
     "hot_tokens",
+    "compaction_count",
     "spill_count",
     "spilled_tokens",
 }
@@ -157,6 +159,7 @@ def summarize_benchmark_payload(
             ),
             "kvload_ms": _event_total_ms(request, "kvload"),
             "kvsave_ms": _event_total_ms(request, "kvsave"),
+            "kvcompact_ms": _event_total_ms(request, "kvcompact"),
             "persisted_tokens": _optional_int(
                 None if cache_state is None else cache_state.get("persisted_tokens")
             ),
@@ -167,6 +170,9 @@ def summarize_benchmark_payload(
             ),
             "hot_tokens": _optional_int(
                 None if cache_state is None else cache_state.get("hot_tokens")
+            ),
+            "compaction_count": _optional_int(
+                None if cache_state is None else cache_state.get("compaction_count")
             ),
             "cold_store_format": (
                 None if cache_state is None else cache_state.get("cold_store_format")
@@ -225,6 +231,9 @@ def summarize_benchmark_payload(
             "kvsave_ms": _mean_optional_float(
                 _event_total_ms(request, "kvsave") for request in requests
             ),
+            "kvcompact_ms": _mean_optional_float(
+                _event_total_ms(request, "kvcompact") for request in requests
+            ),
             "persisted_tokens": _mean_optional_int(
                 None if cache_state is None else cache_state.get("persisted_tokens")
                 for cache_state in cache_states
@@ -237,6 +246,10 @@ def summarize_benchmark_payload(
             ),
             "hot_tokens": _mean_optional_int(
                 None if cache_state is None else cache_state.get("hot_tokens")
+                for cache_state in cache_states
+            ),
+            "compaction_count": _mean_optional_int(
+                None if cache_state is None else cache_state.get("compaction_count")
                 for cache_state in cache_states
             ),
             "cold_store_format": _single_optional_string(

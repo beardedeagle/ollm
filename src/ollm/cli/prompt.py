@@ -75,7 +75,8 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
             None,
             "--kv-cache-strategy",
             help=(
-                "Disk KV strategy: chunked, streamed-segmented, or tiered-write-back."
+                "Disk KV strategy: chunked, streamed-segmented, "
+                "log-structured-journal, or tiered-write-back."
             ),
         ),
         offload_cpu_layers: int | None = typer.Option(
