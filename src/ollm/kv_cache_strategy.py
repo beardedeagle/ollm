@@ -3,11 +3,16 @@
 from pathlib import Path
 
 DEFAULT_KV_CACHE_STRATEGY = "chunked"
-KNOWN_KV_CACHE_STRATEGY_IDS = ("chunked", "streamed-segmented")
+KNOWN_KV_CACHE_STRATEGY_IDS = (
+    "chunked",
+    "streamed-segmented",
+    "tiered-write-back",
+)
 
 _CACHE_ROOT_BY_STRATEGY = {
     "chunked": "kv_cache_chunked",
     "streamed-segmented": "kv_cache_streamed_segmented",
+    "tiered-write-back": "kv_cache_tiered_write_back",
 }
 
 

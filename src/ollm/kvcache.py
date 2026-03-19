@@ -1,11 +1,13 @@
 import time
 from pathlib import Path
+from typing import Protocol
 
 import torch
 from transformers import DynamicCache
 
 from ollm.async_io import path_exists, path_mkdir, remove_tree
 from ollm.kv_cache_policy import KVCachePolicy, select_kv_cache_policy
+from ollm.kv_cache_state import KVCacheStateSnapshot
 from ollm.kv_cache_store import ChunkedKVStore
 from ollm.kv_cache_strategy import (
     DEFAULT_KV_CACHE_STRATEGY,
@@ -13,9 +15,26 @@ from ollm.kv_cache_strategy import (
     normalize_kv_cache_strategy,
 )
 from ollm.kv_cache_streamed_store import StreamedSegmentedKVStore
+from ollm.kv_cache_tiered_store import TieredWriteBackKVStore
 from ollm.utils import Stats
 
 _EMPTY_CACHE_PLACEHOLDER = torch.empty(0)
+
+
+class _KVCacheStoreProtocol(Protocol):
+    def initialize(self, policy_id: str) -> None: ...
+
+    def load_layer(
+        self, layer_idx: int, *, device: torch.device
+    ) -> tuple[torch.Tensor, torch.Tensor] | None: ...
+
+    def append_layer_chunk(
+        self, layer_idx: int, tensors: tuple[torch.Tensor, torch.Tensor]
+    ) -> None: ...
+
+    def persisted_layer_ids(self) -> tuple[int, ...]: ...
+
+    def persisted_token_count(self) -> int: ...
 
 
 class oCache:
@@ -43,19 +62,27 @@ class oCache:
         path_mkdir(self.cache_folder, parents=True, exist_ok=True)
         self.device = torch.device(device)
         self.stats = stats
-        self.policy = select_kv_cache_policy(self.device) if policy is None else policy
+        self.policy = (
+            select_kv_cache_policy(self.device, strategy=self.cache_strategy)
+            if policy is None
+            else policy
+        )
+        self._resident_layers: dict[int, tuple[torch.Tensor, torch.Tensor]] = {}
         self._pending_tails: dict[int, tuple[torch.Tensor, torch.Tensor]] = {}
+        self._hot_tails: dict[int, tuple[torch.Tensor, torch.Tensor]] = {}
+        self._spill_count = 0
+        self._spilled_tokens = 0
         self._cache_store = _build_cache_store(self.cache_folder, self.cache_strategy)
         self._cache_store.initialize(self.policy.policy_id)
 
     def load_from_disk(
         self, layer_idx: int
     ) -> tuple[torch.Tensor, torch.Tensor] | None:
-        started_at = time.perf_counter()
-        tensors = self._cache_store.load_layer(layer_idx, device=self.device)
-        if tensors is not None and self.stats is not None:
-            self.stats.set("kvload", started_at)
-        pending = self._pending_tails.get(layer_idx)
+        resident = self._resident_layers.get(layer_idx)
+        if resident is not None:
+            return _resident_layer_for_device(resident, self.device)
+        tensors = self._load_cold_layer(layer_idx)
+        pending = self._resident_tail(layer_idx)
         if pending is None:
             return tensors
         if tensors is None:
@@ -65,6 +92,9 @@ class oCache:
     def save_to_disk(
         self, tensors: tuple[torch.Tensor, torch.Tensor], layer_idx: int
     ) -> None:
+        if self.cache_strategy == "tiered-write-back":
+            self._save_tiered_write_back(tensors, layer_idx)
+            return
         pending = self._pending_tails.get(layer_idx)
         buffered = (
             tensors if pending is None else _concat_tensor_pairs(pending, tensors)
@@ -81,6 +111,76 @@ class oCache:
         if self.stats is not None:
             self.stats.set("kvsave", started_at)
 
+    def cache_state_snapshot(self) -> KVCacheStateSnapshot:
+        hot_tails = (
+            self._hot_tails
+            if self.cache_strategy == "tiered-write-back"
+            else self._pending_tails
+        )
+        return KVCacheStateSnapshot(
+            strategy_id=self.cache_strategy,
+            policy_id=self.policy.policy_id,
+            persisted_layer_count=len(self._cache_store.persisted_layer_ids()),
+            persisted_tokens=self._cache_store.persisted_token_count(),
+            hot_layer_count=len(hot_tails),
+            hot_tokens=sum(_sequence_length(pair[0]) for pair in hot_tails.values()),
+            hot_bytes=sum(_tensor_pair_nbytes(pair) for pair in hot_tails.values()),
+            spill_count=self._spill_count,
+            spilled_tokens=self._spilled_tokens,
+        )
+
+    def _resident_tail(
+        self, layer_idx: int
+    ) -> tuple[torch.Tensor, torch.Tensor] | None:
+        if self.cache_strategy == "tiered-write-back":
+            return self._hot_tails.get(layer_idx)
+        return self._pending_tails.get(layer_idx)
+
+    def _save_tiered_write_back(
+        self, tensors: tuple[torch.Tensor, torch.Tensor], layer_idx: int
+    ) -> None:
+        pending = self._hot_tails.get(layer_idx)
+        buffered = (
+            tensors if pending is None else _concat_tensor_pairs(pending, tensors)
+        )
+        spill_tokens = self.policy.write_back_spill_token_count(
+            pending_tokens=_sequence_length(buffered[0]),
+            pending_bytes=_tensor_pair_nbytes(buffered),
+        )
+        if spill_tokens <= 0:
+            self._hot_tails[layer_idx] = buffered
+            return
+
+        cold_tensors, hot_tensors = _split_tensor_pair(buffered, spill_tokens)
+        started_at = time.perf_counter()
+        self._cache_store.append_layer_chunk(layer_idx, cold_tensors)
+        self._spill_count += 1
+        self._spilled_tokens += spill_tokens
+        if hot_tensors is None:
+            self._hot_tails.pop(layer_idx, None)
+        else:
+            self._hot_tails[layer_idx] = hot_tensors
+        if self.stats is not None:
+            self.stats.set("kvsave", started_at)
+
+    def _load_cold_layer(
+        self, layer_idx: int
+    ) -> tuple[torch.Tensor, torch.Tensor] | None:
+        started_at = time.perf_counter()
+        tensors = self._cache_store.load_layer(layer_idx, device=self.device)
+        if tensors is not None and self.stats is not None:
+            self.stats.set("kvload", started_at)
+        return tensors
+
+    def _remember_resident_layer(
+        self,
+        layer_idx: int,
+        tensors: tuple[torch.Tensor, torch.Tensor],
+    ) -> None:
+        self._resident_layers[layer_idx] = _to_resident_tensor_pair(
+            tensors, device=self.device
+        )
+
 
 def _concat_tensor_pairs(
     left: tuple[torch.Tensor, torch.Tensor],
@@ -96,14 +196,75 @@ def _tensor_pair_nbytes(tensors: tuple[torch.Tensor, torch.Tensor]) -> int:
     return sum(tensor.numel() * tensor.element_size() for tensor in tensors)
 
 
+def _to_cpu_tensor_pair(
+    tensors: tuple[torch.Tensor, torch.Tensor],
+) -> tuple[torch.Tensor, torch.Tensor]:
+    return tuple(tensor.detach().cpu().contiguous() for tensor in tensors)  # type: ignore[return-value]
+
+
+def _to_resident_tensor_pair(
+    tensors: tuple[torch.Tensor, torch.Tensor],
+    *,
+    device: torch.device,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    if device.type == "cpu":
+        return tuple(tensor.detach().contiguous() for tensor in tensors)  # type: ignore[return-value]
+    return _to_cpu_tensor_pair(tensors)
+
+
+def _move_tensor_pair(
+    tensors: tuple[torch.Tensor, torch.Tensor],
+    device: torch.device,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    return tuple(tensor.to(device) for tensor in tensors)  # type: ignore[return-value]
+
+
+def _resident_layer_for_device(
+    tensors: tuple[torch.Tensor, torch.Tensor],
+    device: torch.device,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    if device.type == "cpu":
+        return tensors
+    return _move_tensor_pair(tensors, device)
+
+
 def _build_cache_store(
     cache_folder: Path, cache_strategy: str
-) -> ChunkedKVStore | StreamedSegmentedKVStore:
+) -> _KVCacheStoreProtocol:
     if cache_strategy == "chunked":
         return ChunkedKVStore(cache_folder)
     if cache_strategy == "streamed-segmented":
         return StreamedSegmentedKVStore(cache_folder)
+    if cache_strategy == "tiered-write-back":
+        return TieredWriteBackKVStore(cache_folder)
     raise ValueError(f"Unsupported KV cache strategy: {cache_strategy}")
+
+
+def _sequence_length(tensor: torch.Tensor) -> int:
+    return int(tensor.shape[-2])
+
+
+def _split_tensor_pair(
+    tensors: tuple[torch.Tensor, torch.Tensor],
+    split_tokens: int,
+) -> tuple[
+    tuple[torch.Tensor, torch.Tensor],
+    tuple[torch.Tensor, torch.Tensor] | None,
+]:
+    total_tokens = _sequence_length(tensors[0])
+    if split_tokens <= 0 or split_tokens > total_tokens:
+        raise ValueError("split_tokens must stay within the tensor sequence length")
+    prefix = (
+        tensors[0][..., :split_tokens, :].contiguous(),
+        tensors[1][..., :split_tokens, :].contiguous(),
+    )
+    if split_tokens == total_tokens:
+        return prefix, None
+    suffix = (
+        tensors[0][..., split_tokens:, :].contiguous(),
+        tensors[1][..., split_tokens:, :].contiguous(),
+    )
+    return prefix, suffix
 
 
 class KVCache(DynamicCache, oCache):
@@ -130,6 +291,7 @@ class KVCache(DynamicCache, oCache):
             self.layers[layer_idx].keys, self.layers[layer_idx].values = tensors
 
         out = super().update(key_states, value_states, layer_idx, cache_kwargs)
+        self._remember_resident_layer(layer_idx, out)
         self.save_to_disk((key_states, value_states), layer_idx)
         self.layers[layer_idx].keys, self.layers[layer_idx].values = (
             _EMPTY_CACHE_PLACEHOLDER,

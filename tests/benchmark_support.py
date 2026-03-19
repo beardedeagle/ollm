@@ -1,3 +1,4 @@
+from ollm.kv_cache_state import KVCacheStateSnapshot
 from ollm.runtime.benchmark_probes import (
     EventTimingSummary,
     NativeRuntimeProfile,
@@ -61,6 +62,17 @@ def build_request_probe_metrics() -> RequestProbeMetrics:
         cache_mode="disk-kv",
         kv_cache_strategy="chunked",
         cache_dir_size_mb=12.0,
+        cache_state=KVCacheStateSnapshot(
+            strategy_id="chunked",
+            policy_id="test-policy",
+            persisted_layer_count=2,
+            persisted_tokens=128,
+            hot_layer_count=1,
+            hot_tokens=16,
+            hot_bytes=8192,
+            spill_count=0,
+            spilled_tokens=0,
+        ),
         allocator_gap_mb=20.0,
         allocator_gap_ratio=0.066667,
         native_runtime_profile=build_native_runtime_profile(),

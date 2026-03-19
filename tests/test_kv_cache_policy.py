@@ -43,3 +43,19 @@ def test_select_kv_cache_policy_uses_windows_cuda_profile() -> None:
 
     assert policy.policy_id == "windows-cuda-balanced"
     assert policy.flush_token_threshold == 128
+
+
+def test_select_kv_cache_policy_uses_tiered_profile_for_mps() -> None:
+    policy = select_kv_cache_policy(
+        torch.device("mps"),
+        strategy="tiered-write-back",
+        resource_snapshot=KVCacheResourceSnapshot(
+            platform="darwin",
+            available_system_memory_bytes=32 * 1024 * 1024 * 1024,
+            available_accelerator_memory_bytes=None,
+        ),
+    )
+
+    assert policy.policy_id == "darwin-mps-tiered"
+    assert policy.flush_token_threshold == 16
+    assert policy.write_back_retained_tokens == 4

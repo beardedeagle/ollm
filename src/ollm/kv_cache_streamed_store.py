@@ -1,7 +1,6 @@
 """Streamed append/read disk KV store with explicit segment metadata."""
 
 import json
-from dataclasses import dataclass
 from pathlib import Path
 
 import torch
@@ -25,185 +24,19 @@ from ollm.kv_cache_store_common import (
     read_json_object,
     require_int,
     require_int_value,
-    require_object_list,
-    require_relative_path,
-    require_shape,
     require_str,
     sequence_length,
     shape_prefix,
 )
+from ollm.kv_cache_streamed_manifest import (
+    DEFAULT_SEGMENT_BYTES_TARGET,
+    STREAMED_CACHE_LAYOUT,
+    KVStreamExtentMetadata,
+    KVStreamLayerManifest,
+    validate_stream_layer_manifest,
+)
 
 _CACHE_FORMAT = "ollm-kv-streamed-segmented"
-_CACHE_LAYOUT = "streamed-segmented"
-_DEFAULT_SEGMENT_BYTES_TARGET = 8 * 1024 * 1024
-
-
-@dataclass(slots=True, frozen=True)
-class KVStreamExtentMetadata:
-    start_token: int
-    end_token: int
-    key_dtype: str
-    value_dtype: str
-    key_shape: tuple[int, ...]
-    value_shape: tuple[int, ...]
-    key_path: str
-    value_path: str
-    key_offset: int
-    value_offset: int
-    key_nbytes: int
-    value_nbytes: int
-
-    @property
-    def token_count(self) -> int:
-        return self.end_token - self.start_token
-
-    def to_dict(self) -> dict[str, object]:
-        return {
-            "start_token": self.start_token,
-            "end_token": self.end_token,
-            "key_dtype": self.key_dtype,
-            "value_dtype": self.value_dtype,
-            "key_shape": list(self.key_shape),
-            "value_shape": list(self.value_shape),
-            "key_path": self.key_path,
-            "value_path": self.value_path,
-            "key_offset": self.key_offset,
-            "value_offset": self.value_offset,
-            "key_nbytes": self.key_nbytes,
-            "value_nbytes": self.value_nbytes,
-        }
-
-    @classmethod
-    def from_dict(cls, payload: dict[str, object]):
-        start_token = require_int(payload, "start_token")
-        end_token = require_int(payload, "end_token")
-        if end_token <= start_token:
-            raise ValueError(
-                f"Invalid KV extent token range: start={start_token} end={end_token}"
-            )
-        key_offset = require_int(payload, "key_offset")
-        value_offset = require_int(payload, "value_offset")
-        key_nbytes = require_int(payload, "key_nbytes")
-        value_nbytes = require_int(payload, "value_nbytes")
-        if key_offset < 0 or value_offset < 0:
-            raise ValueError("KV extent offsets must be zero or greater")
-        if key_nbytes <= 0 or value_nbytes <= 0:
-            raise ValueError("KV extent byte lengths must be greater than zero")
-        return cls(
-            start_token=start_token,
-            end_token=end_token,
-            key_dtype=require_str(payload, "key_dtype"),
-            value_dtype=require_str(payload, "value_dtype"),
-            key_shape=require_shape(payload, "key_shape"),
-            value_shape=require_shape(payload, "value_shape"),
-            key_path=require_relative_path(payload, "key_path"),
-            value_path=require_relative_path(payload, "value_path"),
-            key_offset=key_offset,
-            value_offset=value_offset,
-            key_nbytes=key_nbytes,
-            value_nbytes=value_nbytes,
-        )
-
-
-@dataclass(slots=True, frozen=True)
-class KVStreamLayerManifest:
-    layer_idx: int
-    layout: str
-    sequence_axis: int
-    persisted_tokens: int
-    segment_bytes_target: int
-    extents: tuple[KVStreamExtentMetadata, ...]
-
-    def to_dict(self) -> dict[str, object]:
-        return {
-            "layer_idx": self.layer_idx,
-            "layout": self.layout,
-            "sequence_axis": self.sequence_axis,
-            "persisted_tokens": self.persisted_tokens,
-            "segment_bytes_target": self.segment_bytes_target,
-            "extents": [extent.to_dict() for extent in self.extents],
-        }
-
-    @classmethod
-    def new(cls, layer_idx: int, *, segment_bytes_target: int):
-        return cls(
-            layer_idx=layer_idx,
-            layout=_CACHE_LAYOUT,
-            sequence_axis=SEQUENCE_AXIS,
-            persisted_tokens=0,
-            segment_bytes_target=segment_bytes_target,
-            extents=(),
-        )
-
-    @classmethod
-    def from_dict(cls, payload: dict[str, object]):
-        manifest = cls(
-            layer_idx=require_int(payload, "layer_idx"),
-            layout=require_str(payload, "layout"),
-            sequence_axis=require_int(payload, "sequence_axis"),
-            persisted_tokens=require_int(payload, "persisted_tokens"),
-            segment_bytes_target=require_int(payload, "segment_bytes_target"),
-            extents=tuple(
-                KVStreamExtentMetadata.from_dict(extent_payload)
-                for extent_payload in require_object_list(
-                    payload.get("extents"), "extents"
-                )
-            ),
-        )
-        _validate_layer_manifest(manifest)
-        return manifest
-
-
-def _validate_layer_manifest(manifest: KVStreamLayerManifest) -> None:
-    if manifest.layout != _CACHE_LAYOUT:
-        raise ValueError(f"Unsupported streamed KV layout: {manifest.layout!r}")
-    if manifest.sequence_axis != SEQUENCE_AXIS:
-        raise ValueError(
-            f"Unsupported streamed KV sequence axis: {manifest.sequence_axis}"
-        )
-    if manifest.segment_bytes_target <= 0:
-        raise ValueError("segment_bytes_target must be greater than zero")
-    if not manifest.extents:
-        raise ValueError(f"KV layer manifest {manifest.layer_idx} has no extents")
-    next_expected_start = 0
-    reference_key_dtype = manifest.extents[0].key_dtype
-    reference_value_dtype = manifest.extents[0].value_dtype
-    reference_key_prefix = shape_prefix(manifest.extents[0].key_shape)
-    reference_value_prefix = shape_prefix(manifest.extents[0].value_shape)
-    for extent in manifest.extents:
-        if extent.start_token != next_expected_start:
-            raise ValueError(
-                f"KV layer {manifest.layer_idx} has non-contiguous extent ranges"
-            )
-        if sequence_length(extent.key_shape) != extent.token_count:
-            raise ValueError(
-                f"KV key extent shape does not match token range for layer {manifest.layer_idx}"
-            )
-        if sequence_length(extent.value_shape) != extent.token_count:
-            raise ValueError(
-                f"KV value extent shape does not match token range for layer {manifest.layer_idx}"
-            )
-        if extent.key_dtype != reference_key_dtype:
-            raise ValueError(
-                f"KV layer {manifest.layer_idx} key dtype changed across extents"
-            )
-        if extent.value_dtype != reference_value_dtype:
-            raise ValueError(
-                f"KV layer {manifest.layer_idx} value dtype changed across extents"
-            )
-        if shape_prefix(extent.key_shape) != reference_key_prefix:
-            raise ValueError(
-                f"KV layer {manifest.layer_idx} key shape prefix changed across extents"
-            )
-        if shape_prefix(extent.value_shape) != reference_value_prefix:
-            raise ValueError(
-                f"KV layer {manifest.layer_idx} value shape prefix changed across extents"
-            )
-        next_expected_start = extent.end_token
-    if manifest.persisted_tokens != next_expected_start:
-        raise ValueError(
-            f"KV layer {manifest.layer_idx} persisted_tokens does not match extent coverage"
-        )
 
 
 class StreamedSegmentedKVStore:
@@ -211,15 +44,18 @@ class StreamedSegmentedKVStore:
         self,
         cache_folder: Path,
         *,
-        segment_bytes_target: int = _DEFAULT_SEGMENT_BYTES_TARGET,
+        segment_bytes_target: int = DEFAULT_SEGMENT_BYTES_TARGET,
     ) -> None:
         self.cache_folder = cache_folder
         self.layers_folder = cache_folder / "layers"
         self.root_manifest_path = cache_folder / "manifest.json"
         self.segment_bytes_target = segment_bytes_target
+        self._root_manifest_cache: tuple[tuple[int, ...], str] | None = None
+        self._layer_manifest_cache: dict[int, KVStreamLayerManifest | None] = {}
 
     def initialize(self, policy_id: str) -> None:
         path_mkdir(self.layers_folder, parents=True, exist_ok=True)
+        self._layer_manifest_cache.clear()
         self._write_root_manifest((), policy_id)
 
     def load_layer(
@@ -229,27 +65,8 @@ class StreamedSegmentedKVStore:
         if layer_manifest is None:
             return None
         _ = self._read_root_manifest()
-        key_chunks: list[torch.Tensor] = []
-        value_chunks: list[torch.Tensor] = []
-        for extent in layer_manifest.extents:
-            key_chunks.append(
-                self._read_extent_tensor(
-                    self.cache_folder / extent.key_path,
-                    dtype_name_value=extent.key_dtype,
-                    shape=extent.key_shape,
-                    offset=extent.key_offset,
-                    length=extent.key_nbytes,
-                )
-            )
-            value_chunks.append(
-                self._read_extent_tensor(
-                    self.cache_folder / extent.value_path,
-                    dtype_name_value=extent.value_dtype,
-                    shape=extent.value_shape,
-                    offset=extent.value_offset,
-                    length=extent.value_nbytes,
-                )
-            )
+        key_chunks = self._read_extent_tensors(layer_manifest.extents, kind="key")
+        value_chunks = self._read_extent_tensors(layer_manifest.extents, kind="value")
         return (
             torch.cat(key_chunks, dim=SEQUENCE_AXIS).to(device),
             torch.cat(value_chunks, dim=SEQUENCE_AXIS).to(device),
@@ -298,13 +115,13 @@ class StreamedSegmentedKVStore:
         )
         updated_manifest = KVStreamLayerManifest(
             layer_idx=layer_idx,
-            layout=_CACHE_LAYOUT,
+            layout=STREAMED_CACHE_LAYOUT,
             sequence_axis=SEQUENCE_AXIS,
             persisted_tokens=end_token,
             segment_bytes_target=layer_manifest.segment_bytes_target,
             extents=layer_manifest.extents + (extent,),
         )
-        _validate_layer_manifest(updated_manifest)
+        validate_stream_layer_manifest(updated_manifest)
         self._write_layer_manifest(updated_manifest)
 
         root_layers, policy_id = self._read_root_manifest()
@@ -312,6 +129,20 @@ class StreamedSegmentedKVStore:
             self._write_root_manifest(
                 tuple(sorted(root_layers + (layer_idx,))), policy_id
             )
+
+    def persisted_layer_ids(self) -> tuple[int, ...]:
+        if not path_exists(self.root_manifest_path):
+            return ()
+        return self._read_root_manifest()[0]
+
+    def persisted_token_count(self) -> int:
+        total_tokens = 0
+        for layer_idx in self.persisted_layer_ids():
+            manifest = self._read_layer_manifest(layer_idx)
+            if manifest is None:
+                continue
+            total_tokens += manifest.persisted_tokens
+        return total_tokens
 
     def _validate_chunk_pair(
         self, layer_idx: int, key_tensor: torch.Tensor, value_tensor: torch.Tensor
@@ -379,6 +210,8 @@ class StreamedSegmentedKVStore:
             ) from exc
 
     def _read_root_manifest(self) -> tuple[tuple[int, ...], str]:
+        if self._root_manifest_cache is not None:
+            return self._root_manifest_cache
         if not path_exists(self.root_manifest_path):
             raise ValueError(
                 f"KV cache root manifest is missing: {self.root_manifest_path}"
@@ -404,10 +237,12 @@ class StreamedSegmentedKVStore:
         layers_payload = payload.get("layers")
         if not isinstance(layers_payload, list):
             raise ValueError("KV root manifest layers must be a JSON list")
-        return (
+        manifest = (
             tuple(require_int_value(value, "layers[]") for value in layers_payload),
             policy_id,
         )
+        self._root_manifest_cache = manifest
+        return manifest
 
     def _write_root_manifest(self, layers: tuple[int, ...], policy_id: str) -> None:
         atomic_write_text(
@@ -427,15 +262,21 @@ class StreamedSegmentedKVStore:
             )
             + "\n",
         )
+        self._root_manifest_cache = (layers, policy_id)
 
     def _read_layer_manifest(self, layer_idx: int) -> KVStreamLayerManifest | None:
+        if layer_idx in self._layer_manifest_cache:
+            return self._layer_manifest_cache[layer_idx]
         layer_folder = self.layers_folder / str(layer_idx)
         if not path_exists(layer_folder):
+            self._layer_manifest_cache[layer_idx] = None
             return None
         manifest_path = layer_folder / "manifest.json"
         if not path_exists(manifest_path):
             raise ValueError(f"KV layer manifest is missing: {manifest_path}")
-        return KVStreamLayerManifest.from_dict(read_json_object(manifest_path))
+        manifest = KVStreamLayerManifest.from_dict(read_json_object(manifest_path))
+        self._layer_manifest_cache[layer_idx] = manifest
+        return manifest
 
     def _write_layer_manifest(self, manifest: KVStreamLayerManifest) -> None:
         layer_folder = self.layers_folder / str(manifest.layer_idx)
@@ -445,6 +286,115 @@ class StreamedSegmentedKVStore:
             manifest_path,
             json.dumps(manifest.to_dict(), indent=2, sort_keys=True) + "\n",
         )
+        self._layer_manifest_cache[manifest.layer_idx] = manifest
+
+    def _read_extent_tensors(
+        self,
+        extents: tuple[KVStreamExtentMetadata, ...],
+        *,
+        kind: str,
+    ) -> list[torch.Tensor]:
+        tensors: list[torch.Tensor] = []
+        grouped_extents: list[KVStreamExtentMetadata] = []
+        current_path: Path | None = None
+        for extent in extents:
+            extent_path = self._extent_path(extent, kind=kind)
+            if current_path is None:
+                current_path = extent_path
+                grouped_extents.append(extent)
+                continue
+            if extent_path == current_path:
+                grouped_extents.append(extent)
+                continue
+            tensors.extend(
+                self._decode_extent_group(
+                    current_path, tuple(grouped_extents), kind=kind
+                )
+            )
+            current_path = extent_path
+            grouped_extents = [extent]
+        if current_path is not None:
+            tensors.extend(
+                self._decode_extent_group(
+                    current_path, tuple(grouped_extents), kind=kind
+                )
+            )
+        return tensors
+
+    def _decode_extent_group(
+        self,
+        path: Path,
+        extents: tuple[KVStreamExtentMetadata, ...],
+        *,
+        kind: str,
+    ) -> list[torch.Tensor]:
+        self._validate_extent_path(path)
+        offsets = [self._extent_offset(extent, kind=kind) for extent in extents]
+        lengths = [self._extent_length(extent, kind=kind) for extent in extents]
+        window_start = min(offsets)
+        window_end = max(offset + length for offset, length in zip(offsets, lengths))
+        raw_window = path_read_bytes_range(
+            path, offset=window_start, length=window_end - window_start
+        )
+        tensors: list[torch.Tensor] = []
+        for extent in extents:
+            offset = self._extent_offset(extent, kind=kind)
+            length = self._extent_length(extent, kind=kind)
+            relative_offset = offset - window_start
+            relative_end = relative_offset + length
+            tensors.append(
+                decode_tensor_bytes(
+                    raw_window[relative_offset:relative_end],
+                    dtype=dtype_from_name(self._extent_dtype(extent, kind=kind)),
+                    shape=self._extent_shape(extent, kind=kind),
+                )
+            )
+        return tensors
+
+    def _extent_path(self, extent: KVStreamExtentMetadata, *, kind: str) -> Path:
+        if kind == "key":
+            return self.cache_folder / extent.key_path
+        if kind == "value":
+            return self.cache_folder / extent.value_path
+        raise ValueError(f"Unsupported streamed extent kind: {kind}")
+
+    def _extent_dtype(self, extent: KVStreamExtentMetadata, *, kind: str) -> str:
+        if kind == "key":
+            return extent.key_dtype
+        if kind == "value":
+            return extent.value_dtype
+        raise ValueError(f"Unsupported streamed extent kind: {kind}")
+
+    def _extent_shape(
+        self, extent: KVStreamExtentMetadata, *, kind: str
+    ) -> tuple[int, ...]:
+        if kind == "key":
+            return extent.key_shape
+        if kind == "value":
+            return extent.value_shape
+        raise ValueError(f"Unsupported streamed extent kind: {kind}")
+
+    def _extent_offset(self, extent: KVStreamExtentMetadata, *, kind: str) -> int:
+        if kind == "key":
+            return extent.key_offset
+        if kind == "value":
+            return extent.value_offset
+        raise ValueError(f"Unsupported streamed extent kind: {kind}")
+
+    def _extent_length(self, extent: KVStreamExtentMetadata, *, kind: str) -> int:
+        if kind == "key":
+            return extent.key_nbytes
+        if kind == "value":
+            return extent.value_nbytes
+        raise ValueError(f"Unsupported streamed extent kind: {kind}")
+
+    def _validate_extent_path(self, path: Path) -> None:
+        resolved_path = path.resolve()
+        cache_root = self.cache_folder.resolve()
+        if not resolved_path.is_relative_to(cache_root):
+            raise ValueError(f"KV cache chunk path escapes cache root: {path}")
+        if not path_exists(path):
+            raise ValueError(f"KV cache chunk file is missing: {path}")
 
     def _read_extent_tensor(
         self,

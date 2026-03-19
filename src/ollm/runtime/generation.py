@@ -5,6 +5,7 @@ from typing import Protocol, cast
 import torch
 
 from ollm.app.types import ContentKind, Message, PromptRequest, PromptResponse
+from ollm.kv_cache_state import KVCacheStateSnapshot
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.catalog import ModelModality
 from ollm.runtime.errors import PromptExecutionError
@@ -53,7 +54,6 @@ class RuntimeExecutor:
             )
 
         generate_kwargs = self._build_generate_kwargs(runtime, request, streamer)
-
         filtered_inputs = _normalize_generate_inputs(inputs)
 
         with torch.inference_mode():
@@ -64,10 +64,13 @@ class RuntimeExecutor:
             outputs = outputs.detach()
         outputs = outputs.cpu()
         response_text = self._decode_response(runtime, filtered_inputs, outputs)
+        cache_state = _extract_cache_state_snapshot(
+            generate_kwargs.get("past_key_values")
+        )
         if streamer is not None and not response_text.strip():
             response_text = streamer.text
         assistant_message = Message.assistant_text(response_text)
-        metadata = self._plan_metadata(runtime)
+        metadata = self._plan_metadata(runtime, cache_state)
         return PromptResponse(
             text=response_text, assistant_message=assistant_message, metadata=metadata
         )
@@ -249,14 +252,18 @@ class RuntimeExecutor:
         self, runtime: LoadedRuntime, response: PromptResponse
     ) -> PromptResponse:
         metadata = dict(response.metadata)
-        metadata.update(self._plan_metadata(runtime))
+        metadata.update(self._plan_metadata(runtime, None))
         return PromptResponse(
             text=response.text,
             assistant_message=response.assistant_message,
             metadata=metadata,
         )
 
-    def _plan_metadata(self, runtime: LoadedRuntime) -> dict[str, str]:
+    def _plan_metadata(
+        self,
+        runtime: LoadedRuntime,
+        cache_state: KVCacheStateSnapshot | None,
+    ) -> dict[str, str]:
         metadata = {
             "backend_id": runtime.plan.backend_id or "unknown",
             "specialization_state": runtime.plan.specialization_state.value,
@@ -280,6 +287,17 @@ class RuntimeExecutor:
             detail_value = runtime.plan.details.get(detail_key)
             if detail_value is not None:
                 metadata[detail_key] = detail_value
+        if cache_state is not None:
+            metadata.update(
+                {
+                    "kv_cache_policy_id": cache_state.policy_id,
+                    "kv_cache_persisted_tokens": str(cache_state.persisted_tokens),
+                    "kv_cache_hot_tokens": str(cache_state.hot_tokens),
+                    "kv_cache_hot_layers": str(cache_state.hot_layer_count),
+                    "kv_cache_spill_count": str(cache_state.spill_count),
+                    "kv_cache_spilled_tokens": str(cache_state.spilled_tokens),
+                }
+            )
         stats = cast(_StatsProtocol | None, runtime.backend.stats)
         if stats is not None:
             metadata["stats"] = stats.print_and_clean()
@@ -337,6 +355,16 @@ def _prepare_text_inputs(
     raise PromptExecutionError(
         "Tokenizer chat template returned unsupported model inputs"
     )
+
+
+def _extract_cache_state_snapshot(value: object) -> KVCacheStateSnapshot | None:
+    snapshot_method = getattr(value, "cache_state_snapshot", None)
+    if not callable(snapshot_method):
+        return None
+    snapshot = snapshot_method()
+    if not isinstance(snapshot, KVCacheStateSnapshot):
+        return None
+    return snapshot
 
 
 def _normalize_generate_inputs(inputs: dict[str, object]) -> dict[str, object]:

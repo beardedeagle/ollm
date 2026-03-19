@@ -6,6 +6,7 @@ from typing import cast
 import torch
 
 from ollm.app.types import Message, PromptRequest
+from ollm.kv_cache_state import KVCacheStateSnapshot
 from ollm.kv_cache_strategy import kv_cache_root
 from ollm.runtime.benchmark_probe_types import (
     EventTimingSummary,
@@ -104,6 +105,7 @@ def execute_request_probe(
         output_tensor = output_tensor.detach()
     cpu_outputs = output_tensor.cpu()
     response_text = executor._decode_response(runtime, inputs, cpu_outputs)
+    cache_state = _extract_cache_state_snapshot(generate_kwargs.get("past_key_values"))
     output_tokens = _count_output_tokens(runtime, inputs, cpu_outputs)
     time_to_first_token_ms = None
     if streamer.token_timestamps:
@@ -160,6 +162,7 @@ def execute_request_probe(
             cache_mode=cache_mode,
             kv_cache_strategy=kv_cache_strategy,
             cache_dir_size_mb=cache_dir_size,
+            cache_state=cache_state,
             allocator_gap_mb=allocator_gap_mb,
             allocator_gap_ratio=allocator_gap_ratio,
             native_runtime_profile=native_runtime_profile,
@@ -302,3 +305,13 @@ def _clip_text(text: str, *, max_chars: int) -> str:
     if len(text) <= max_chars:
         return text
     return text[: max_chars - 3] + "..."
+
+
+def _extract_cache_state_snapshot(value: object) -> KVCacheStateSnapshot | None:
+    snapshot_method = getattr(value, "cache_state_snapshot", None)
+    if not callable(snapshot_method):
+        return None
+    snapshot = snapshot_method()
+    if not isinstance(snapshot, KVCacheStateSnapshot):
+        return None
+    return snapshot

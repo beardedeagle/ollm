@@ -7,9 +7,12 @@ import torch
 from transformers.models.qwen3_next.modeling_qwen3_next import Qwen3NextConfig
 
 from ollm.kv_cache_policy import KVCachePolicy
+from ollm.kv_cache_store import ChunkedKVStore
 from ollm.kv_cache_strategy import kv_cache_root
+from ollm.kv_cache_streamed_store import StreamedSegmentedKVStore
 from ollm.kvcache import KVCache
 from ollm.qwen3_next import Qwen3NextDiskCache
+from ollm.utils import Stats
 
 
 def _chunk_tensor(token_count: int, offset: int = 0) -> torch.Tensor:
@@ -152,9 +155,10 @@ def test_kvcache_rejects_missing_chunk_files(tmp_path: Path) -> None:
     chunks = _read_chunks(layer_manifest)
     missing_path = cache.cache_folder / chunks[0]["key_path"]
     missing_path.unlink()
+    reloaded_store = ChunkedKVStore(cache.cache_folder)
 
     with pytest.raises(ValueError, match="chunk file is missing"):
-        cache.load_from_disk(0)
+        reloaded_store.load_layer(0, device=torch.device("cpu"))
 
 
 def test_kvcache_rejects_non_contiguous_manifest_ranges(tmp_path: Path) -> None:
@@ -172,9 +176,10 @@ def test_kvcache_rejects_non_contiguous_manifest_ranges(tmp_path: Path) -> None:
     chunks = _read_chunks(layer_manifest)
     chunks[1]["start_token"] = 4
     _write_json(layer_manifest_path, layer_manifest)
+    reloaded_store = ChunkedKVStore(cache.cache_folder)
 
     with pytest.raises(ValueError, match="non-contiguous chunk ranges"):
-        cache.load_from_disk(0)
+        reloaded_store.load_layer(0, device=torch.device("cpu"))
 
 
 def test_kvcache_rejects_chunk_paths_outside_cache_root(tmp_path: Path) -> None:
@@ -191,9 +196,10 @@ def test_kvcache_rejects_chunk_paths_outside_cache_root(tmp_path: Path) -> None:
     chunks = _read_chunks(layer_manifest)
     chunks[0]["key_path"] = "../escape.bin"
     _write_json(layer_manifest_path, layer_manifest)
+    reloaded_store = ChunkedKVStore(cache.cache_folder)
 
     with pytest.raises(ValueError, match="must stay within the KV cache root"):
-        cache.load_from_disk(0)
+        reloaded_store.load_layer(0, device=torch.device("cpu"))
 
 
 @pytest.mark.parametrize("cache_strategy", ["chunked", "streamed-segmented"])
@@ -289,7 +295,28 @@ def test_streamed_kvcache_reload_and_append_extents_round_trip(tmp_path: Path) -
     assert [extent["end_token"] for extent in extents] == [3, 5]
 
 
-def test_kvcache_strategies_use_separate_roots(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "cache_strategy",
+    ["chunked", "streamed-segmented", "tiered-write-back"],
+)
+def test_kvcache_strategies_use_separate_roots(
+    tmp_path: Path, cache_strategy: str
+) -> None:
+    base_cache_root = tmp_path / "cache-root"
+    cache = KVCache(
+        cache_dir=base_cache_root,
+        device="cpu",
+        stats=None,
+        policy=_immediate_flush_policy(),
+        cache_strategy=cache_strategy,
+    )
+    cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=100), 0)
+
+    assert cache.cache_folder == kv_cache_root(base_cache_root, cache_strategy)
+    assert cache.cache_folder.exists()
+
+
+def test_kvcache_strategy_roots_do_not_cross_contaminate(tmp_path: Path) -> None:
     base_cache_root = tmp_path / "cache-root"
     chunked_cache = KVCache(
         cache_dir=base_cache_root,
@@ -298,8 +325,6 @@ def test_kvcache_strategies_use_separate_roots(tmp_path: Path) -> None:
         policy=_immediate_flush_policy(),
         cache_strategy="chunked",
     )
-    chunked_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=100), 0)
-
     streamed_cache = KVCache(
         cache_dir=base_cache_root,
         device="cpu",
@@ -307,16 +332,21 @@ def test_kvcache_strategies_use_separate_roots(tmp_path: Path) -> None:
         policy=_immediate_flush_policy(),
         cache_strategy="streamed-segmented",
     )
-    streamed_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=200), 0)
+    tiered_cache = KVCache(
+        cache_dir=base_cache_root,
+        device="cpu",
+        stats=None,
+        policy=_immediate_flush_policy(),
+        cache_strategy="tiered-write-back",
+    )
 
-    chunked_persisted = chunked_cache.load_from_disk(0)
-    streamed_persisted = streamed_cache.load_from_disk(0)
+    chunked_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=100), 0)
+    streamed_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=200), 0)
+    tiered_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=300), 0)
 
     assert chunked_cache.cache_folder != streamed_cache.cache_folder
-    assert chunked_cache.cache_folder.exists()
-    assert streamed_cache.cache_folder.exists()
-    assert chunked_persisted is not None
-    assert streamed_persisted is not None
+    assert streamed_cache.cache_folder != tiered_cache.cache_folder
+    assert chunked_cache.cache_folder != tiered_cache.cache_folder
 
 
 def test_streamed_kvcache_rejects_paths_outside_cache_root(tmp_path: Path) -> None:
@@ -334,9 +364,10 @@ def test_streamed_kvcache_rejects_paths_outside_cache_root(tmp_path: Path) -> No
     extents = cast(list[dict[str, object]], layer_manifest["extents"])
     extents[0]["key_path"] = "../escape.bin"
     _write_json(layer_manifest_path, layer_manifest)
+    reloaded_store = StreamedSegmentedKVStore(cache.cache_folder)
 
     with pytest.raises(ValueError, match="must stay within the KV cache root"):
-        cache.load_from_disk(0)
+        reloaded_store.load_layer(0, device=torch.device("cpu"))
 
 
 def test_kvcache_buffers_tail_until_policy_threshold_then_flushes(
@@ -377,3 +408,85 @@ def test_kvcache_buffers_tail_until_policy_threshold_then_flushes(
     assert len(chunks) == 1
     assert chunks[0]["start_token"] == 0
     assert chunks[0]["end_token"] == 9
+
+
+@pytest.mark.parametrize("cache_strategy", ["chunked", "streamed-segmented"])
+def test_kvcache_reuses_resident_layer_after_update(
+    tmp_path: Path, cache_strategy: str
+) -> None:
+    stats = Stats()
+    cache = KVCache(
+        cache_dir=tmp_path / "cache-root",
+        device="cpu",
+        stats=stats,
+        policy=_immediate_flush_policy(),
+        cache_strategy=cache_strategy,
+    )
+
+    cache.update(_chunk_tensor(3), _chunk_tensor(3, offset=100), 0)
+    cache.update(_chunk_tensor(2, offset=1000), _chunk_tensor(2, offset=2000), 0)
+
+    stats.clear()
+    first = cache.load_from_disk(0)
+    second = cache.load_from_disk(0)
+    summary = stats.collect_and_clear_ms()
+
+    assert first is not None
+    assert second is not None
+    assert torch.equal(first[0], second[0])
+    assert "kvload" not in summary
+
+
+def test_streamed_store_reads_shared_segment_once_per_tensor_kind(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    store = StreamedSegmentedKVStore(tmp_path / "cache-root")
+    store.initialize("test-policy")
+    store.append_layer_chunk(0, (_chunk_tensor(3), _chunk_tensor(3, offset=100)))
+    store.append_layer_chunk(
+        0,
+        (
+            _chunk_tensor(2, offset=1000),
+            _chunk_tensor(2, offset=2000),
+        ),
+    )
+
+    import ollm.kv_cache_streamed_store as streamed_module
+
+    calls: list[tuple[Path, int, int]] = []
+    original = streamed_module.path_read_bytes_range
+
+    def _recording_read(path: Path, *, offset: int, length: int) -> bytes:
+        calls.append((path, offset, length))
+        return original(path, offset=offset, length=length)
+
+    monkeypatch.setattr(streamed_module, "path_read_bytes_range", _recording_read)
+
+    loaded = store.load_layer(0, device=torch.device("cpu"))
+
+    assert loaded is not None
+    assert len(calls) == 2
+    assert calls[0][0].name == "segment-000000.bin"
+    assert calls[1][0].name == "segment-000000.bin"
+
+
+@pytest.mark.parametrize(
+    "cache_strategy",
+    ["chunked", "streamed-segmented", "tiered-write-back"],
+)
+def test_kvcache_resident_layer_stays_on_cpu_for_accelerator_devices(
+    tmp_path: Path, cache_strategy: str
+) -> None:
+    cache = KVCache(
+        cache_dir=tmp_path / "cache-root",
+        device="cuda:0",
+        stats=None,
+        policy=_immediate_flush_policy(),
+        cache_strategy=cache_strategy,
+    )
+
+    cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=100), 0)
+
+    resident = cache._resident_layers[0]
+    assert resident[0].device.type == "cpu"
+    assert resident[1].device.type == "cpu"

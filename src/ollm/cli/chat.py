@@ -154,7 +154,9 @@ def register_chat_surfaces(app: typer.Typer, services: CommandServices) -> None:
         kv_cache_strategy: str | None = typer.Option(
             None,
             "--kv-cache-strategy",
-            help="Disk KV strategy: chunked or streamed-segmented.",
+            help=(
+                "Disk KV strategy: chunked, streamed-segmented, or tiered-write-back."
+            ),
         ),
         offload_cpu_layers: int | None = typer.Option(
             None,

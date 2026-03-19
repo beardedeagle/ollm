@@ -12,6 +12,7 @@ from ollm.runtime.benchmark_probe_execution import (
     execute_request_probe,
 )
 from ollm.runtime.benchmark_probes import RuntimeProbeResult
+from ollm.runtime.benchmark_types import resolve_runtime_benchmark_profile
 from ollm.runtime.benchmarks import (
     CommandBenchmarkSpec,
     build_runtime_probe_command,
@@ -323,3 +324,25 @@ def test_measure_runtime_probe_reports_unavailable_on_invalid_json(
     assert measurement.status == "unavailable"
     assert measurement.stats is None
     assert measurement.details["reason"] == "runtime probe did not emit valid JSON"
+
+
+def test_resolve_runtime_benchmark_profile_quick_defaults() -> None:
+    profile = resolve_runtime_benchmark_profile(profile="quick")
+
+    assert profile.profile_id == "quick"
+    assert profile.iterations == 1
+    assert profile.warmup_iterations == 0
+    assert profile.include_family_results is False
+    assert profile.include_primary_extended_scenarios is False
+    assert profile.cold_timeout_seconds == 90.0
+
+
+def test_resolve_runtime_benchmark_profile_full_defaults() -> None:
+    profile = resolve_runtime_benchmark_profile(profile="full")
+
+    assert profile.profile_id == "full"
+    assert profile.iterations == 5
+    assert profile.warmup_iterations == 1
+    assert profile.include_family_results is True
+    assert profile.include_primary_extended_scenarios is True
+    assert profile.warm_timeout_seconds == 240.0

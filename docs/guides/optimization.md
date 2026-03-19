@@ -50,20 +50,29 @@ When supported by the selected backend, oLLM can expose:
 These controls are backend-dependent. The generic path does not expose the same
 low-level layer-placement controls as optimized-native runtimes.
 
-The optimized-native disk KV cache now exposes two explicit persistent
+The optimized-native disk KV cache now exposes three explicit
 strategies:
 
 - `chunked`
 - `streamed-segmented`
+- `tiered-write-back`
 
 `chunked` persists a manifest-backed chunk store under
 `cache_dir/kv_cache_chunked`. `streamed-segmented` persists a sequential
-segment-backed store under `cache_dir/kv_cache_streamed_segmented`. Both use
-typed raw tensor payloads plus explicit metadata, and neither uses opaque
-pickle-backed `.pt` cache blobs. The runtime also applies a
-platform/resource-aware buffering policy on top of the selected format so the
-cache can trade write amplification against memory headroom instead of flushing
-every delta identically on every machine.
+segment-backed store under `cache_dir/kv_cache_streamed_segmented`.
+`tiered-write-back` persists only the colder KV prefix under
+`cache_dir/kv_cache_tiered_write_back` while keeping a bounded hot region in
+memory. All three use typed raw tensor payloads plus explicit metadata, and
+none uses opaque pickle-backed `.pt` cache blobs. The runtime also applies a
+platform/resource-aware buffering or spill policy on top of the selected
+strategy so the cache can trade write amplification against memory headroom
+instead of flushing every delta identically on every machine.
+
+Within one loaded runtime, the cache layer now also keeps a resident in-process
+snapshot of the reconstructed per-layer KV state so repeated updates do not
+need to reread and rebuild the same on-disk history every token. For the
+`streamed-segmented` store specifically, readback now coalesces extents by
+segment file instead of replaying a separate file-range read for every extent.
 
 ## GPT-OSS `gds_export` requirement
 
@@ -91,10 +100,14 @@ CPU-offloaded artifacts, or disk KV cache IO.
 For disk KV specifically, `kvload` and `kvsave` now represent reads and writes
 against the selected explicit disk-KV store rather than whole-layer torch
 artifacts. Benchmark/runtime output also reports `kv_cache_strategy` so the
-active backend is visible during A/B runs.
+active backend is visible during A/B runs, and `cache_state` exposes the
+hot/cold split for tier-aware strategies.
 The reported disk-cache footprint reflects the persisted chunk store only. A
-selected KV policy may keep a bounded tail in memory until its flush threshold
-is reached.
+selected KV policy may keep a bounded tail in memory until its spill or flush
+threshold is reached.
+When a request is satisfied from the resident in-process KV snapshot rather
+than from disk, `kvload` can legitimately be absent for that step even though
+disk KV remains the selected strategy.
 
 Those native event totals are operation-level timings. On runtimes that submit
 multiple storage reads before waiting for completion, the summed native IO

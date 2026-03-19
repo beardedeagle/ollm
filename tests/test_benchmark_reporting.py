@@ -102,9 +102,11 @@ def test_render_runtime_probe_json_round_trips() -> None:
     request = cast(dict[str, object], payload["request"])
     resources = cast(dict[str, object], request["resources"])
     native_runtime_profile = cast(dict[str, object], request["native_runtime_profile"])
+    cache_state = cast(dict[str, object], request["cache_state"])
     events = cast(dict[str, object], native_runtime_profile["events"])
     assert request["output_tokens"] == 4
     assert request["kv_cache_strategy"] == "chunked"
+    assert cache_state["strategy_id"] == "chunked"
     assert resources["accelerator_kind"] == "cuda"
     assert "kvload" in events
 
@@ -219,6 +221,10 @@ def test_summarize_request_metrics_includes_native_runtime_profile() -> None:
         "safetensor-io",
     ]
     assert cast(dict[str, object], summary["cache"])["kv_cache_strategy"] == "chunked"
+    cache_state = cast(
+        dict[str, object], cast(dict[str, object], summary["cache"])["cache_state"]
+    )
+    assert cache_state["policy_id"] == "test-policy"
     assert kvload["event_count"] == 2
 
 

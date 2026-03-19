@@ -102,6 +102,7 @@ def summarize_request_metrics(
                     if sample.cache_dir_size_mb is not None
                 ]
             ),
+            "cache_state": summarize_cache_states(samples),
         },
         "allocator": {
             "allocator_gap_mb": optional_summary_dict(
@@ -243,6 +244,45 @@ def summarize_native_runtime_profiles(
             event_name: _summarize_native_runtime_event(typed_profiles, event_name)
             for event_name in event_names
         },
+    }
+
+
+def summarize_cache_states(
+    samples: list[RequestProbeMetrics],
+) -> dict[str, object] | None:
+    snapshots = [
+        sample.cache_state for sample in samples if sample.cache_state is not None
+    ]
+    if not snapshots:
+        return None
+    return {
+        "strategy_id": single_optional_string(
+            [snapshot.strategy_id for snapshot in snapshots]
+        ),
+        "policy_id": single_optional_string(
+            [snapshot.policy_id for snapshot in snapshots]
+        ),
+        "persisted_layer_count": summarize_numeric_values(
+            [float(snapshot.persisted_layer_count) for snapshot in snapshots]
+        ),
+        "persisted_tokens": summarize_numeric_values(
+            [float(snapshot.persisted_tokens) for snapshot in snapshots]
+        ),
+        "hot_layer_count": summarize_numeric_values(
+            [float(snapshot.hot_layer_count) for snapshot in snapshots]
+        ),
+        "hot_tokens": summarize_numeric_values(
+            [float(snapshot.hot_tokens) for snapshot in snapshots]
+        ),
+        "hot_bytes": summarize_numeric_values(
+            [float(snapshot.hot_bytes) for snapshot in snapshots]
+        ),
+        "spill_count": summarize_numeric_values(
+            [float(snapshot.spill_count) for snapshot in snapshots]
+        ),
+        "spilled_tokens": summarize_numeric_values(
+            [float(snapshot.spilled_tokens) for snapshot in snapshots]
+        ),
     }
 
 

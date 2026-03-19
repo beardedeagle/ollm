@@ -279,3 +279,11 @@ def test_runtime_settings_validate_backend_identifiers() -> None:
         assert "--backend must be one of" in str(exc)
     else:
         raise AssertionError("RuntimeConfigOverrides should reject unknown backends")
+
+
+def test_runtime_settings_accept_tiered_write_back_strategy() -> None:
+    settings = RuntimeSettings(kv_cache_strategy="tiered-write-back")
+    overrides = RuntimeConfigOverrides(kv_cache_strategy="tiered-write-back")
+
+    assert settings.kv_cache_strategy == "tiered-write-back"
+    assert overrides.kv_cache_strategy == "tiered-write-back"

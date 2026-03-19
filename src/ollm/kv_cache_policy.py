@@ -1,4 +1,5 @@
 import ctypes
+import math
 import os
 import sys
 from dataclasses import dataclass
@@ -21,6 +22,8 @@ class KVCachePolicy:
     policy_id: str
     flush_token_threshold: int
     flush_byte_threshold: int
+    write_back_retained_tokens: int = 64
+    write_back_retained_bytes: int = 4 * _MIB
 
     def should_flush(
         self,
@@ -32,6 +35,31 @@ class KVCachePolicy:
             pending_tokens >= self.flush_token_threshold
             or pending_bytes >= self.flush_byte_threshold
         )
+
+    def write_back_spill_token_count(
+        self,
+        *,
+        pending_tokens: int,
+        pending_bytes: int,
+    ) -> int:
+        if pending_tokens <= 0 or not self.should_flush(
+            pending_tokens=pending_tokens,
+            pending_bytes=pending_bytes,
+        ):
+            return 0
+
+        spill_tokens = max(0, pending_tokens - self.write_back_retained_tokens)
+        if pending_bytes > self.write_back_retained_bytes:
+            bytes_per_token = max(1, math.ceil(pending_bytes / pending_tokens))
+            spill_tokens = max(
+                spill_tokens,
+                math.ceil(
+                    (pending_bytes - self.write_back_retained_bytes) / bytes_per_token
+                ),
+            )
+        if spill_tokens <= 0:
+            return 0
+        return min(pending_tokens, spill_tokens)
 
 
 def detect_kv_cache_resources(device: torch.device) -> KVCacheResourceSnapshot:
@@ -45,6 +73,7 @@ def detect_kv_cache_resources(device: torch.device) -> KVCacheResourceSnapshot:
 def select_kv_cache_policy(
     device: torch.device,
     *,
+    strategy: str | None = None,
     resource_snapshot: KVCacheResourceSnapshot | None = None,
 ) -> KVCachePolicy:
     snapshot = (
@@ -54,6 +83,13 @@ def select_kv_cache_policy(
     )
     available_ram = snapshot.available_system_memory_bytes or 0
     available_accelerator = snapshot.available_accelerator_memory_bytes or 0
+    if strategy == "tiered-write-back":
+        return _select_tiered_write_back_policy(
+            device=device,
+            snapshot=snapshot,
+            available_ram=available_ram,
+            available_accelerator=available_accelerator,
+        )
 
     if device.type == "cpu":
         if snapshot.platform == "darwin":
@@ -62,22 +98,30 @@ def select_kv_cache_policy(
                     policy_id="darwin-cpu-buffered",
                     flush_token_threshold=128,
                     flush_byte_threshold=8 * _MIB,
+                    write_back_retained_tokens=64,
+                    write_back_retained_bytes=4 * _MIB,
                 )
             return KVCachePolicy(
                 policy_id="darwin-cpu-balanced",
                 flush_token_threshold=64,
                 flush_byte_threshold=4 * _MIB,
+                write_back_retained_tokens=32,
+                write_back_retained_bytes=2 * _MIB,
             )
         if snapshot.platform == "win32":
             return KVCachePolicy(
                 policy_id="windows-cpu-balanced",
                 flush_token_threshold=128,
                 flush_byte_threshold=8 * _MIB,
+                write_back_retained_tokens=64,
+                write_back_retained_bytes=4 * _MIB,
             )
         return KVCachePolicy(
             policy_id="cpu-balanced",
             flush_token_threshold=128,
             flush_byte_threshold=8 * _MIB,
+            write_back_retained_tokens=64,
+            write_back_retained_bytes=4 * _MIB,
         )
 
     if device.type == "cuda":
@@ -86,11 +130,15 @@ def select_kv_cache_policy(
                 policy_id="windows-cuda-balanced",
                 flush_token_threshold=128,
                 flush_byte_threshold=8 * _MIB,
+                write_back_retained_tokens=64,
+                write_back_retained_bytes=4 * _MIB,
             )
         return KVCachePolicy(
             policy_id="cuda-balanced",
             flush_token_threshold=64,
             flush_byte_threshold=4 * _MIB,
+            write_back_retained_tokens=32,
+            write_back_retained_bytes=2 * _MIB,
         )
 
     if device.type == "mps":
@@ -98,12 +146,91 @@ def select_kv_cache_policy(
             policy_id="darwin-mps-buffered",
             flush_token_threshold=128,
             flush_byte_threshold=8 * _MIB,
+            write_back_retained_tokens=64,
+            write_back_retained_bytes=4 * _MIB,
         )
 
     return KVCachePolicy(
         policy_id="default-balanced",
         flush_token_threshold=64,
         flush_byte_threshold=4 * _MIB,
+        write_back_retained_tokens=32,
+        write_back_retained_bytes=2 * _MIB,
+    )
+
+
+def _select_tiered_write_back_policy(
+    *,
+    device: torch.device,
+    snapshot: KVCacheResourceSnapshot,
+    available_ram: int,
+    available_accelerator: int,
+) -> KVCachePolicy:
+    if device.type == "cpu":
+        if snapshot.platform == "darwin":
+            if available_ram >= 16 * _GIB:
+                return KVCachePolicy(
+                    policy_id="darwin-cpu-tiered",
+                    flush_token_threshold=24,
+                    flush_byte_threshold=1 * _MIB,
+                    write_back_retained_tokens=8,
+                    write_back_retained_bytes=256 * 1024,
+                )
+            return KVCachePolicy(
+                policy_id="darwin-cpu-tiered-compact",
+                flush_token_threshold=16,
+                flush_byte_threshold=768 * 1024,
+                write_back_retained_tokens=4,
+                write_back_retained_bytes=128 * 1024,
+            )
+        if snapshot.platform == "win32":
+            return KVCachePolicy(
+                policy_id="windows-cpu-tiered",
+                flush_token_threshold=24,
+                flush_byte_threshold=1 * _MIB,
+                write_back_retained_tokens=8,
+                write_back_retained_bytes=256 * 1024,
+            )
+        return KVCachePolicy(
+            policy_id="cpu-tiered",
+            flush_token_threshold=24,
+            flush_byte_threshold=1 * _MIB,
+            write_back_retained_tokens=8,
+            write_back_retained_bytes=256 * 1024,
+        )
+
+    if device.type == "cuda":
+        if snapshot.platform == "win32" and available_accelerator >= 12 * _GIB:
+            return KVCachePolicy(
+                policy_id="windows-cuda-tiered",
+                flush_token_threshold=24,
+                flush_byte_threshold=1 * _MIB,
+                write_back_retained_tokens=8,
+                write_back_retained_bytes=256 * 1024,
+            )
+        return KVCachePolicy(
+            policy_id="cuda-tiered",
+            flush_token_threshold=16,
+            flush_byte_threshold=768 * 1024,
+            write_back_retained_tokens=4,
+            write_back_retained_bytes=128 * 1024,
+        )
+
+    if device.type == "mps":
+        return KVCachePolicy(
+            policy_id="darwin-mps-tiered",
+            flush_token_threshold=16,
+            flush_byte_threshold=768 * 1024,
+            write_back_retained_tokens=4,
+            write_back_retained_bytes=128 * 1024,
+        )
+
+    return KVCachePolicy(
+        policy_id="default-tiered",
+        flush_token_threshold=16,
+        flush_byte_threshold=768 * 1024,
+        write_back_retained_tokens=4,
+        write_back_retained_bytes=128 * 1024,
     )
 
 

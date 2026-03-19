@@ -176,9 +176,12 @@ class ChunkedKVStore:
         self.cache_folder = cache_folder
         self.layers_folder = cache_folder / "layers"
         self.root_manifest_path = cache_folder / "manifest.json"
+        self._root_manifest_cache: tuple[tuple[int, ...], str] | None = None
+        self._layer_manifest_cache: dict[int, KVLayerManifest | None] = {}
 
     def initialize(self, policy_id: str) -> None:
         path_mkdir(self.layers_folder, parents=True, exist_ok=True)
+        self._layer_manifest_cache.clear()
         self._write_root_manifest((), policy_id)
 
     def load_layer(
@@ -261,6 +264,20 @@ class ChunkedKVStore:
                 tuple(sorted(root_layers + (layer_idx,))), policy_id
             )
 
+    def persisted_layer_ids(self) -> tuple[int, ...]:
+        if not path_exists(self.root_manifest_path):
+            return ()
+        return self._read_root_manifest()[0]
+
+    def persisted_token_count(self) -> int:
+        total_tokens = 0
+        for layer_idx in self.persisted_layer_ids():
+            manifest = self._read_layer_manifest(layer_idx)
+            if manifest is None:
+                continue
+            total_tokens += manifest.persisted_tokens
+        return total_tokens
+
     def _validate_chunk_pair(
         self, layer_idx: int, key_tensor: torch.Tensor, value_tensor: torch.Tensor
     ) -> None:
@@ -284,6 +301,8 @@ class ChunkedKVStore:
             )
 
     def _read_root_manifest(self) -> tuple[tuple[int, ...], str]:
+        if self._root_manifest_cache is not None:
+            return self._root_manifest_cache
         if not path_exists(self.root_manifest_path):
             raise ValueError(
                 f"KV cache root manifest is missing: {self.root_manifest_path}"
@@ -307,10 +326,12 @@ class ChunkedKVStore:
         layers_payload = payload.get("layers")
         if not isinstance(layers_payload, list):
             raise ValueError("KV root manifest layers must be a JSON list")
-        return (
+        manifest = (
             tuple(require_int_value(value, "layers[]") for value in layers_payload),
             policy_id,
         )
+        self._root_manifest_cache = manifest
+        return manifest
 
     def _write_root_manifest(self, layers: tuple[int, ...], policy_id: str) -> None:
         atomic_write_text(
@@ -329,15 +350,21 @@ class ChunkedKVStore:
             )
             + "\n",
         )
+        self._root_manifest_cache = (layers, policy_id)
 
     def _read_layer_manifest(self, layer_idx: int) -> KVLayerManifest | None:
+        if layer_idx in self._layer_manifest_cache:
+            return self._layer_manifest_cache[layer_idx]
         layer_folder = self.layers_folder / str(layer_idx)
         if not path_exists(layer_folder):
+            self._layer_manifest_cache[layer_idx] = None
             return None
         manifest_path = layer_folder / "manifest.json"
         if not path_exists(manifest_path):
             raise ValueError(f"KV layer manifest is missing: {manifest_path}")
-        return KVLayerManifest.from_dict(read_json_object(manifest_path))
+        manifest = KVLayerManifest.from_dict(read_json_object(manifest_path))
+        self._layer_manifest_cache[layer_idx] = manifest
+        return manifest
 
     def _write_layer_manifest(self, manifest: KVLayerManifest) -> None:
         layer_folder = self.layers_folder / str(manifest.layer_idx)
@@ -347,6 +374,7 @@ class ChunkedKVStore:
             manifest_path,
             json.dumps(manifest.to_dict(), indent=2, sort_keys=True) + "\n",
         )
+        self._layer_manifest_cache[manifest.layer_idx] = manifest
 
     def _read_chunk_tensor(
         self, path: Path, *, dtype_name: str, shape: tuple[int, ...]
