@@ -3,9 +3,32 @@
 import json
 from dataclasses import asdict, dataclass
 
+DEFAULT_RUNTIME_BENCHMARK_PROFILE = "quick"
+KNOWN_RUNTIME_BENCHMARK_PROFILES = ("quick", "full")
 DEFAULT_PROMPT_TOKEN_TARGETS = (32, 128, 512)
 DEFAULT_OUTPUT_TOKEN_TARGETS = (16, 64, 128)
 DEFAULT_SESSION_TURNS = 4
+QUICK_PROMPT_TOKEN_TARGETS = (32,)
+QUICK_OUTPUT_TOKEN_TARGETS = (16,)
+QUICK_SESSION_TURNS = 1
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeBenchmarkProfile:
+    """Describe the scope and budgets for one benchmark profile."""
+
+    profile_id: str
+    iterations: int
+    warmup_iterations: int
+    prompt_token_targets: tuple[int, ...]
+    output_token_targets: tuple[int, ...]
+    session_turns: int
+    include_family_results: bool
+    include_primary_extended_scenarios: bool
+    cold_timeout_seconds: float
+    warm_timeout_seconds: float
+    scaling_timeout_seconds: float
+    session_timeout_seconds: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,6 +123,81 @@ class RuntimeComparisonTarget:
     model_reference: str
     is_materialized: bool
     model_path: str | None
+
+
+def normalize_runtime_benchmark_profile(profile: str | None) -> str:
+    """Validate and normalize a benchmark profile identifier."""
+
+    normalized = (
+        DEFAULT_RUNTIME_BENCHMARK_PROFILE
+        if profile is None
+        else profile.strip().lower()
+    )
+    if normalized not in KNOWN_RUNTIME_BENCHMARK_PROFILES:
+        allowed = ", ".join(KNOWN_RUNTIME_BENCHMARK_PROFILES)
+        raise ValueError(f"--profile must be one of: {allowed}")
+    return normalized
+
+
+def resolve_runtime_benchmark_profile(
+    *,
+    profile: str | None,
+    iterations: int | None = None,
+    warmup_iterations: int | None = None,
+    prompt_token_targets: tuple[int, ...] | None = None,
+    output_token_targets: tuple[int, ...] | None = None,
+    session_turns: int | None = None,
+) -> RuntimeBenchmarkProfile:
+    """Resolve a benchmark profile and apply any explicit CLI overrides."""
+
+    normalized_profile = normalize_runtime_benchmark_profile(profile)
+    if normalized_profile == "quick":
+        return RuntimeBenchmarkProfile(
+            profile_id=normalized_profile,
+            iterations=1 if iterations is None else iterations,
+            warmup_iterations=0 if warmup_iterations is None else warmup_iterations,
+            prompt_token_targets=(
+                QUICK_PROMPT_TOKEN_TARGETS
+                if prompt_token_targets is None
+                else prompt_token_targets
+            ),
+            output_token_targets=(
+                QUICK_OUTPUT_TOKEN_TARGETS
+                if output_token_targets is None
+                else output_token_targets
+            ),
+            session_turns=QUICK_SESSION_TURNS
+            if session_turns is None
+            else session_turns,
+            include_family_results=False,
+            include_primary_extended_scenarios=False,
+            cold_timeout_seconds=90.0,
+            warm_timeout_seconds=150.0,
+            scaling_timeout_seconds=180.0,
+            session_timeout_seconds=180.0,
+        )
+    return RuntimeBenchmarkProfile(
+        profile_id=normalized_profile,
+        iterations=5 if iterations is None else iterations,
+        warmup_iterations=1 if warmup_iterations is None else warmup_iterations,
+        prompt_token_targets=(
+            DEFAULT_PROMPT_TOKEN_TARGETS
+            if prompt_token_targets is None
+            else prompt_token_targets
+        ),
+        output_token_targets=(
+            DEFAULT_OUTPUT_TOKEN_TARGETS
+            if output_token_targets is None
+            else output_token_targets
+        ),
+        session_turns=DEFAULT_SESSION_TURNS if session_turns is None else session_turns,
+        include_family_results=True,
+        include_primary_extended_scenarios=True,
+        cold_timeout_seconds=240.0,
+        warm_timeout_seconds=240.0,
+        scaling_timeout_seconds=300.0,
+        session_timeout_seconds=300.0,
+    )
 
 
 def render_report_json(report: RuntimeBenchmarkReport) -> str:

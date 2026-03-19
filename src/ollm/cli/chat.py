@@ -26,6 +26,7 @@ def run_chat_command(
     no_specialization: bool | None,
     cache_dir: Path | None,
     no_cache: bool | None,
+    kv_cache_strategy: str | None,
     offload_cpu_layers: int | None,
     offload_gpu_layers: int | None,
     force_download: bool | None,
@@ -59,6 +60,7 @@ def run_chat_command(
         no_specialization=no_specialization,
         cache_dir=cache_dir,
         no_cache=no_cache,
+        kv_cache_strategy=kv_cache_strategy,
         offload_cpu_layers=offload_cpu_layers,
         offload_gpu_layers=offload_gpu_layers,
         force_download=force_download,
@@ -148,6 +150,14 @@ def register_chat_surfaces(app: typer.Typer, services: CommandServices) -> None:
         ),
         no_cache: bool | None = typer.Option(
             None, "--no-cache", help="Disable disk KV cache."
+        ),
+        kv_cache_strategy: str | None = typer.Option(
+            None,
+            "--kv-cache-strategy",
+            help=(
+                "Disk KV strategy: chunked, streamed-segmented, "
+                "log-structured-journal, or tiered-write-back."
+            ),
         ),
         offload_cpu_layers: int | None = typer.Option(
             None,
@@ -240,6 +250,7 @@ def register_chat_surfaces(app: typer.Typer, services: CommandServices) -> None:
             no_specialization=no_specialization,
             cache_dir=cache_dir,
             no_cache=no_cache,
+            kv_cache_strategy=kv_cache_strategy,
             offload_cpu_layers=offload_cpu_layers,
             offload_gpu_layers=offload_gpu_layers,
             force_download=force_download,

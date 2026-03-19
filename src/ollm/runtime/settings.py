@@ -15,6 +15,10 @@ from pydantic_settings import (
     TomlConfigSettingsSource,
 )
 
+from ollm.kv_cache_strategy import (
+    DEFAULT_KV_CACHE_STRATEGY,
+    normalize_kv_cache_strategy,
+)
 from ollm.runtime.config import (
     DEFAULT_DEVICE,
     DEFAULT_MAX_NEW_TOKENS,
@@ -60,6 +64,7 @@ class RuntimeSettings(BaseModel):
     use_specialization: bool = True
     cache_dir: Path = Field(default_factory=lambda: Path("kv_cache"))
     use_cache: bool = True
+    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY
     offload_cpu_layers: int = Field(default=0, ge=0)
     offload_gpu_layers: int = Field(default=0, ge=0)
     force_download: bool = False
@@ -71,6 +76,14 @@ class RuntimeSettings(BaseModel):
     @classmethod
     def _normalize_backend(cls, backend: str | None) -> str | None:
         return normalize_backend(backend)
+
+    @field_validator("kv_cache_strategy")
+    @classmethod
+    def _normalize_kv_cache_strategy(cls, strategy: str) -> str:
+        normalized_strategy = normalize_kv_cache_strategy(strategy)
+        if normalized_strategy is None:
+            raise ValueError("kv_cache_strategy cannot be empty")
+        return normalized_strategy
 
 
 class GenerationSettings(BaseModel):
@@ -138,6 +151,7 @@ class RuntimeConfigOverrides(BaseModel):
     use_specialization: bool | None = None
     cache_dir: Path | None = None
     use_cache: bool | None = None
+    kv_cache_strategy: str | None = None
     offload_cpu_layers: int | None = Field(default=None, ge=0)
     offload_gpu_layers: int | None = Field(default=None, ge=0)
     force_download: bool | None = None
@@ -149,6 +163,11 @@ class RuntimeConfigOverrides(BaseModel):
     @classmethod
     def _normalize_backend(cls, backend: str | None) -> str | None:
         return normalize_backend(backend)
+
+    @field_validator("kv_cache_strategy")
+    @classmethod
+    def _normalize_kv_cache_strategy(cls, strategy: str | None) -> str | None:
+        return normalize_kv_cache_strategy(strategy)
 
 
 class GenerationConfigOverrides(BaseModel):

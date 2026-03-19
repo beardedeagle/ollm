@@ -6,6 +6,8 @@ from typing import cast
 import torch
 
 from ollm.app.types import Message, PromptRequest
+from ollm.kv_cache_state import KVCacheStateSnapshot
+from ollm.kv_cache_strategy import kv_cache_root
 from ollm.runtime.benchmark_probe_types import (
     EventTimingSummary,
     NativeRuntimeProfile,
@@ -16,7 +18,7 @@ from ollm.runtime.benchmark_resources import cache_dir_size_mb, measure_stage
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
 from ollm.runtime.errors import PromptExecutionError
-from ollm.runtime.generation import RuntimeExecutor
+from ollm.runtime.generation import RuntimeExecutor, _normalize_generate_inputs
 from ollm.runtime.loader import LoadedRuntime
 from ollm.runtime.output_control import suppress_module_prints
 from ollm.runtime.streaming import BufferedTextStreamer
@@ -29,6 +31,7 @@ _STORAGE_PATH_BY_EVENT = {
     "offloaded_cpu_to_cuda": "cpu-offloaded-artifacts",
     "kvload": "disk-kv-cache",
     "kvsave": "disk-kv-cache",
+    "kvcompact": "disk-kv-cache",
     "torch_file_load": "torch-artifact-io",
 }
 
@@ -89,10 +92,12 @@ def execute_request_probe(
     streamer = TimedBufferedTextStreamer(runtime.tokenizer)
     generate_kwargs = executor._build_generate_kwargs(runtime, request, streamer)
     cache_mode = _cache_mode(runtime, request)
+    kv_cache_strategy = _kv_cache_strategy(runtime, request)
     _clear_backend_stats(runtime)
+    normalized_inputs = _normalize_generate_inputs(inputs)
     generation_result, generation_ms, generation_resources = measure_stage(
         runtime.config.device,
-        lambda: _generate_outputs(runtime, inputs, generate_kwargs),
+        lambda: _generate_outputs(runtime, normalized_inputs, generate_kwargs),
         sample_accelerator_utilization=True,
     )
     output_tensor = cast(torch.Tensor, cast(tuple[object, float], generation_result)[0])
@@ -101,6 +106,7 @@ def execute_request_probe(
         output_tensor = output_tensor.detach()
     cpu_outputs = output_tensor.cpu()
     response_text = executor._decode_response(runtime, inputs, cpu_outputs)
+    cache_state = _extract_cache_state_snapshot(generate_kwargs.get("past_key_values"))
     output_tokens = _count_output_tokens(runtime, inputs, cpu_outputs)
     time_to_first_token_ms = None
     if streamer.token_timestamps:
@@ -121,9 +127,11 @@ def execute_request_probe(
             6,
         )
     cache_dir_size = None
-    if cache_mode == "disk-kv":
+    if kv_cache_strategy is not None:
         cache_dir_size = cache_dir_size_mb(
-            request.runtime_config.resolved_cache_dir() / "kv_cache"
+            kv_cache_root(
+                request.runtime_config.resolved_cache_dir(), kv_cache_strategy
+            )
         )
     allocator_gap_mb = None
     allocator_gap_ratio = None
@@ -153,7 +161,9 @@ def execute_request_probe(
             output_tokens=output_tokens,
             output_tokens_per_second=output_tokens_per_second,
             cache_mode=cache_mode,
+            kv_cache_strategy=kv_cache_strategy,
             cache_dir_size_mb=cache_dir_size,
+            cache_state=cache_state,
             allocator_gap_mb=allocator_gap_mb,
             allocator_gap_ratio=allocator_gap_ratio,
             native_runtime_profile=native_runtime_profile,
@@ -274,6 +284,14 @@ def _cache_mode(runtime: LoadedRuntime, request: PromptRequest) -> str:
     return "transformers-dynamic"
 
 
+def _kv_cache_strategy(runtime: LoadedRuntime, request: PromptRequest) -> str | None:
+    if not request.runtime_config.use_cache:
+        return None
+    if not runtime.plan.supports_disk_cache:
+        return None
+    return request.runtime_config.resolved_kv_cache_strategy()
+
+
 def _inter_token_latencies(token_timestamps: tuple[float, ...]) -> tuple[float, ...]:
     if len(token_timestamps) < 2:
         return ()
@@ -288,3 +306,13 @@ def _clip_text(text: str, *, max_chars: int) -> str:
     if len(text) <= max_chars:
         return text
     return text[: max_chars - 3] + "..."
+
+
+def _extract_cache_state_snapshot(value: object) -> KVCacheStateSnapshot | None:
+    snapshot_method = getattr(value, "cache_state_snapshot", None)
+    if not callable(snapshot_method):
+        return None
+    snapshot = snapshot_method()
+    if not isinstance(snapshot, KVCacheStateSnapshot):
+        return None
+    return snapshot

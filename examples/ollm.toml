@@ -5,6 +5,7 @@ device = "cpu"
 backend = "optimized-native"
 cache_dir = "kv_cache"
 use_cache = true
+kv_cache_strategy = "chunked"
 
 [generation]
 max_new_tokens = 128

@@ -1,20 +1,21 @@
 """Runtime loading, planning, and safe fallback orchestration."""
 
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from ollm.inference import (
-    download_hf_snapshot,
-    hf_runtime_artifacts_complete,
-    prune_hf_runtime_artifacts,
-)
 from ollm.runtime.backend_selector import BackendSelector
 from ollm.runtime.backends.base import BackendRuntime, ExecutionBackend
 from ollm.runtime.backends.native_optimized import NativeOptimizedBackend
 from ollm.runtime.backends.transformers_generic import TransformersGenericBackend
 from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
 from ollm.runtime.config import RuntimeConfig
+from ollm.runtime.materialization import (
+    _runtime_artifact_gaps,
+    download_hf_snapshot,
+    hf_runtime_artifacts_complete,
+    prune_hf_runtime_artifacts,
+)
 from ollm.runtime.plan import RuntimePlan, SpecializationState
 from ollm.runtime.resolver import ModelResolver, ModelSourceKind, ResolvedModel
 from ollm.runtime.specialization import (
@@ -34,6 +35,7 @@ class LoadedRuntime:
     backend: BackendRuntime
     model_path: Path | None
     plan: RuntimePlan
+    _disk_cache_instances: dict[tuple[Path, str], object] = field(default_factory=dict)
 
     @property
     def capabilities(self) -> CapabilityProfile:
@@ -76,6 +78,17 @@ class LoadedRuntime:
     def device(self):
         """Expose the backend runtime device."""
         return self.backend.device
+
+    def get_or_create_disk_cache(self, cache_dir: Path, strategy: str) -> object | None:
+        """Reuse one disk-cache instance per cache root and strategy."""
+        cache_key = (cache_dir.resolve(), strategy)
+        cache = self._disk_cache_instances.get(cache_key)
+        if cache is not None:
+            return cache
+        created_cache = self.backend.create_cache(cache_dir, strategy)
+        if created_cache is not None:
+            self._disk_cache_instances[cache_key] = created_cache
+        return created_cache
 
 
 class RuntimeLoader:
@@ -266,10 +279,15 @@ class RuntimeLoader:
         return hf_runtime_artifacts_complete(model_path)
 
     def _validate_managed_model_dir(self, resolved_model: ResolvedModel) -> None:
-        if self._managed_model_dir_is_complete(resolved_model):
+        model_path = resolved_model.model_path
+        if model_path is None:
+            return
+        artifact_gaps = _runtime_artifact_gaps(model_path)
+        if not artifact_gaps:
             return
         raise ValueError(
-            f"Managed model directory is missing required runtime artifacts: {resolved_model.model_path}"
+            "Managed model directory is missing required runtime artifacts: "
+            f"{model_path} ({'; '.join(artifact_gaps)})"
         )
 
     def _validate_runtime_plan(

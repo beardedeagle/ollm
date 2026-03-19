@@ -6,6 +6,70 @@ oLLM ships a dedicated runtime benchmark harness:
 uv run python scripts/benchmark_runtime.py --device cpu --output .omx/runtime-benchmark.json
 ```
 
+The CLI now defaults to the `quick` benchmark profile for development use. That
+profile limits the run to the requested primary target, skips the family-wide
+matrix and deeper scaling sweeps, and applies tighter per-lane budgets so a
+strategy check cannot silently turn into an hour-long run.
+
+Every benchmark run now also records its full raw payload plus a normalized
+summary under `.omx/logs/benchmark-history/`. If a prior run with the same
+comparison key exists, the CLI appends a comparison summary and emits any
+obvious potential regressions on `stderr` without changing the JSON written to
+`stdout`.
+
+History matching now includes an explicit `codebase_label` so fork and upstream
+baseline runs do not collide accidentally. By default, that label is derived
+from the normalized `origin` remote URL. Override it only when you need a
+different stable grouping:
+
+```bash
+uv run python scripts/benchmark_runtime.py \
+  --device cpu \
+  --history-codebase-label current-fork \
+  --output .omx/runtime-benchmark.json
+```
+
+Use `--profile full` only when you explicitly want the heavier matrix:
+
+```bash
+uv run python scripts/benchmark_runtime.py \
+  --profile full \
+  --device cpu \
+  --output .omx/runtime-benchmark-full.json
+```
+
+Use `--no-record-history` only when you explicitly want to skip that ledger.
+The comparison key is based on the actual run shape, including model, device,
+backend, strategy, codebase label, and prompt/profile controls, so
+incomparable runs do not get mashed together.
+
+For disk-KV A/B work, select the optimized-native store explicitly:
+
+```bash
+uv run python scripts/benchmark_runtime.py \
+  --device cpu \
+  --kv-cache-strategy streamed-segmented \
+  --output .omx/runtime-benchmark-streamed.json
+```
+
+Tiered write-back uses the same switch:
+
+```bash
+uv run python scripts/benchmark_runtime.py \
+  --device cpu \
+  --kv-cache-strategy tiered-write-back \
+  --output .omx/runtime-benchmark-tiered.json
+```
+
+The log-structured journal strategy is selected the same way:
+
+```bash
+uv run python scripts/benchmark_runtime.py \
+  --device cpu \
+  --kv-cache-strategy log-structured-journal \
+  --output .omx/runtime-benchmark-journal.json
+```
+
 The harness is designed to stay truthful on hardware-constrained machines:
 
 - it always measures specialization planner overhead without loading model weights
@@ -31,6 +95,7 @@ The deeper primary-target sweeps can be tuned from the CLI:
 
 ```bash
 uv run python scripts/benchmark_runtime.py \
+  --profile full \
   --prompt-scale-tokens 32,128,512 \
   --output-scale-tokens 16,64,128 \
   --session-turns 4
@@ -73,6 +138,34 @@ The same profile also reports storage-path labels such as:
 These fields are only present when the selected runtime actually emits native
 stats. Generic Transformers-backed runs may report `null` here.
 
+For disk KV requests, `disk-kv-cache` now refers to the explicit strategy root
+under `cache_dir/kv_cache_chunked`,
+`cache_dir/kv_cache_streamed_segmented`, or
+`cache_dir/kv_cache_tiered_write_back`, not to pickle-backed `.pt` layer
+artifacts. The request metrics report both `kv_cache_strategy` and
+`cache_state`, so benchmark comparisons can distinguish the selected backend
+and, for tier-aware strategies, the current hot/cold split. `cache_dir_size_mb`
+describes only the persisted on-disk portion of the cache, while `cache_state`
+surfaces persisted artifact counts, compaction counts, cold-store format, hot
+in-memory tokens, and spill counts.
+Within one loaded runtime, the cache layer can satisfy repeated requests from
+an in-process resident KV snapshot instead of rereading the same persisted
+history from disk. In those cases, `kvload` may legitimately disappear even
+though disk KV is still the active strategy. The `streamed-segmented` store now
+also coalesces extents by segment file on readback, so fewer file-range reads
+can show up under the same `disk-kv-cache` storage path label.
+For `tiered-write-back`, the persisted cold tier now uses a journal-backed
+append store under `cache_dir/kv_cache_tiered_write_back/cold`, so the tiered
+spill path no longer depends on the chunked cold-store substrate.
+For `log-structured-journal`, compaction is visible both through
+`cache_state.compaction_count` and, when it occurs during a request, native
+runtime profile timing under `kvcompact`. `kvsave` now measures append-path
+write cost without double-counting compaction rewrite time; when compaction
+occurs, `kvcompact` reports that rewrite separately.
+Cold, warm, prompt-scaling, output-scaling, and session-growth probes all use
+the same persistent benchmark-history ledger, so bounded proof runs remain
+recorded and comparable instead of becoming ad hoc local artifacts.
+
 When the optimized loader uses async submission plus later completion, the
 native event totals represent per-operation storage latency, not a partition of
 request wall time. That means summed `gds_read`, `safetensor_*`, or other
@@ -93,3 +186,24 @@ workflow against `cuda:0` to capture native loader and storage-path behavior:
 ```bash
 uv run python scripts/benchmark_runtime.py --device cuda:0 --output .omx/runtime-benchmark-cuda.json
 ```
+
+## Adjacent upstream baseline workflow
+
+When you want a concept-level baseline against upstream oLLM proper, keep that
+clone outside this repo tree and let it maintain its own benchmark history.
+One safe pattern is:
+
+```bash
+git clone https://github.com/Mega4alik/ollm.git ../ollm-upstream-baseline
+cd ../ollm-upstream-baseline
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --no-build-isolation -e .
+```
+
+Upstream does not ship this fork's `scripts/benchmark_runtime.py` harness, so
+do not pretend the same command surface exists there. Instead, keep any
+compatibility probe or wrapper local-only and outside this repo, and label its
+artifacts explicitly as upstream-baseline. That keeps upstream sources,
+artifacts, and history out of this fork's tracked tree while still making the
+baseline attributable and reproducible.

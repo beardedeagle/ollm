@@ -73,8 +73,14 @@ class Message:
     def assistant_text(cls, text: str) -> Self:
         return cls(role=MessageRole.ASSISTANT, content=[ContentPart.text(text)])
 
-    def as_transformers_message(self) -> dict[str, object]:
-        if len(self.content) == 1 and self.content[0].kind is ContentKind.TEXT:
+    def as_transformers_message(
+        self, *, structured_content: bool = False
+    ) -> dict[str, object]:
+        if (
+            not structured_content
+            and len(self.content) == 1
+            and self.content[0].kind is ContentKind.TEXT
+        ):
             return {"role": self.role.value, "content": self.content[0].value}
         return {
             "role": self.role.value,

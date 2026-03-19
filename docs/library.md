@@ -16,6 +16,7 @@ runtime_config = RuntimeConfig(
     device="cpu",
     backend="transformers-generic",
     use_specialization=False,
+    kv_cache_strategy="chunked",
 )
 
 plan = client.describe_plan(runtime_config)
@@ -48,9 +49,24 @@ from ollm import Inference, TextStreamer
 o = Inference("llama3-1B-chat", device="cuda:0", logging=True)
 o.ini_model(models_dir="./models/", force_download=False)
 o.offload_layers_to_cpu(layers_num=2)
-past_key_values = o.DiskCache(cache_dir="./kv_cache/")
+past_key_values = o.DiskCache(
+    cache_dir="./kv_cache/",
+    cache_strategy="streamed-segmented",
+)
 text_streamer = TextStreamer(o.tokenizer, skip_prompt=True, skip_special_tokens=False)
 ```
+
+`RuntimeConfig.kv_cache_strategy` now selects the optimized-native disk KV
+backend explicitly. `chunked` uses `cache_dir/kv_cache_chunked`, while
+`streamed-segmented` uses `cache_dir/kv_cache_streamed_segmented`,
+`log-structured-journal` uses `cache_dir/kv_cache_log_structured_journal`, and
+`tiered-write-back` uses `cache_dir/kv_cache_tiered_write_back` while keeping a
+bounded hot region in memory and a journal-backed cold tier on disk. All four
+use typed raw payloads plus explicit metadata instead of opaque torch cache
+blobs. The active runtime then applies a platform/resource-aware buffering or
+spill policy on top of the selected store.
+The low-level helper accepts the same switch directly through
+`Inference.DiskCache(cache_strategy=...)`.
 
 For compatible local Llama or Gemma3 directories, `AutoInference` remains the direct optimized-native helper:
 

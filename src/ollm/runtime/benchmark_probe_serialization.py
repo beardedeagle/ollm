@@ -4,6 +4,7 @@ import json
 from collections.abc import Mapping
 from typing import cast
 
+from ollm.kv_cache_state import KVCacheStateSnapshot
 from ollm.runtime.benchmark_probe_types import (
     EventTimingSummary,
     NativeRuntimeProfile,
@@ -171,7 +172,9 @@ def _parse_request_probe_metrics(payload: Mapping[str, object]) -> RequestProbeM
         output_tokens=_require_int(payload, "output_tokens"),
         output_tokens_per_second=_optional_float(payload, "output_tokens_per_second"),
         cache_mode=_require_string(payload, "cache_mode"),
+        kv_cache_strategy=_optional_string(payload, "kv_cache_strategy"),
         cache_dir_size_mb=_optional_float(payload, "cache_dir_size_mb"),
+        cache_state=_parse_cache_state(payload.get("cache_state")),
         allocator_gap_mb=_optional_float(payload, "allocator_gap_mb"),
         allocator_gap_ratio=_optional_float(payload, "allocator_gap_ratio"),
         native_runtime_profile=_parse_native_runtime_profile(
@@ -247,6 +250,28 @@ def _parse_native_runtime_profile(value: object) -> NativeRuntimeProfile | None:
         for event_name, event_payload in raw_events.items()
     }
     return NativeRuntimeProfile(storage_paths=storage_paths, events=events)
+
+
+def _parse_cache_state(value: object) -> KVCacheStateSnapshot | None:
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise ValueError("cache_state must be an object or null")
+    payload = cast(Mapping[str, object], value)
+    return KVCacheStateSnapshot(
+        strategy_id=_require_string(payload, "strategy_id"),
+        policy_id=_require_string(payload, "policy_id"),
+        persisted_layer_count=_require_int(payload, "persisted_layer_count"),
+        persisted_tokens=_require_int(payload, "persisted_tokens"),
+        persisted_artifact_count=_require_int(payload, "persisted_artifact_count"),
+        hot_layer_count=_require_int(payload, "hot_layer_count"),
+        hot_tokens=_require_int(payload, "hot_tokens"),
+        hot_bytes=_require_int(payload, "hot_bytes"),
+        compaction_count=_require_int(payload, "compaction_count"),
+        spill_count=_require_int(payload, "spill_count"),
+        spilled_tokens=_require_int(payload, "spilled_tokens"),
+        cold_store_format=_optional_string(payload, "cold_store_format"),
+    )
 
 
 def _parse_event_timing_summary(value: object) -> EventTimingSummary:

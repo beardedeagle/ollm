@@ -16,6 +16,7 @@ from transformers import PreTrainedTokenizerFast
 from transformers.models.t5 import T5Config, T5ForConditionalGeneration
 
 from ollm.client import RuntimeClient
+from ollm.kv_cache_strategy import DEFAULT_KV_CACHE_STRATEGY
 from ollm.runtime.benchmark_commands import (
     measure_callable,
     measure_command,
@@ -95,11 +96,18 @@ def build_runtime_benchmark_report(
     benchmark_model_reference: str,
     models_dir: Path,
     device: str,
+    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
     iterations: int = 5,
     warmup_iterations: int = 1,
     prompt_token_targets: tuple[int, ...] = DEFAULT_PROMPT_TOKEN_TARGETS,
     output_token_targets: tuple[int, ...] = DEFAULT_OUTPUT_TOKEN_TARGETS,
     session_turns: int = DEFAULT_SESSION_TURNS,
+    include_family_results: bool = True,
+    include_primary_extended_scenarios: bool = True,
+    cold_timeout_seconds: float = 240.0,
+    warm_timeout_seconds: float = 240.0,
+    scaling_timeout_seconds: float = 300.0,
+    session_timeout_seconds: float = 300.0,
 ) -> RuntimeBenchmarkReport:
     """Build the full runtime benchmark report for one primary model reference."""
 
@@ -150,11 +158,18 @@ def build_runtime_benchmark_report(
         benchmark_model_reference=benchmark_model_reference,
         models_dir=models_root,
         device=device,
+        kv_cache_strategy=kv_cache_strategy,
         iterations=max(1, min(iterations, 3)),
         warmup_iterations=min(warmup_iterations, 1),
         prompt_token_targets=prompt_token_targets,
         output_token_targets=output_token_targets,
         session_turns=session_turns,
+        include_family_results=include_family_results,
+        include_primary_extended_scenarios=include_primary_extended_scenarios,
+        cold_timeout_seconds=cold_timeout_seconds,
+        warm_timeout_seconds=warm_timeout_seconds,
+        scaling_timeout_seconds=scaling_timeout_seconds,
+        session_timeout_seconds=session_timeout_seconds,
     )
     return RuntimeBenchmarkReport(
         generated_at=datetime.now(timezone.utc).isoformat(),
@@ -297,11 +312,18 @@ def _measure_runtime_comparison(
     benchmark_model_reference: str,
     models_dir: Path,
     device: str,
+    kv_cache_strategy: str,
     iterations: int,
     warmup_iterations: int,
     prompt_token_targets: tuple[int, ...],
     output_token_targets: tuple[int, ...],
     session_turns: int,
+    include_family_results: bool,
+    include_primary_extended_scenarios: bool,
+    cold_timeout_seconds: float,
+    warm_timeout_seconds: float,
+    scaling_timeout_seconds: float,
+    session_timeout_seconds: float,
 ) -> dict[str, object]:
     """Measure runtime comparisons for the requested target and supported families."""
 
@@ -322,28 +344,42 @@ def _measure_runtime_comparison(
         ),
         models_dir=models_dir,
         device=device,
+        kv_cache_strategy=kv_cache_strategy,
         iterations=iterations,
         warmup_iterations=warmup_iterations,
-        include_extended_scenarios=True,
+        include_extended_scenarios=include_primary_extended_scenarios,
         prompt_token_targets=prompt_token_targets,
         output_token_targets=output_token_targets,
         session_turns=session_turns,
+        cold_timeout_seconds=cold_timeout_seconds,
+        warm_timeout_seconds=warm_timeout_seconds,
+        scaling_timeout_seconds=scaling_timeout_seconds,
+        session_timeout_seconds=session_timeout_seconds,
     )
-    family_results = [
-        benchmark_runtime_target(
-            repo_root=repo_root,
-            target=target,
-            models_dir=models_dir,
-            device=device,
-            iterations=iterations,
-            warmup_iterations=warmup_iterations,
-            include_extended_scenarios=False,
-            prompt_token_targets=prompt_token_targets,
-            output_token_targets=output_token_targets,
-            session_turns=session_turns,
-        )
-        for target in build_current_supported_family_targets(models_dir)
-    ]
+    family_results = (
+        [
+            benchmark_runtime_target(
+                repo_root=repo_root,
+                target=target,
+                models_dir=models_dir,
+                device=device,
+                kv_cache_strategy=kv_cache_strategy,
+                iterations=iterations,
+                warmup_iterations=warmup_iterations,
+                include_extended_scenarios=False,
+                prompt_token_targets=prompt_token_targets,
+                output_token_targets=output_token_targets,
+                session_turns=session_turns,
+                cold_timeout_seconds=cold_timeout_seconds,
+                warm_timeout_seconds=warm_timeout_seconds,
+                scaling_timeout_seconds=scaling_timeout_seconds,
+                session_timeout_seconds=session_timeout_seconds,
+            )
+            for target in build_current_supported_family_targets(models_dir)
+        ]
+        if include_family_results
+        else []
+    )
     return {
         "primary_target": primary_target,
         "family_results": family_results,

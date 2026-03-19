@@ -74,6 +74,7 @@ class RuntimeConfigPayload(TypedDict):
     use_specialization: bool
     cache_dir: str
     use_cache: bool
+    kv_cache_strategy: str
     offload_cpu_layers: int
     offload_gpu_layers: int
     force_download: bool
@@ -178,6 +179,7 @@ def runtime_config_payload(runtime_config: RuntimeConfig) -> RuntimeConfigPayloa
         "use_specialization": runtime_config.use_specialization,
         "cache_dir": str(runtime_config.resolved_cache_dir()),
         "use_cache": runtime_config.use_cache,
+        "kv_cache_strategy": runtime_config.resolved_kv_cache_strategy(),
         "offload_cpu_layers": runtime_config.offload_cpu_layers,
         "offload_gpu_layers": runtime_config.offload_gpu_layers,
         "force_download": runtime_config.force_download,

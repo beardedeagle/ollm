@@ -102,8 +102,14 @@ def test_render_runtime_probe_json_round_trips() -> None:
     request = cast(dict[str, object], payload["request"])
     resources = cast(dict[str, object], request["resources"])
     native_runtime_profile = cast(dict[str, object], request["native_runtime_profile"])
+    cache_state = cast(dict[str, object], request["cache_state"])
     events = cast(dict[str, object], native_runtime_profile["events"])
     assert request["output_tokens"] == 4
+    assert request["kv_cache_strategy"] == "chunked"
+    assert cache_state["strategy_id"] == "chunked"
+    assert cache_state["persisted_artifact_count"] == 2
+    assert cache_state["compaction_count"] == 0
+    assert cache_state["cold_store_format"] is None
     assert resources["accelerator_kind"] == "cuda"
     assert "kvload" in events
 
@@ -217,6 +223,18 @@ def test_summarize_request_metrics_includes_native_runtime_profile() -> None:
         "disk-kv-cache",
         "safetensor-io",
     ]
+    assert cast(dict[str, object], summary["cache"])["kv_cache_strategy"] == "chunked"
+    cache_state = cast(
+        dict[str, object], cast(dict[str, object], summary["cache"])["cache_state"]
+    )
+    assert cache_state["policy_id"] == "test-policy"
+    persisted_artifact_count = cast(
+        dict[str, object], cache_state["persisted_artifact_count"]
+    )
+    assert persisted_artifact_count["mean"] == 2.0
+    compaction_count = cast(dict[str, object], cache_state["compaction_count"])
+    assert compaction_count["mean"] == 0.0
+    assert cache_state["cold_store_format"] is None
     assert kvload["event_count"] == 2
 
 

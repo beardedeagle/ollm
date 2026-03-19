@@ -12,7 +12,7 @@ Use `RuntimeConfig` to describe:
 - backend override
 - multimodal enablement
 - specialization enablement
-- cache and offload behavior
+- cache strategy, cache root, and offload behavior
 
 ## `GenerationConfig`
 

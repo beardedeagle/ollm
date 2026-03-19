@@ -4,6 +4,11 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ollm.kv_cache_strategy import (
+    DEFAULT_KV_CACHE_STRATEGY,
+    normalize_kv_cache_strategy,
+)
+
 DEFAULT_MODEL_REFERENCE = "llama3-1B-chat"
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
 DEFAULT_MAX_NEW_TOKENS = 500
@@ -48,6 +53,7 @@ class RuntimeConfig:
     use_specialization: bool = True
     cache_dir: Path = field(default_factory=lambda: Path("kv_cache"))
     use_cache: bool = True
+    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY
     offload_cpu_layers: int = 0
     offload_gpu_layers: int = 0
     force_download: bool = False
@@ -67,6 +73,13 @@ class RuntimeConfig:
         """Return the absolute cache directory."""
         return self.cache_dir.expanduser().resolve()
 
+    def resolved_kv_cache_strategy(self) -> str:
+        """Return the normalized disk-KV strategy."""
+        normalized_strategy = normalize_kv_cache_strategy(self.kv_cache_strategy)
+        if normalized_strategy is None:
+            return DEFAULT_KV_CACHE_STRATEGY
+        return normalized_strategy
+
     def resolved_adapter_dir(self) -> Path | None:
         """Return the absolute adapter directory when one is configured."""
         if self.adapter_dir is None:
@@ -79,6 +92,7 @@ class RuntimeConfig:
             raise ValueError("--model cannot be empty")
         if self.backend is not None:
             normalize_backend(self.backend)
+        normalize_kv_cache_strategy(self.kv_cache_strategy)
         if self.verbose and self.quiet:
             raise ValueError("--verbose and --quiet cannot be used together")
         if (
