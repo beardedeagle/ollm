@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -2286,8 +2286,8 @@
 
 <h1 id="kv-strategy-matrix">KV Strategy Matrix<a class="headerlink" href="#kv-strategy-matrix" title="Permanent link">&para;</a></h1>
 <p>oLLM's current disk-KV presets are still selected as single strings such as
-<code>chunked</code>, <code>streamed-segmented</code>, <code>log-structured-journal</code>, and
-<code>tiered-write-back</code>.</p>
+<code>chunked</code>, <code>streamed-segmented</code>, <code>log-structured-journal</code>,
+<code>quantized-cold-tier</code>, and <code>tiered-write-back</code>.</p>
 <p>That is still the public control surface today, but the system is now being
 scaffolded around a more explicit internal matrix so future strategies do not
 turn into one giant preset enum with hidden semantics.</p>
@@ -2336,6 +2336,13 @@ that preset is owned and how telemetry may influence future runtime choices.</p>
 <td><code>buffered-tail</code></td>
 <td><code>full-history</code></td>
 <td><code>full-precision</code></td>
+</tr>
+<tr>
+<td><code>quantized-cold-tier</code></td>
+<td><code>log-structured-journal</code></td>
+<td><code>buffered-tail</code></td>
+<td><code>full-history</code></td>
+<td><code>quantized</code></td>
 </tr>
 <tr>
 <td><code>tiered-write-back</code></td>
@@ -2397,6 +2404,7 @@ part of cache state, not just an implementation detail.</p>
 <li>persisted state</li>
 <li>resident in-process state</li>
 <li>hot/pending tails</li>
+<li>cold-tier representation when the persisted encoding is quantized</li>
 </ul>
 <p>That matters because resident reuse can improve request behavior without showing
 up as persisted on-disk KV activity.</p>

@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -2305,6 +2305,7 @@ incomparable runs do not get mashed together.</p>
 <li>prompt-length scaling</li>
 <li>output-length scaling</li>
 <li>repeated-turn session growth</li>
+<li>reopened-runtime session growth for persistent KV validation</li>
 <li>it marks unsupported metrics and non-executable optimized paths as unavailable instead of fabricating numbers</li>
 </ul>
 <p>Only the runtime comparison loads requested model weights. The planning and no-specialization fallback measurements are intentionally lightweight.</p>
@@ -2314,16 +2315,22 @@ incomparable runs do not get mashed together.</p>
 <span class="w">  </span>--profile<span class="w"> </span>full<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--prompt-scale-tokens<span class="w"> </span><span class="m">32</span>,128,512<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output-scale-tokens<span class="w"> </span><span class="m">16</span>,64,128<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--session-turns<span class="w"> </span><span class="m">4</span>
+<span class="w">  </span>--session-turns<span class="w"> </span><span class="m">4</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--session-max-new-tokens<span class="w"> </span><span class="m">4</span>
 </code></pre></div>
 <p>Interpretation notes:</p>
 <ul>
 <li>family-wide results stay limited to cold-start and warm-runtime comparisons so the benchmark remains bounded</li>
+<li>session-growth uses its own per-turn output cap instead of inheriting the output-scaling sweep, because repeated-turn probes are intended to measure retained-session growth rather than long-form generation throughput</li>
 <li>prompt throughput is prompt tokens divided by TTFT/prefill latency</li>
 <li>output throughput is generated output tokens divided by total generation latency</li>
 <li>peak RSS includes a source label; long-lived warm/scaling/session probes use stage-local sampled peaks instead of process-lifetime peaks</li>
 <li>allocator-gap metrics are reported as reserved-minus-allocated style slack when the backend exposes the required counters; unsupported backends serialize them as <code>null</code></li>
 </ul>
+<p>On loader-streamed families such as optimized Gemma3 on CPU, a long per-turn
+session-growth response can become dominated by repeated safetensor layer reads
+instead of disk-KV behavior. The bounded <code>--session-max-new-tokens</code> default is
+there to keep this probe representative and practical on development machines.</p>
 <h2 id="native-loader-and-kv-io-profile">Native loader and KV IO profile<a class="headerlink" href="#native-loader-and-kv-io-profile" title="Permanent link">&para;</a></h2>
 <p>For optimized-native runs, the request metrics can now include a
 <code>native_runtime_profile</code> payload. This captures event timing summaries emitted
@@ -2358,8 +2365,8 @@ artifacts. The request metrics report both <code>kv_cache_strategy</code> and
 <code>cache_state</code>, so benchmark comparisons can distinguish the selected backend
 and, for tier-aware strategies, the current hot/cold split. <code>cache_dir_size_mb</code>
 describes only the persisted on-disk portion of the cache, while <code>cache_state</code>
-surfaces persisted artifact counts, compaction counts, cold-store format, hot
-in-memory tokens, and spill counts.
+surfaces persisted artifact counts, compaction counts, cold-store format,
+cold-tier representation, hot in-memory tokens, and spill counts.
 Within one loaded runtime, the cache layer can satisfy repeated requests from
 an in-process resident KV snapshot instead of rereading the same persisted
 history from disk. In those cases, <code>kvload</code> may legitimately disappear even
@@ -2374,9 +2381,15 @@ For <code>log-structured-journal</code>, compaction is visible both through
 runtime profile timing under <code>kvcompact</code>. <code>kvsave</code> now measures append-path
 write cost without double-counting compaction rewrite time; when compaction
 occurs, <code>kvcompact</code> reports that rewrite separately.
+For <code>quantized-cold-tier</code>, the persisted cold journal uses the explicit
+<code>int8-symmetric-per-tensor</code> representation and benchmark output surfaces that
+representation through <code>cache_state.cold_tier_representation</code>.
 Cold, warm, prompt-scaling, output-scaling, and session-growth probes all use
 the same persistent benchmark-history ledger, so bounded proof runs remain
-recorded and comparable instead of becoming ad hoc local artifacts.</p>
+recorded and comparable instead of becoming ad hoc local artifacts.
+For persistent-KV proof work, <code>--probe-mode reopen-session-growth</code> reloads the
+runtime every turn under <code>kv_cache_lifecycle="persistent"</code> so the resulting
+turns exercise persisted cold-KV reuse instead of same-process resident reuse.</p>
 <p>When the optimized loader uses async submission plus later completion, the
 native event totals represent per-operation storage latency, not a partition of
 request wall time. That means summed <code>gds_read</code>, <code>safetensor_*</code>, or other

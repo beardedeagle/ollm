@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -2272,6 +2272,10 @@ artifacts. When the selected runtime uses
 <code>kv_cache_strategy="log-structured-journal"</code>, it writes to
 <code>cache_dir/kv_cache_log_structured_journal</code> and compacts journal metadata
 deterministically once the configured entry threshold is reached. When it uses
+<code>kv_cache_strategy="quantized-cold-tier"</code>, it writes to
+<code>cache_dir/kv_cache_quantized_cold_tier</code> and persists colder KV entries in the
+explicit <code>int8-symmetric-per-tensor</code> representation while dequantizing back to
+the runtime dtype on load. When it uses
 <code>kv_cache_strategy="tiered-write-back"</code>, it writes the cold tier to
 <code>cache_dir/kv_cache_tiered_write_back</code> through a journal-backed append store
 while keeping a bounded hot tail in memory. The active runtime then applies a

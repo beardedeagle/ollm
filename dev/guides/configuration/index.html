@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -2287,7 +2287,7 @@ lives at <code>examples/ollm.toml</code> in the repository root.</p>
 <li><code>multimodal</code> — enable multimodal planning when non-text inputs are expected</li>
 <li><code>use_specialization</code> — whether optimized-native specialization is allowed</li>
 <li><code>cache_dir</code> / <code>use_cache</code> — disk KV cache controls</li>
-<li><code>kv_cache_strategy</code> — explicit disk KV backend selection (<code>chunked</code>, <code>streamed-segmented</code>, <code>log-structured-journal</code>, or <code>tiered-write-back</code>)</li>
+<li><code>kv_cache_strategy</code> — explicit disk KV backend selection (<code>chunked</code>, <code>streamed-segmented</code>, <code>log-structured-journal</code>, <code>quantized-cold-tier</code>, or <code>tiered-write-back</code>)</li>
 <li><code>kv_cache_lifecycle</code> — whether KV artifacts are <code>runtime-scoped</code> or explicitly <code>persistent</code></li>
 <li><code>kv_cache_adaptation_mode</code> — whether adaptation telemetry is <code>disabled</code>, <code>observe-only</code>, or <code>automatic</code> (live switching is still not enabled)</li>
 <li><code>offload_cpu_layers</code> / <code>offload_gpu_layers</code> — native offload controls when supported</li>

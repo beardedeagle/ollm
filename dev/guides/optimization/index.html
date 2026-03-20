@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.5">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
     
     
       
@@ -2380,12 +2380,13 @@
 </ul>
 <p>These controls are backend-dependent. The generic path does not expose the same
 low-level layer-placement controls as optimized-native runtimes.</p>
-<p>The optimized-native disk KV cache now exposes three explicit
+<p>The optimized-native disk KV cache now exposes five explicit
 strategies:</p>
 <ul>
 <li><code>chunked</code></li>
 <li><code>streamed-segmented</code></li>
 <li><code>log-structured-journal</code></li>
+<li><code>quantized-cold-tier</code></li>
 <li><code>tiered-write-back</code></li>
 </ul>
 <p><code>chunked</code> persists a manifest-backed chunk store under
@@ -2394,9 +2395,13 @@ segment-backed store under <code>cache_dir/kv_cache_streamed_segmented</code>.
 <code>log-structured-journal</code> persists a single append-oriented journal per layer
 under <code>cache_dir/kv_cache_log_structured_journal</code> and compacts entry metadata
 deterministically once the journal crosses its configured entry threshold.
+<code>quantized-cold-tier</code> persists the same full-history journal shape under
+<code>cache_dir/kv_cache_quantized_cold_tier</code>, but stores colder entries in the
+explicit <code>int8-symmetric-per-tensor</code> representation and dequantizes back to
+the runtime dtype on load.
 <code>tiered-write-back</code> persists only the colder KV prefix under
 <code>cache_dir/kv_cache_tiered_write_back</code> while keeping a bounded hot region in
-memory; its cold tier now uses a journal-backed append store. All four use
+memory; its cold tier now uses a journal-backed append store. All five use
 typed raw tensor payloads plus explicit metadata, and none uses opaque
 pickle-backed <code>.pt</code> cache blobs. The runtime also applies a
 platform/resource-aware buffering or spill policy on top of the selected
