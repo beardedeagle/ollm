@@ -104,7 +104,7 @@ This scaffold is meant to support the next wave of work:
 - quantized cold tiers
 - sliding-window / ring-buffer mode
 - observe-only adaptation recommendations
-- later persistent lifecycle support
+- stronger persistent lifecycle reuse and retention policy
 
 The important rule is: add new behavior by filling in these axes, not by
 letting one preset label absorb unrelated semantics forever.
