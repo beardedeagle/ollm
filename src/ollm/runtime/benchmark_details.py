@@ -95,6 +95,7 @@ def summarize_request_metrics(
                     if sample.kv_cache_strategy is not None
                 ]
             ),
+            "kv_cache_adaptation": summarize_kv_cache_adaptation(samples),
             "cache_dir_size_mb": optional_summary_dict(
                 [
                     sample.cache_dir_size_mb
@@ -317,6 +318,34 @@ def summarize_cache_states(
         "spilled_tokens": summarize_numeric_values(
             [float(snapshot.spilled_tokens) for snapshot in snapshots]
         ),
+    }
+
+
+def summarize_kv_cache_adaptation(
+    samples: list[RequestProbeMetrics],
+) -> dict[str, object] | None:
+    surfaces = [
+        sample.kv_cache_adaptation
+        for sample in samples
+        if sample.kv_cache_adaptation is not None
+    ]
+    if not surfaces:
+        return None
+    return {
+        "adaptation_mode": single_optional_string(
+            [surface.adaptation_mode for surface in surfaces]
+        ),
+        "recommendation_available": any(
+            surface.recommendation_available for surface in surfaces
+        ),
+        "recommended_strategy_id": single_optional_string(
+            [
+                surface.recommended_strategy_id
+                for surface in surfaces
+                if surface.recommended_strategy_id is not None
+            ]
+        ),
+        "reason": single_optional_string([surface.reason for surface in surfaces]),
     }
 
 

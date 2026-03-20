@@ -106,6 +106,10 @@ def test_render_runtime_probe_json_round_trips() -> None:
     events = cast(dict[str, object], native_runtime_profile["events"])
     assert request["output_tokens"] == 4
     assert request["kv_cache_strategy"] == "chunked"
+    adaptation = cast(dict[str, object], request["kv_cache_adaptation"])
+    assert adaptation["adaptation_mode"] == "observe-only"
+    assert adaptation["recommendation_available"] is True
+    assert adaptation["recommended_strategy_id"] == "chunked"
     assert cache_state["strategy_id"] == "chunked"
     assert cache_state["persistence_format"] == "chunked-manifest"
     assert cache_state["residency_mode"] == "buffered-tail"
@@ -231,6 +235,13 @@ def test_summarize_request_metrics_includes_native_runtime_profile() -> None:
         "safetensor-io",
     ]
     assert cast(dict[str, object], summary["cache"])["kv_cache_strategy"] == "chunked"
+    adaptation = cast(
+        dict[str, object],
+        cast(dict[str, object], summary["cache"])["kv_cache_adaptation"],
+    )
+    assert adaptation["adaptation_mode"] == "observe-only"
+    assert adaptation["recommendation_available"] is True
+    assert adaptation["recommended_strategy_id"] == "chunked"
     cache_state = cast(
         dict[str, object], cast(dict[str, object], summary["cache"])["cache_state"]
     )

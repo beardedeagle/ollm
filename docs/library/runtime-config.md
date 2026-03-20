@@ -17,8 +17,8 @@ Use `RuntimeConfig` to describe:
 The current KV scaffolding now distinguishes:
 
 - `kv_cache_strategy` — the current preset such as `chunked` or `tiered-write-back`
-- `kv_cache_lifecycle` — `runtime-scoped` today, with future `persistent` support planned explicitly
-- `kv_cache_adaptation_mode` — scaffolded as `disabled`, `observe-only`, or `automatic`
+- `kv_cache_lifecycle` — `runtime-scoped` or explicit `persistent` reuse semantics
+- `kv_cache_adaptation_mode` — `disabled`, `observe-only`, or `automatic`; observe-only recommendation rules exist, but live switching is still disabled
 
 ## `GenerationConfig`
 

@@ -141,7 +141,9 @@ def _build_processor_runtime() -> LoadedRuntime:
             device=torch.device("cpu"),
             stats=None,
             print_suppression_modules=(),
-            create_cache=lambda cache_dir, cache_strategy=None: None,
+            create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None: (
+                None
+            ),
             apply_offload=lambda runtime_config: None,
         ),
         model_path=resolved_model.model_path,

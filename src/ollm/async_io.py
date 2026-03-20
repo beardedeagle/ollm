@@ -95,6 +95,20 @@ def path_write_text(path: Path, content: str, *, encoding: str = "utf-8") -> Non
     run_async_operation(path_write_text_async(path, content, encoding=encoding))
 
 
+async def path_append_text_async(
+    path: Path, content: str, *, encoding: str = "utf-8"
+) -> None:
+    def _append() -> None:
+        with path.open("a", encoding=encoding) as handle:
+            handle.write(content)
+
+    await to_thread.run_sync(_append)
+
+
+def path_append_text(path: Path, content: str, *, encoding: str = "utf-8") -> None:
+    run_async_operation(path_append_text_async(path, content, encoding=encoding))
+
+
 async def path_write_bytes_async(path: Path, content: bytes) -> None:
     await to_thread.run_sync(lambda: path.write_bytes(content))
 

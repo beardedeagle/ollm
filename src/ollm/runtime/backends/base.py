@@ -22,7 +22,7 @@ class BackendRuntime:
     device: torch.device
     stats: object | None
     print_suppression_modules: tuple[ModuleType, ...]
-    create_cache: Callable[[Path, str | None], object | None]
+    create_cache: Callable[[Path, str | None, str | None], object | None]
     apply_offload: Callable[[RuntimeConfig], None]
     validate_request: Callable[[PromptRequest], None] | None = None
     execute_prompt: Callable[[PromptRequest, StreamSink], PromptResponse] | None = None

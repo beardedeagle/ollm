@@ -6,6 +6,10 @@ from typing import cast
 import torch
 
 from ollm.app.types import Message, PromptRequest
+from ollm.kv_cache_matrix import (
+    build_kv_cache_adaptation_surface,
+    resolve_kv_cache_base_dir,
+)
 from ollm.kv_cache_state import KVCacheStateSnapshot
 from ollm.kv_cache_strategy import kv_cache_root
 from ollm.runtime.benchmark_probe_types import (
@@ -128,10 +132,16 @@ def execute_request_probe(
         )
     cache_dir_size = None
     if kv_cache_strategy is not None:
+        cache_base_dir = resolve_kv_cache_base_dir(
+            cache_dir=request.runtime_config.resolved_cache_dir(),
+            lifecycle=request.runtime_config.resolved_kv_cache_lifecycle(),
+            model_reference=runtime.resolved_model.reference.raw,
+            normalized_name=runtime.resolved_model.normalized_name,
+            backend_id=runtime.plan.backend_id or "unknown",
+            specialization_provider_id=runtime.plan.specialization_provider_id,
+        )
         cache_dir_size = cache_dir_size_mb(
-            kv_cache_root(
-                request.runtime_config.resolved_cache_dir(), kv_cache_strategy
-            )
+            kv_cache_root(cache_base_dir, kv_cache_strategy)
         )
     allocator_gap_mb = None
     allocator_gap_ratio = None
@@ -150,6 +160,16 @@ def execute_request_probe(
                 6,
             )
     native_runtime_profile = _collect_native_runtime_profile(runtime)
+    kv_cache_adaptation = None
+    if kv_cache_strategy is not None and cache_state is not None:
+        kv_cache_adaptation = build_kv_cache_adaptation_surface(
+            adaptation_mode=request.runtime_config.resolved_kv_cache_adaptation_mode(),
+            current_strategy=kv_cache_strategy,
+            persisted_artifact_count=cache_state.persisted_artifact_count,
+            spill_count=cache_state.spill_count,
+            resident_bytes=cache_state.resident_bytes,
+            hot_bytes=cache_state.hot_bytes,
+        )
     return RequestProbeExecution(
         metrics=RequestProbeMetrics(
             total_ms=round(generation_ms, 6),
@@ -162,6 +182,7 @@ def execute_request_probe(
             output_tokens_per_second=output_tokens_per_second,
             cache_mode=cache_mode,
             kv_cache_strategy=kv_cache_strategy,
+            kv_cache_adaptation=kv_cache_adaptation,
             cache_dir_size_mb=cache_dir_size,
             cache_state=cache_state,
             allocator_gap_mb=allocator_gap_mb,

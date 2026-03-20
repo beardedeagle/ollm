@@ -4,6 +4,7 @@ import json
 from collections.abc import Mapping
 from typing import cast
 
+from ollm.kv_cache_matrix import KVCacheAdaptationSurface
 from ollm.kv_cache_state import KVCacheStateSnapshot
 from ollm.runtime.benchmark_probe_types import (
     EventTimingSummary,
@@ -173,6 +174,9 @@ def _parse_request_probe_metrics(payload: Mapping[str, object]) -> RequestProbeM
         output_tokens_per_second=_optional_float(payload, "output_tokens_per_second"),
         cache_mode=_require_string(payload, "cache_mode"),
         kv_cache_strategy=_optional_string(payload, "kv_cache_strategy"),
+        kv_cache_adaptation=_parse_kv_cache_adaptation(
+            payload.get("kv_cache_adaptation")
+        ),
         cache_dir_size_mb=_optional_float(payload, "cache_dir_size_mb"),
         cache_state=_parse_cache_state(payload.get("cache_state")),
         allocator_gap_mb=_optional_float(payload, "allocator_gap_mb"),
@@ -278,6 +282,20 @@ def _parse_cache_state(value: object) -> KVCacheStateSnapshot | None:
         spill_count=_require_int(payload, "spill_count"),
         spilled_tokens=_require_int(payload, "spilled_tokens"),
         cold_store_format=_optional_string(payload, "cold_store_format"),
+    )
+
+
+def _parse_kv_cache_adaptation(value: object) -> KVCacheAdaptationSurface | None:
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise ValueError("kv_cache_adaptation must be an object or null")
+    payload = cast(Mapping[str, object], value)
+    return KVCacheAdaptationSurface(
+        adaptation_mode=_require_string(payload, "adaptation_mode"),
+        recommendation_available=bool(payload.get("recommendation_available")),
+        recommended_strategy_id=_optional_string(payload, "recommended_strategy_id"),
+        reason=_require_string(payload, "reason"),
     )
 
 

@@ -32,7 +32,7 @@ class FakeProvider(SpecializationProvider):
 
     def __init__(self):
         self.load_calls: list[str] = []
-        self.cache_calls: list[tuple[Path, str | None]] = []
+        self.cache_calls: list[tuple[Path, str | None, str | None]] = []
 
     def match(
         self, resolved_model: ResolvedModel, config: RuntimeConfig
@@ -70,8 +70,9 @@ class FakeProvider(SpecializationProvider):
             supports_cpu_offload=True,
             supports_gpu_offload=False,
             print_suppression_modules=(),
-            create_cache=lambda cache_dir, cache_strategy=None: (
-                cache_calls.append((cache_dir, cache_strategy)) or str(cache_dir)
+            create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None: (
+                cache_calls.append((cache_dir, cache_strategy, cache_lifecycle))
+                or str(cache_dir)
             ),
             apply_cpu_offload=lambda layers_num: None,
             apply_gpu_offload=None,
@@ -167,7 +168,7 @@ def test_inference_disk_cache_forwards_explicit_strategy(tmp_path: Path) -> None
     )
 
     assert cache_value == str(cache_root.resolve())
-    assert provider.cache_calls == [(cache_root.resolve(), "streamed-segmented")]
+    assert provider.cache_calls == [(cache_root.resolve(), "streamed-segmented", None)]
 
 
 def test_inference_load_model_does_not_prune_caller_owned_local_files(

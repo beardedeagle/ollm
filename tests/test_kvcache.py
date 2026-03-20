@@ -71,6 +71,33 @@ def test_kvcache_creates_nested_cache_directory(tmp_path: Path) -> None:
     assert (cache.cache_folder / "manifest.json").exists()
 
 
+def test_kvcache_persistent_lifecycle_reuses_existing_cache(tmp_path: Path) -> None:
+    cache_root = tmp_path / "cache-root"
+    first_cache = KVCache(
+        cache_dir=cache_root,
+        device="cpu",
+        stats=None,
+        policy=_immediate_flush_policy(),
+        cache_lifecycle="persistent",
+    )
+    key_states = _chunk_tensor(3)
+    value_states = _chunk_tensor(3, offset=100)
+    first_cache.update(key_states, value_states, 0)
+
+    second_cache = KVCache(
+        cache_dir=cache_root,
+        device="cpu",
+        stats=None,
+        policy=_immediate_flush_policy(),
+        cache_lifecycle="persistent",
+    )
+    persisted = second_cache.load_from_disk(0)
+
+    assert persisted is not None
+    assert torch.equal(persisted[0], key_states)
+    assert torch.equal(persisted[1], value_states)
+
+
 def test_kvcache_writes_manifest_backed_chunk_artifacts(tmp_path: Path) -> None:
     cache = KVCache(
         cache_dir=tmp_path / "cache-root",

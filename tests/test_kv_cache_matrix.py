@@ -1,8 +1,12 @@
+from pathlib import Path
+
 from ollm.kv_cache_matrix import (
     KVCacheAdaptationSurface,
+    build_kv_cache_adaptation_surface,
     describe_kv_cache_strategy,
     normalize_kv_cache_adaptation_mode,
     normalize_kv_cache_lifecycle,
+    resolve_kv_cache_base_dir,
 )
 
 
@@ -48,3 +52,33 @@ def test_kv_cache_adaptation_surface_serializes() -> None:
     )
 
     assert surface.to_dict()["adaptation_mode"] == "observe-only"
+
+
+def test_build_kv_cache_adaptation_surface_recommends_journal_for_artifact_pressure() -> (
+    None
+):
+    surface = build_kv_cache_adaptation_surface(
+        adaptation_mode="observe-only",
+        current_strategy="chunked",
+        persisted_artifact_count=96,
+        spill_count=0,
+        resident_bytes=0,
+        hot_bytes=1024,
+    )
+
+    assert surface.recommendation_available is True
+    assert surface.recommended_strategy_id == "log-structured-journal"
+
+
+def test_resolve_kv_cache_base_dir_namespaces_persistent_lifecycle() -> None:
+    persistent_dir = resolve_kv_cache_base_dir(
+        cache_dir=Path("/tmp/kv-cache"),
+        lifecycle="persistent",
+        model_reference="Qwen/Qwen2.5-7B-Instruct",
+        normalized_name="qwen2.5-7b",
+        backend_id="optimized-native",
+        specialization_provider_id="qwen3-next-native",
+    )
+
+    assert persistent_dir.parts[-2] == "persistent"
+    assert persistent_dir.parts[-1].startswith("qwen2.5-7b-")

@@ -4,7 +4,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from ollm.async_io import path_mkdir, path_write_text
+from ollm.async_io import path_append_text, path_mkdir, path_write_text
 from ollm.runtime.benchmark_history_summary import (
     compare_metric_summaries,
     require_object,
@@ -107,11 +107,9 @@ def find_previous_record(
 
 
 def _append_jsonl_entry(path: Path, payload: dict[str, object]) -> None:
-    existing = path.read_text(encoding="utf-8") if path.exists() else ""
     rendered_payload = json.dumps(payload, sort_keys=True)
-    content = (
-        rendered_payload
-        if not existing
-        else existing.rstrip("\n") + "\n" + rendered_payload
-    )
-    path_write_text(path, content + "\n", encoding="utf-8")
+    line = rendered_payload + "\n"
+    if not path.exists():
+        path_write_text(path, line, encoding="utf-8")
+        return
+    path_append_text(path, line, encoding="utf-8")

@@ -2,6 +2,7 @@
 
 from dataclasses import asdict, dataclass
 
+from ollm.kv_cache_matrix import KVCacheAdaptationSurface
 from ollm.kv_cache_state import KVCacheStateSnapshot
 from ollm.runtime.benchmark_resources import StageResourceSnapshot
 
@@ -46,6 +47,7 @@ class RequestProbeMetrics:
     output_tokens_per_second: float | None
     cache_mode: str
     kv_cache_strategy: str | None
+    kv_cache_adaptation: KVCacheAdaptationSurface | None
     cache_dir_size_mb: float | None
     cache_state: KVCacheStateSnapshot | None
     allocator_gap_mb: float | None
@@ -58,6 +60,11 @@ class RequestProbeMetrics:
         payload = asdict(self)
         payload["cache_state"] = (
             None if self.cache_state is None else self.cache_state.to_dict()
+        )
+        payload["kv_cache_adaptation"] = (
+            None
+            if self.kv_cache_adaptation is None
+            else self.kv_cache_adaptation.to_dict()
         )
         payload["native_runtime_profile"] = (
             None

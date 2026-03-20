@@ -77,7 +77,9 @@ def test_runtime_executor_includes_kv_cache_state_metadata() -> None:
     runtime.config.use_cache = True
     runtime.config.kv_cache_strategy = "tiered-write-back"
     runtime.plan = replace(runtime.plan, supports_disk_cache=True)
-    runtime.backend.create_cache = lambda cache_dir, cache_strategy=None: FakeCache()
+    runtime.backend.create_cache = (
+        lambda cache_dir, cache_strategy=None, cache_lifecycle=None: FakeCache()
+    )
     request = build_request(
         runtime.config,
         Message(role=MessageRole.USER, content=[ContentPart.text("hello")]),
@@ -102,3 +104,8 @@ def test_runtime_executor_includes_kv_cache_state_metadata() -> None:
     assert response.metadata["kv_cache_spill_count"] == "3"
     assert response.metadata["kv_cache_lifecycle"] == "runtime-scoped"
     assert response.metadata["kv_cache_adaptation_mode"] == "observe-only"
+    assert response.metadata["kv_cache_adaptation_recommendation_available"] == "true"
+    assert (
+        response.metadata["kv_cache_adaptation_recommended_strategy"]
+        == "tiered-write-back"
+    )

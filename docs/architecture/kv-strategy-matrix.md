@@ -44,11 +44,14 @@ Cache lifecycle is intentionally treated as a separate axis:
 - `runtime-scoped`
 - `persistent`
 
-Current behavior is still `runtime-scoped`.
+Current default behavior is still `runtime-scoped`, but `persistent` is now an
+explicit implemented mode.
 
-That means oLLM may reuse disk-KV state inside one loaded runtime, but it does
-not yet promise that persisted KV artifacts are valid or reusable across later
-processes or later runs.
+That means oLLM can now distinguish between:
+
+- within-runtime reuse
+- explicit persistent reuse across later runs under a lifecycle-aware,
+  model/backend-scoped cache root
 
 This distinction matters because cross-run persistence adds separate concerns:
 
@@ -67,8 +70,9 @@ Adaptation mode is also scaffolded explicitly:
 - `observe-only`
 - `automatic`
 
-Current behavior is still scaffold-only. The runtime can now describe the
-adaptation mode truthfully, but it does not yet switch KV strategies live.
+Current behavior now supports observe-only recommendation rules. The runtime can
+emit a truthful recommendation from current KV state, but it does not yet
+switch KV strategies live.
 
 The intended progression is:
 

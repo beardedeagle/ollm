@@ -1,7 +1,10 @@
-"""Orthogonal KV strategy, lifecycle, and adaptation scaffolding."""
+"""Orthogonal KV strategy, lifecycle, and adaptation helpers."""
 
+import hashlib
+import re
 from dataclasses import asdict, dataclass
 from enum import StrEnum
+from pathlib import Path
 
 from ollm.kv_cache_strategy import (
     DEFAULT_KV_CACHE_STRATEGY,
@@ -56,6 +59,7 @@ class KVCacheAdaptationMode(StrEnum):
 
 DEFAULT_KV_CACHE_LIFECYCLE = KVCacheLifecycle.RUNTIME_SCOPED.value
 DEFAULT_KV_CACHE_ADAPTATION_MODE = KVCacheAdaptationMode.OBSERVE_ONLY.value
+_SAFE_PATH_FRAGMENT = re.compile(r"[^a-zA-Z0-9._-]+")
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,10 +172,13 @@ def build_kv_cache_adaptation_surface(
     *,
     adaptation_mode: str | None,
     current_strategy: str,
+    persisted_artifact_count: int | None = None,
+    spill_count: int | None = None,
+    resident_bytes: int | None = None,
+    hot_bytes: int | None = None,
 ) -> KVCacheAdaptationSurface:
-    """Describe the current adaptation surface without fabricating live switching."""
+    """Describe the current adaptation surface using observe-only rules."""
 
-    del current_strategy
     normalized_mode = normalize_kv_cache_adaptation_mode(adaptation_mode)
     resolved_mode = (
         DEFAULT_KV_CACHE_ADAPTATION_MODE if normalized_mode is None else normalized_mode
@@ -183,16 +190,91 @@ def build_kv_cache_adaptation_surface(
             recommended_strategy_id=None,
             reason="KV adaptation is disabled.",
         )
+    normalized_strategy = normalize_kv_cache_strategy(current_strategy)
+    strategy_id = (
+        DEFAULT_KV_CACHE_STRATEGY
+        if normalized_strategy is None
+        else normalized_strategy
+    )
     if resolved_mode == KVCacheAdaptationMode.OBSERVE_ONLY.value:
+        if (
+            strategy_id in {"chunked", "streamed-segmented"}
+            and persisted_artifact_count is not None
+            and persisted_artifact_count >= 64
+        ):
+            return KVCacheAdaptationSurface(
+                adaptation_mode=resolved_mode,
+                recommendation_available=True,
+                recommended_strategy_id="log-structured-journal",
+                reason="High persisted artifact pressure favors a compaction-capable journal layout.",
+            )
+        if (
+            strategy_id == "tiered-write-back"
+            and spill_count is not None
+            and spill_count == 0
+        ):
+            return KVCacheAdaptationSurface(
+                adaptation_mode=resolved_mode,
+                recommendation_available=True,
+                recommended_strategy_id="log-structured-journal",
+                reason="Tiered write-back has not spilled, so a non-tiered journal preset is likely a better fit.",
+            )
+        if (
+            resident_bytes is not None
+            and hot_bytes is not None
+            and hot_bytes > 0
+            and resident_bytes >= hot_bytes * 4
+        ):
+            return KVCacheAdaptationSurface(
+                adaptation_mode=resolved_mode,
+                recommendation_available=True,
+                recommended_strategy_id=strategy_id,
+                reason="Resident in-process KV dominates the active hot tail, so the current preset remains the best observe-only choice.",
+            )
         return KVCacheAdaptationSurface(
             adaptation_mode=resolved_mode,
-            recommendation_available=False,
-            recommended_strategy_id=None,
-            reason="Observe-only scaffolding is enabled, but live recommendation rules are not implemented yet.",
+            recommendation_available=True,
+            recommended_strategy_id=strategy_id,
+            reason="No migration pressure was detected from the current KV state.",
         )
     return KVCacheAdaptationSurface(
         adaptation_mode=resolved_mode,
-        recommendation_available=False,
-        recommended_strategy_id=None,
-        reason="Automatic KV adaptation is scaffolded, but no switching rules are active yet.",
+        recommendation_available=True,
+        recommended_strategy_id=strategy_id,
+        reason="Automatic switching is not enabled yet, so the current strategy remains pinned.",
     )
+
+
+def resolve_kv_cache_base_dir(
+    *,
+    cache_dir: Path,
+    lifecycle: str | None,
+    model_reference: str,
+    normalized_name: str,
+    backend_id: str,
+    specialization_provider_id: str | None,
+) -> Path:
+    """Return the lifecycle-aware base cache directory before strategy suffixing."""
+
+    normalized_lifecycle = normalize_kv_cache_lifecycle(lifecycle)
+    resolved_lifecycle = (
+        DEFAULT_KV_CACHE_LIFECYCLE
+        if normalized_lifecycle is None
+        else normalized_lifecycle
+    )
+    base_dir = cache_dir.expanduser().resolve()
+    if resolved_lifecycle == KVCacheLifecycle.RUNTIME_SCOPED.value:
+        return base_dir
+    safe_name = _SAFE_PATH_FRAGMENT.sub("-", normalized_name).strip("-")
+    if not safe_name:
+        safe_name = "model"
+    identity_material = "|".join(
+        (
+            model_reference,
+            normalized_name,
+            backend_id,
+            "" if specialization_provider_id is None else specialization_provider_id,
+        )
+    )
+    digest = hashlib.sha256(identity_material.encode("utf-8")).hexdigest()[:12]
+    return base_dir / "persistent" / f"{safe_name}-{digest}"

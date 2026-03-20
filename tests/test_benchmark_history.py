@@ -1,3 +1,4 @@
+import json
 from copy import deepcopy
 from dataclasses import replace
 from pathlib import Path
@@ -5,6 +6,7 @@ from subprocess import run
 from typing import cast
 
 from ollm.runtime.benchmark_history import (
+    _append_jsonl_entry,
     record_benchmark_history,
     summarize_benchmark_payload,
 )
@@ -270,3 +272,17 @@ def test_summarize_benchmark_payload_for_prompt_scaling_uses_last_case() -> None
     assert summary["request_total_ms"] == 42.0
     assert summary["max_request_total_ms"] == 42.0
     assert summary["case_count"] == 2
+
+
+def test_append_jsonl_entry_appends_without_rewriting_previous_lines(
+    tmp_path: Path,
+) -> None:
+    index_path = tmp_path / "index.jsonl"
+
+    first: dict[str, object] = {"generated_at": "1", "record_path": "a.json"}
+    second: dict[str, object] = {"generated_at": "2", "record_path": "b.json"}
+    _append_jsonl_entry(index_path, first)
+    _append_jsonl_entry(index_path, second)
+
+    lines = index_path.read_text(encoding="utf-8").splitlines()
+    assert [json.loads(line) for line in lines] == [first, second]

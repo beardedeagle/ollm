@@ -1,3 +1,4 @@
+from ollm.kv_cache_matrix import KVCacheAdaptationSurface
 from ollm.kv_cache_state import KVCacheStateSnapshot
 from ollm.runtime.benchmark_probes import (
     EventTimingSummary,
@@ -61,6 +62,12 @@ def build_request_probe_metrics() -> RequestProbeMetrics:
         output_tokens_per_second=200.0,
         cache_mode="disk-kv",
         kv_cache_strategy="chunked",
+        kv_cache_adaptation=KVCacheAdaptationSurface(
+            adaptation_mode="observe-only",
+            recommendation_available=True,
+            recommended_strategy_id="chunked",
+            reason="No migration pressure was detected from the current KV state.",
+        ),
         cache_dir_size_mb=12.0,
         cache_state=KVCacheStateSnapshot(
             strategy_id="chunked",

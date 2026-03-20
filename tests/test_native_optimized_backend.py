@@ -65,7 +65,9 @@ class StubProvider(SpecializationProvider):
             supports_cpu_offload=True,
             supports_gpu_offload=False,
             print_suppression_modules=(self._module,),
-            create_cache=lambda cache_dir, cache_strategy=None: str(cache_dir),
+            create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None: (
+                str(cache_dir)
+            ),
             apply_cpu_offload=lambda layers_num: self._module.print(
                 f"cpu-offload:{layers_num}"
             ),
@@ -144,7 +146,9 @@ class NoisyProvider(SpecializationProvider):
             supports_cpu_offload=False,
             supports_gpu_offload=False,
             print_suppression_modules=(self._module,),
-            create_cache=lambda cache_dir, cache_strategy=None: None,
+            create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None: (
+                None
+            ),
             apply_cpu_offload=None,
             apply_gpu_offload=None,
         )

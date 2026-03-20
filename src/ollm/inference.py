@@ -246,7 +246,10 @@ class Inference:
         self._apply_gpu_offload(gpu_layers_num, cpu_layers_num)
 
     def DiskCache(
-        self, cache_dir: str = "./kvcache", cache_strategy: str | None = None
+        self,
+        cache_dir: str = "./kvcache",
+        cache_strategy: str | None = None,
+        cache_lifecycle: str | None = None,
     ):
         """Create the specialization-backed disk KV cache when supported."""
         if self._cache_factory is None:
@@ -254,6 +257,7 @@ class Inference:
         return self._cache_factory(
             Path(cache_dir).expanduser().resolve(),
             cache_strategy,
+            cache_lifecycle,
         )
 
 
