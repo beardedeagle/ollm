@@ -13,6 +13,8 @@ from ollm.runtime.benchmark_probe_types import (
     OutputScalingProbeResult,
     PromptScalingCase,
     PromptScalingProbeResult,
+    ReopenSessionGrowthProbeResult,
+    ReopenSessionGrowthTurn,
     RequestProbeMetrics,
     RuntimeProbeResult,
     SessionGrowthProbeResult,
@@ -43,6 +45,12 @@ def render_output_scaling_probe_json(probe: OutputScalingProbeResult) -> str:
 
 
 def render_session_growth_probe_json(probe: SessionGrowthProbeResult) -> str:
+    return json.dumps(probe.to_dict(), indent=2, sort_keys=True)
+
+
+def render_reopen_session_growth_probe_json(
+    probe: ReopenSessionGrowthProbeResult,
+) -> str:
     return json.dumps(probe.to_dict(), indent=2, sort_keys=True)
 
 
@@ -136,6 +144,31 @@ def parse_session_growth_probe_result(stdout: str) -> SessionGrowthProbeResult:
         turns=tuple(
             SessionGrowthTurn(
                 turn_index=_require_int(turn_payload, "turn_index"),
+                request=_parse_request_probe_metrics(
+                    _require_mapping(turn_payload, "request")
+                ),
+            )
+            for turn_payload in (
+                _require_object_mapping(item, f"turns[{index}]")
+                for index, item in enumerate(turn_items)
+            )
+        ),
+    )
+
+
+def parse_reopen_session_growth_probe_result(
+    stdout: str,
+) -> ReopenSessionGrowthProbeResult:
+    payload = _load_probe_payload(stdout)
+    turn_items = _require_sequence(payload, "turns")
+    return ReopenSessionGrowthProbeResult(
+        turns=tuple(
+            ReopenSessionGrowthTurn(
+                turn_index=_require_int(turn_payload, "turn_index"),
+                runtime_load_ms=_require_float(turn_payload, "runtime_load_ms"),
+                runtime_load_resources=_parse_stage_resources(
+                    _require_mapping(turn_payload, "runtime_load_resources")
+                ),
                 request=_parse_request_probe_metrics(
                     _require_mapping(turn_payload, "request")
                 ),

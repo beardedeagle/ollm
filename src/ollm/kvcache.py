@@ -293,6 +293,31 @@ def _resident_layer_for_device(
     return _move_tensor_pair(tensors, device)
 
 
+def _ensure_cache_layer_slot(cache: DynamicCache, layer_idx: int) -> None:
+    if len(cache.layers) > layer_idx:
+        return
+    layer_factory = getattr(cache, "layer_class_to_replicate", None)
+    if layer_factory is None:
+        raise IndexError(
+            "DynamicCache layer slot is missing and the cache cannot lazily create one"
+        )
+    while len(cache.layers) <= layer_idx:
+        cache.layers.append(layer_factory())
+
+
+def _prime_cache_layer(
+    cache: DynamicCache,
+    layer_idx: int,
+    tensors: tuple[torch.Tensor, torch.Tensor],
+) -> None:
+    _ensure_cache_layer_slot(cache, layer_idx)
+    layer = cache.layers[layer_idx]
+    lazy_initialization = getattr(layer, "lazy_initialization", None)
+    if callable(lazy_initialization):
+        lazy_initialization(tensors[0], tensors[1])
+    layer.keys, layer.values = tensors
+
+
 def _build_cache_store(
     cache_folder: Path, cache_strategy: str, policy: KVCachePolicy
 ) -> _KVCacheStoreProtocol:
@@ -371,7 +396,7 @@ class KVCache(DynamicCache, oCache):
     ) -> tuple[torch.Tensor, torch.Tensor]:
         tensors = self.load_from_disk(layer_idx)
         if tensors is not None:
-            self.layers[layer_idx].keys, self.layers[layer_idx].values = tensors
+            _prime_cache_layer(self, layer_idx, tensors)
 
         out = super().update(key_states, value_states, layer_idx, cache_kwargs)
         self._remember_resident_layer(layer_idx, out)

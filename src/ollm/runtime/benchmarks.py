@@ -27,6 +27,7 @@ from ollm.runtime.benchmark_details import mean_delta_ms
 from ollm.runtime.benchmark_probe_serialization import (
     render_output_scaling_probe_json,
     render_prompt_scaling_probe_json,
+    render_reopen_session_growth_probe_json,
     render_runtime_probe_json,
     render_session_growth_probe_json,
     render_warm_runtime_probe_json,
@@ -34,6 +35,7 @@ from ollm.runtime.benchmark_probe_serialization import (
 from ollm.runtime.benchmark_probes import (
     run_output_scaling_probe,
     run_prompt_scaling_probe,
+    run_reopen_session_growth_probe,
     run_runtime_probe,
     run_session_growth_probe,
     run_warm_runtime_probe,
@@ -76,6 +78,7 @@ __all__ = [
     "measure_runtime_probe",
     "render_output_scaling_probe_json",
     "render_prompt_scaling_probe_json",
+    "render_reopen_session_growth_probe_json",
     "render_report_json",
     "render_runtime_probe_json",
     "render_session_growth_probe_json",
@@ -83,6 +86,7 @@ __all__ = [
     "run_command",
     "run_output_scaling_probe",
     "run_prompt_scaling_probe",
+    "run_reopen_session_growth_probe",
     "run_runtime_probe",
     "run_session_growth_probe",
     "run_warm_runtime_probe",

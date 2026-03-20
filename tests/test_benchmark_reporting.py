@@ -10,16 +10,20 @@ from ollm.runtime.benchmark_probes import (
     OutputScalingProbeResult,
     PromptScalingCase,
     PromptScalingProbeResult,
+    ReopenSessionGrowthProbeResult,
+    ReopenSessionGrowthTurn,
     RuntimeProbeResult,
     SessionGrowthProbeResult,
     SessionGrowthTurn,
     WarmRuntimeProbeResult,
     parse_output_scaling_probe_result,
     parse_prompt_scaling_probe_result,
+    parse_reopen_session_growth_probe_result,
     parse_session_growth_probe_result,
     parse_warm_runtime_probe_result,
     render_output_scaling_probe_json,
     render_prompt_scaling_probe_json,
+    render_reopen_session_growth_probe_json,
     render_session_growth_probe_json,
     render_warm_runtime_probe_json,
 )
@@ -326,6 +330,28 @@ def test_scaling_and_session_probes_round_trip() -> None:
     assert parsed_prompt.cases[0].requested_prompt_tokens == 32
     assert parsed_output.cases[0].requested_max_new_tokens == 8
     assert parsed_session.turns[0].turn_index == 1
+
+
+def test_reopen_session_growth_probe_round_trips() -> None:
+    payload = render_reopen_session_growth_probe_json(
+        ReopenSessionGrowthProbeResult(
+            turns=(
+                ReopenSessionGrowthTurn(
+                    turn_index=1,
+                    runtime_load_ms=12.0,
+                    runtime_load_resources=build_stage_resources(),
+                    request=build_request_probe_metrics(),
+                ),
+            ),
+        )
+    )
+
+    parsed = parse_reopen_session_growth_probe_result(payload)
+
+    assert len(parsed.turns) == 1
+    assert parsed.turns[0].turn_index == 1
+    assert parsed.turns[0].runtime_load_ms == 12.0
+    assert parsed.turns[0].request.output_tokens == 4
 
 
 def test_benchmark_runtime_cli_rejects_invalid_iterations() -> None:

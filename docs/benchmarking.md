@@ -85,6 +85,7 @@ The harness is designed to stay truthful on hardware-constrained machines:
   - prompt-length scaling
   - output-length scaling
   - repeated-turn session growth
+  - reopened-runtime session growth for persistent KV validation
 - it marks unsupported metrics and non-executable optimized paths as unavailable instead of fabricating numbers
 
 Only the runtime comparison loads requested model weights. The planning and no-specialization fallback measurements are intentionally lightweight.
@@ -168,6 +169,9 @@ representation through `cache_state.cold_tier_representation`.
 Cold, warm, prompt-scaling, output-scaling, and session-growth probes all use
 the same persistent benchmark-history ledger, so bounded proof runs remain
 recorded and comparable instead of becoming ad hoc local artifacts.
+For persistent-KV proof work, `--probe-mode reopen-session-growth` reloads the
+runtime every turn under `kv_cache_lifecycle="persistent"` so the resulting
+turns exercise persisted cold-KV reuse instead of same-process resident reuse.
 
 When the optimized loader uses async submission plus later completion, the
 native event totals represent per-operation storage latency, not a partition of

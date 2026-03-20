@@ -12,6 +12,7 @@ from ollm.runtime.benchmark_history_summary_support import (
     require_probe_case_requests,
     resource_metric,
     single_optional_string,
+    summarize_reopen_session_growth_payload,
 )
 
 _LATENCY_REGRESSION_THRESHOLD = 0.05
@@ -225,6 +226,8 @@ def summarize_benchmark_payload(
             ),
             "session_turns": len(turns),
         }
+    if run_kind == "probe-reopen-session-growth":
+        return summarize_reopen_session_growth_payload(payload)
     if run_kind == "probe-warm":
         measured_iterations = payload.get("measured_iterations")
         if not isinstance(measured_iterations, list):

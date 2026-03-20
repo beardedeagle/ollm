@@ -20,12 +20,14 @@ from ollm.runtime.benchmarks import (
     choose_default_device,
     render_output_scaling_probe_json,
     render_prompt_scaling_probe_json,
+    render_reopen_session_growth_probe_json,
     render_report_json,
     render_runtime_probe_json,
     render_session_growth_probe_json,
     render_warm_runtime_probe_json,
     run_output_scaling_probe,
     run_prompt_scaling_probe,
+    run_reopen_session_growth_probe,
     run_runtime_probe,
     run_session_growth_probe,
     run_warm_runtime_probe,
@@ -289,6 +291,18 @@ def main() -> int:
                 max_new_tokens=args.probe_max_new_tokens,
             )
             rendered_probe = render_session_growth_probe_json(probe)
+        elif args.probe_mode == "reopen-session-growth":
+            probe = run_reopen_session_growth_probe(
+                model_reference=args.probe_model,
+                models_dir=Path(args.models_dir),
+                device=probe_device,
+                backend=args.probe_backend,
+                use_specialization=not args.probe_no_specialization,
+                kv_cache_strategy=args.probe_kv_cache_strategy,
+                session_turns=args.probe_session_turns,
+                max_new_tokens=args.probe_max_new_tokens,
+            )
+            rendered_probe = render_reopen_session_growth_probe_json(probe)
         else:
             raise SystemExit(f"Unsupported --probe-mode: {args.probe_mode}")
         if not args.no_record_history:
