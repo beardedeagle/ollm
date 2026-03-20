@@ -2267,6 +2267,9 @@
 <code>cache_dir/kv_cache_chunked</code> by default, with explicit
 dtype/shape/sequence metadata and raw payloads instead of pickle-backed torch
 artifacts. When the selected runtime uses
+<code>kv_cache_strategy="paged"</code>, it writes to
+<code>cache_dir/kv_cache_paged</code> and persists fixed-capacity pages through an
+explicit page table. When it uses
 <code>kv_cache_strategy="streamed-segmented"</code>, it writes to
 <code>cache_dir/kv_cache_streamed_segmented</code> instead. When it uses
 <code>kv_cache_strategy="log-structured-journal"</code>, it writes to

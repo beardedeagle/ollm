@@ -2286,7 +2286,7 @@
 
 <h1 id="kv-strategy-matrix">KV Strategy Matrix<a class="headerlink" href="#kv-strategy-matrix" title="Permanent link">&para;</a></h1>
 <p>oLLM's current disk-KV presets are still selected as single strings such as
-<code>chunked</code>, <code>streamed-segmented</code>, <code>log-structured-journal</code>,
+<code>chunked</code>, <code>paged</code>, <code>streamed-segmented</code>, <code>log-structured-journal</code>,
 <code>sliding-window-ring-buffer</code>, <code>quantized-cold-tier</code>, and
 <code>tiered-write-back</code>.</p>
 <p>That is still the public control surface today, but the system is now being
@@ -2320,6 +2320,13 @@ that preset is owned and how telemetry may influence future runtime choices.</p>
 <tr>
 <td><code>chunked</code></td>
 <td><code>chunked-manifest</code></td>
+<td><code>buffered-tail</code></td>
+<td><code>full-history</code></td>
+<td><code>full-precision</code></td>
+</tr>
+<tr>
+<td><code>paged</code></td>
+<td><code>paged-manifest</code></td>
 <td><code>buffered-tail</code></td>
 <td><code>full-history</code></td>
 <td><code>full-precision</code></td>

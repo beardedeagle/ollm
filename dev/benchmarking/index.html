@@ -2278,6 +2278,12 @@ incomparable runs do not get mashed together.</p>
 <span class="w">  </span>--kv-cache-strategy<span class="w"> </span>streamed-segmented<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output<span class="w"> </span>.omx/runtime-benchmark-streamed.json
 </code></pre></div>
+<p>The paged strategy uses the same switch:</p>
+<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--device<span class="w"> </span>cpu<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--kv-cache-strategy<span class="w"> </span>paged<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>.omx/runtime-benchmark-paged.json
+</code></pre></div>
 <p>Tiered write-back uses the same switch:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--device<span class="w"> </span>cpu<span class="w"> </span><span class="se">\</span>
@@ -2366,6 +2372,7 @@ latency.</p>
 stats. Generic Transformers-backed runs may report <code>null</code> here.</p>
 <p>For disk KV requests, <code>disk-kv-cache</code> now refers to the explicit strategy root
 under <code>cache_dir/kv_cache_chunked</code>,
+<code>cache_dir/kv_cache_paged</code>,
 <code>cache_dir/kv_cache_streamed_segmented</code>, or
 <code>cache_dir/kv_cache_tiered_write_back</code>, or
 <code>cache_dir/kv_cache_sliding_window_ring_buffer</code>, not to pickle-backed <code>.pt</code>
@@ -2390,6 +2397,10 @@ For <code>log-structured-journal</code>, compaction is visible both through
 runtime profile timing under <code>kvcompact</code>. <code>kvsave</code> now measures append-path
 write cost without double-counting compaction rewrite time; when compaction
 occurs, <code>kvcompact</code> reports that rewrite separately.
+For <code>paged</code>, benchmark output surfaces the explicit <code>paged-manifest</code>
+persistence format and <code>ollm-kv-paged</code> cold-store format. The persisted
+artifact count for this strategy means page-table entries, not raw blob files,
+so comparisons stay aligned to logical fixed-size movement units.
 For <code>quantized-cold-tier</code>, the persisted cold journal uses the explicit
 <code>int8-symmetric-per-tensor</code> representation and benchmark output surfaces that
 representation through <code>cache_state.cold_tier_representation</code>.
