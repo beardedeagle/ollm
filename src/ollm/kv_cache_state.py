@@ -26,7 +26,11 @@ class KVCacheStateSnapshot:
     compaction_count: int
     spill_count: int
     spilled_tokens: int
-    cold_store_format: str | None
+    window_max_tokens: int | None = None
+    eviction_policy: str | None = None
+    eviction_count: int = 0
+    evicted_tokens: int = 0
+    cold_store_format: str | None = None
 
     def to_dict(self) -> dict[str, object]:
         """Return a JSON-serializable dictionary view of the snapshot."""

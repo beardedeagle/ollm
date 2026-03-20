@@ -74,6 +74,12 @@ class TieredWriteBackKVStore:
     def compaction_count(self) -> int:
         return self._cold_store.compaction_count()
 
+    def eviction_count(self) -> int:
+        return self._cold_store.eviction_count()
+
+    def evicted_token_count(self) -> int:
+        return self._cold_store.evicted_token_count()
+
     def consume_last_compaction_elapsed_seconds(self) -> float | None:
         return self._cold_store.consume_last_compaction_elapsed_seconds()
 

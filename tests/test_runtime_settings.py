@@ -62,6 +62,7 @@ def test_default_app_settings_match_current_runtime_defaults() -> None:
     assert settings.runtime.kv_cache_strategy == "chunked"
     assert settings.runtime.kv_cache_lifecycle == "runtime-scoped"
     assert settings.runtime.kv_cache_adaptation_mode == "observe-only"
+    assert settings.runtime.kv_cache_window_tokens is None
     assert settings.generation.max_new_tokens == DEFAULT_MAX_NEW_TOKENS
     assert settings.generation.stream is True
     assert settings.server.host == DEFAULT_SERVER_HOST
@@ -97,6 +98,7 @@ def test_load_app_settings_reads_toml_defaults_from_explicit_file(
     assert settings.runtime.kv_cache_strategy == "streamed-segmented"
     assert settings.runtime.kv_cache_lifecycle == "runtime-scoped"
     assert settings.runtime.kv_cache_adaptation_mode == "observe-only"
+    assert settings.runtime.kv_cache_window_tokens is None
     assert settings.generation.max_new_tokens == 64
     assert settings.generation.temperature == 0.25
     assert settings.generation.stream is False
@@ -317,3 +319,57 @@ def test_runtime_settings_accept_quantized_cold_tier_strategy() -> None:
 
     assert settings.kv_cache_strategy == "quantized-cold-tier"
     assert overrides.kv_cache_strategy == "quantized-cold-tier"
+
+
+def test_runtime_settings_accept_sliding_window_strategy_and_tokens() -> None:
+    settings = RuntimeSettings(
+        kv_cache_strategy="sliding-window-ring-buffer",
+        kv_cache_window_tokens=96,
+    )
+    overrides = RuntimeConfigOverrides(
+        kv_cache_strategy="sliding-window-ring-buffer",
+        kv_cache_window_tokens=96,
+    )
+
+    assert settings.kv_cache_strategy == "sliding-window-ring-buffer"
+    assert settings.kv_cache_window_tokens == 96
+    assert overrides.kv_cache_strategy == "sliding-window-ring-buffer"
+    assert overrides.kv_cache_window_tokens == 96
+
+
+def test_runtime_settings_reject_window_tokens_for_full_history_strategy() -> None:
+    try:
+        RuntimeSettings(kv_cache_strategy="chunked", kv_cache_window_tokens=64)
+    except ValueError as exc:
+        assert "--kv-cache-window-tokens requires --kv-cache-strategy" in str(exc)
+    else:
+        raise AssertionError(
+            "Full-history runtime settings should reject explicit window tokens"
+        )
+
+
+def test_runtime_settings_accept_sliding_window_strategy_with_window_tokens() -> None:
+    settings = RuntimeSettings(
+        kv_cache_strategy="sliding-window-ring-buffer",
+        kv_cache_window_tokens=48,
+    )
+    overrides = RuntimeConfigOverrides(
+        kv_cache_strategy="sliding-window-ring-buffer",
+        kv_cache_window_tokens=48,
+    )
+
+    assert settings.kv_cache_strategy == "sliding-window-ring-buffer"
+    assert settings.kv_cache_window_tokens == 48
+    assert overrides.kv_cache_strategy == "sliding-window-ring-buffer"
+    assert overrides.kv_cache_window_tokens == 48
+
+
+def test_runtime_settings_reject_window_tokens_without_sliding_strategy() -> None:
+    try:
+        RuntimeSettings(kv_cache_strategy="chunked", kv_cache_window_tokens=48)
+    except ValueError as exc:
+        assert "--kv-cache-window-tokens requires" in str(exc)
+    else:
+        raise AssertionError(
+            "RuntimeSettings should reject window tokens without the sliding strategy"
+        )

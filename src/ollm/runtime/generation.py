@@ -8,6 +8,7 @@ from ollm.app.types import ContentKind, Message, PromptRequest, PromptResponse
 from ollm.kv_cache_matrix import (
     build_kv_cache_adaptation_surface,
     resolve_kv_cache_base_dir,
+    resolve_kv_cache_eviction_policy,
 )
 from ollm.kv_cache_state import KVCacheStateSnapshot
 from ollm.runtime.capability_discovery import GenericModelKind
@@ -204,6 +205,9 @@ class RuntimeExecutor:
         if request.runtime_config.use_cache:
             resolved_strategy = request.runtime_config.resolved_kv_cache_strategy()
             resolved_lifecycle = request.runtime_config.resolved_kv_cache_lifecycle()
+            resolved_window_tokens = (
+                request.runtime_config.resolved_kv_cache_window_tokens()
+            )
             cache_base_dir = resolve_kv_cache_base_dir(
                 cache_dir=request.runtime_config.resolved_cache_dir(),
                 lifecycle=resolved_lifecycle,
@@ -216,6 +220,7 @@ class RuntimeExecutor:
                 cache_base_dir,
                 resolved_strategy,
                 resolved_lifecycle,
+                resolved_window_tokens,
             )
             if cache is not None:
                 generate_kwargs["past_key_values"] = cache
@@ -300,6 +305,9 @@ class RuntimeExecutor:
             "kv_cache_lifecycle": runtime.config.resolved_kv_cache_lifecycle(),
             "kv_cache_adaptation_mode": runtime.config.resolved_kv_cache_adaptation_mode(),
         }
+        resolved_window_tokens = runtime.config.resolved_kv_cache_window_tokens()
+        if resolved_window_tokens is not None:
+            metadata["kv_cache_window_tokens"] = str(resolved_window_tokens)
         for detail_key in PLAN_METADATA_DETAIL_KEYS:
             detail_value = runtime.plan.details.get(detail_key)
             if detail_value is not None:
@@ -324,8 +332,16 @@ class RuntimeExecutor:
                     "kv_cache_compaction_count": str(cache_state.compaction_count),
                     "kv_cache_spill_count": str(cache_state.spill_count),
                     "kv_cache_spilled_tokens": str(cache_state.spilled_tokens),
+                    "kv_cache_eviction_count": str(cache_state.eviction_count),
+                    "kv_cache_evicted_tokens": str(cache_state.evicted_tokens),
                 }
             )
+            if cache_state.eviction_policy is not None:
+                metadata["kv_cache_eviction_policy"] = cache_state.eviction_policy
+            if cache_state.window_max_tokens is not None:
+                metadata["kv_cache_window_max_tokens"] = str(
+                    cache_state.window_max_tokens
+                )
             if cache_state.cold_store_format is not None:
                 metadata["kv_cache_cold_store_format"] = cache_state.cold_store_format
             if cache_state.cold_tier_representation is not None:
@@ -350,6 +366,16 @@ class RuntimeExecutor:
                 adaptation_surface.recommended_strategy_id
             )
         metadata["kv_cache_adaptation_reason"] = adaptation_surface.reason
+        if (
+            "kv_cache_eviction_policy" not in metadata
+            and runtime.config.use_cache
+            and runtime.plan.supports_disk_cache
+        ):
+            resolved_eviction_policy = resolve_kv_cache_eviction_policy(
+                runtime.config.resolved_kv_cache_strategy()
+            )
+            if resolved_eviction_policy is not None:
+                metadata["kv_cache_eviction_policy"] = resolved_eviction_policy
         stats = cast(_StatsProtocol | None, runtime.backend.stats)
         if stats is not None:
             metadata["stats"] = stats.print_and_clean()

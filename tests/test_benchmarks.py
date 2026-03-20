@@ -147,7 +147,7 @@ def _build_processor_runtime() -> LoadedRuntime:
             device=torch.device("cpu"),
             stats=None,
             print_suppression_modules=(),
-            create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None: (
+            create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None, cache_window_tokens=None: (
                 None
             ),
             apply_offload=lambda runtime_config: None,
@@ -276,13 +276,16 @@ def test_build_runtime_probe_command_handles_specialization_flag(
         device="cpu",
         backend="transformers-generic",
         use_specialization=False,
-        kv_cache_strategy="streamed-segmented",
+        kv_cache_strategy="sliding-window-ring-buffer",
+        kv_cache_window_tokens=64,
     )
 
     assert "--probe-backend" in command
     assert "transformers-generic" in command
     assert "--probe-kv-cache-strategy" in command
-    assert "streamed-segmented" in command
+    assert "sliding-window-ring-buffer" in command
+    assert "--probe-kv-cache-window-tokens" in command
+    assert "64" in command
     assert "--probe-no-specialization" in command
 
 

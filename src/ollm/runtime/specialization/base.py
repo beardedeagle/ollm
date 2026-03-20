@@ -159,7 +159,7 @@ class OptimizedModelArtifacts:
     supports_cpu_offload: bool
     supports_gpu_offload: bool
     print_suppression_modules: tuple[ModuleType, ...]
-    create_cache: Callable[[Path, str | None, str | None], object | None]
+    create_cache: Callable[[Path, str | None, str | None, int | None], object | None]
     apply_cpu_offload: Callable[[int], None] | None
     apply_gpu_offload: Callable[[int, int], None] | None
     provided_pass_ids: tuple[SpecializationPassId, ...] = ()

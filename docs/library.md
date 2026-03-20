@@ -61,12 +61,18 @@ text_streamer = TextStreamer(o.tokenizer, skip_prompt=True, skip_special_tokens=
 `RuntimeConfig.kv_cache_strategy` now selects the optimized-native disk KV
 backend explicitly. `chunked` uses `cache_dir/kv_cache_chunked`, while
 `streamed-segmented` uses `cache_dir/kv_cache_streamed_segmented`,
-`log-structured-journal` uses `cache_dir/kv_cache_log_structured_journal`, and
-`tiered-write-back` uses `cache_dir/kv_cache_tiered_write_back` while keeping a
-bounded hot region in memory and a journal-backed cold tier on disk. All four
-use typed raw payloads plus explicit metadata instead of opaque torch cache
-blobs. The active runtime then applies a platform/resource-aware buffering or
-spill policy on top of the selected store.
+`log-structured-journal` uses `cache_dir/kv_cache_log_structured_journal`,
+`sliding-window-ring-buffer` uses
+`cache_dir/kv_cache_sliding_window_ring_buffer`, and `tiered-write-back` uses
+`cache_dir/kv_cache_tiered_write_back` while keeping a bounded hot region in
+memory and a journal-backed cold tier on disk. The bounded
+`sliding-window-ring-buffer` mode keeps only the most recent
+`kv_cache_window_tokens` cached tokens and evicts older history, so it is a
+semantic recent-context mode rather than a transparent replacement for the
+full-history strategies. All six use typed raw payloads plus explicit
+metadata instead of opaque torch cache blobs. The active runtime then applies a
+platform/resource-aware buffering or spill policy on top of the selected
+store.
 The low-level helper accepts the same switch directly through
 `Inference.DiskCache(cache_strategy=...)`.
 

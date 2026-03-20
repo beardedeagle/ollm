@@ -50,12 +50,13 @@ When supported by the selected backend, oLLM can expose:
 These controls are backend-dependent. The generic path does not expose the same
 low-level layer-placement controls as optimized-native runtimes.
 
-The optimized-native disk KV cache now exposes five explicit
+The optimized-native disk KV cache now exposes six explicit
 strategies:
 
 - `chunked`
 - `streamed-segmented`
 - `log-structured-journal`
+- `sliding-window-ring-buffer`
 - `quantized-cold-tier`
 - `tiered-write-back`
 
@@ -65,13 +66,20 @@ segment-backed store under `cache_dir/kv_cache_streamed_segmented`.
 `log-structured-journal` persists a single append-oriented journal per layer
 under `cache_dir/kv_cache_log_structured_journal` and compacts entry metadata
 deterministically once the journal crosses its configured entry threshold.
+`sliding-window-ring-buffer` persists only the bounded recent tail under
+`cache_dir/kv_cache_sliding_window_ring_buffer`; once the configured
+`kv_cache_window_tokens` limit is exceeded, the oldest cached tokens are
+evicted under a `drop-oldest` policy. This mode changes runtime semantics and
+should be used only when a bounded recent context is the intended contract.
+Current local proof keeps it as an explicit opt-in mode rather than a general
+default strategy.
 `quantized-cold-tier` persists the same full-history journal shape under
 `cache_dir/kv_cache_quantized_cold_tier`, but stores colder entries in the
 explicit `int8-symmetric-per-tensor` representation and dequantizes back to
 the runtime dtype on load.
 `tiered-write-back` persists only the colder KV prefix under
 `cache_dir/kv_cache_tiered_write_back` while keeping a bounded hot region in
-memory; its cold tier now uses a journal-backed append store. All five use
+memory; its cold tier now uses a journal-backed append store. All six use
 typed raw tensor payloads plus explicit metadata, and none uses opaque
 pickle-backed `.pt` cache blobs. The runtime also applies a
 platform/resource-aware buffering or spill policy on top of the selected

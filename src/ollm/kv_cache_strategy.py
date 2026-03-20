@@ -7,6 +7,7 @@ KNOWN_KV_CACHE_STRATEGY_IDS = (
     "chunked",
     "streamed-segmented",
     "log-structured-journal",
+    "sliding-window-ring-buffer",
     "quantized-cold-tier",
     "tiered-write-back",
 )
@@ -15,6 +16,7 @@ _CACHE_ROOT_BY_STRATEGY = {
     "chunked": "kv_cache_chunked",
     "streamed-segmented": "kv_cache_streamed_segmented",
     "log-structured-journal": "kv_cache_log_structured_journal",
+    "sliding-window-ring-buffer": "kv_cache_sliding_window_ring_buffer",
     "quantized-cold-tier": "kv_cache_quantized_cold_tier",
     "tiered-write-back": "kv_cache_tiered_write_back",
 }

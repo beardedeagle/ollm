@@ -9,6 +9,7 @@ from ollm.kv_cache_matrix import (
     DEFAULT_KV_CACHE_LIFECYCLE,
     normalize_kv_cache_adaptation_mode,
     normalize_kv_cache_lifecycle,
+    resolve_kv_cache_window_tokens,
 )
 from ollm.kv_cache_strategy import (
     DEFAULT_KV_CACHE_STRATEGY,
@@ -62,6 +63,7 @@ class RuntimeConfig:
     kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY
     kv_cache_lifecycle: str = DEFAULT_KV_CACHE_LIFECYCLE
     kv_cache_adaptation_mode: str = DEFAULT_KV_CACHE_ADAPTATION_MODE
+    kv_cache_window_tokens: int | None = None
     offload_cpu_layers: int = 0
     offload_gpu_layers: int = 0
     force_download: bool = False
@@ -106,6 +108,14 @@ class RuntimeConfig:
             return DEFAULT_KV_CACHE_ADAPTATION_MODE
         return normalized_mode
 
+    def resolved_kv_cache_window_tokens(self) -> int | None:
+        """Return the normalized sliding-window token budget."""
+
+        return resolve_kv_cache_window_tokens(
+            self.kv_cache_strategy,
+            self.kv_cache_window_tokens,
+        )
+
     def resolved_adapter_dir(self) -> Path | None:
         """Return the absolute adapter directory when one is configured."""
         if self.adapter_dir is None:
@@ -121,6 +131,10 @@ class RuntimeConfig:
         normalize_kv_cache_strategy(self.kv_cache_strategy)
         normalize_kv_cache_lifecycle(self.kv_cache_lifecycle)
         normalize_kv_cache_adaptation_mode(self.kv_cache_adaptation_mode)
+        resolve_kv_cache_window_tokens(
+            self.kv_cache_strategy,
+            self.kv_cache_window_tokens,
+        )
         if self.verbose and self.quiet:
             raise ValueError("--verbose and --quiet cannot be used together")
         if (

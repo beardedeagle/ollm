@@ -70,6 +70,16 @@ uv run python scripts/benchmark_runtime.py \
   --output .omx/runtime-benchmark-journal.json
 ```
 
+The bounded sliding-window mode requires an explicit window size:
+
+```bash
+uv run python scripts/benchmark_runtime.py \
+  --device cpu \
+  --kv-cache-strategy sliding-window-ring-buffer \
+  --kv-cache-window-tokens 256 \
+  --output .omx/runtime-benchmark-sliding-window.json
+```
+
 The harness is designed to stay truthful on hardware-constrained machines:
 
 - it always measures specialization planner overhead without loading model weights
@@ -149,13 +159,15 @@ stats. Generic Transformers-backed runs may report `null` here.
 For disk KV requests, `disk-kv-cache` now refers to the explicit strategy root
 under `cache_dir/kv_cache_chunked`,
 `cache_dir/kv_cache_streamed_segmented`, or
-`cache_dir/kv_cache_tiered_write_back`, not to pickle-backed `.pt` layer
-artifacts. The request metrics report both `kv_cache_strategy` and
+`cache_dir/kv_cache_tiered_write_back`, or
+`cache_dir/kv_cache_sliding_window_ring_buffer`, not to pickle-backed `.pt`
+layer artifacts. The request metrics report both `kv_cache_strategy` and
 `cache_state`, so benchmark comparisons can distinguish the selected backend
 and, for tier-aware strategies, the current hot/cold split. `cache_dir_size_mb`
 describes only the persisted on-disk portion of the cache, while `cache_state`
 surfaces persisted artifact counts, compaction counts, cold-store format,
-cold-tier representation, hot in-memory tokens, and spill counts.
+cold-tier representation, hot in-memory tokens, spill counts, and, for bounded
+window strategies, the active window size plus eviction totals.
 Within one loaded runtime, the cache layer can satisfy repeated requests from
 an in-process resident KV snapshot instead of rereading the same persisted
 history from disk. In those cases, `kvload` may legitimately disappear even
@@ -173,6 +185,14 @@ occurs, `kvcompact` reports that rewrite separately.
 For `quantized-cold-tier`, the persisted cold journal uses the explicit
 `int8-symmetric-per-tensor` representation and benchmark output surfaces that
 representation through `cache_state.cold_tier_representation`.
+For `sliding-window-ring-buffer`, benchmark output also surfaces
+`cache_state.window_max_tokens`, `cache_state.eviction_policy`,
+`cache_state.eviction_count`, and `cache_state.evicted_tokens` so bounded
+history runs are never confused with full-history runs. When you benchmark this
+mode, pass an explicit `--kv-cache-window-tokens` value so benchmark history
+does not compare unlike window sizes. Current local CPU and MPS proof keeps
+this mode in the explicit opt-in bucket rather than the selector-default
+bucket; it materially bounds persisted KV, but it is not a general perf win.
 Cold, warm, prompt-scaling, output-scaling, and session-growth probes all use
 the same persistent benchmark-history ledger, so bounded proof runs remain
 recorded and comparable instead of becoming ad hoc local artifacts.

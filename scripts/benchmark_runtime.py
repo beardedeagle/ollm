@@ -79,6 +79,12 @@ def parse_args() -> argparse.Namespace:
         help="Disk KV strategy for optimized-native probes and comparisons.",
     )
     parser.add_argument(
+        "--kv-cache-window-tokens",
+        type=positive_int,
+        default=None,
+        help="Sliding-window token budget for bounded KV strategies.",
+    )
+    parser.add_argument(
         "--iterations",
         type=positive_int,
         default=None,
@@ -147,6 +153,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--probe-kv-cache-strategy",
         default="chunked",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--probe-kv-cache-window-tokens",
+        type=positive_int,
+        default=None,
         help=argparse.SUPPRESS,
     )
     parser.add_argument("--probe-prompt", help=argparse.SUPPRESS, default="Say hi.")
@@ -247,6 +259,7 @@ def main() -> int:
                 backend=args.probe_backend,
                 use_specialization=not args.probe_no_specialization,
                 kv_cache_strategy=args.probe_kv_cache_strategy,
+                kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
                 prompt=args.probe_prompt,
                 max_new_tokens=args.probe_max_new_tokens,
             )
@@ -259,6 +272,7 @@ def main() -> int:
                 backend=args.probe_backend,
                 use_specialization=not args.probe_no_specialization,
                 kv_cache_strategy=args.probe_kv_cache_strategy,
+                kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
                 prompt=args.probe_prompt,
                 max_new_tokens=args.probe_max_new_tokens,
                 iterations=args.probe_iterations,
@@ -273,6 +287,7 @@ def main() -> int:
                 backend=args.probe_backend,
                 use_specialization=not args.probe_no_specialization,
                 kv_cache_strategy=args.probe_kv_cache_strategy,
+                kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
                 prompt_token_targets=prompt_token_targets,
                 max_new_tokens=args.probe_max_new_tokens,
             )
@@ -285,6 +300,7 @@ def main() -> int:
                 backend=args.probe_backend,
                 use_specialization=not args.probe_no_specialization,
                 kv_cache_strategy=args.probe_kv_cache_strategy,
+                kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
                 prompt=args.probe_prompt,
                 output_token_targets=output_token_targets,
             )
@@ -297,6 +313,7 @@ def main() -> int:
                 backend=args.probe_backend,
                 use_specialization=not args.probe_no_specialization,
                 kv_cache_strategy=args.probe_kv_cache_strategy,
+                kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
                 session_turns=args.probe_session_turns,
                 max_new_tokens=args.probe_max_new_tokens,
             )
@@ -309,6 +326,7 @@ def main() -> int:
                 backend=args.probe_backend,
                 use_specialization=not args.probe_no_specialization,
                 kv_cache_strategy=args.probe_kv_cache_strategy,
+                kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
                 session_turns=args.probe_session_turns,
                 max_new_tokens=args.probe_max_new_tokens,
             )
@@ -331,6 +349,7 @@ def main() -> int:
                     device=probe_device,
                     backend=args.probe_backend,
                     kv_cache_strategy=args.probe_kv_cache_strategy,
+                    kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
                     probe_mode=args.probe_mode,
                     prompt=args.probe_prompt,
                     max_new_tokens=args.probe_max_new_tokens,
@@ -353,6 +372,7 @@ def main() -> int:
         models_dir=Path(args.models_dir),
         device=device,
         kv_cache_strategy=args.kv_cache_strategy,
+        kv_cache_window_tokens=args.kv_cache_window_tokens,
         iterations=profile.iterations,
         warmup_iterations=profile.warmup_iterations,
         prompt_token_targets=profile.prompt_token_targets,
@@ -379,6 +399,7 @@ def main() -> int:
                 benchmark_model_reference=args.model_reference,
                 device=device,
                 kv_cache_strategy=args.kv_cache_strategy,
+                kv_cache_window_tokens=args.kv_cache_window_tokens,
                 profile_id=profile.profile_id,
                 prompt_token_targets=profile.prompt_token_targets,
                 output_token_targets=profile.output_token_targets,

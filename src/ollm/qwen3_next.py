@@ -27,61 +27,12 @@ from ollm.device_staging import (
     restore_static_modules_after_forward,
     stage_static_modules_on_host,
 )
-from ollm.kv_cache_policy import KVCachePolicy
-from ollm.kv_cache_strategy import DEFAULT_KV_CACHE_STRATEGY
-from ollm.kvcache import oCache
+from ollm.qwen3_next_disk_cache import Qwen3NextDiskCache
 from ollm.utils import _assign_tensor_to_module, _set_meta_placeholder, _walk_to_parent
 
+__all__ = ("Qwen3NextDiskCache",)
+
 loader, stats = None, None
-
-
-class Qwen3NextDiskCache(Qwen3NextDynamicCache, oCache):
-    def __init__(
-        self,
-        config,
-        cache_dir="./kv_cache",
-        device="cuda:0",
-        stats=None,
-        policy: KVCachePolicy | None = None,
-        cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
-        cache_lifecycle: str = "runtime-scoped",
-    ):
-        super().__init__(config)
-        self.ini_ocache(
-            cache_dir, device, stats, policy, cache_strategy, cache_lifecycle
-        )
-        self.seq_lengths = [0 for _ in range(len(self.key_cache))]
-
-    def get_seq_length(self, layer_idx: int | None = 0) -> int:
-        return self.seq_lengths[layer_idx]
-
-    def __getitem__(self, layer_idx: int) -> tuple[torch.Tensor, torch.Tensor]:
-        raise NotImplementedError("Beam search is not supported for Qwen3NextDiskCache")
-
-    def reorder_cache(self, beam_idx: torch.LongTensor):
-        raise NotImplementedError("Beam search is not supported for Qwen3NextDiskCache")
-
-    def update(
-        self,
-        key_states: torch.Tensor,
-        value_states: torch.Tensor,
-        layer_idx: int,
-        cache_kwargs: dict[str, object] | None = None,
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        tensors = self.load_from_disk(layer_idx)
-        if tensors is not None:
-            self.key_cache[layer_idx], self.value_cache[layer_idx] = tensors
-
-        out = super().update(
-            key_states, value_states, layer_idx, cache_kwargs
-        )  # tuple of (self.key_cache[layer_idx], self.value_cache[layer_idx])
-        self.seq_lengths[layer_idx] = out[0].shape[-2]
-        self.save_to_disk((key_states, value_states), layer_idx)
-        self.key_cache[layer_idx], self.value_cache[layer_idx] = (
-            torch.empty(0),
-            torch.empty(0),
-        )
-        return out
 
 
 class loaderLayer:

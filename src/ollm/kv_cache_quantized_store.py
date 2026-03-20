@@ -205,6 +205,12 @@ class QuantizedJournaledKVStore:
             total_compactions += manifest.compaction_count
         return total_compactions
 
+    def eviction_count(self) -> int:
+        return 0
+
+    def evicted_token_count(self) -> int:
+        return 0
+
     def consume_last_compaction_elapsed_seconds(self) -> float | None:
         elapsed_seconds = self._last_compaction_elapsed_seconds
         self._last_compaction_elapsed_seconds = None
