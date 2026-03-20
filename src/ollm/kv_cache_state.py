@@ -9,9 +9,16 @@ class KVCacheStateSnapshot:
 
     strategy_id: str
     policy_id: str
+    persistence_format: str
+    residency_mode: str
+    window_policy: str
+    cold_tier_encoding: str
     persisted_layer_count: int
     persisted_tokens: int
     persisted_artifact_count: int
+    resident_layer_count: int
+    resident_tokens: int
+    resident_bytes: int
     hot_layer_count: int
     hot_tokens: int
     hot_bytes: int

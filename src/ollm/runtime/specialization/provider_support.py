@@ -113,8 +113,12 @@ def build_execution_device_details(device: str | torch.device) -> dict[str, str]
 
 
 def unsupported_disk_cache_factory(model_reference: str):
-    def create_cache(cache_dir: Path, cache_strategy: str | None = None) -> None:
-        del cache_dir, cache_strategy
+    def create_cache(
+        cache_dir: Path,
+        cache_strategy: str | None = None,
+        cache_lifecycle: str | None = None,
+    ) -> None:
+        del cache_dir, cache_strategy, cache_lifecycle
         LOGGER.info(
             "%s DiskCache is not supported at the moment. Using default DynamicCache instead.",
             model_reference,

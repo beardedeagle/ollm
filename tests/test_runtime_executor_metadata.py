@@ -17,9 +17,16 @@ class FakeCache:
         return KVCacheStateSnapshot(
             strategy_id="tiered-write-back",
             policy_id="test-tiered",
+            persistence_format="log-structured-journal",
+            residency_mode="tiered-write-back",
+            window_policy="full-history",
+            cold_tier_encoding="full-precision",
             persisted_layer_count=2,
             persisted_tokens=64,
             persisted_artifact_count=5,
+            resident_layer_count=2,
+            resident_tokens=64,
+            resident_bytes=2048,
             hot_layer_count=1,
             hot_tokens=8,
             hot_bytes=1024,
@@ -70,7 +77,9 @@ def test_runtime_executor_includes_kv_cache_state_metadata() -> None:
     runtime.config.use_cache = True
     runtime.config.kv_cache_strategy = "tiered-write-back"
     runtime.plan = replace(runtime.plan, supports_disk_cache=True)
-    runtime.backend.create_cache = lambda cache_dir, cache_strategy=None: FakeCache()
+    runtime.backend.create_cache = (
+        lambda cache_dir, cache_strategy=None, cache_lifecycle=None: FakeCache()
+    )
     request = build_request(
         runtime.config,
         Message(role=MessageRole.USER, content=[ContentPart.text("hello")]),
@@ -83,6 +92,20 @@ def test_runtime_executor_includes_kv_cache_state_metadata() -> None:
     assert response.metadata["kv_cache_persisted_tokens"] == "64"
     assert response.metadata["kv_cache_persisted_artifacts"] == "5"
     assert response.metadata["kv_cache_cold_store_format"] == "ollm-kv-journal"
+    assert response.metadata["kv_cache_persistence_format"] == "log-structured-journal"
+    assert response.metadata["kv_cache_residency_mode"] == "tiered-write-back"
+    assert response.metadata["kv_cache_window_policy"] == "full-history"
+    assert response.metadata["kv_cache_cold_tier_encoding"] == "full-precision"
+    assert response.metadata["kv_cache_resident_layers"] == "2"
+    assert response.metadata["kv_cache_resident_tokens"] == "64"
+    assert response.metadata["kv_cache_resident_bytes"] == "2048"
     assert response.metadata["kv_cache_hot_tokens"] == "8"
     assert response.metadata["kv_cache_compaction_count"] == "1"
     assert response.metadata["kv_cache_spill_count"] == "3"
+    assert response.metadata["kv_cache_lifecycle"] == "runtime-scoped"
+    assert response.metadata["kv_cache_adaptation_mode"] == "observe-only"
+    assert response.metadata["kv_cache_adaptation_recommendation_available"] == "true"
+    assert (
+        response.metadata["kv_cache_adaptation_recommended_strategy"]
+        == "tiered-write-back"
+    )

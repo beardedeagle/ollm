@@ -95,6 +95,7 @@ def summarize_request_metrics(
                     if sample.kv_cache_strategy is not None
                 ]
             ),
+            "kv_cache_adaptation": summarize_kv_cache_adaptation(samples),
             "cache_dir_size_mb": optional_summary_dict(
                 [
                     sample.cache_dir_size_mb
@@ -262,6 +263,18 @@ def summarize_cache_states(
         "policy_id": single_optional_string(
             [snapshot.policy_id for snapshot in snapshots]
         ),
+        "persistence_format": single_optional_string(
+            [snapshot.persistence_format for snapshot in snapshots]
+        ),
+        "residency_mode": single_optional_string(
+            [snapshot.residency_mode for snapshot in snapshots]
+        ),
+        "window_policy": single_optional_string(
+            [snapshot.window_policy for snapshot in snapshots]
+        ),
+        "cold_tier_encoding": single_optional_string(
+            [snapshot.cold_tier_encoding for snapshot in snapshots]
+        ),
         "persisted_layer_count": summarize_numeric_values(
             [float(snapshot.persisted_layer_count) for snapshot in snapshots]
         ),
@@ -270,6 +283,15 @@ def summarize_cache_states(
         ),
         "persisted_artifact_count": summarize_numeric_values(
             [float(snapshot.persisted_artifact_count) for snapshot in snapshots]
+        ),
+        "resident_layer_count": summarize_numeric_values(
+            [float(snapshot.resident_layer_count) for snapshot in snapshots]
+        ),
+        "resident_tokens": summarize_numeric_values(
+            [float(snapshot.resident_tokens) for snapshot in snapshots]
+        ),
+        "resident_bytes": summarize_numeric_values(
+            [float(snapshot.resident_bytes) for snapshot in snapshots]
         ),
         "hot_layer_count": summarize_numeric_values(
             [float(snapshot.hot_layer_count) for snapshot in snapshots]
@@ -296,6 +318,34 @@ def summarize_cache_states(
         "spilled_tokens": summarize_numeric_values(
             [float(snapshot.spilled_tokens) for snapshot in snapshots]
         ),
+    }
+
+
+def summarize_kv_cache_adaptation(
+    samples: list[RequestProbeMetrics],
+) -> dict[str, object] | None:
+    surfaces = [
+        sample.kv_cache_adaptation
+        for sample in samples
+        if sample.kv_cache_adaptation is not None
+    ]
+    if not surfaces:
+        return None
+    return {
+        "adaptation_mode": single_optional_string(
+            [surface.adaptation_mode for surface in surfaces]
+        ),
+        "recommendation_available": any(
+            surface.recommendation_available for surface in surfaces
+        ),
+        "recommended_strategy_id": single_optional_string(
+            [
+                surface.recommended_strategy_id
+                for surface in surfaces
+                if surface.recommended_strategy_id is not None
+            ]
+        ),
+        "reason": single_optional_string([surface.reason for surface in surfaces]),
     }
 
 

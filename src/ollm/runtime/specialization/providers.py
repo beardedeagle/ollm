@@ -12,7 +12,6 @@ from ollm.gds_loader import (
     MoEWeightsLoader,
     SingleDenseWeightsLoader,
 )
-from ollm.kvcache import KVCache
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.resolver import NativeFamily, ResolvedModel
 from ollm.runtime.safety import (
@@ -23,6 +22,10 @@ from ollm.runtime.specialization.base import (
     OptimizedModelArtifacts,
     SpecializationMatch,
     SpecializationProvider,
+)
+from ollm.runtime.specialization.cache_factories import (
+    build_kv_cache_factory,
+    build_qwen3_cache_factory,
 )
 from ollm.runtime.specialization.passes.base import SpecializationPassId
 from ollm.runtime.specialization.provider_support import (
@@ -117,17 +120,8 @@ class LlamaSpecializationProvider(SpecializationProvider):
             supports_cpu_offload=True,
             supports_gpu_offload=False,
             print_suppression_modules=(module,),
-            create_cache=(
-                lambda cache_dir, cache_strategy=None: KVCache(
-                    cache_dir=str(cache_dir),
-                    device=device,
-                    stats=stats,
-                    cache_strategy=(
-                        config.kv_cache_strategy
-                        if cache_strategy is None
-                        else cache_strategy
-                    ),
-                )
+            create_cache=build_kv_cache_factory(
+                config=config, device=device, stats=stats
             ),
             apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(
                 layers_num=layers_num
@@ -208,17 +202,8 @@ class Gemma3SpecializationProvider(SpecializationProvider):
             supports_cpu_offload=True,
             supports_gpu_offload=False,
             print_suppression_modules=(module,),
-            create_cache=(
-                lambda cache_dir, cache_strategy=None: KVCache(
-                    cache_dir=str(cache_dir),
-                    device=device,
-                    stats=stats,
-                    cache_strategy=(
-                        config.kv_cache_strategy
-                        if cache_strategy is None
-                        else cache_strategy
-                    ),
-                )
+            create_cache=build_kv_cache_factory(
+                config=config, device=device, stats=stats
             ),
             apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(
                 layers_num=layers_num
@@ -291,18 +276,12 @@ class Qwen3NextSpecializationProvider(SpecializationProvider):
             supports_cpu_offload=True,
             supports_gpu_offload=True,
             print_suppression_modules=(module,),
-            create_cache=(
-                lambda cache_dir, cache_strategy=None: module.Qwen3NextDiskCache(
-                    model.config,
-                    cache_dir=str(cache_dir),
-                    device=device,
-                    stats=stats,
-                    cache_strategy=(
-                        config.kv_cache_strategy
-                        if cache_strategy is None
-                        else cache_strategy
-                    ),
-                )
+            create_cache=build_qwen3_cache_factory(
+                module=module,
+                model_config=model.config,
+                config=config,
+                device=device,
+                stats=stats,
             ),
             apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(
                 layers_num=layers_num
@@ -470,17 +449,8 @@ class VoxtralSpecializationProvider(SpecializationProvider):
             supports_cpu_offload=True,
             supports_gpu_offload=False,
             print_suppression_modules=(module,),
-            create_cache=(
-                lambda cache_dir, cache_strategy=None: KVCache(
-                    cache_dir=str(cache_dir),
-                    device=device,
-                    stats=stats,
-                    cache_strategy=(
-                        config.kv_cache_strategy
-                        if cache_strategy is None
-                        else cache_strategy
-                    ),
-                )
+            create_cache=build_kv_cache_factory(
+                config=config, device=device, stats=stats
             ),
             apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(
                 layers_num=layers_num

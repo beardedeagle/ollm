@@ -6,6 +6,8 @@ backend = "optimized-native"
 cache_dir = "kv_cache"
 use_cache = true
 kv_cache_strategy = "chunked"
+kv_cache_lifecycle = "runtime-scoped"
+kv_cache_adaptation_mode = "observe-only"
 
 [generation]
 max_new_tokens = 128

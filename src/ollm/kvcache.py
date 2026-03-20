@@ -7,6 +7,11 @@ from transformers import DynamicCache
 
 from ollm.async_io import path_exists, path_mkdir, remove_tree
 from ollm.kv_cache_journal_store import JournaledKVStore
+from ollm.kv_cache_matrix import (
+    DEFAULT_KV_CACHE_LIFECYCLE,
+    describe_kv_cache_strategy,
+    normalize_kv_cache_lifecycle,
+)
 from ollm.kv_cache_policy import KVCachePolicy, select_kv_cache_policy
 from ollm.kv_cache_state import KVCacheStateSnapshot
 from ollm.kv_cache_store import ChunkedKVStore
@@ -54,6 +59,7 @@ class oCache:
         stats: Stats | None,
         policy: KVCachePolicy | None = None,
         cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
+        cache_lifecycle: str = DEFAULT_KV_CACHE_LIFECYCLE,
     ) -> None:
         if not cache_dir:
             raise ValueError(
@@ -65,9 +71,28 @@ class oCache:
             if normalized_strategy is None
             else normalized_strategy
         )
+        normalized_lifecycle = normalize_kv_cache_lifecycle(cache_lifecycle)
+        self.cache_lifecycle = (
+            DEFAULT_KV_CACHE_LIFECYCLE
+            if normalized_lifecycle is None
+            else normalized_lifecycle
+        )
         self.cache_folder = kv_cache_root(Path(cache_dir), self.cache_strategy)
-        if path_exists(self.cache_folder):
+        root_manifest_path = self.cache_folder / "manifest.json"
+        cache_root_exists = path_exists(self.cache_folder)
+        root_manifest_exists = path_exists(root_manifest_path)
+        if self.cache_lifecycle == "runtime-scoped" and cache_root_exists:
             remove_tree(self.cache_folder)
+            cache_root_exists = False
+            root_manifest_exists = False
+        if (
+            self.cache_lifecycle == "persistent"
+            and cache_root_exists
+            and not root_manifest_exists
+        ):
+            remove_tree(self.cache_folder)
+            cache_root_exists = False
+            root_manifest_exists = False
         path_mkdir(self.cache_folder, parents=True, exist_ok=True)
         self.device = torch.device(device)
         self.stats = stats
@@ -84,7 +109,8 @@ class oCache:
         self._cache_store = _build_cache_store(
             self.cache_folder, self.cache_strategy, self.policy
         )
-        self._cache_store.initialize(self.policy.policy_id)
+        if self.cache_lifecycle == "runtime-scoped" or not root_manifest_exists:
+            self._cache_store.initialize(self.policy.policy_id)
 
     def load_from_disk(
         self, layer_idx: int
@@ -127,12 +153,24 @@ class oCache:
             if self.cache_strategy == "tiered-write-back"
             else self._pending_tails
         )
+        strategy_axes = describe_kv_cache_strategy(self.cache_strategy)
         return KVCacheStateSnapshot(
             strategy_id=self.cache_strategy,
             policy_id=self.policy.policy_id,
+            persistence_format=strategy_axes.persistence_format,
+            residency_mode=strategy_axes.residency_mode,
+            window_policy=strategy_axes.window_policy,
+            cold_tier_encoding=strategy_axes.cold_tier_encoding,
             persisted_layer_count=len(self._cache_store.persisted_layer_ids()),
             persisted_tokens=self._cache_store.persisted_token_count(),
             persisted_artifact_count=self._cache_store.persisted_artifact_count(),
+            resident_layer_count=len(self._resident_layers),
+            resident_tokens=sum(
+                _sequence_length(pair[0]) for pair in self._resident_layers.values()
+            ),
+            resident_bytes=sum(
+                _tensor_pair_nbytes(pair) for pair in self._resident_layers.values()
+            ),
             hot_layer_count=len(hot_tails),
             hot_tokens=sum(_sequence_length(pair[0]) for pair in hot_tails.values()),
             hot_bytes=sum(_tensor_pair_nbytes(pair) for pair in hot_tails.values()),
@@ -303,9 +341,17 @@ class KVCache(DynamicCache, oCache):
         stats: Stats | None = None,
         policy: KVCachePolicy | None = None,
         cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
+        cache_lifecycle: str = DEFAULT_KV_CACHE_LIFECYCLE,
     ) -> None:
         super().__init__()
-        self.ini_ocache(cache_dir, device, stats, policy, cache_strategy)
+        self.ini_ocache(
+            cache_dir,
+            device,
+            stats,
+            policy,
+            cache_strategy,
+            cache_lifecycle,
+        )
 
     def update(
         self,

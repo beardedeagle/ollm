@@ -1,6 +1,4 @@
 # type: ignore
-# Dynamic Qwen3-Next specialization module: expert routing and transformer monkey-patching are runtime-driven.
-
 import time
 from datetime import datetime
 from typing import Unpack
@@ -46,23 +44,22 @@ class Qwen3NextDiskCache(Qwen3NextDynamicCache, oCache):
         stats=None,
         policy: KVCachePolicy | None = None,
         cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
+        cache_lifecycle: str = "runtime-scoped",
     ):
         super().__init__(config)
-        self.ini_ocache(cache_dir, device, stats, policy, cache_strategy)
+        self.ini_ocache(
+            cache_dir, device, stats, policy, cache_strategy, cache_lifecycle
+        )
         self.seq_lengths = [0 for _ in range(len(self.key_cache))]
 
     def get_seq_length(self, layer_idx: int | None = 0) -> int:
         return self.seq_lengths[layer_idx]
 
     def __getitem__(self, layer_idx: int) -> tuple[torch.Tensor, torch.Tensor]:
-        raise NotImplementedError(
-            "KVCache __getitem__ called. Beam search is not supported"
-        )
+        raise NotImplementedError("Beam search is not supported for Qwen3NextDiskCache")
 
     def reorder_cache(self, beam_idx: torch.LongTensor):
-        raise NotImplementedError(
-            "KVCache reorder_cache called. Beam search is not supported"
-        )
+        raise NotImplementedError("Beam search is not supported for Qwen3NextDiskCache")
 
     def update(
         self,

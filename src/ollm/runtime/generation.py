@@ -5,6 +5,10 @@ from typing import Protocol, cast
 import torch
 
 from ollm.app.types import ContentKind, Message, PromptRequest, PromptResponse
+from ollm.kv_cache_matrix import (
+    build_kv_cache_adaptation_surface,
+    resolve_kv_cache_base_dir,
+)
 from ollm.kv_cache_state import KVCacheStateSnapshot
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.catalog import ModelModality
@@ -198,9 +202,20 @@ class RuntimeExecutor:
         }
 
         if request.runtime_config.use_cache:
+            resolved_strategy = request.runtime_config.resolved_kv_cache_strategy()
+            resolved_lifecycle = request.runtime_config.resolved_kv_cache_lifecycle()
+            cache_base_dir = resolve_kv_cache_base_dir(
+                cache_dir=request.runtime_config.resolved_cache_dir(),
+                lifecycle=resolved_lifecycle,
+                model_reference=runtime.resolved_model.reference.raw,
+                normalized_name=runtime.resolved_model.normalized_name,
+                backend_id=runtime.plan.backend_id or "unknown",
+                specialization_provider_id=runtime.plan.specialization_provider_id,
+            )
             cache = runtime.get_or_create_disk_cache(
-                request.runtime_config.resolved_cache_dir(),
-                request.runtime_config.resolved_kv_cache_strategy(),
+                cache_base_dir,
+                resolved_strategy,
+                resolved_lifecycle,
             )
             if cache is not None:
                 generate_kwargs["past_key_values"] = cache
@@ -282,6 +297,8 @@ class RuntimeExecutor:
                 if runtime.config.use_cache and runtime.plan.supports_disk_cache
                 else "none"
             ),
+            "kv_cache_lifecycle": runtime.config.resolved_kv_cache_lifecycle(),
+            "kv_cache_adaptation_mode": runtime.config.resolved_kv_cache_adaptation_mode(),
         }
         for detail_key in PLAN_METADATA_DETAIL_KEYS:
             detail_value = runtime.plan.details.get(detail_key)
@@ -291,10 +308,17 @@ class RuntimeExecutor:
             metadata.update(
                 {
                     "kv_cache_policy_id": cache_state.policy_id,
+                    "kv_cache_persistence_format": cache_state.persistence_format,
+                    "kv_cache_residency_mode": cache_state.residency_mode,
+                    "kv_cache_window_policy": cache_state.window_policy,
+                    "kv_cache_cold_tier_encoding": cache_state.cold_tier_encoding,
                     "kv_cache_persisted_tokens": str(cache_state.persisted_tokens),
                     "kv_cache_persisted_artifacts": str(
                         cache_state.persisted_artifact_count
                     ),
+                    "kv_cache_resident_layers": str(cache_state.resident_layer_count),
+                    "kv_cache_resident_tokens": str(cache_state.resident_tokens),
+                    "kv_cache_resident_bytes": str(cache_state.resident_bytes),
                     "kv_cache_hot_tokens": str(cache_state.hot_tokens),
                     "kv_cache_hot_layers": str(cache_state.hot_layer_count),
                     "kv_cache_compaction_count": str(cache_state.compaction_count),
@@ -304,6 +328,24 @@ class RuntimeExecutor:
             )
             if cache_state.cold_store_format is not None:
                 metadata["kv_cache_cold_store_format"] = cache_state.cold_store_format
+        adaptation_surface = build_kv_cache_adaptation_surface(
+            adaptation_mode=runtime.config.resolved_kv_cache_adaptation_mode(),
+            current_strategy=runtime.config.resolved_kv_cache_strategy(),
+            persisted_artifact_count=(
+                None if cache_state is None else cache_state.persisted_artifact_count
+            ),
+            spill_count=None if cache_state is None else cache_state.spill_count,
+            resident_bytes=None if cache_state is None else cache_state.resident_bytes,
+            hot_bytes=None if cache_state is None else cache_state.hot_bytes,
+        )
+        metadata["kv_cache_adaptation_recommendation_available"] = str(
+            adaptation_surface.recommendation_available
+        ).lower()
+        if adaptation_surface.recommended_strategy_id is not None:
+            metadata["kv_cache_adaptation_recommended_strategy"] = (
+                adaptation_surface.recommended_strategy_id
+            )
+        metadata["kv_cache_adaptation_reason"] = adaptation_surface.reason
         stats = cast(_StatsProtocol | None, runtime.backend.stats)
         if stats is not None:
             metadata["stats"] = stats.print_and_clean()
