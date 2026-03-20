@@ -305,6 +305,14 @@ def test_runtime_settings_accept_tiered_write_back_strategy() -> None:
     assert overrides.kv_cache_strategy == "tiered-write-back"
 
 
+def test_runtime_settings_accept_paged_strategy() -> None:
+    settings = RuntimeSettings(kv_cache_strategy="paged")
+    overrides = RuntimeConfigOverrides(kv_cache_strategy="paged")
+
+    assert settings.kv_cache_strategy == "paged"
+    assert overrides.kv_cache_strategy == "paged"
+
+
 def test_runtime_settings_accept_log_structured_journal_strategy() -> None:
     settings = RuntimeSettings(kv_cache_strategy="log-structured-journal")
     overrides = RuntimeConfigOverrides(kv_cache_strategy="log-structured-journal")

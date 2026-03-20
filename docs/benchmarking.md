@@ -52,6 +52,15 @@ uv run python scripts/benchmark_runtime.py \
   --output .omx/runtime-benchmark-streamed.json
 ```
 
+The paged strategy uses the same switch:
+
+```bash
+uv run python scripts/benchmark_runtime.py \
+  --device cpu \
+  --kv-cache-strategy paged \
+  --output .omx/runtime-benchmark-paged.json
+```
+
 Tiered write-back uses the same switch:
 
 ```bash
@@ -158,6 +167,7 @@ stats. Generic Transformers-backed runs may report `null` here.
 
 For disk KV requests, `disk-kv-cache` now refers to the explicit strategy root
 under `cache_dir/kv_cache_chunked`,
+`cache_dir/kv_cache_paged`,
 `cache_dir/kv_cache_streamed_segmented`, or
 `cache_dir/kv_cache_tiered_write_back`, or
 `cache_dir/kv_cache_sliding_window_ring_buffer`, not to pickle-backed `.pt`
@@ -182,6 +192,10 @@ For `log-structured-journal`, compaction is visible both through
 runtime profile timing under `kvcompact`. `kvsave` now measures append-path
 write cost without double-counting compaction rewrite time; when compaction
 occurs, `kvcompact` reports that rewrite separately.
+For `paged`, benchmark output surfaces the explicit `paged-manifest`
+persistence format and `ollm-kv-paged` cold-store format. The persisted
+artifact count for this strategy means page-table entries, not raw blob files,
+so comparisons stay aligned to logical fixed-size movement units.
 For `quantized-cold-tier`, the persisted cold journal uses the explicit
 `int8-symmetric-per-tensor` representation and benchmark output surfaces that
 representation through `cache_state.cold_tier_representation`.

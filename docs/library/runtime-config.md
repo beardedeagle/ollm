@@ -17,7 +17,7 @@ Use `RuntimeConfig` to describe:
 
 The current KV scaffolding now distinguishes:
 
-- `kv_cache_strategy` — the current preset such as `chunked`, `sliding-window-ring-buffer`, `quantized-cold-tier`, or `tiered-write-back`
+- `kv_cache_strategy` — the current preset such as `chunked`, `paged`, `sliding-window-ring-buffer`, `quantized-cold-tier`, or `tiered-write-back`
 - `kv_cache_window_tokens` — bounded recent-context token budget for `sliding-window-ring-buffer`; omitted for full-history strategies
 - `kv_cache_lifecycle` — `runtime-scoped` or explicit `persistent` reuse semantics
 - `kv_cache_adaptation_mode` — `disabled`, `observe-only`, or `automatic`; observe-only recommendation rules exist, but live switching is still disabled

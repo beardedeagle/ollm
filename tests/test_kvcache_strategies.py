@@ -32,6 +32,7 @@ def _immediate_flush_policy() -> KVCachePolicy:
     "cache_strategy",
     [
         "chunked",
+        "paged",
         "streamed-segmented",
         "log-structured-journal",
         "sliding-window-ring-buffer",
@@ -72,6 +73,13 @@ def test_kvcache_strategy_roots_do_not_cross_contaminate(tmp_path: Path) -> None
         policy=_immediate_flush_policy(),
         cache_strategy="streamed-segmented",
     )
+    paged_cache = KVCache(
+        cache_dir=base_cache_root,
+        device="cpu",
+        stats=None,
+        policy=_immediate_flush_policy(),
+        cache_strategy="paged",
+    )
     journal_cache = KVCache(
         cache_dir=base_cache_root,
         device="cpu",
@@ -103,15 +111,22 @@ def test_kvcache_strategy_roots_do_not_cross_contaminate(tmp_path: Path) -> None
     )
 
     chunked_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=100), 0)
+    paged_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=150), 0)
     streamed_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=200), 0)
     journal_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=250), 0)
     sliding_window_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=260), 0)
     quantized_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=275), 0)
     tiered_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=300), 0)
 
+    assert chunked_cache.cache_folder != paged_cache.cache_folder
     assert chunked_cache.cache_folder != streamed_cache.cache_folder
     assert chunked_cache.cache_folder != journal_cache.cache_folder
     assert chunked_cache.cache_folder != quantized_cache.cache_folder
+    assert paged_cache.cache_folder != streamed_cache.cache_folder
+    assert paged_cache.cache_folder != journal_cache.cache_folder
+    assert paged_cache.cache_folder != quantized_cache.cache_folder
+    assert paged_cache.cache_folder != tiered_cache.cache_folder
+    assert paged_cache.cache_folder != sliding_window_cache.cache_folder
     assert streamed_cache.cache_folder != tiered_cache.cache_folder
     assert streamed_cache.cache_folder != journal_cache.cache_folder
     assert streamed_cache.cache_folder != quantized_cache.cache_folder
@@ -203,6 +218,39 @@ def test_quantized_cold_tier_kvcache_reports_quantized_state(tmp_path: Path) -> 
     assert state.cold_store_format == "ollm-kv-journal-quantized"
 
 
+def test_paged_kvcache_reports_paged_state(tmp_path: Path) -> None:
+    cache = KVCache(
+        cache_dir=tmp_path / "cache-root",
+        device="cpu",
+        stats=None,
+        policy=_immediate_flush_policy(),
+        cache_strategy="paged",
+    )
+    first_key = _chunk_tensor(3)
+    first_value = _chunk_tensor(3, offset=100)
+    second_key = _chunk_tensor(2, offset=1000)
+    second_value = _chunk_tensor(2, offset=2000)
+
+    cache.update(first_key, first_value, 0)
+    out = cache.update(second_key, second_value, 0)
+    persisted = cache.load_from_disk(0)
+    state = cache.cache_state_snapshot()
+
+    expected_key = torch.cat((first_key, second_key), dim=-2)
+    expected_value = torch.cat((first_value, second_value), dim=-2)
+
+    assert persisted is not None
+    assert torch.equal(out[0], expected_key)
+    assert torch.equal(out[1], expected_value)
+    assert torch.equal(persisted[0], expected_key)
+    assert torch.equal(persisted[1], expected_value)
+    assert state.strategy_id == "paged"
+    assert state.persistence_format == "paged-manifest"
+    assert state.cold_store_format == "ollm-kv-paged"
+    assert state.cold_tier_encoding == "full-precision"
+    assert state.persisted_artifact_count == 1
+
+
 def test_sliding_window_ring_buffer_bounds_growth_and_tracks_eviction(
     tmp_path: Path,
 ) -> None:
@@ -278,6 +326,7 @@ def test_sliding_window_ring_buffer_bounds_oversized_first_append(
     "cache_strategy",
     [
         "chunked",
+        "paged",
         "streamed-segmented",
         "log-structured-journal",
         "sliding-window-ring-buffer",

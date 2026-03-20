@@ -33,6 +33,9 @@ That disk cache path now uses an explicit disk-KV store under
 `cache_dir/kv_cache_chunked` by default, with explicit
 dtype/shape/sequence metadata and raw payloads instead of pickle-backed torch
 artifacts. When the selected runtime uses
+`kv_cache_strategy="paged"`, it writes to
+`cache_dir/kv_cache_paged` and persists fixed-capacity pages through an
+explicit page table. When it uses
 `kv_cache_strategy="streamed-segmented"`, it writes to
 `cache_dir/kv_cache_streamed_segmented` instead. When it uses
 `kv_cache_strategy="log-structured-journal"`, it writes to

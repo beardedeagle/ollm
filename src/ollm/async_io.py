@@ -117,6 +117,26 @@ def path_write_bytes(path: Path, content: bytes) -> None:
     run_async_operation(path_write_bytes_async(path, content))
 
 
+async def path_write_bytes_at_offset_async(
+    path: Path, *, offset: int, content: bytes
+) -> None:
+    if offset < 0:
+        raise ValueError("offset must be zero or greater")
+
+    def _write() -> None:
+        with path.open("r+b") as handle:
+            handle.seek(offset)
+            handle.write(content)
+
+    await to_thread.run_sync(_write)
+
+
+def path_write_bytes_at_offset(path: Path, *, offset: int, content: bytes) -> None:
+    run_async_operation(
+        path_write_bytes_at_offset_async(path, offset=offset, content=content)
+    )
+
+
 async def path_append_bytes_async(path: Path, content: bytes) -> int:
     def _append() -> int:
         with path.open("ab") as handle:
