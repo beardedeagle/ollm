@@ -1444,6 +1444,8 @@
       
         
       
+        
+      
     
     
     
@@ -1504,6 +1506,34 @@
     
   
     Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/kv-strategy-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    KV Strategy Matrix
   
 
     
@@ -2177,7 +2207,13 @@
 <li>backend override</li>
 <li>multimodal enablement</li>
 <li>specialization enablement</li>
-<li>cache strategy, cache root, and offload behavior</li>
+<li>cache strategy, cache lifecycle, adaptation mode, cache root, and offload behavior</li>
+</ul>
+<p>The current KV scaffolding now distinguishes:</p>
+<ul>
+<li><code>kv_cache_strategy</code> — the current preset such as <code>chunked</code> or <code>tiered-write-back</code></li>
+<li><code>kv_cache_lifecycle</code> — <code>runtime-scoped</code> or explicit <code>persistent</code> reuse semantics</li>
+<li><code>kv_cache_adaptation_mode</code> — <code>disabled</code>, <code>observe-only</code>, or <code>automatic</code>; observe-only recommendation rules exist, but live switching is still disabled</li>
 </ul>
 <h2 id="generationconfig"><code>GenerationConfig</code><a class="headerlink" href="#generationconfig" title="Permanent link">&para;</a></h2>
 <p>Use <code>GenerationConfig</code> to describe:</p>

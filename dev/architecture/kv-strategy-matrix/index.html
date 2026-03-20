@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../models-discovery/">
+        <link rel="prev" href="../overview/">
       
       
-        <link rel="next" href="../troubleshooting/">
+        <link rel="next" href="../model-resolution/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Optimization Guide - oLLM</title>
+        <title>KV Strategy Matrix - oLLM</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#optimization-guide" class="md-skip">
+        <a href="#kv-strategy-matrix" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Optimization Guide
+              KV Strategy Matrix
             
           </span>
         </div>
@@ -259,12 +259,10 @@
   
   
   
-    
-  
   
     
     
-      <li class="md-tabs__item md-tabs__item--active">
+      <li class="md-tabs__item">
         <a href="../../terminal-interface/" class="md-tabs__link">
           
   
@@ -327,11 +325,13 @@
   
   
   
+    
+  
   
     
     
-      <li class="md-tabs__item">
-        <a href="../../architecture/overview/" class="md-tabs__link">
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../overview/" class="md-tabs__link">
           
   
   
@@ -514,7 +514,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../installation/" class="md-nav__link">
+      <a href="../../guides/installation/" class="md-nav__link">
         
   
   
@@ -542,7 +542,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/" class="md-nav__link">
+      <a href="../../guides/configuration/" class="md-nav__link">
         
   
   
@@ -570,7 +570,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quickstart/" class="md-nav__link">
+      <a href="../../guides/quickstart/" class="md-nav__link">
         
   
   
@@ -602,10 +602,8 @@
       
   
   
-    
   
   
-  
     
     
       
@@ -631,22 +629,19 @@
     
     
       
-        
-        
-      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
         
           
-          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="">
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
             
   
   
@@ -664,7 +659,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -710,7 +705,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../local-server/" class="md-nav__link">
+      <a href="../../guides/local-server/" class="md-nav__link">
         
   
   
@@ -738,7 +733,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../model-references/" class="md-nav__link">
+      <a href="../../guides/model-references/" class="md-nav__link">
         
   
   
@@ -766,7 +761,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../multimodal/" class="md-nav__link">
+      <a href="../../guides/multimodal/" class="md-nav__link">
         
   
   
@@ -794,7 +789,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runtime-planning/" class="md-nav__link">
+      <a href="../../guides/runtime-planning/" class="md-nav__link">
         
   
   
@@ -822,7 +817,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../models-discovery/" class="md-nav__link">
+      <a href="../../guides/models-discovery/" class="md-nav__link">
         
   
   
@@ -847,37 +842,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Optimization Guide
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../../guides/optimization/" class="md-nav__link">
         
   
   
@@ -893,122 +861,6 @@
   
 
       </a>
-      
-        
-
-  
-
-<nav class="md-nav md-nav--secondary" aria-label="Page contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Page contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#runtime-tiers" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Runtime tiers
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Runtime tiers">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#optimized-native" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optimized-native
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#transformers-generic" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Transformers-generic
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#specialization-passes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Specialization passes
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#fallback-behavior" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Fallback behavior
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#offload-and-cache-controls" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Offload and cache controls
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#gpt-oss-gds_export-requirement" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        GPT-OSS gds_export requirement
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#hardware-expectations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Hardware expectations
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -1021,7 +873,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../troubleshooting/" class="md-nav__link">
+      <a href="../../guides/troubleshooting/" class="md-nav__link">
         
   
   
@@ -1503,8 +1355,10 @@
       
   
   
+    
   
   
+  
     
     
       
@@ -1522,19 +1376,22 @@
     
     
       
+        
+        
+      
       
         
       
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
-          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="">
             
   
   
@@ -1552,7 +1409,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1570,7 +1427,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/overview/" class="md-nav__link">
+      <a href="../overview/" class="md-nav__link">
         
   
   
@@ -1595,10 +1452,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../../architecture/kv-strategy-matrix/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    KV Strategy Matrix
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -1614,6 +1498,94 @@
   
 
       </a>
+      
+        
+
+  
+
+<nav class="md-nav md-nav--secondary" aria-label="Page contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Page contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#current-matrix-axes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Current matrix axes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#presets-versus-axes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Presets versus axes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#cache-lifecycle" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cache lifecycle
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adaptation-mode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adaptation mode
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#resident-state-observability" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resident-state observability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#near-term-intent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Near-term intent
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -1626,7 +1598,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/model-resolution/" class="md-nav__link">
+      <a href="../model-resolution/" class="md-nav__link">
         
   
   
@@ -1654,7 +1626,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/backend-selection/" class="md-nav__link">
+      <a href="../backend-selection/" class="md-nav__link">
         
   
   
@@ -1682,7 +1654,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../architecture/specialization/" class="md-nav__link">
+      <a href="../specialization/" class="md-nav__link">
         
   
   
@@ -2108,7 +2080,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../contributing/" class="md-nav__link">
+      <a href="../../guides/contributing/" class="md-nav__link">
         
   
   
@@ -2136,7 +2108,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../python-standards/" class="md-nav__link">
+      <a href="../../guides/python-standards/" class="md-nav__link">
         
   
   
@@ -2164,7 +2136,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../python-standards-audit/" class="md-nav__link">
+      <a href="../../guides/python-standards-audit/" class="md-nav__link">
         
   
   
@@ -2221,49 +2193,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#runtime-tiers" class="md-nav__link">
+  <a href="#current-matrix-axes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Runtime tiers
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Runtime tiers">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#optimized-native" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Optimized-native
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#transformers-generic" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Transformers-generic
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#specialization-passes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Specialization passes
+        Current matrix axes
       
     </span>
   </a>
@@ -2271,10 +2204,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#fallback-behavior" class="md-nav__link">
+  <a href="#presets-versus-axes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Fallback behavior
+        Presets versus axes
       
     </span>
   </a>
@@ -2282,10 +2215,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#offload-and-cache-controls" class="md-nav__link">
+  <a href="#cache-lifecycle" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Offload and cache controls
+        Cache lifecycle
       
     </span>
   </a>
@@ -2293,10 +2226,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#gpt-oss-gds_export-requirement" class="md-nav__link">
+  <a href="#adaptation-mode" class="md-nav__link">
     <span class="md-ellipsis">
       
-        GPT-OSS gds_export requirement
+        Adaptation mode
       
     </span>
   </a>
@@ -2304,10 +2237,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#hardware-expectations" class="md-nav__link">
+  <a href="#resident-state-observability" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Hardware expectations
+        Resident-state observability
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#near-term-intent" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Near-term intent
       
     </span>
   </a>
@@ -2340,109 +2284,134 @@
   
 
 
-<h1 id="optimization-guide">Optimization Guide<a class="headerlink" href="#optimization-guide" title="Permanent link">&para;</a></h1>
-<p>This guide explains how oLLM's optimized-native path differs from the generic runtime and how to interpret specialization behavior.</p>
-<h2 id="runtime-tiers">Runtime tiers<a class="headerlink" href="#runtime-tiers" title="Permanent link">&para;</a></h2>
-<h3 id="optimized-native">Optimized-native<a class="headerlink" href="#optimized-native" title="Permanent link">&para;</a></h3>
-<p>Used when a built-in alias or compatible native-family local model matches a specialization provider.</p>
-<p>Current native families:</p>
+<h1 id="kv-strategy-matrix">KV Strategy Matrix<a class="headerlink" href="#kv-strategy-matrix" title="Permanent link">&para;</a></h1>
+<p>oLLM's current disk-KV presets are still selected as single strings such as
+<code>chunked</code>, <code>streamed-segmented</code>, <code>log-structured-journal</code>, and
+<code>tiered-write-back</code>.</p>
+<p>That is still the public control surface today, but the system is now being
+scaffolded around a more explicit internal matrix so future strategies do not
+turn into one giant preset enum with hidden semantics.</p>
+<h2 id="current-matrix-axes">Current matrix axes<a class="headerlink" href="#current-matrix-axes" title="Permanent link">&para;</a></h2>
+<p>The current scaffold separates these concerns:</p>
 <ul>
-<li><code>llama</code></li>
-<li><code>gemma3</code></li>
-<li><code>qwen3-next</code></li>
-<li><code>gpt-oss</code></li>
-<li><code>voxtral</code></li>
+<li>persistence format</li>
+<li>residency mode</li>
+<li>window policy</li>
+<li>cold-tier encoding</li>
+<li>cache lifecycle</li>
+<li>adaptation mode</li>
 </ul>
-<h3 id="transformers-generic">Transformers-generic<a class="headerlink" href="#transformers-generic" title="Permanent link">&para;</a></h3>
-<p>Used for compatible local or materialized models that can run through the generic Transformers-backed path.</p>
-<h2 id="specialization-passes">Specialization passes<a class="headerlink" href="#specialization-passes" title="Permanent link">&para;</a></h2>
-<p>Optimized-native planning can record reusable passes such as:</p>
+<p>The first four describe the current preset itself. The last two describe how
+that preset is owned and how telemetry may influence future runtime choices.</p>
+<h2 id="presets-versus-axes">Presets versus axes<a class="headerlink" href="#presets-versus-axes" title="Permanent link">&para;</a></h2>
+<p>Current presets are now understood as bundles of axis values:</p>
+<table>
+<thead>
+<tr>
+<th>Preset</th>
+<th>Persistence Format</th>
+<th>Residency Mode</th>
+<th>Window Policy</th>
+<th>Cold-Tier Encoding</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>chunked</code></td>
+<td><code>chunked-manifest</code></td>
+<td><code>buffered-tail</code></td>
+<td><code>full-history</code></td>
+<td><code>full-precision</code></td>
+</tr>
+<tr>
+<td><code>streamed-segmented</code></td>
+<td><code>streamed-segmented</code></td>
+<td><code>buffered-tail</code></td>
+<td><code>full-history</code></td>
+<td><code>full-precision</code></td>
+</tr>
+<tr>
+<td><code>log-structured-journal</code></td>
+<td><code>log-structured-journal</code></td>
+<td><code>buffered-tail</code></td>
+<td><code>full-history</code></td>
+<td><code>full-precision</code></td>
+</tr>
+<tr>
+<td><code>tiered-write-back</code></td>
+<td><code>log-structured-journal</code></td>
+<td><code>tiered-write-back</code></td>
+<td><code>full-history</code></td>
+<td><code>full-precision</code></td>
+</tr>
+</tbody>
+</table>
+<p>This does not change runtime behavior yet. It only makes the shape explicit so
+future presets such as <code>paged</code>, <code>resident</code>, <code>quantized cold tier</code>, or
+<code>sliding-window</code> can compose cleanly.</p>
+<h2 id="cache-lifecycle">Cache lifecycle<a class="headerlink" href="#cache-lifecycle" title="Permanent link">&para;</a></h2>
+<p>Cache lifecycle is intentionally treated as a separate axis:</p>
 <ul>
-<li><code>disk-cache</code></li>
-<li><code>cpu-offload</code></li>
-<li><code>gpu-offload</code></li>
-<li><code>mlp-chunking</code></li>
-<li><code>moe-routing</code></li>
-<li><code>attention-replacement</code></li>
-<li><code>multimodal-shell</code></li>
-<li><code>gds-export-weights</code></li>
+<li><code>runtime-scoped</code></li>
+<li><code>persistent</code></li>
 </ul>
-<p>These passes are validated against the assembled optimized runtime before execution proceeds.</p>
-<h2 id="fallback-behavior">Fallback behavior<a class="headerlink" href="#fallback-behavior" title="Permanent link">&para;</a></h2>
-<p>If an optimized specialization cannot satisfy its planned pass contract and a compatible generic Transformers path exists, oLLM falls back safely to <code>transformers-generic</code>.</p>
-<p>This is intentional. The runtime does <strong>not</strong> pretend the optimized path succeeded.</p>
-<h2 id="offload-and-cache-controls">Offload and cache controls<a class="headerlink" href="#offload-and-cache-controls" title="Permanent link">&para;</a></h2>
-<p>When supported by the selected backend, oLLM can expose:</p>
+<p>Current default behavior is still <code>runtime-scoped</code>, but <code>persistent</code> is now an
+explicit implemented mode.</p>
+<p>That means oLLM can now distinguish between:</p>
 <ul>
-<li>disk KV cache</li>
-<li>CPU layer offload</li>
-<li>mixed GPU / CPU layer placement</li>
+<li>within-runtime reuse</li>
+<li>explicit persistent reuse across later runs under a lifecycle-aware,
+  model/backend-scoped cache root</li>
 </ul>
-<p>These controls are backend-dependent. The generic path does not expose the same
-low-level layer-placement controls as optimized-native runtimes.</p>
-<p>The optimized-native disk KV cache now exposes three explicit
-strategies:</p>
+<p>This distinction matters because cross-run persistence adds separate concerns:</p>
 <ul>
-<li><code>chunked</code></li>
-<li><code>streamed-segmented</code></li>
-<li><code>log-structured-journal</code></li>
-<li><code>tiered-write-back</code></li>
+<li>cache identity and invalidation</li>
+<li>schema compatibility</li>
+<li>partial-write recovery</li>
+<li>retention / GC</li>
+<li>multi-process coordination</li>
+<li>benchmark truth for cold versus warm starts</li>
 </ul>
-<p><code>chunked</code> persists a manifest-backed chunk store under
-<code>cache_dir/kv_cache_chunked</code>. <code>streamed-segmented</code> persists a sequential
-segment-backed store under <code>cache_dir/kv_cache_streamed_segmented</code>.
-<code>log-structured-journal</code> persists a single append-oriented journal per layer
-under <code>cache_dir/kv_cache_log_structured_journal</code> and compacts entry metadata
-deterministically once the journal crosses its configured entry threshold.
-<code>tiered-write-back</code> persists only the colder KV prefix under
-<code>cache_dir/kv_cache_tiered_write_back</code> while keeping a bounded hot region in
-memory; its cold tier now uses a journal-backed append store. All four use
-typed raw tensor payloads plus explicit metadata, and none uses opaque
-pickle-backed <code>.pt</code> cache blobs. The runtime also applies a
-platform/resource-aware buffering or spill policy on top of the selected
-strategy so the cache can trade write amplification against memory headroom
-instead of flushing every delta identically on every machine.</p>
-<p>Within one loaded runtime, the cache layer now also keeps a resident in-process
-snapshot of the reconstructed per-layer KV state so repeated updates do not
-need to reread and rebuild the same on-disk history every token. For the
-<code>streamed-segmented</code> store specifically, readback now coalesces extents by
-segment file instead of replaying a separate file-range read for every extent.</p>
-<h2 id="gpt-oss-gds_export-requirement">GPT-OSS <code>gds_export</code> requirement<a class="headerlink" href="#gpt-oss-gds_export-requirement" title="Permanent link">&para;</a></h2>
-<p>The optimized GPT-OSS path is intentionally strict:</p>
+<h2 id="adaptation-mode">Adaptation mode<a class="headerlink" href="#adaptation-mode" title="Permanent link">&para;</a></h2>
+<p>Adaptation mode is also scaffolded explicitly:</p>
 <ul>
-<li>a validated <code>gds_export/</code> tree must be present beside the model</li>
-<li>the export manifest must remain inside that export directory</li>
-<li>unsafe torch-serialized or pickle-backed artifacts are rejected</li>
+<li><code>disabled</code></li>
+<li><code>observe-only</code></li>
+<li><code>automatic</code></li>
 </ul>
-<h2 id="hardware-expectations">Hardware expectations<a class="headerlink" href="#hardware-expectations" title="Permanent link">&para;</a></h2>
-<p>The benchmark harness is designed to stay truthful on limited-RAM hosts:</p>
+<p>Current behavior now supports observe-only recommendation rules. The runtime can
+emit a truthful recommendation from current KV state, but it does not yet
+switch KV strategies live.</p>
+<p>The intended progression is:</p>
+<ol>
+<li>report signals</li>
+<li>make observe-only recommendations</li>
+<li>prove the recommendation loop against benchmarks and repeated-session runs</li>
+<li>only then enable real automatic policy changes</li>
+</ol>
+<h2 id="resident-state-observability">Resident-state observability<a class="headerlink" href="#resident-state-observability" title="Permanent link">&para;</a></h2>
+<p>The in-process resident KV snapshot is now treated as a first-class observable
+part of cache state, not just an implementation detail.</p>
+<p>Current reporting now has room to distinguish:</p>
 <ul>
-<li>planner overhead and no-specialization cost do not require large model loads</li>
-<li>runtime comparisons only load weights when the target actually exists locally</li>
-<li>the requested primary target now reports cold-start and warm-runtime behavior separately, including TTFT, inter-token latency, prompt/output throughput, peak memory, cache footprint, and supported utilization / allocator-gap metrics</li>
-<li>optimized-native benchmark requests can also expose native loader and KV IO timing summaries plus the storage paths used by the request</li>
-<li>prompt-length scaling, output-length scaling, and repeated-turn session growth are measured only for the requested primary target, not for every built-in family alias</li>
-<li>unavailable optimized comparisons are reported as unavailable instead of being fabricated</li>
+<li>persisted state</li>
+<li>resident in-process state</li>
+<li>hot/pending tails</li>
 </ul>
-<p>When present, the native runtime profile is the most truthful place to inspect
-whether an optimized request actually used GDS, standard safetensor IO,
-CPU-offloaded artifacts, or disk KV cache IO.</p>
-<p>For disk KV specifically, <code>kvload</code> and <code>kvsave</code> now represent reads and writes
-against the selected explicit disk-KV store rather than whole-layer torch
-artifacts. Benchmark/runtime output also reports <code>kv_cache_strategy</code> so the
-active backend is visible during A/B runs, and <code>cache_state</code> exposes the
-hot/cold split, persisted artifact count, compaction count, and cold-store
-format for tier-aware strategies.
-The reported disk-cache footprint reflects the persisted chunk store only. A
-selected KV policy may keep a bounded tail in memory until its spill or flush
-threshold is reached.
-When a request is satisfied from the resident in-process KV snapshot rather
-than from disk, <code>kvload</code> can legitimately be absent for that step even though
-disk KV remains the selected strategy.</p>
-<p>Those native event totals are operation-level timings. On runtimes that submit
-multiple storage reads before waiting for completion, the summed native IO
-event totals can exceed the enclosing request wall-clock time because the reads
-can overlap.</p>
+<p>That matters because resident reuse can improve request behavior without showing
+up as persisted on-disk KV activity.</p>
+<h2 id="near-term-intent">Near-term intent<a class="headerlink" href="#near-term-intent" title="Permanent link">&para;</a></h2>
+<p>This scaffold is meant to support the next wave of work:</p>
+<ul>
+<li>paged persistence</li>
+<li>resident baseline mode</li>
+<li>quantized cold tiers</li>
+<li>sliding-window / ring-buffer mode</li>
+<li>observe-only adaptation recommendations</li>
+<li>stronger persistent lifecycle reuse and retention policy</li>
+</ul>
+<p>The important rule is: add new behavior by filling in these axes, not by
+letting one preset label absorb unrelated semantics forever.</p>
 
 
 

@@ -1444,6 +1444,8 @@
       
         
       
+        
+      
     
     
     
@@ -1504,6 +1506,34 @@
     
   
     Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/kv-strategy-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    KV Strategy Matrix
   
 
     
@@ -2181,6 +2211,8 @@
     <span class="n">backend</span><span class="o">=</span><span class="s2">&quot;transformers-generic&quot;</span><span class="p">,</span>
     <span class="n">use_specialization</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
     <span class="n">kv_cache_strategy</span><span class="o">=</span><span class="s2">&quot;chunked&quot;</span><span class="p">,</span>
+    <span class="n">kv_cache_lifecycle</span><span class="o">=</span><span class="s2">&quot;runtime-scoped&quot;</span><span class="p">,</span>
+    <span class="n">kv_cache_adaptation_mode</span><span class="o">=</span><span class="s2">&quot;observe-only&quot;</span><span class="p">,</span>
 <span class="p">)</span>
 
 <span class="n">plan</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">describe_plan</span><span class="p">(</span><span class="n">runtime_config</span><span class="p">)</span>

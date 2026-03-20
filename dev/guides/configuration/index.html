@@ -1477,6 +1477,8 @@
       
         
       
+        
+      
     
     
     
@@ -1537,6 +1539,34 @@
     
   
     Overview
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../architecture/kv-strategy-matrix/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    KV Strategy Matrix
   
 
     
@@ -2258,6 +2288,8 @@ lives at <code>examples/ollm.toml</code> in the repository root.</p>
 <li><code>use_specialization</code> — whether optimized-native specialization is allowed</li>
 <li><code>cache_dir</code> / <code>use_cache</code> — disk KV cache controls</li>
 <li><code>kv_cache_strategy</code> — explicit disk KV backend selection (<code>chunked</code>, <code>streamed-segmented</code>, <code>log-structured-journal</code>, or <code>tiered-write-back</code>)</li>
+<li><code>kv_cache_lifecycle</code> — whether KV artifacts are <code>runtime-scoped</code> or explicitly <code>persistent</code></li>
+<li><code>kv_cache_adaptation_mode</code> — whether adaptation telemetry is <code>disabled</code>, <code>observe-only</code>, or <code>automatic</code> (live switching is still not enabled)</li>
 <li><code>offload_cpu_layers</code> / <code>offload_gpu_layers</code> — native offload controls when supported</li>
 </ul>
 <p>Generation configuration fields:</p>
@@ -2284,6 +2316,8 @@ lives at <code>examples/ollm.toml</code> in the repository root.</p>
 <li><code>OLLM_RUNTIME__MODELS_DIR</code></li>
 <li><code>OLLM_RUNTIME__DEVICE</code></li>
 <li><code>OLLM_RUNTIME__KV_CACHE_STRATEGY</code></li>
+<li><code>OLLM_RUNTIME__KV_CACHE_LIFECYCLE</code></li>
+<li><code>OLLM_RUNTIME__KV_CACHE_ADAPTATION_MODE</code></li>
 <li><code>OLLM_GENERATION__MAX_NEW_TOKENS</code></li>
 <li><code>OLLM_GENERATION__STREAM</code></li>
 <li><code>OLLM_SERVER__HOST</code></li>
