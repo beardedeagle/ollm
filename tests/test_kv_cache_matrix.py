@@ -7,6 +7,8 @@ from ollm.kv_cache_matrix import (
     normalize_kv_cache_adaptation_mode,
     normalize_kv_cache_lifecycle,
     resolve_kv_cache_base_dir,
+    resolve_kv_cache_eviction_policy,
+    resolve_kv_cache_window_tokens,
 )
 
 
@@ -43,6 +45,17 @@ def test_describe_kv_cache_strategy_maps_quantized_cold_tier_axes() -> None:
     assert axes.compaction_capable is True
 
 
+def test_describe_kv_cache_strategy_maps_sliding_window_axes() -> None:
+    axes = describe_kv_cache_strategy("sliding-window-ring-buffer")
+
+    assert axes.strategy_id == "sliding-window-ring-buffer"
+    assert axes.persistence_format == "sliding-window-ring-buffer"
+    assert axes.residency_mode == "buffered-tail"
+    assert axes.window_policy == "sliding-window"
+    assert axes.cold_tier_encoding == "full-precision"
+    assert axes.compaction_capable is False
+
+
 def test_normalize_kv_cache_lifecycle_accepts_known_values() -> None:
     assert normalize_kv_cache_lifecycle("persistent") == "persistent"
     assert normalize_kv_cache_lifecycle("runtime-scoped") == "runtime-scoped"
@@ -52,6 +65,50 @@ def test_normalize_kv_cache_adaptation_mode_accepts_known_values() -> None:
     assert normalize_kv_cache_adaptation_mode("disabled") == "disabled"
     assert normalize_kv_cache_adaptation_mode("observe-only") == "observe-only"
     assert normalize_kv_cache_adaptation_mode("automatic") == "automatic"
+
+
+def test_resolve_kv_cache_window_tokens_for_sliding_window_strategy() -> None:
+    assert resolve_kv_cache_window_tokens("sliding-window-ring-buffer", None) == 256
+    assert resolve_kv_cache_window_tokens("sliding-window-ring-buffer", 96) == 96
+
+
+def test_resolve_kv_cache_window_tokens_rejects_non_sliding_strategies() -> None:
+    try:
+        resolve_kv_cache_window_tokens("chunked", 32)
+    except ValueError as exc:
+        assert "--kv-cache-window-tokens requires --kv-cache-strategy" in str(exc)
+    else:
+        raise AssertionError(
+            "Non-sliding strategies should reject explicit window tokens"
+        )
+
+
+def test_resolve_kv_cache_eviction_policy_for_sliding_window_strategy() -> None:
+    assert (
+        resolve_kv_cache_eviction_policy("sliding-window-ring-buffer") == "drop-oldest"
+    )
+
+
+def test_resolve_kv_cache_window_tokens_requires_sliding_strategy() -> None:
+    assert resolve_kv_cache_window_tokens("sliding-window-ring-buffer", None) == 256
+    assert resolve_kv_cache_window_tokens("sliding-window-ring-buffer", 48) == 48
+    assert resolve_kv_cache_window_tokens("chunked", None) is None
+
+    try:
+        resolve_kv_cache_window_tokens("chunked", 48)
+    except ValueError as exc:
+        assert "--kv-cache-window-tokens requires" in str(exc)
+    else:
+        raise AssertionError(
+            "resolve_kv_cache_window_tokens should reject non-sliding strategies"
+        )
+
+
+def test_resolve_kv_cache_eviction_policy_is_drop_oldest_for_sliding_window() -> None:
+    assert (
+        resolve_kv_cache_eviction_policy("sliding-window-ring-buffer") == "drop-oldest"
+    )
+    assert resolve_kv_cache_eviction_policy("chunked") is None
 
 
 def test_kv_cache_adaptation_surface_serializes() -> None:

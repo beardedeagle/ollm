@@ -80,6 +80,12 @@ def summarize_benchmark_payload(
                 if cache_state is None
                 else cache_state.get("persisted_artifact_count")
             ),
+            "window_max_tokens": optional_int(
+                None if cache_state is None else cache_state.get("window_max_tokens")
+            ),
+            "eviction_policy": (
+                None if cache_state is None else cache_state.get("eviction_policy")
+            ),
             "hot_tokens": optional_int(
                 None if cache_state is None else cache_state.get("hot_tokens")
             ),
@@ -204,6 +210,12 @@ def summarize_benchmark_payload(
                 if cache_state is None
                 else cache_state.get("persisted_artifact_count")
             ),
+            "window_max_tokens": optional_int(
+                None if cache_state is None else cache_state.get("window_max_tokens")
+            ),
+            "eviction_policy": (
+                None if cache_state is None else cache_state.get("eviction_policy")
+            ),
             "hot_tokens": optional_int(
                 None if cache_state is None else cache_state.get("hot_tokens")
             ),
@@ -223,6 +235,12 @@ def summarize_benchmark_payload(
             ),
             "spilled_tokens": optional_int(
                 None if cache_state is None else cache_state.get("spilled_tokens")
+            ),
+            "eviction_count": optional_int(
+                None if cache_state is None else cache_state.get("eviction_count")
+            ),
+            "evicted_tokens": optional_int(
+                None if cache_state is None else cache_state.get("evicted_tokens")
             ),
             "session_turns": len(turns),
         }

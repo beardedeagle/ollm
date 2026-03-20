@@ -34,6 +34,7 @@ def _immediate_flush_policy() -> KVCachePolicy:
         "chunked",
         "streamed-segmented",
         "log-structured-journal",
+        "sliding-window-ring-buffer",
         "quantized-cold-tier",
         "tiered-write-back",
     ],
@@ -78,6 +79,14 @@ def test_kvcache_strategy_roots_do_not_cross_contaminate(tmp_path: Path) -> None
         policy=_immediate_flush_policy(),
         cache_strategy="log-structured-journal",
     )
+    sliding_window_cache = KVCache(
+        cache_dir=base_cache_root,
+        device="cpu",
+        stats=None,
+        policy=_immediate_flush_policy(),
+        cache_strategy="sliding-window-ring-buffer",
+        cache_window_tokens=4,
+    )
     quantized_cache = KVCache(
         cache_dir=base_cache_root,
         device="cpu",
@@ -96,6 +105,7 @@ def test_kvcache_strategy_roots_do_not_cross_contaminate(tmp_path: Path) -> None
     chunked_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=100), 0)
     streamed_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=200), 0)
     journal_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=250), 0)
+    sliding_window_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=260), 0)
     quantized_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=275), 0)
     tiered_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=300), 0)
 
@@ -105,10 +115,15 @@ def test_kvcache_strategy_roots_do_not_cross_contaminate(tmp_path: Path) -> None
     assert streamed_cache.cache_folder != tiered_cache.cache_folder
     assert streamed_cache.cache_folder != journal_cache.cache_folder
     assert streamed_cache.cache_folder != quantized_cache.cache_folder
+    assert streamed_cache.cache_folder != sliding_window_cache.cache_folder
     assert journal_cache.cache_folder != quantized_cache.cache_folder
     assert journal_cache.cache_folder != tiered_cache.cache_folder
+    assert journal_cache.cache_folder != sliding_window_cache.cache_folder
     assert quantized_cache.cache_folder != tiered_cache.cache_folder
+    assert quantized_cache.cache_folder != sliding_window_cache.cache_folder
     assert chunked_cache.cache_folder != tiered_cache.cache_folder
+    assert chunked_cache.cache_folder != sliding_window_cache.cache_folder
+    assert sliding_window_cache.cache_folder != tiered_cache.cache_folder
 
 
 def test_log_structured_journal_kvcache_compacts_after_threshold(
@@ -188,12 +203,84 @@ def test_quantized_cold_tier_kvcache_reports_quantized_state(tmp_path: Path) -> 
     assert state.cold_store_format == "ollm-kv-journal-quantized"
 
 
+def test_sliding_window_ring_buffer_bounds_growth_and_tracks_eviction(
+    tmp_path: Path,
+) -> None:
+    cache = KVCache(
+        cache_dir=tmp_path / "cache-root",
+        device="cpu",
+        stats=None,
+        policy=_immediate_flush_policy(),
+        cache_strategy="sliding-window-ring-buffer",
+        cache_window_tokens=4,
+    )
+    first_key = _chunk_tensor(3)
+    first_value = _chunk_tensor(3, offset=100)
+    second_key = _chunk_tensor(3, offset=1000)
+    second_value = _chunk_tensor(3, offset=2000)
+
+    cache.update(first_key, first_value, 0)
+    out = cache.update(second_key, second_value, 0)
+    persisted = cache.load_from_disk(0)
+    state = cache.cache_state_snapshot()
+
+    expected_key = torch.cat((first_key, second_key), dim=-2)[..., -4:, :]
+    expected_value = torch.cat((first_value, second_value), dim=-2)[..., -4:, :]
+
+    assert persisted is not None
+    assert torch.equal(out[0], expected_key)
+    assert torch.equal(out[1], expected_value)
+    assert torch.equal(persisted[0], expected_key)
+    assert torch.equal(persisted[1], expected_value)
+    assert state.strategy_id == "sliding-window-ring-buffer"
+    assert state.window_policy == "sliding-window"
+    assert state.window_max_tokens == 4
+    assert state.eviction_policy == "drop-oldest"
+    assert state.persisted_tokens == 4
+    assert state.persisted_artifact_count == 1
+    assert state.eviction_count == 1
+    assert state.evicted_tokens == 2
+    assert state.cold_store_format == "ollm-kv-sliding-window"
+
+
+def test_sliding_window_ring_buffer_bounds_oversized_first_append(
+    tmp_path: Path,
+) -> None:
+    cache = KVCache(
+        cache_dir=tmp_path / "cache-root",
+        device="cpu",
+        stats=None,
+        policy=_immediate_flush_policy(),
+        cache_strategy="sliding-window-ring-buffer",
+        cache_window_tokens=4,
+    )
+    key_states = _chunk_tensor(6)
+    value_states = _chunk_tensor(6, offset=100)
+
+    out = cache.update(key_states, value_states, 0)
+    persisted = cache.load_from_disk(0)
+    state = cache.cache_state_snapshot()
+
+    expected_key = key_states[..., -4:, :]
+    expected_value = value_states[..., -4:, :]
+
+    assert persisted is not None
+    assert torch.equal(out[0], expected_key)
+    assert torch.equal(out[1], expected_value)
+    assert torch.equal(persisted[0], expected_key)
+    assert torch.equal(persisted[1], expected_value)
+    assert state.persisted_tokens == 4
+    assert state.eviction_count == 1
+    assert state.evicted_tokens == 2
+
+
 @pytest.mark.parametrize(
     "cache_strategy",
     [
         "chunked",
         "streamed-segmented",
         "log-structured-journal",
+        "sliding-window-ring-buffer",
         "quantized-cold-tier",
         "tiered-write-back",
     ],

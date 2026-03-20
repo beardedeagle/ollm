@@ -272,6 +272,20 @@ def summarize_cache_states(
         "window_policy": single_optional_string(
             [snapshot.window_policy for snapshot in snapshots]
         ),
+        "eviction_policy": single_optional_string(
+            [
+                snapshot.eviction_policy
+                for snapshot in snapshots
+                if snapshot.eviction_policy is not None
+            ]
+        ),
+        "window_max_tokens": optional_summary_dict(
+            [
+                float(snapshot.window_max_tokens)
+                for snapshot in snapshots
+                if snapshot.window_max_tokens is not None
+            ]
+        ),
         "cold_tier_encoding": single_optional_string(
             [snapshot.cold_tier_encoding for snapshot in snapshots]
         ),
@@ -324,6 +338,12 @@ def summarize_cache_states(
         ),
         "spilled_tokens": summarize_numeric_values(
             [float(snapshot.spilled_tokens) for snapshot in snapshots]
+        ),
+        "eviction_count": summarize_numeric_values(
+            [float(snapshot.eviction_count) for snapshot in snapshots]
+        ),
+        "evicted_tokens": summarize_numeric_values(
+            [float(snapshot.evicted_tokens) for snapshot in snapshots]
         ),
     }
 

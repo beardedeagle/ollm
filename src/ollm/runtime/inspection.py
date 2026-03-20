@@ -77,6 +77,7 @@ class RuntimeConfigPayload(TypedDict):
     kv_cache_strategy: str
     kv_cache_lifecycle: str
     kv_cache_adaptation_mode: str
+    kv_cache_window_tokens: int | None
     offload_cpu_layers: int
     offload_gpu_layers: int
     force_download: bool
@@ -169,28 +170,32 @@ def merged_runtime_payload(
 
 
 def runtime_config_payload(runtime_config: RuntimeConfig) -> RuntimeConfigPayload:
-    return {
-        "model_reference": runtime_config.model_reference,
-        "models_dir": str(runtime_config.resolved_models_dir()),
-        "device": runtime_config.device,
-        "backend": runtime_config.resolved_backend(),
-        "adapter_dir": None
-        if runtime_config.resolved_adapter_dir() is None
-        else str(runtime_config.resolved_adapter_dir()),
-        "multimodal": runtime_config.multimodal,
-        "use_specialization": runtime_config.use_specialization,
-        "cache_dir": str(runtime_config.resolved_cache_dir()),
-        "use_cache": runtime_config.use_cache,
-        "kv_cache_strategy": runtime_config.resolved_kv_cache_strategy(),
-        "kv_cache_lifecycle": runtime_config.resolved_kv_cache_lifecycle(),
-        "kv_cache_adaptation_mode": runtime_config.resolved_kv_cache_adaptation_mode(),
-        "offload_cpu_layers": runtime_config.offload_cpu_layers,
-        "offload_gpu_layers": runtime_config.offload_gpu_layers,
-        "force_download": runtime_config.force_download,
-        "stats": runtime_config.stats,
-        "verbose": runtime_config.verbose,
-        "quiet": runtime_config.quiet,
-    }
+    return cast(
+        RuntimeConfigPayload,
+        {
+            "model_reference": runtime_config.model_reference,
+            "models_dir": str(runtime_config.resolved_models_dir()),
+            "device": runtime_config.device,
+            "backend": runtime_config.resolved_backend(),
+            "adapter_dir": None
+            if runtime_config.resolved_adapter_dir() is None
+            else str(runtime_config.resolved_adapter_dir()),
+            "multimodal": runtime_config.multimodal,
+            "use_specialization": runtime_config.use_specialization,
+            "cache_dir": str(runtime_config.resolved_cache_dir()),
+            "use_cache": runtime_config.use_cache,
+            "kv_cache_strategy": runtime_config.resolved_kv_cache_strategy(),
+            "kv_cache_lifecycle": runtime_config.resolved_kv_cache_lifecycle(),
+            "kv_cache_adaptation_mode": runtime_config.resolved_kv_cache_adaptation_mode(),
+            "kv_cache_window_tokens": runtime_config.resolved_kv_cache_window_tokens(),
+            "offload_cpu_layers": runtime_config.offload_cpu_layers,
+            "offload_gpu_layers": runtime_config.offload_gpu_layers,
+            "force_download": runtime_config.force_download,
+            "stats": runtime_config.stats,
+            "verbose": runtime_config.verbose,
+            "quiet": runtime_config.quiet,
+        },
+    )
 
 
 def plan_json_payload(

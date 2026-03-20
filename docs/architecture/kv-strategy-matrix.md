@@ -2,7 +2,8 @@
 
 oLLM's current disk-KV presets are still selected as single strings such as
 `chunked`, `streamed-segmented`, `log-structured-journal`,
-`quantized-cold-tier`, and `tiered-write-back`.
+`sliding-window-ring-buffer`, `quantized-cold-tier`, and
+`tiered-write-back`.
 
 That is still the public control surface today, but the system is now being
 scaffolded around a more explicit internal matrix so future strategies do not
@@ -31,12 +32,16 @@ Current presets are now understood as bundles of axis values:
 | `chunked` | `chunked-manifest` | `buffered-tail` | `full-history` | `full-precision` |
 | `streamed-segmented` | `streamed-segmented` | `buffered-tail` | `full-history` | `full-precision` |
 | `log-structured-journal` | `log-structured-journal` | `buffered-tail` | `full-history` | `full-precision` |
+| `sliding-window-ring-buffer` | `sliding-window-ring-buffer` | `buffered-tail` | `sliding-window` | `full-precision` |
 | `quantized-cold-tier` | `log-structured-journal` | `buffered-tail` | `full-history` | `quantized` |
 | `tiered-write-back` | `log-structured-journal` | `tiered-write-back` | `full-history` | `full-precision` |
 
-This does not change runtime behavior yet. It only makes the shape explicit so
-future presets such as `paged`, `resident`, `quantized cold tier`, or
-`sliding-window` can compose cleanly.
+This does not erase the semantic differences between presets. For example,
+`sliding-window-ring-buffer` deliberately preserves only a bounded recent
+history under a `drop-oldest` eviction policy; it is not a transparent
+substitute for the full-history strategies. The matrix still keeps the shape
+explicit so future presets such as `paged`, `resident`, or richer bounded
+window variants can compose cleanly.
 
 ## Cache lifecycle
 
@@ -92,6 +97,7 @@ Current reporting now has room to distinguish:
 - persisted state
 - resident in-process state
 - hot/pending tails
+- bounded-window limits and eviction totals
 - cold-tier representation when the persisted encoding is quantized
 
 That matters because resident reuse can improve request behavior without showing
@@ -104,7 +110,6 @@ This scaffold is meant to support the next wave of work:
 - paged persistence
 - resident baseline mode
 - quantized cold tiers
-- sliding-window / ring-buffer mode
 - observe-only adaptation recommendations
 - stronger persistent lifecycle reuse and retention policy
 

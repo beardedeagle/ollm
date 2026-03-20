@@ -301,6 +301,8 @@ def _parse_cache_state(value: object) -> KVCacheStateSnapshot | None:
         persistence_format=_require_string(payload, "persistence_format"),
         residency_mode=_require_string(payload, "residency_mode"),
         window_policy=_require_string(payload, "window_policy"),
+        window_max_tokens=_optional_int(payload, "window_max_tokens"),
+        eviction_policy=_optional_string(payload, "eviction_policy"),
         cold_tier_encoding=_require_string(payload, "cold_tier_encoding"),
         cold_tier_representation=_optional_string(payload, "cold_tier_representation"),
         persisted_layer_count=_require_int(payload, "persisted_layer_count"),
@@ -315,6 +317,8 @@ def _parse_cache_state(value: object) -> KVCacheStateSnapshot | None:
         compaction_count=_require_int(payload, "compaction_count"),
         spill_count=_require_int(payload, "spill_count"),
         spilled_tokens=_require_int(payload, "spilled_tokens"),
+        eviction_count=_require_int(payload, "eviction_count"),
+        evicted_tokens=_require_int(payload, "evicted_tokens"),
         cold_store_format=_optional_string(payload, "cold_store_format"),
     )
 
@@ -389,6 +393,15 @@ def _require_int(payload: Mapping[str, object], key: str) -> int:
     if isinstance(value, int):
         return value
     raise ValueError(f"probe field '{key}' must be an integer")
+
+
+def _optional_int(payload: Mapping[str, object], key: str) -> int | None:
+    value = payload.get(key)
+    if value is None:
+        return None
+    if isinstance(value, int):
+        return value
+    raise ValueError(f"probe field '{key}' must be an integer or null")
 
 
 def _require_string(payload: Mapping[str, object], key: str) -> str:

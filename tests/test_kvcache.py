@@ -229,7 +229,10 @@ def test_kvcache_rejects_chunk_paths_outside_cache_root(tmp_path: Path) -> None:
         reloaded_store.load_layer(0, device=torch.device("cpu"))
 
 
-@pytest.mark.parametrize("cache_strategy", ["chunked", "streamed-segmented"])
+@pytest.mark.parametrize(
+    "cache_strategy",
+    ["chunked", "streamed-segmented", "sliding-window-ring-buffer"],
+)
 def test_qwen3_next_disk_cache_persists_sequence_growth(
     tmp_path: Path, cache_strategy: str
 ) -> None:
@@ -252,6 +255,8 @@ def test_qwen3_next_disk_cache_persists_sequence_growth(
     assert persisted is not None
 
     expected = torch.cat((first_key, second_key), dim=-2)
+    if cache_strategy == "sliding-window-ring-buffer":
+        expected = expected[..., -256:, :]
     assert torch.equal(out[0], expected)
     assert torch.equal(persisted[0], expected)
     assert cache.get_seq_length(0) == 5

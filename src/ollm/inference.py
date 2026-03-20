@@ -250,6 +250,7 @@ class Inference:
         cache_dir: str = "./kvcache",
         cache_strategy: str | None = None,
         cache_lifecycle: str | None = None,
+        cache_window_tokens: int | None = None,
     ):
         """Create the specialization-backed disk KV cache when supported."""
         if self._cache_factory is None:
@@ -258,6 +259,7 @@ class Inference:
             Path(cache_dir).expanduser().resolve(),
             cache_strategy,
             cache_lifecycle,
+            cache_window_tokens,
         )
 
 

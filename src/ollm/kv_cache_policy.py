@@ -98,6 +98,11 @@ def select_kv_cache_policy(
             available_ram=available_ram,
             available_accelerator=available_accelerator,
         )
+    if strategy == "sliding-window-ring-buffer":
+        return _select_sliding_window_ring_buffer_policy(
+            device=device,
+            snapshot=snapshot,
+        )
     if strategy == "quantized-cold-tier":
         return _select_quantized_cold_tier_policy(
             device=device,
@@ -246,6 +251,54 @@ def _select_tiered_write_back_policy(
         flush_byte_threshold=768 * 1024,
         write_back_retained_tokens=4,
         write_back_retained_bytes=128 * 1024,
+    )
+
+
+def _select_sliding_window_ring_buffer_policy(
+    *,
+    device: torch.device,
+    snapshot: KVCacheResourceSnapshot,
+) -> KVCachePolicy:
+    if device.type == "cpu":
+        if snapshot.platform == "darwin":
+            return KVCachePolicy(
+                policy_id="darwin-cpu-sliding-window",
+                flush_token_threshold=1,
+                flush_byte_threshold=1,
+            )
+        if snapshot.platform == "win32":
+            return KVCachePolicy(
+                policy_id="windows-cpu-sliding-window",
+                flush_token_threshold=1,
+                flush_byte_threshold=1,
+            )
+        return KVCachePolicy(
+            policy_id="cpu-sliding-window",
+            flush_token_threshold=1,
+            flush_byte_threshold=1,
+        )
+    if device.type == "cuda":
+        if snapshot.platform == "win32":
+            return KVCachePolicy(
+                policy_id="windows-cuda-sliding-window",
+                flush_token_threshold=1,
+                flush_byte_threshold=1,
+            )
+        return KVCachePolicy(
+            policy_id="cuda-sliding-window",
+            flush_token_threshold=1,
+            flush_byte_threshold=1,
+        )
+    if device.type == "mps":
+        return KVCachePolicy(
+            policy_id="darwin-mps-sliding-window",
+            flush_token_threshold=1,
+            flush_byte_threshold=1,
+        )
+    return KVCachePolicy(
+        policy_id="default-sliding-window",
+        flush_token_threshold=1,
+        flush_byte_threshold=1,
     )
 
 

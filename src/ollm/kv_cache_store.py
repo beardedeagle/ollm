@@ -296,6 +296,12 @@ class ChunkedKVStore:
     def compaction_count(self) -> int:
         return 0
 
+    def eviction_count(self) -> int:
+        return 0
+
+    def evicted_token_count(self) -> int:
+        return 0
+
     def consume_last_compaction_elapsed_seconds(self) -> float | None:
         return None
 

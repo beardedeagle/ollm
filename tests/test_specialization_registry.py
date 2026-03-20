@@ -52,7 +52,7 @@ class RegistryProvider(SpecializationProvider):
             supports_cpu_offload=True,
             supports_gpu_offload=False,
             print_suppression_modules=(),
-            create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None: (
+            create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None, cache_window_tokens=None: (
                 str(cache_dir)
             ),
             apply_cpu_offload=lambda layers_num: None,

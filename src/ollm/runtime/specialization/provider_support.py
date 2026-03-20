@@ -117,8 +117,9 @@ def unsupported_disk_cache_factory(model_reference: str):
         cache_dir: Path,
         cache_strategy: str | None = None,
         cache_lifecycle: str | None = None,
+        cache_window_tokens: int | None = None,
     ) -> None:
-        del cache_dir, cache_strategy, cache_lifecycle
+        del cache_dir, cache_strategy, cache_lifecycle, cache_window_tokens
         LOGGER.info(
             "%s DiskCache is not supported at the moment. Using default DynamicCache instead.",
             model_reference,

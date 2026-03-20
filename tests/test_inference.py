@@ -70,7 +70,7 @@ class FakeProvider(SpecializationProvider):
             supports_cpu_offload=True,
             supports_gpu_offload=False,
             print_suppression_modules=(),
-            create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None: (
+            create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None, cache_window_tokens=None: (
                 cache_calls.append((cache_dir, cache_strategy, cache_lifecycle))
                 or str(cache_dir)
             ),

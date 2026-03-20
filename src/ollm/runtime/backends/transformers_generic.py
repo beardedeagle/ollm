@@ -115,7 +115,7 @@ class TransformersGenericBackend(ExecutionBackend):
             device=device,
             stats=None,
             print_suppression_modules=(),
-            create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None: (
+            create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None, cache_window_tokens=None: (
                 None
             ),
             apply_offload=lambda runtime_config: _validate_generic_offload(

@@ -136,8 +136,11 @@ Runtime selection and inspection controls:
 `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` now all honor `--backend` and `--no-specialization`. `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` also support `--plan-json` for script-friendly inspection of the resolver/backend decision.
 `ollm prompt` and `ollm chat` also honor `--kv-cache-strategy` to switch the
 optimized-native disk KV backend between `chunked`,
-`streamed-segmented`, `log-structured-journal`, `quantized-cold-tier`, and
-`tiered-write-back`.
+`streamed-segmented`, `log-structured-journal`,
+`sliding-window-ring-buffer`, `quantized-cold-tier`, and
+`tiered-write-back`. When the bounded `sliding-window-ring-buffer` mode is
+selected, `--kv-cache-window-tokens` sets the recent-context token budget and
+oldest tokens are evicted once the window is exceeded.
 
 Configuration layering is now first-class:
 
@@ -159,6 +162,7 @@ backend = "optimized-native"
 cache_dir = "kv_cache"
 use_cache = true
 kv_cache_strategy = "chunked"
+# kv_cache_window_tokens = 256  # only for sliding-window-ring-buffer
 kv_cache_lifecycle = "runtime-scoped"
 kv_cache_adaptation_mode = "observe-only"
 
@@ -328,7 +332,13 @@ uses `cache_dir/kv_cache_streamed_segmented` instead so the two strategies
 never share on-disk state. `kv_cache_strategy="log-structured-journal"` uses
 `cache_dir/kv_cache_log_structured_journal` and keeps append behavior cheap
 while compacting entry metadata deterministically when the journal gets too
-fragmented. `kv_cache_strategy="quantized-cold-tier"` uses
+fragmented. `kv_cache_strategy="sliding-window-ring-buffer"` uses
+`cache_dir/kv_cache_sliding_window_ring_buffer` and keeps only the most recent
+bounded KV tail on disk and in memory; once the configured
+`kv_cache_window_tokens` limit is exceeded, the oldest cached tokens are
+dropped under a `drop-oldest` eviction policy. This is a semantic mode, not a
+transparent storage optimization: it deliberately trades full-history
+preservation for bounded KV cost. `kv_cache_strategy="quantized-cold-tier"` uses
 `cache_dir/kv_cache_quantized_cold_tier` and keeps the active in-process KV at
 normal precision while persisting colder full-history KV in an explicit
 `int8-symmetric-per-tensor` representation. `kv_cache_strategy="tiered-write-back"` uses
@@ -453,6 +463,16 @@ uv run python scripts/benchmark_runtime.py \
   --kv-cache-strategy streamed-segmented \
   --prompt-scale-tokens 32,128,512 \
   --output-scale-tokens 16,64,128 \
+  --session-turns 4
+```
+
+For the bounded sliding-window mode, pass an explicit window size so benchmark
+history does not compare unlike run shapes:
+
+```bash
+uv run python scripts/benchmark_runtime.py \
+  --kv-cache-strategy sliding-window-ring-buffer \
+  --kv-cache-window-tokens 64 \
   --session-turns 4
 ```
 

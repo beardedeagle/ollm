@@ -18,6 +18,7 @@ class KVCachePersistenceFormat(StrEnum):
     CHUNKED_MANIFEST = "chunked-manifest"
     STREAMED_SEGMENTED = "streamed-segmented"
     LOG_STRUCTURED_JOURNAL = "log-structured-journal"
+    SLIDING_WINDOW_RING_BUFFER = "sliding-window-ring-buffer"
 
 
 class KVCacheResidencyMode(StrEnum):
@@ -59,6 +60,8 @@ class KVCacheAdaptationMode(StrEnum):
 
 DEFAULT_KV_CACHE_LIFECYCLE = KVCacheLifecycle.RUNTIME_SCOPED.value
 DEFAULT_KV_CACHE_ADAPTATION_MODE = KVCacheAdaptationMode.OBSERVE_ONLY.value
+DEFAULT_KV_CACHE_WINDOW_TOKENS = 256
+DEFAULT_KV_CACHE_EVICTION_POLICY = "drop-oldest"
 _SAFE_PATH_FRAGMENT = re.compile(r"[^a-zA-Z0-9._-]+")
 
 
@@ -124,6 +127,55 @@ def normalize_kv_cache_adaptation_mode(mode: str | None) -> str | None:
         raise ValueError(f"kv_cache_adaptation_mode must be one of: {allowed}") from exc
 
 
+def normalize_kv_cache_window_tokens(window_tokens: int | None) -> int | None:
+    """Validate and normalize a sliding-window token budget."""
+
+    if window_tokens is None:
+        return None
+    if window_tokens <= 0:
+        raise ValueError("kv_cache_window_tokens must be greater than zero")
+    return int(window_tokens)
+
+
+def resolve_kv_cache_window_tokens(
+    strategy: str | None,
+    window_tokens: int | None,
+) -> int | None:
+    """Resolve the active sliding-window token budget for one strategy."""
+
+    normalized_strategy = normalize_kv_cache_strategy(strategy)
+    strategy_id = (
+        DEFAULT_KV_CACHE_STRATEGY
+        if normalized_strategy is None
+        else normalized_strategy
+    )
+    normalized_window_tokens = normalize_kv_cache_window_tokens(window_tokens)
+    if strategy_id == "sliding-window-ring-buffer":
+        if normalized_window_tokens is None:
+            return DEFAULT_KV_CACHE_WINDOW_TOKENS
+        return normalized_window_tokens
+    if normalized_window_tokens is not None:
+        raise ValueError(
+            "--kv-cache-window-tokens requires --kv-cache-strategy "
+            "sliding-window-ring-buffer"
+        )
+    return None
+
+
+def resolve_kv_cache_eviction_policy(strategy: str | None) -> str | None:
+    """Resolve the eviction policy identifier for one strategy."""
+
+    normalized_strategy = normalize_kv_cache_strategy(strategy)
+    strategy_id = (
+        DEFAULT_KV_CACHE_STRATEGY
+        if normalized_strategy is None
+        else normalized_strategy
+    )
+    if strategy_id == "sliding-window-ring-buffer":
+        return DEFAULT_KV_CACHE_EVICTION_POLICY
+    return None
+
+
 def describe_kv_cache_strategy(strategy: str | None) -> KVCacheStrategyAxes:
     """Return the orthogonal axes behind a strategy preset."""
 
@@ -155,6 +207,15 @@ def describe_kv_cache_strategy(strategy: str | None) -> KVCacheStrategyAxes:
             window_policy=KVCacheWindowPolicy.FULL_HISTORY.value,
             cold_tier_encoding=KVCacheColdTierEncoding.FULL_PRECISION.value,
             compaction_capable=True,
+        )
+    if strategy_id == "sliding-window-ring-buffer":
+        return KVCacheStrategyAxes(
+            strategy_id=strategy_id,
+            persistence_format=KVCachePersistenceFormat.SLIDING_WINDOW_RING_BUFFER.value,
+            residency_mode=KVCacheResidencyMode.BUFFERED_TAIL.value,
+            window_policy=KVCacheWindowPolicy.SLIDING_WINDOW.value,
+            cold_tier_encoding=KVCacheColdTierEncoding.FULL_PRECISION.value,
+            compaction_capable=False,
         )
     if strategy_id == "quantized-cold-tier":
         return KVCacheStrategyAxes(

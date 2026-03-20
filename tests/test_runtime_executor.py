@@ -224,7 +224,9 @@ def build_runtime(capabilities: CapabilityProfile, tokenizer=None) -> LoadedRunt
         device=torch.device("cpu"),
         stats=None,
         print_suppression_modules=(),
-        create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None: None,
+        create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None, cache_window_tokens=None: (
+            None
+        ),
         apply_offload=lambda runtime_config: None,
     )
     return LoadedRuntime(
@@ -248,7 +250,9 @@ def build_runtime_with_processor(
         device=torch.device("cpu"),
         stats=None,
         print_suppression_modules=(),
-        create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None: None,
+        create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None, cache_window_tokens=None: (
+            None
+        ),
         apply_offload=lambda runtime_config: None,
     )
     return runtime
@@ -266,7 +270,9 @@ def build_runtime_with_model(
         device=torch.device("cpu"),
         stats=None,
         print_suppression_modules=(),
-        create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None: None,
+        create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None, cache_window_tokens=None: (
+            None
+        ),
         apply_offload=lambda runtime_config: None,
     )
     return runtime
@@ -285,7 +291,9 @@ def build_runtime_with_printing_module(
         device=torch.device("cpu"),
         stats=None,
         print_suppression_modules=(module,),
-        create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None: None,
+        create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None, cache_window_tokens=None: (
+            None
+        ),
         apply_offload=lambda runtime_config: None,
     )
     return runtime
@@ -334,7 +342,9 @@ def build_seq2seq_runtime() -> LoadedRuntime:
         device=torch.device("cpu"),
         stats=None,
         print_suppression_modules=(),
-        create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None: None,
+        create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None, cache_window_tokens=None: (
+            None
+        ),
         apply_offload=lambda runtime_config: None,
     )
     return LoadedRuntime(

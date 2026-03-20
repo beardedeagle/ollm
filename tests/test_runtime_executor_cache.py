@@ -12,10 +12,17 @@ def test_runtime_executor_reuses_disk_cache_within_loaded_runtime() -> None:
     runtime.config.use_cache = True
     runtime.config.kv_cache_strategy = "log-structured-journal"
     runtime.plan = replace(runtime.plan, supports_disk_cache=True)
-    create_cache_calls: list[tuple[object, object, object]] = []
+    create_cache_calls: list[tuple[object, object, object, object]] = []
 
-    def _create_cache(cache_dir, cache_strategy=None, cache_lifecycle=None):
-        create_cache_calls.append((cache_dir, cache_strategy, cache_lifecycle))
+    def _create_cache(
+        cache_dir,
+        cache_strategy=None,
+        cache_lifecycle=None,
+        cache_window_tokens=None,
+    ):
+        create_cache_calls.append(
+            (cache_dir, cache_strategy, cache_lifecycle, cache_window_tokens)
+        )
         return FakeCache()
 
     runtime.backend.create_cache = _create_cache
@@ -31,3 +38,4 @@ def test_runtime_executor_reuses_disk_cache_within_loaded_runtime() -> None:
     assert second.metadata["kv_cache_strategy"] == "log-structured-journal"
     assert len(create_cache_calls) == 1
     assert create_cache_calls[0][2] == "runtime-scoped"
+    assert create_cache_calls[0][3] == runtime.config.kv_cache_window_tokens

@@ -11,9 +11,12 @@ from ollm.kv_cache_matrix import (
     DEFAULT_KV_CACHE_LIFECYCLE,
     describe_kv_cache_strategy,
     normalize_kv_cache_lifecycle,
+    resolve_kv_cache_eviction_policy,
+    resolve_kv_cache_window_tokens,
 )
 from ollm.kv_cache_policy import KVCachePolicy, select_kv_cache_policy
 from ollm.kv_cache_quantized_store import QuantizedJournaledKVStore
+from ollm.kv_cache_sliding_window_store import SlidingWindowRingBufferKVStore
 from ollm.kv_cache_state import KVCacheStateSnapshot
 from ollm.kv_cache_store import ChunkedKVStore
 from ollm.kv_cache_strategy import (
@@ -51,6 +54,10 @@ class _KVCacheStoreProtocol(Protocol):
 
     def compaction_count(self) -> int: ...
 
+    def eviction_count(self) -> int: ...
+
+    def evicted_token_count(self) -> int: ...
+
     def consume_last_compaction_elapsed_seconds(self) -> float | None: ...
 
 
@@ -63,6 +70,7 @@ class oCache:
         policy: KVCachePolicy | None = None,
         cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
         cache_lifecycle: str = DEFAULT_KV_CACHE_LIFECYCLE,
+        cache_window_tokens: int | None = None,
     ) -> None:
         if not cache_dir:
             raise ValueError(
@@ -79,6 +87,10 @@ class oCache:
             DEFAULT_KV_CACHE_LIFECYCLE
             if normalized_lifecycle is None
             else normalized_lifecycle
+        )
+        self.cache_window_tokens = resolve_kv_cache_window_tokens(
+            self.cache_strategy,
+            cache_window_tokens,
         )
         self.cache_folder = kv_cache_root(Path(cache_dir), self.cache_strategy)
         root_manifest_path = self.cache_folder / "manifest.json"
@@ -110,7 +122,10 @@ class oCache:
         self._spill_count = 0
         self._spilled_tokens = 0
         self._cache_store = _build_cache_store(
-            self.cache_folder, self.cache_strategy, self.policy
+            self.cache_folder,
+            self.cache_strategy,
+            self.policy,
+            self.cache_window_tokens,
         )
         if self.cache_lifecycle == "runtime-scoped" or not root_manifest_exists:
             self._cache_store.initialize(self.policy.policy_id)
@@ -135,6 +150,9 @@ class oCache:
         if self.cache_strategy == "tiered-write-back":
             self._save_tiered_write_back(tensors, layer_idx)
             return
+        if self.cache_strategy == "sliding-window-ring-buffer":
+            self._save_sliding_window(tensors, layer_idx)
+            return
         pending = self._pending_tails.get(layer_idx)
         buffered = (
             tensors if pending is None else _concat_tensor_pairs(pending, tensors)
@@ -156,6 +174,8 @@ class oCache:
             if self.cache_strategy == "tiered-write-back"
             else self._pending_tails
         )
+        if self.cache_strategy == "sliding-window-ring-buffer":
+            hot_tails = {}
         strategy_axes = describe_kv_cache_strategy(self.cache_strategy)
         return KVCacheStateSnapshot(
             strategy_id=self.cache_strategy,
@@ -163,6 +183,12 @@ class oCache:
             persistence_format=strategy_axes.persistence_format,
             residency_mode=strategy_axes.residency_mode,
             window_policy=strategy_axes.window_policy,
+            window_max_tokens=(
+                self.cache_window_tokens
+                if strategy_axes.window_policy == "sliding-window"
+                else None
+            ),
+            eviction_policy=resolve_kv_cache_eviction_policy(self.cache_strategy),
             cold_tier_encoding=strategy_axes.cold_tier_encoding,
             cold_tier_representation=self._cache_store.cold_tier_representation_id(),
             persisted_layer_count=len(self._cache_store.persisted_layer_ids()),
@@ -181,15 +207,26 @@ class oCache:
             compaction_count=self._cache_store.compaction_count(),
             spill_count=self._spill_count,
             spilled_tokens=self._spilled_tokens,
+            eviction_count=self._cache_store.eviction_count(),
+            evicted_tokens=self._cache_store.evicted_token_count(),
             cold_store_format=self._cache_store.cold_store_format_id(),
         )
 
     def _resident_tail(
         self, layer_idx: int
     ) -> tuple[torch.Tensor, torch.Tensor] | None:
+        if self.cache_strategy == "sliding-window-ring-buffer":
+            return None
         if self.cache_strategy == "tiered-write-back":
             return self._hot_tails.get(layer_idx)
         return self._pending_tails.get(layer_idx)
+
+    def _save_sliding_window(
+        self, tensors: tuple[torch.Tensor, torch.Tensor], layer_idx: int
+    ) -> None:
+        started_at = time.perf_counter()
+        self._cache_store.append_layer_chunk(layer_idx, tensors)
+        self._record_cache_write_metrics(started_at)
 
     def _save_tiered_write_back(
         self, tensors: tuple[torch.Tensor, torch.Tensor], layer_idx: int
@@ -245,6 +282,27 @@ class oCache:
             append_elapsed_seconds = max(0.0, total_elapsed_seconds - elapsed_seconds)
             self.stats.record_elapsed_seconds("kvcompact", elapsed_seconds)
         self.stats.record_elapsed_seconds("kvsave", append_elapsed_seconds)
+
+    def _finalize_updated_tensors(
+        self,
+        layer_idx: int,
+        full_tensors: tuple[torch.Tensor, torch.Tensor],
+        delta_tensors: tuple[torch.Tensor, torch.Tensor],
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        if self.cache_strategy == "sliding-window-ring-buffer":
+            if self.cache_window_tokens is None:
+                raise ValueError(
+                    "sliding-window-ring-buffer requires an explicit resolved window"
+                )
+            bounded_tensors = _trim_tensor_pair_to_recent_window(
+                full_tensors, self.cache_window_tokens
+            )
+            self._remember_resident_layer(layer_idx, bounded_tensors)
+            self.save_to_disk(delta_tensors, layer_idx)
+            return bounded_tensors
+        self._remember_resident_layer(layer_idx, full_tensors)
+        self.save_to_disk(delta_tensors, layer_idx)
+        return full_tensors
 
 
 def _concat_tensor_pairs(
@@ -319,7 +377,10 @@ def _prime_cache_layer(
 
 
 def _build_cache_store(
-    cache_folder: Path, cache_strategy: str, policy: KVCachePolicy
+    cache_folder: Path,
+    cache_strategy: str,
+    policy: KVCachePolicy,
+    cache_window_tokens: int | None,
 ) -> _KVCacheStoreProtocol:
     if cache_strategy == "chunked":
         return ChunkedKVStore(cache_folder)
@@ -334,6 +395,15 @@ def _build_cache_store(
         return QuantizedJournaledKVStore(
             cache_folder,
             compaction_entry_threshold=policy.journal_compaction_entry_threshold,
+        )
+    if cache_strategy == "sliding-window-ring-buffer":
+        if cache_window_tokens is None:
+            raise ValueError(
+                "sliding-window-ring-buffer requires an explicit resolved window"
+            )
+        return SlidingWindowRingBufferKVStore(
+            cache_folder,
+            window_max_tokens=cache_window_tokens,
         )
     if cache_strategy == "tiered-write-back":
         return TieredWriteBackKVStore(cache_folder)
@@ -367,6 +437,19 @@ def _split_tensor_pair(
     return prefix, suffix
 
 
+def _trim_tensor_pair_to_recent_window(
+    tensors: tuple[torch.Tensor, torch.Tensor],
+    window_tokens: int,
+) -> tuple[torch.Tensor, torch.Tensor]:
+    total_tokens = _sequence_length(tensors[0])
+    if total_tokens <= window_tokens:
+        return tensors
+    return (
+        tensors[0][..., -window_tokens:, :].contiguous(),
+        tensors[1][..., -window_tokens:, :].contiguous(),
+    )
+
+
 class KVCache(DynamicCache, oCache):
     def __init__(
         self,
@@ -376,6 +459,7 @@ class KVCache(DynamicCache, oCache):
         policy: KVCachePolicy | None = None,
         cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
         cache_lifecycle: str = DEFAULT_KV_CACHE_LIFECYCLE,
+        cache_window_tokens: int | None = None,
     ) -> None:
         super().__init__()
         self.ini_ocache(
@@ -385,6 +469,7 @@ class KVCache(DynamicCache, oCache):
             policy,
             cache_strategy,
             cache_lifecycle,
+            cache_window_tokens,
         )
 
     def update(
@@ -399,10 +484,13 @@ class KVCache(DynamicCache, oCache):
             _prime_cache_layer(self, layer_idx, tensors)
 
         out = super().update(key_states, value_states, layer_idx, cache_kwargs)
-        self._remember_resident_layer(layer_idx, out)
-        self.save_to_disk((key_states, value_states), layer_idx)
+        bounded = self._finalize_updated_tensors(
+            layer_idx,
+            out,
+            (key_states, value_states),
+        )
         self.layers[layer_idx].keys, self.layers[layer_idx].values = (
             _EMPTY_CACHE_PLACEHOLDER,
             _EMPTY_CACHE_PLACEHOLDER,
         )
-        return out
+        return bounded

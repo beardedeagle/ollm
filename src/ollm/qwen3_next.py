@@ -45,10 +45,17 @@ class Qwen3NextDiskCache(Qwen3NextDynamicCache, oCache):
         policy: KVCachePolicy | None = None,
         cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
         cache_lifecycle: str = "runtime-scoped",
+        cache_window_tokens: int | None = None,
     ):
         super().__init__(config)
         self.ini_ocache(
-            cache_dir, device, stats, policy, cache_strategy, cache_lifecycle
+            cache_dir,
+            device,
+            stats,
+            policy,
+            cache_strategy,
+            cache_lifecycle,
+            cache_window_tokens,
         )
         self.seq_lengths = [0 for _ in range(len(self.key_cache))]
 
@@ -75,13 +82,17 @@ class Qwen3NextDiskCache(Qwen3NextDynamicCache, oCache):
         out = super().update(
             key_states, value_states, layer_idx, cache_kwargs
         )  # tuple of (self.key_cache[layer_idx], self.value_cache[layer_idx])
-        self.seq_lengths[layer_idx] = out[0].shape[-2]
-        self.save_to_disk((key_states, value_states), layer_idx)
+        bounded = self._finalize_updated_tensors(
+            layer_idx,
+            out,
+            (key_states, value_states),
+        )
+        self.seq_lengths[layer_idx] = bounded[0].shape[-2]
         self.key_cache[layer_idx], self.value_cache[layer_idx] = (
             torch.empty(0),
             torch.empty(0),
         )
-        return out
+        return bounded
 
 
 class loaderLayer:

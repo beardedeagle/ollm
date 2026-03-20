@@ -6,7 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import cast
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_settings import (
     BaseSettings,
     EnvSettingsSource,
@@ -20,6 +20,8 @@ from ollm.kv_cache_matrix import (
     DEFAULT_KV_CACHE_LIFECYCLE,
     normalize_kv_cache_adaptation_mode,
     normalize_kv_cache_lifecycle,
+    normalize_kv_cache_window_tokens,
+    resolve_kv_cache_window_tokens,
 )
 from ollm.kv_cache_strategy import (
     DEFAULT_KV_CACHE_STRATEGY,
@@ -73,6 +75,7 @@ class RuntimeSettings(BaseModel):
     kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY
     kv_cache_lifecycle: str = DEFAULT_KV_CACHE_LIFECYCLE
     kv_cache_adaptation_mode: str = DEFAULT_KV_CACHE_ADAPTATION_MODE
+    kv_cache_window_tokens: int | None = Field(default=None, gt=0)
     offload_cpu_layers: int = Field(default=0, ge=0)
     offload_gpu_layers: int = Field(default=0, ge=0)
     force_download: bool = False
@@ -108,6 +111,19 @@ class RuntimeSettings(BaseModel):
         if normalized_mode is None:
             raise ValueError("kv_cache_adaptation_mode cannot be empty")
         return normalized_mode
+
+    @field_validator("kv_cache_window_tokens")
+    @classmethod
+    def _normalize_kv_cache_window_tokens(cls, window_tokens: int | None) -> int | None:
+        return normalize_kv_cache_window_tokens(window_tokens)
+
+    @model_validator(mode="after")
+    def _validate_window_strategy_pair(self):
+        resolve_kv_cache_window_tokens(
+            self.kv_cache_strategy,
+            self.kv_cache_window_tokens,
+        )
+        return self
 
 
 class GenerationSettings(BaseModel):
@@ -178,6 +194,7 @@ class RuntimeConfigOverrides(BaseModel):
     kv_cache_strategy: str | None = None
     kv_cache_lifecycle: str | None = None
     kv_cache_adaptation_mode: str | None = None
+    kv_cache_window_tokens: int | None = Field(default=None, gt=0)
     offload_cpu_layers: int | None = Field(default=None, ge=0)
     offload_gpu_layers: int | None = Field(default=None, ge=0)
     force_download: bool | None = None
@@ -204,6 +221,24 @@ class RuntimeConfigOverrides(BaseModel):
     @classmethod
     def _normalize_kv_cache_adaptation_mode(cls, mode: str | None) -> str | None:
         return normalize_kv_cache_adaptation_mode(mode)
+
+    @field_validator("kv_cache_window_tokens")
+    @classmethod
+    def _normalize_kv_cache_window_tokens(cls, window_tokens: int | None) -> int | None:
+        return normalize_kv_cache_window_tokens(window_tokens)
+
+    @model_validator(mode="after")
+    def _validate_window_strategy_pair(self):
+        strategy = (
+            DEFAULT_KV_CACHE_STRATEGY
+            if self.kv_cache_strategy is None
+            else self.kv_cache_strategy
+        )
+        resolve_kv_cache_window_tokens(
+            strategy,
+            self.kv_cache_window_tokens,
+        )
+        return self
 
 
 class GenerationConfigOverrides(BaseModel):

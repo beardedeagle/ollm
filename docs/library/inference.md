@@ -38,6 +38,11 @@ artifacts. When the selected runtime uses
 `kv_cache_strategy="log-structured-journal"`, it writes to
 `cache_dir/kv_cache_log_structured_journal` and compacts journal metadata
 deterministically once the configured entry threshold is reached. When it uses
+`kv_cache_strategy="sliding-window-ring-buffer"`, it writes to
+`cache_dir/kv_cache_sliding_window_ring_buffer` and retains only the most
+recent `cache_window_tokens` cached tokens; older history is evicted under a
+`drop-oldest` policy, so this mode deliberately changes runtime semantics. When
+it uses
 `kv_cache_strategy="quantized-cold-tier"`, it writes to
 `cache_dir/kv_cache_quantized_cold_tier` and persists colder KV entries in the
 explicit `int8-symmetric-per-tensor` representation while dequantizing back to

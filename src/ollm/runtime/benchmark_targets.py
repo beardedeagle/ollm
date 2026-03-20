@@ -41,6 +41,7 @@ def build_runtime_probe_command(
     prompt_token_targets: tuple[int, ...] = DEFAULT_PROMPT_TOKEN_TARGETS,
     output_token_targets: tuple[int, ...] = DEFAULT_OUTPUT_TOKEN_TARGETS,
     session_turns: int = DEFAULT_SESSION_TURNS,
+    kv_cache_window_tokens: int | None = None,
 ) -> tuple[str, ...]:
     import sys
 
@@ -75,6 +76,8 @@ def build_runtime_probe_command(
         "--probe-session-turns",
         str(session_turns),
     ]
+    if kv_cache_window_tokens is not None:
+        command.extend(("--probe-kv-cache-window-tokens", str(kv_cache_window_tokens)))
     if not use_specialization:
         command.append("--probe-no-specialization")
     return tuple(command)
@@ -117,6 +120,7 @@ def benchmark_runtime_target(
     iterations: int,
     warmup_iterations: int,
     kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
+    kv_cache_window_tokens: int | None = None,
     include_extended_scenarios: bool = False,
     prompt_token_targets: tuple[int, ...] = DEFAULT_PROMPT_TOKEN_TARGETS,
     output_token_targets: tuple[int, ...] = DEFAULT_OUTPUT_TOKEN_TARGETS,
@@ -171,6 +175,7 @@ def benchmark_runtime_target(
                 backend="transformers-generic",
                 use_specialization=False,
                 kv_cache_strategy=kv_cache_strategy,
+                kv_cache_window_tokens=kv_cache_window_tokens,
                 probe_mode="cold",
                 iterations=max(1, iterations),
             ),
@@ -191,6 +196,7 @@ def benchmark_runtime_target(
                 backend="optimized-native",
                 use_specialization=True,
                 kv_cache_strategy=kv_cache_strategy,
+                kv_cache_window_tokens=kv_cache_window_tokens,
                 probe_mode="cold",
                 iterations=max(1, iterations),
             ),
@@ -211,6 +217,7 @@ def benchmark_runtime_target(
                 backend="transformers-generic",
                 use_specialization=False,
                 kv_cache_strategy=kv_cache_strategy,
+                kv_cache_window_tokens=kv_cache_window_tokens,
                 probe_mode="warm",
                 iterations=max(1, iterations),
                 warmup_iterations=warmup_iterations,
@@ -230,6 +237,7 @@ def benchmark_runtime_target(
                 backend="optimized-native",
                 use_specialization=True,
                 kv_cache_strategy=kv_cache_strategy,
+                kv_cache_window_tokens=kv_cache_window_tokens,
                 probe_mode="warm",
                 iterations=max(1, iterations),
                 warmup_iterations=warmup_iterations,
@@ -264,6 +272,7 @@ def benchmark_runtime_target(
                         backend="transformers-generic",
                         use_specialization=False,
                         kv_cache_strategy=kv_cache_strategy,
+                        kv_cache_window_tokens=kv_cache_window_tokens,
                         probe_mode="prompt-scaling",
                         max_new_tokens=min(output_token_targets),
                         prompt_token_targets=prompt_token_targets,
@@ -283,6 +292,7 @@ def benchmark_runtime_target(
                         backend="optimized-native",
                         use_specialization=True,
                         kv_cache_strategy=kv_cache_strategy,
+                        kv_cache_window_tokens=kv_cache_window_tokens,
                         probe_mode="prompt-scaling",
                         max_new_tokens=min(output_token_targets),
                         prompt_token_targets=prompt_token_targets,
@@ -304,6 +314,7 @@ def benchmark_runtime_target(
                         backend="transformers-generic",
                         use_specialization=False,
                         kv_cache_strategy=kv_cache_strategy,
+                        kv_cache_window_tokens=kv_cache_window_tokens,
                         probe_mode="output-scaling",
                         prompt="Explain KV cache in one sentence.",
                         output_token_targets=output_token_targets,
@@ -323,6 +334,7 @@ def benchmark_runtime_target(
                         backend="optimized-native",
                         use_specialization=True,
                         kv_cache_strategy=kv_cache_strategy,
+                        kv_cache_window_tokens=kv_cache_window_tokens,
                         probe_mode="output-scaling",
                         prompt="Explain KV cache in one sentence.",
                         output_token_targets=output_token_targets,
@@ -344,6 +356,7 @@ def benchmark_runtime_target(
                         backend="transformers-generic",
                         use_specialization=False,
                         kv_cache_strategy=kv_cache_strategy,
+                        kv_cache_window_tokens=kv_cache_window_tokens,
                         probe_mode="session-growth",
                         session_turns=session_turns,
                         max_new_tokens=session_max_new_tokens,
@@ -363,6 +376,7 @@ def benchmark_runtime_target(
                         backend="optimized-native",
                         use_specialization=True,
                         kv_cache_strategy=kv_cache_strategy,
+                        kv_cache_window_tokens=kv_cache_window_tokens,
                         probe_mode="session-growth",
                         session_turns=session_turns,
                         max_new_tokens=session_max_new_tokens,
