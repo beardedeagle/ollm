@@ -156,6 +156,9 @@ class StreamedSegmentedKVStore:
     def cold_store_format_id(self) -> str | None:
         return None
 
+    def cold_tier_representation_id(self) -> str | None:
+        return None
+
     def compaction_count(self) -> int:
         return 0
 

@@ -98,6 +98,47 @@ def test_kvcache_persistent_lifecycle_reuses_existing_cache(tmp_path: Path) -> N
     assert torch.equal(persisted[1], value_states)
 
 
+def test_quantized_kvcache_persistent_lifecycle_reloads_dequantized_layer(
+    tmp_path: Path,
+) -> None:
+    cache_root = tmp_path / "cache-root"
+    key_states = torch.linspace(-1.0, 1.0, steps=24, dtype=torch.float32).reshape(
+        1, 2, 3, 4
+    )
+    value_states = torch.linspace(-0.5, 0.75, steps=24, dtype=torch.float32).reshape(
+        1, 2, 3, 4
+    )
+    first_cache = KVCache(
+        cache_dir=cache_root,
+        device="cpu",
+        stats=None,
+        policy=_immediate_flush_policy(),
+        cache_strategy="quantized-cold-tier",
+        cache_lifecycle="persistent",
+    )
+    first_cache.update(key_states, value_states, 0)
+
+    second_cache = KVCache(
+        cache_dir=cache_root,
+        device="cpu",
+        stats=None,
+        policy=_immediate_flush_policy(),
+        cache_strategy="quantized-cold-tier",
+        cache_lifecycle="persistent",
+    )
+    persisted = second_cache.load_from_disk(0)
+    state = second_cache.cache_state_snapshot()
+
+    assert persisted is not None
+    assert persisted[0].dtype == key_states.dtype
+    assert persisted[1].dtype == value_states.dtype
+    assert torch.allclose(persisted[0], key_states, atol=0.02, rtol=0.05)
+    assert torch.allclose(persisted[1], value_states, atol=0.02, rtol=0.05)
+    assert state.cold_tier_encoding == "quantized"
+    assert state.cold_tier_representation == "int8-symmetric-per-tensor"
+    assert state.cold_store_format == "ollm-kv-journal-quantized"
+
+
 def test_kvcache_writes_manifest_backed_chunk_artifacts(tmp_path: Path) -> None:
     cache = KVCache(
         cache_dir=tmp_path / "cache-root",
@@ -385,7 +426,12 @@ def test_kvcache_buffers_tail_until_policy_threshold_then_flushes(
 
 @pytest.mark.parametrize(
     "cache_strategy",
-    ["chunked", "streamed-segmented", "log-structured-journal"],
+    [
+        "chunked",
+        "streamed-segmented",
+        "log-structured-journal",
+        "quantized-cold-tier",
+    ],
 )
 def test_kvcache_reuses_resident_layer_after_update(
     tmp_path: Path, cache_strategy: str

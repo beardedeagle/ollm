@@ -1,4 +1,4 @@
-"""Append-only journal-backed KV store for tiered cold spill."""
+"""Quantized journal-backed KV store for cold-tier persistence."""
 
 import json
 import time
@@ -12,12 +12,15 @@ from ollm.async_io import (
     path_mkdir,
     path_read_bytes_range,
 )
-from ollm.kv_cache_journal_manifest import (
-    DEFAULT_JOURNAL_COMPACTION_ENTRY_THRESHOLD,
-    JOURNAL_FILE_NAME,
-    KVJournalEntryMetadata,
-    KVJournalLayerManifest,
-    validate_journal_layer_manifest,
+from ollm.kv_cache_quantized_manifest import (
+    DEFAULT_QUANTIZED_JOURNAL_COMPACTION_ENTRY_THRESHOLD,
+    QUANTIZED_COLD_TIER_REPRESENTATION,
+    QUANTIZED_JOURNAL_FILE_NAME,
+    QUANTIZED_TENSOR_DTYPE,
+    QUANTIZED_TENSOR_DTYPE_NAME,
+    KVQuantizedJournalEntryMetadata,
+    KVQuantizedJournalLayerManifest,
+    validate_quantized_journal_layer_manifest,
 )
 from ollm.kv_cache_store_common import (
     CACHE_SCHEMA_VERSION,
@@ -37,15 +40,15 @@ from ollm.kv_cache_store_common import (
     shape_prefix,
 )
 
-_CACHE_FORMAT = "ollm-kv-journal"
+_CACHE_FORMAT = "ollm-kv-journal-quantized"
 
 
-class JournaledKVStore:
+class QuantizedJournaledKVStore:
     def __init__(
         self,
         cache_folder: Path,
         *,
-        compaction_entry_threshold: int = DEFAULT_JOURNAL_COMPACTION_ENTRY_THRESHOLD,
+        compaction_entry_threshold: int = DEFAULT_QUANTIZED_JOURNAL_COMPACTION_ENTRY_THRESHOLD,
     ) -> None:
         if compaction_entry_threshold < 0:
             raise ValueError("compaction_entry_threshold must be zero or greater")
@@ -54,7 +57,9 @@ class JournaledKVStore:
         self.root_manifest_path = cache_folder / "manifest.json"
         self.compaction_entry_threshold = compaction_entry_threshold
         self._root_manifest_cache: tuple[tuple[int, ...], str] | None = None
-        self._layer_manifest_cache: dict[int, KVJournalLayerManifest | None] = {}
+        self._layer_manifest_cache: dict[
+            int, KVQuantizedJournalLayerManifest | None
+        ] = {}
         self._last_compaction_elapsed_seconds: float | None = None
 
     def initialize(self, policy_id: str) -> None:
@@ -71,12 +76,12 @@ class JournaledKVStore:
         _ = self._read_root_manifest()
         key_journal_path = self.cache_folder / layer_manifest.key_journal_path
         value_journal_path = self.cache_folder / layer_manifest.value_journal_path
-        key_chunks = self._read_journal_chunks(
+        key_chunks = self._read_quantized_journal_chunks(
             key_journal_path,
             layer_manifest.entries,
             kind="key",
         )
-        value_chunks = self._read_journal_chunks(
+        value_chunks = self._read_quantized_journal_chunks(
             value_journal_path,
             layer_manifest.entries,
             kind="value",
@@ -96,15 +101,17 @@ class JournaledKVStore:
         if token_count == 0:
             return
 
-        key_bytes = encode_tensor_bytes(key_tensor)
-        value_bytes = encode_tensor_bytes(value_tensor)
+        quantized_key, key_scale = _quantize_tensor(key_tensor)
+        quantized_value, value_scale = _quantize_tensor(value_tensor)
+        key_bytes = encode_tensor_bytes(quantized_key)
+        value_bytes = encode_tensor_bytes(quantized_value)
         self._last_compaction_elapsed_seconds = None
         layer_manifest = self._read_layer_manifest(layer_idx)
         if layer_manifest is None:
             layer_folder = self.layers_folder / str(layer_idx)
-            key_journal_path = layer_folder / "key" / JOURNAL_FILE_NAME
-            value_journal_path = layer_folder / "value" / JOURNAL_FILE_NAME
-            layer_manifest = KVJournalLayerManifest.new(
+            key_journal_path = layer_folder / "key" / QUANTIZED_JOURNAL_FILE_NAME
+            value_journal_path = layer_folder / "value" / QUANTIZED_JOURNAL_FILE_NAME
+            layer_manifest = KVQuantizedJournalLayerManifest.new(
                 layer_idx,
                 key_journal_path=str(key_journal_path.relative_to(self.cache_folder)),
                 value_journal_path=str(
@@ -121,19 +128,21 @@ class JournaledKVStore:
         end_token = start_token + token_count
         key_offset = path_append_bytes(key_journal_path, key_bytes)
         value_offset = path_append_bytes(value_journal_path, value_bytes)
-        entry = KVJournalEntryMetadata(
+        entry = KVQuantizedJournalEntryMetadata(
             start_token=start_token,
             end_token=end_token,
-            key_dtype=dtype_name(key_tensor.dtype),
-            value_dtype=dtype_name(value_tensor.dtype),
+            key_original_dtype=dtype_name(key_tensor.dtype),
+            value_original_dtype=dtype_name(value_tensor.dtype),
             key_shape=tuple(key_tensor.shape),
             value_shape=tuple(value_tensor.shape),
             key_offset=key_offset,
             value_offset=value_offset,
             key_nbytes=len(key_bytes),
             value_nbytes=len(value_bytes),
+            key_scale=key_scale,
+            value_scale=value_scale,
         )
-        updated_manifest = KVJournalLayerManifest(
+        updated_manifest = KVQuantizedJournalLayerManifest(
             layer_idx=layer_idx,
             layout=layer_manifest.layout,
             sequence_axis=SEQUENCE_AXIS,
@@ -143,7 +152,7 @@ class JournaledKVStore:
             value_journal_path=layer_manifest.value_journal_path,
             entries=layer_manifest.entries + (entry,),
         )
-        validate_journal_layer_manifest(updated_manifest)
+        validate_quantized_journal_layer_manifest(updated_manifest)
         self._write_layer_manifest(updated_manifest)
         if self._should_compact(updated_manifest):
             compact_started_at = time.perf_counter()
@@ -185,7 +194,7 @@ class JournaledKVStore:
         return _CACHE_FORMAT
 
     def cold_tier_representation_id(self) -> str | None:
-        return None
+        return QUANTIZED_COLD_TIER_REPRESENTATION
 
     def compaction_count(self) -> int:
         total_compactions = 0
@@ -222,6 +231,10 @@ class JournaledKVStore:
             raise ValueError(
                 f"KV cache chunk token count must be positive for layer {layer_idx}"
             )
+        if not key_tensor.is_floating_point() or not value_tensor.is_floating_point():
+            raise ValueError(
+                f"Quantized cold-tier KV only supports floating-point tensors for layer {layer_idx}"
+            )
 
     def _read_root_manifest(self) -> tuple[tuple[int, ...], str]:
         if self._root_manifest_cache is not None:
@@ -245,11 +258,23 @@ class JournaledKVStore:
             raise ValueError(
                 f"Unsupported KV cache persisted device: {payload['persisted_device']!r}"
             )
+        if require_str(payload, "quantized_dtype") != QUANTIZED_TENSOR_DTYPE_NAME:
+            raise ValueError(
+                f"Unsupported quantized KV tensor dtype: {payload['quantized_dtype']!r}"
+            )
+        if (
+            require_str(payload, "cold_tier_representation")
+            != QUANTIZED_COLD_TIER_REPRESENTATION
+        ):
+            raise ValueError(
+                "Unsupported quantized cold-tier representation: "
+                f"{payload['cold_tier_representation']!r}"
+            )
         policy_id = require_str(payload, "policy_id")
         compaction_entry_threshold = require_int(payload, "compaction_entry_threshold")
         if compaction_entry_threshold != self.compaction_entry_threshold:
             raise ValueError(
-                "Unsupported KV journal compaction entry threshold: "
+                "Unsupported quantized KV journal compaction entry threshold: "
                 f"{compaction_entry_threshold}"
             )
         layers_payload = payload.get("layers")
@@ -272,6 +297,8 @@ class JournaledKVStore:
                     "chunk_axis": SEQUENCE_AXIS,
                     "persisted_device": PERSISTED_DEVICE,
                     "policy_id": policy_id,
+                    "quantized_dtype": QUANTIZED_TENSOR_DTYPE_NAME,
+                    "cold_tier_representation": QUANTIZED_COLD_TIER_REPRESENTATION,
                     "compaction_entry_threshold": self.compaction_entry_threshold,
                     "layers": list(layers),
                 },
@@ -282,108 +309,107 @@ class JournaledKVStore:
         )
         self._root_manifest_cache = (layers, policy_id)
 
-    def _read_layer_manifest(self, layer_idx: int) -> KVJournalLayerManifest | None:
+    def _read_layer_manifest(
+        self, layer_idx: int
+    ) -> KVQuantizedJournalLayerManifest | None:
         if layer_idx in self._layer_manifest_cache:
             return self._layer_manifest_cache[layer_idx]
-        layer_folder = self.layers_folder / str(layer_idx)
-        if not path_exists(layer_folder):
+        manifest_path = self.layers_folder / str(layer_idx) / "manifest.json"
+        if not path_exists(manifest_path):
             self._layer_manifest_cache[layer_idx] = None
             return None
-        manifest_path = layer_folder / "manifest.json"
-        if not path_exists(manifest_path):
-            raise ValueError(f"KV layer manifest is missing: {manifest_path}")
-        manifest = KVJournalLayerManifest.from_dict(read_json_object(manifest_path))
+        manifest = KVQuantizedJournalLayerManifest.from_dict(
+            read_json_object(manifest_path)
+        )
         self._layer_manifest_cache[layer_idx] = manifest
         return manifest
 
-    def _write_layer_manifest(self, manifest: KVJournalLayerManifest) -> None:
-        layer_folder = self.layers_folder / str(manifest.layer_idx)
-        path_mkdir(layer_folder, parents=True, exist_ok=True)
-        manifest_path = layer_folder / "manifest.json"
+    def _write_layer_manifest(self, manifest: KVQuantizedJournalLayerManifest) -> None:
+        manifest_path = self.layers_folder / str(manifest.layer_idx) / "manifest.json"
+        path_mkdir(manifest_path.parent, parents=True, exist_ok=True)
         atomic_write_text(
             manifest_path,
             json.dumps(manifest.to_dict(), indent=2, sort_keys=True) + "\n",
         )
         self._layer_manifest_cache[manifest.layer_idx] = manifest
 
-    def _read_journal_chunks(
+    def _should_compact(self, manifest: KVQuantizedJournalLayerManifest) -> bool:
+        threshold = self.compaction_entry_threshold
+        return threshold > 0 and len(manifest.entries) >= threshold
+
+    def _read_quantized_journal_chunks(
         self,
         journal_path: Path,
-        entries: tuple[KVJournalEntryMetadata, ...],
+        entries: tuple[KVQuantizedJournalEntryMetadata, ...],
         *,
         kind: str,
     ) -> list[torch.Tensor]:
         self._validate_journal_path(journal_path)
-        total_bytes = sum(self._entry_length(entry, kind=kind) for entry in entries)
-        raw_buffer = path_read_bytes_range(journal_path, offset=0, length=total_bytes)
-        return [
-            decode_tensor_bytes(
-                raw_buffer[
-                    self._entry_offset(entry, kind=kind) : self._entry_offset(
-                        entry, kind=kind
-                    )
-                    + self._entry_length(entry, kind=kind)
-                ],
-                dtype=dtype_from_name(self._entry_dtype(entry, kind=kind)),
-                shape=self._entry_shape(entry, kind=kind),
-            )
+        total_bytes = sum(
+            entry.key_nbytes if kind == "key" else entry.value_nbytes
             for entry in entries
-        ]
-
-    def _entry_dtype(self, entry: KVJournalEntryMetadata, *, kind: str) -> str:
-        if kind == "key":
-            return entry.key_dtype
-        if kind == "value":
-            return entry.value_dtype
-        raise ValueError(f"Unsupported journal entry kind: {kind}")
-
-    def _entry_shape(
-        self, entry: KVJournalEntryMetadata, *, kind: str
-    ) -> tuple[int, ...]:
-        if kind == "key":
-            return entry.key_shape
-        if kind == "value":
-            return entry.value_shape
-        raise ValueError(f"Unsupported journal entry kind: {kind}")
-
-    def _entry_offset(self, entry: KVJournalEntryMetadata, *, kind: str) -> int:
-        if kind == "key":
-            return entry.key_offset
-        if kind == "value":
-            return entry.value_offset
-        raise ValueError(f"Unsupported journal entry kind: {kind}")
-
-    def _entry_length(self, entry: KVJournalEntryMetadata, *, kind: str) -> int:
-        if kind == "key":
-            return entry.key_nbytes
-        if kind == "value":
-            return entry.value_nbytes
-        raise ValueError(f"Unsupported journal entry kind: {kind}")
+        )
+        raw_buffer = path_read_bytes_range(journal_path, offset=0, length=total_bytes)
+        chunks: list[torch.Tensor] = []
+        for entry in entries:
+            if kind == "key":
+                raw_bytes = raw_buffer[
+                    entry.key_offset : entry.key_offset + entry.key_nbytes
+                ]
+                chunks.append(
+                    _decode_quantized_tensor(
+                        raw_bytes=raw_bytes,
+                        scale=entry.key_scale,
+                        original_dtype=dtype_from_name(entry.key_original_dtype),
+                        shape=entry.key_shape,
+                    )
+                )
+                continue
+            if kind == "value":
+                raw_bytes = raw_buffer[
+                    entry.value_offset : entry.value_offset + entry.value_nbytes
+                ]
+                chunks.append(
+                    _decode_quantized_tensor(
+                        raw_bytes=raw_bytes,
+                        scale=entry.value_scale,
+                        original_dtype=dtype_from_name(entry.value_original_dtype),
+                        shape=entry.value_shape,
+                    )
+                )
+                continue
+            raise ValueError(f"Unsupported journal entry kind: {kind}")
+        return chunks
 
     def _validate_journal_path(self, path: Path) -> None:
+        resolved_root = self.cache_folder.resolve()
         resolved_path = path.resolve()
-        cache_root = self.cache_folder.resolve()
-        if not resolved_path.is_relative_to(cache_root):
-            raise ValueError(f"KV cache chunk path escapes cache root: {path}")
-        if not path_exists(path):
-            raise ValueError(f"KV cache chunk file is missing: {path}")
-
-    def _should_compact(self, manifest: KVJournalLayerManifest) -> bool:
-        if self.compaction_entry_threshold <= 0:
-            return False
-        return len(manifest.entries) >= self.compaction_entry_threshold
+        if (
+            resolved_root not in resolved_path.parents
+            and resolved_path != resolved_root
+        ):
+            raise ValueError("journal path must stay within the KV cache root")
 
     def _compact_layer(
-        self, manifest: KVJournalLayerManifest
-    ) -> KVJournalLayerManifest:
-        key_tensor, value_tensor = self._load_layer_cpu_from_manifest(manifest)
+        self, manifest: KVQuantizedJournalLayerManifest
+    ) -> KVQuantizedJournalLayerManifest:
         key_journal_path = self.cache_folder / manifest.key_journal_path
         value_journal_path = self.cache_folder / manifest.value_journal_path
-        key_bytes = encode_tensor_bytes(key_tensor)
-        value_bytes = encode_tensor_bytes(value_tensor)
+        key_chunks = self._read_quantized_journal_chunks(
+            key_journal_path, manifest.entries, kind="key"
+        )
+        value_chunks = self._read_quantized_journal_chunks(
+            value_journal_path, manifest.entries, kind="value"
+        )
+        key_tensor = torch.cat(key_chunks, dim=SEQUENCE_AXIS).cpu().contiguous()
+        value_tensor = torch.cat(value_chunks, dim=SEQUENCE_AXIS).cpu().contiguous()
+        quantized_key, key_scale = _quantize_tensor(key_tensor)
+        quantized_value, value_scale = _quantize_tensor(value_tensor)
+        key_bytes = encode_tensor_bytes(quantized_key)
+        value_bytes = encode_tensor_bytes(quantized_value)
         atomic_write_bytes(key_journal_path, key_bytes)
         atomic_write_bytes(value_journal_path, value_bytes)
-        compacted_manifest = KVJournalLayerManifest(
+        compacted_manifest = KVQuantizedJournalLayerManifest(
             layer_idx=manifest.layer_idx,
             layout=manifest.layout,
             sequence_axis=manifest.sequence_axis,
@@ -392,40 +418,49 @@ class JournaledKVStore:
             key_journal_path=manifest.key_journal_path,
             value_journal_path=manifest.value_journal_path,
             entries=(
-                KVJournalEntryMetadata(
+                KVQuantizedJournalEntryMetadata(
                     start_token=0,
                     end_token=manifest.persisted_tokens,
-                    key_dtype=dtype_name(key_tensor.dtype),
-                    value_dtype=dtype_name(value_tensor.dtype),
+                    key_original_dtype=dtype_name(key_tensor.dtype),
+                    value_original_dtype=dtype_name(value_tensor.dtype),
                     key_shape=tuple(key_tensor.shape),
                     value_shape=tuple(value_tensor.shape),
                     key_offset=0,
                     value_offset=0,
                     key_nbytes=len(key_bytes),
                     value_nbytes=len(value_bytes),
+                    key_scale=key_scale,
+                    value_scale=value_scale,
                 ),
             ),
         )
-        validate_journal_layer_manifest(compacted_manifest)
+        validate_quantized_journal_layer_manifest(compacted_manifest)
         self._write_layer_manifest(compacted_manifest)
         return compacted_manifest
 
-    def _load_layer_cpu_from_manifest(
-        self, manifest: KVJournalLayerManifest
-    ) -> tuple[torch.Tensor, torch.Tensor]:
-        key_journal_path = self.cache_folder / manifest.key_journal_path
-        value_journal_path = self.cache_folder / manifest.value_journal_path
-        key_chunks = self._read_journal_chunks(
-            key_journal_path,
-            manifest.entries,
-            kind="key",
-        )
-        value_chunks = self._read_journal_chunks(
-            value_journal_path,
-            manifest.entries,
-            kind="value",
-        )
-        return (
-            torch.cat(key_chunks, dim=SEQUENCE_AXIS),
-            torch.cat(value_chunks, dim=SEQUENCE_AXIS),
-        )
+
+def _quantize_tensor(tensor: torch.Tensor) -> tuple[torch.Tensor, float]:
+    float_tensor = tensor.detach().cpu().to(torch.float32).contiguous()
+    if not bool(torch.isfinite(float_tensor).all().item()):
+        raise ValueError("Quantized KV cache tensors must be finite")
+    max_abs = float(float_tensor.abs().amax().item())
+    scale = 1.0 if max_abs == 0.0 else max_abs / 127.0
+    quantized = torch.clamp(torch.round(float_tensor / scale), min=-127, max=127).to(
+        QUANTIZED_TENSOR_DTYPE
+    )
+    return quantized.contiguous(), scale
+
+
+def _decode_quantized_tensor(
+    *,
+    raw_bytes: bytes,
+    scale: float,
+    original_dtype: torch.dtype,
+    shape: tuple[int, ...],
+) -> torch.Tensor:
+    quantized = decode_tensor_bytes(
+        raw_bytes,
+        dtype=QUANTIZED_TENSOR_DTYPE,
+        shape=shape,
+    )
+    return (quantized.to(torch.float32) * scale).to(original_dtype)

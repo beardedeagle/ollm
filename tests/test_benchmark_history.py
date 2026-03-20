@@ -251,6 +251,7 @@ def test_summarize_benchmark_payload_for_session_growth_uses_final_turn() -> Non
     assert summary["compaction_count"] == 2
     assert summary["persisted_artifact_count"] == 1
     assert summary["cold_store_format"] == "ollm-kv-journal"
+    assert summary["cold_tier_representation"] is None
     assert summary["session_turns"] == 2
 
 

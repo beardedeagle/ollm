@@ -13,6 +13,7 @@ from ollm.kv_cache_matrix import (
     normalize_kv_cache_lifecycle,
 )
 from ollm.kv_cache_policy import KVCachePolicy, select_kv_cache_policy
+from ollm.kv_cache_quantized_store import QuantizedJournaledKVStore
 from ollm.kv_cache_state import KVCacheStateSnapshot
 from ollm.kv_cache_store import ChunkedKVStore
 from ollm.kv_cache_strategy import (
@@ -45,6 +46,8 @@ class _KVCacheStoreProtocol(Protocol):
     def persisted_artifact_count(self) -> int: ...
 
     def cold_store_format_id(self) -> str | None: ...
+
+    def cold_tier_representation_id(self) -> str | None: ...
 
     def compaction_count(self) -> int: ...
 
@@ -161,6 +164,7 @@ class oCache:
             residency_mode=strategy_axes.residency_mode,
             window_policy=strategy_axes.window_policy,
             cold_tier_encoding=strategy_axes.cold_tier_encoding,
+            cold_tier_representation=self._cache_store.cold_tier_representation_id(),
             persisted_layer_count=len(self._cache_store.persisted_layer_ids()),
             persisted_tokens=self._cache_store.persisted_token_count(),
             persisted_artifact_count=self._cache_store.persisted_artifact_count(),
@@ -298,6 +302,11 @@ def _build_cache_store(
         return StreamedSegmentedKVStore(cache_folder)
     if cache_strategy == "log-structured-journal":
         return JournaledKVStore(
+            cache_folder,
+            compaction_entry_threshold=policy.journal_compaction_entry_threshold,
+        )
+    if cache_strategy == "quantized-cold-tier":
+        return QuantizedJournaledKVStore(
             cache_folder,
             compaction_entry_threshold=policy.journal_compaction_entry_threshold,
         )

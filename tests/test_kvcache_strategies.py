@@ -34,6 +34,7 @@ def _immediate_flush_policy() -> KVCachePolicy:
         "chunked",
         "streamed-segmented",
         "log-structured-journal",
+        "quantized-cold-tier",
         "tiered-write-back",
     ],
 )
@@ -77,6 +78,13 @@ def test_kvcache_strategy_roots_do_not_cross_contaminate(tmp_path: Path) -> None
         policy=_immediate_flush_policy(),
         cache_strategy="log-structured-journal",
     )
+    quantized_cache = KVCache(
+        cache_dir=base_cache_root,
+        device="cpu",
+        stats=None,
+        policy=_immediate_flush_policy(),
+        cache_strategy="quantized-cold-tier",
+    )
     tiered_cache = KVCache(
         cache_dir=base_cache_root,
         device="cpu",
@@ -88,13 +96,18 @@ def test_kvcache_strategy_roots_do_not_cross_contaminate(tmp_path: Path) -> None
     chunked_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=100), 0)
     streamed_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=200), 0)
     journal_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=250), 0)
+    quantized_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=275), 0)
     tiered_cache.update(_chunk_tensor(2), _chunk_tensor(2, offset=300), 0)
 
     assert chunked_cache.cache_folder != streamed_cache.cache_folder
     assert chunked_cache.cache_folder != journal_cache.cache_folder
+    assert chunked_cache.cache_folder != quantized_cache.cache_folder
     assert streamed_cache.cache_folder != tiered_cache.cache_folder
     assert streamed_cache.cache_folder != journal_cache.cache_folder
+    assert streamed_cache.cache_folder != quantized_cache.cache_folder
+    assert journal_cache.cache_folder != quantized_cache.cache_folder
     assert journal_cache.cache_folder != tiered_cache.cache_folder
+    assert quantized_cache.cache_folder != tiered_cache.cache_folder
     assert chunked_cache.cache_folder != tiered_cache.cache_folder
 
 
@@ -138,12 +151,50 @@ def test_log_structured_journal_kvcache_compacts_after_threshold(
     assert "kvcompact" in summary
 
 
+def test_quantized_cold_tier_kvcache_reports_quantized_state(tmp_path: Path) -> None:
+    cache = KVCache(
+        cache_dir=tmp_path / "cache-root",
+        device="cpu",
+        stats=None,
+        policy=KVCachePolicy(
+            policy_id="test-quantized-flush",
+            flush_token_threshold=1,
+            flush_byte_threshold=1,
+            journal_compaction_entry_threshold=0,
+        ),
+        cache_strategy="quantized-cold-tier",
+    )
+    first_key = _chunk_tensor(3)
+    first_value = _chunk_tensor(3, offset=100)
+    second_key = _chunk_tensor(2, offset=1000)
+    second_value = _chunk_tensor(2, offset=2000)
+
+    cache.update(first_key, first_value, 0)
+    out = cache.update(second_key, second_value, 0)
+    persisted = cache.load_from_disk(0)
+    state = cache.cache_state_snapshot()
+
+    expected_key = torch.cat((first_key, second_key), dim=-2)
+    expected_value = torch.cat((first_value, second_value), dim=-2)
+
+    assert persisted is not None
+    assert torch.allclose(out[0], expected_key, atol=8.0, rtol=0.05)
+    assert torch.allclose(out[1], expected_value, atol=16.0, rtol=0.05)
+    assert torch.allclose(persisted[0], expected_key, atol=8.0, rtol=0.05)
+    assert torch.allclose(persisted[1], expected_value, atol=16.0, rtol=0.05)
+    assert state.strategy_id == "quantized-cold-tier"
+    assert state.cold_tier_encoding == "quantized"
+    assert state.cold_tier_representation == "int8-symmetric-per-tensor"
+    assert state.cold_store_format == "ollm-kv-journal-quantized"
+
+
 @pytest.mark.parametrize(
     "cache_strategy",
     [
         "chunked",
         "streamed-segmented",
         "log-structured-journal",
+        "quantized-cold-tier",
         "tiered-write-back",
     ],
 )

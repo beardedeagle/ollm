@@ -146,8 +146,8 @@ artifacts. The request metrics report both `kv_cache_strategy` and
 `cache_state`, so benchmark comparisons can distinguish the selected backend
 and, for tier-aware strategies, the current hot/cold split. `cache_dir_size_mb`
 describes only the persisted on-disk portion of the cache, while `cache_state`
-surfaces persisted artifact counts, compaction counts, cold-store format, hot
-in-memory tokens, and spill counts.
+surfaces persisted artifact counts, compaction counts, cold-store format,
+cold-tier representation, hot in-memory tokens, and spill counts.
 Within one loaded runtime, the cache layer can satisfy repeated requests from
 an in-process resident KV snapshot instead of rereading the same persisted
 history from disk. In those cases, `kvload` may legitimately disappear even
@@ -162,6 +162,9 @@ For `log-structured-journal`, compaction is visible both through
 runtime profile timing under `kvcompact`. `kvsave` now measures append-path
 write cost without double-counting compaction rewrite time; when compaction
 occurs, `kvcompact` reports that rewrite separately.
+For `quantized-cold-tier`, the persisted cold journal uses the explicit
+`int8-symmetric-per-tensor` representation and benchmark output surfaces that
+representation through `cache_state.cold_tier_representation`.
 Cold, warm, prompt-scaling, output-scaling, and session-growth probes all use
 the same persistent benchmark-history ledger, so bounded proof runs remain
 recorded and comparable instead of becoming ad hoc local artifacts.

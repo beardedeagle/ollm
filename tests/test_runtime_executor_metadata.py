@@ -21,6 +21,7 @@ class FakeCache:
             residency_mode="tiered-write-back",
             window_policy="full-history",
             cold_tier_encoding="full-precision",
+            cold_tier_representation=None,
             persisted_layer_count=2,
             persisted_tokens=64,
             persisted_artifact_count=5,
@@ -96,6 +97,7 @@ def test_runtime_executor_includes_kv_cache_state_metadata() -> None:
     assert response.metadata["kv_cache_residency_mode"] == "tiered-write-back"
     assert response.metadata["kv_cache_window_policy"] == "full-history"
     assert response.metadata["kv_cache_cold_tier_encoding"] == "full-precision"
+    assert "kv_cache_cold_tier_representation" not in response.metadata
     assert response.metadata["kv_cache_resident_layers"] == "2"
     assert response.metadata["kv_cache_resident_tokens"] == "64"
     assert response.metadata["kv_cache_resident_bytes"] == "2048"

@@ -269,6 +269,7 @@ def _parse_cache_state(value: object) -> KVCacheStateSnapshot | None:
         residency_mode=_require_string(payload, "residency_mode"),
         window_policy=_require_string(payload, "window_policy"),
         cold_tier_encoding=_require_string(payload, "cold_tier_encoding"),
+        cold_tier_representation=_optional_string(payload, "cold_tier_representation"),
         persisted_layer_count=_require_int(payload, "persisted_layer_count"),
         persisted_tokens=_require_int(payload, "persisted_tokens"),
         persisted_artifact_count=_require_int(payload, "persisted_artifact_count"),

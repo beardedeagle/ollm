@@ -115,6 +115,7 @@ def test_render_runtime_probe_json_round_trips() -> None:
     assert cache_state["residency_mode"] == "buffered-tail"
     assert cache_state["window_policy"] == "full-history"
     assert cache_state["cold_tier_encoding"] == "full-precision"
+    assert cache_state["cold_tier_representation"] is None
     assert cache_state["persisted_artifact_count"] == 2
     assert cache_state["resident_layer_count"] == 2
     assert cache_state["resident_tokens"] == 128
@@ -250,6 +251,7 @@ def test_summarize_request_metrics_includes_native_runtime_profile() -> None:
     assert cache_state["residency_mode"] == "buffered-tail"
     assert cache_state["window_policy"] == "full-history"
     assert cache_state["cold_tier_encoding"] == "full-precision"
+    assert cache_state["cold_tier_representation"] is None
     persisted_artifact_count = cast(
         dict[str, object], cache_state["persisted_artifact_count"]
     )

@@ -76,6 +76,7 @@ def build_request_probe_metrics() -> RequestProbeMetrics:
             residency_mode="buffered-tail",
             window_policy="full-history",
             cold_tier_encoding="full-precision",
+            cold_tier_representation=None,
             persisted_layer_count=2,
             persisted_tokens=128,
             persisted_artifact_count=2,
