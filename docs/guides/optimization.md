@@ -71,6 +71,8 @@ deterministically once the journal crosses its configured entry threshold.
 `kv_cache_window_tokens` limit is exceeded, the oldest cached tokens are
 evicted under a `drop-oldest` policy. This mode changes runtime semantics and
 should be used only when a bounded recent context is the intended contract.
+Current local proof keeps it as an explicit opt-in mode rather than a general
+default strategy.
 `quantized-cold-tier` persists the same full-history journal shape under
 `cache_dir/kv_cache_quantized_cold_tier`, but stores colder entries in the
 explicit `int8-symmetric-per-tensor` representation and dequantizes back to

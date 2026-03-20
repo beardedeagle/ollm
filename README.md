@@ -338,7 +338,8 @@ bounded KV tail on disk and in memory; once the configured
 `kv_cache_window_tokens` limit is exceeded, the oldest cached tokens are
 dropped under a `drop-oldest` eviction policy. This is a semantic mode, not a
 transparent storage optimization: it deliberately trades full-history
-preservation for bounded KV cost. `kv_cache_strategy="quantized-cold-tier"` uses
+preservation for bounded KV cost. Current local proof keeps it as an explicit
+opt-in mode, not a general selector default. `kv_cache_strategy="quantized-cold-tier"` uses
 `cache_dir/kv_cache_quantized_cold_tier` and keeps the active in-process KV at
 normal precision while persisting colder full-history KV in an explicit
 `int8-symmetric-per-tensor` representation. `kv_cache_strategy="tiered-write-back"` uses

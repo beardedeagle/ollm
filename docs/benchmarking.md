@@ -190,7 +190,9 @@ For `sliding-window-ring-buffer`, benchmark output also surfaces
 `cache_state.eviction_count`, and `cache_state.evicted_tokens` so bounded
 history runs are never confused with full-history runs. When you benchmark this
 mode, pass an explicit `--kv-cache-window-tokens` value so benchmark history
-does not compare unlike window sizes.
+does not compare unlike window sizes. Current local CPU and MPS proof keeps
+this mode in the explicit opt-in bucket rather than the selector-default
+bucket; it materially bounds persisted KV, but it is not a general perf win.
 Cold, warm, prompt-scaling, output-scaling, and session-growth probes all use
 the same persistent benchmark-history ledger, so bounded proof runs remain
 recorded and comparable instead of becoming ad hoc local artifacts.
