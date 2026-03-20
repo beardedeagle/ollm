@@ -30,6 +30,8 @@ Key runtime configuration fields:
 - `use_specialization` — whether optimized-native specialization is allowed
 - `cache_dir` / `use_cache` — disk KV cache controls
 - `kv_cache_strategy` — explicit disk KV backend selection (`chunked`, `streamed-segmented`, `log-structured-journal`, or `tiered-write-back`)
+- `kv_cache_lifecycle` — whether KV artifacts are `runtime-scoped` or intended for future `persistent` lifecycle handling
+- `kv_cache_adaptation_mode` — whether adaptation telemetry is `disabled`, `observe-only`, or future `automatic`
 - `offload_cpu_layers` / `offload_gpu_layers` — native offload controls when supported
 
 Generation configuration fields:
@@ -58,6 +60,8 @@ Nested configuration keys use a double-underscore separator:
 - `OLLM_RUNTIME__MODELS_DIR`
 - `OLLM_RUNTIME__DEVICE`
 - `OLLM_RUNTIME__KV_CACHE_STRATEGY`
+- `OLLM_RUNTIME__KV_CACHE_LIFECYCLE`
+- `OLLM_RUNTIME__KV_CACHE_ADAPTATION_MODE`
 - `OLLM_GENERATION__MAX_NEW_TOKENS`
 - `OLLM_GENERATION__STREAM`
 - `OLLM_SERVER__HOST`

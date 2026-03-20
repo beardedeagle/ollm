@@ -107,7 +107,14 @@ def test_render_runtime_probe_json_round_trips() -> None:
     assert request["output_tokens"] == 4
     assert request["kv_cache_strategy"] == "chunked"
     assert cache_state["strategy_id"] == "chunked"
+    assert cache_state["persistence_format"] == "chunked-manifest"
+    assert cache_state["residency_mode"] == "buffered-tail"
+    assert cache_state["window_policy"] == "full-history"
+    assert cache_state["cold_tier_encoding"] == "full-precision"
     assert cache_state["persisted_artifact_count"] == 2
+    assert cache_state["resident_layer_count"] == 2
+    assert cache_state["resident_tokens"] == 128
+    assert cache_state["resident_bytes"] == 4096
     assert cache_state["compaction_count"] == 0
     assert cache_state["cold_store_format"] is None
     assert resources["accelerator_kind"] == "cuda"
@@ -228,10 +235,20 @@ def test_summarize_request_metrics_includes_native_runtime_profile() -> None:
         dict[str, object], cast(dict[str, object], summary["cache"])["cache_state"]
     )
     assert cache_state["policy_id"] == "test-policy"
+    assert cache_state["persistence_format"] == "chunked-manifest"
+    assert cache_state["residency_mode"] == "buffered-tail"
+    assert cache_state["window_policy"] == "full-history"
+    assert cache_state["cold_tier_encoding"] == "full-precision"
     persisted_artifact_count = cast(
         dict[str, object], cache_state["persisted_artifact_count"]
     )
     assert persisted_artifact_count["mean"] == 2.0
+    resident_layer_count = cast(dict[str, object], cache_state["resident_layer_count"])
+    assert resident_layer_count["mean"] == 2.0
+    resident_tokens = cast(dict[str, object], cache_state["resident_tokens"])
+    assert resident_tokens["mean"] == 128.0
+    resident_bytes = cast(dict[str, object], cache_state["resident_bytes"])
+    assert resident_bytes["mean"] == 4096.0
     compaction_count = cast(dict[str, object], cache_state["compaction_count"])
     assert compaction_count["mean"] == 0.0
     assert cache_state["cold_store_format"] is None

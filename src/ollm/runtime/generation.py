@@ -5,6 +5,7 @@ from typing import Protocol, cast
 import torch
 
 from ollm.app.types import ContentKind, Message, PromptRequest, PromptResponse
+from ollm.kv_cache_matrix import build_kv_cache_adaptation_surface
 from ollm.kv_cache_state import KVCacheStateSnapshot
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.catalog import ModelModality
@@ -282,6 +283,8 @@ class RuntimeExecutor:
                 if runtime.config.use_cache and runtime.plan.supports_disk_cache
                 else "none"
             ),
+            "kv_cache_lifecycle": runtime.config.resolved_kv_cache_lifecycle(),
+            "kv_cache_adaptation_mode": runtime.config.resolved_kv_cache_adaptation_mode(),
         }
         for detail_key in PLAN_METADATA_DETAIL_KEYS:
             detail_value = runtime.plan.details.get(detail_key)
@@ -291,10 +294,17 @@ class RuntimeExecutor:
             metadata.update(
                 {
                     "kv_cache_policy_id": cache_state.policy_id,
+                    "kv_cache_persistence_format": cache_state.persistence_format,
+                    "kv_cache_residency_mode": cache_state.residency_mode,
+                    "kv_cache_window_policy": cache_state.window_policy,
+                    "kv_cache_cold_tier_encoding": cache_state.cold_tier_encoding,
                     "kv_cache_persisted_tokens": str(cache_state.persisted_tokens),
                     "kv_cache_persisted_artifacts": str(
                         cache_state.persisted_artifact_count
                     ),
+                    "kv_cache_resident_layers": str(cache_state.resident_layer_count),
+                    "kv_cache_resident_tokens": str(cache_state.resident_tokens),
+                    "kv_cache_resident_bytes": str(cache_state.resident_bytes),
                     "kv_cache_hot_tokens": str(cache_state.hot_tokens),
                     "kv_cache_hot_layers": str(cache_state.hot_layer_count),
                     "kv_cache_compaction_count": str(cache_state.compaction_count),
@@ -304,6 +314,11 @@ class RuntimeExecutor:
             )
             if cache_state.cold_store_format is not None:
                 metadata["kv_cache_cold_store_format"] = cache_state.cold_store_format
+        adaptation_surface = build_kv_cache_adaptation_surface(
+            adaptation_mode=runtime.config.resolved_kv_cache_adaptation_mode(),
+            current_strategy=runtime.config.resolved_kv_cache_strategy(),
+        )
+        metadata["kv_cache_adaptation_reason"] = adaptation_surface.reason
         stats = cast(_StatsProtocol | None, runtime.backend.stats)
         if stats is not None:
             metadata["stats"] = stats.print_and_clean()

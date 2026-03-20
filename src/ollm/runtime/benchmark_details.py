@@ -262,6 +262,18 @@ def summarize_cache_states(
         "policy_id": single_optional_string(
             [snapshot.policy_id for snapshot in snapshots]
         ),
+        "persistence_format": single_optional_string(
+            [snapshot.persistence_format for snapshot in snapshots]
+        ),
+        "residency_mode": single_optional_string(
+            [snapshot.residency_mode for snapshot in snapshots]
+        ),
+        "window_policy": single_optional_string(
+            [snapshot.window_policy for snapshot in snapshots]
+        ),
+        "cold_tier_encoding": single_optional_string(
+            [snapshot.cold_tier_encoding for snapshot in snapshots]
+        ),
         "persisted_layer_count": summarize_numeric_values(
             [float(snapshot.persisted_layer_count) for snapshot in snapshots]
         ),
@@ -270,6 +282,15 @@ def summarize_cache_states(
         ),
         "persisted_artifact_count": summarize_numeric_values(
             [float(snapshot.persisted_artifact_count) for snapshot in snapshots]
+        ),
+        "resident_layer_count": summarize_numeric_values(
+            [float(snapshot.resident_layer_count) for snapshot in snapshots]
+        ),
+        "resident_tokens": summarize_numeric_values(
+            [float(snapshot.resident_tokens) for snapshot in snapshots]
+        ),
+        "resident_bytes": summarize_numeric_values(
+            [float(snapshot.resident_bytes) for snapshot in snapshots]
         ),
         "hot_layer_count": summarize_numeric_values(
             [float(snapshot.hot_layer_count) for snapshot in snapshots]

@@ -158,6 +158,8 @@ backend = "optimized-native"
 cache_dir = "kv_cache"
 use_cache = true
 kv_cache_strategy = "chunked"
+kv_cache_lifecycle = "runtime-scoped"
+kv_cache_adaptation_mode = "observe-only"
 
 [generation]
 max_new_tokens = 256
@@ -175,6 +177,8 @@ Example environment overrides:
 ```bash
 export OLLM_RUNTIME__MODEL_REFERENCE=Qwen/Qwen2.5-7B-Instruct
 export OLLM_RUNTIME__DEVICE=cpu
+export OLLM_RUNTIME__KV_CACHE_LIFECYCLE=runtime-scoped
+export OLLM_RUNTIME__KV_CACHE_ADAPTATION_MODE=observe-only
 export OLLM_GENERATION__MAX_NEW_TOKENS=128
 ```
 

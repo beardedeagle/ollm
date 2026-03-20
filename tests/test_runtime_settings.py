@@ -60,6 +60,8 @@ def test_default_app_settings_match_current_runtime_defaults() -> None:
     assert settings.runtime.use_specialization is True
     assert settings.runtime.use_cache is True
     assert settings.runtime.kv_cache_strategy == "chunked"
+    assert settings.runtime.kv_cache_lifecycle == "runtime-scoped"
+    assert settings.runtime.kv_cache_adaptation_mode == "observe-only"
     assert settings.generation.max_new_tokens == DEFAULT_MAX_NEW_TOKENS
     assert settings.generation.stream is True
     assert settings.server.host == DEFAULT_SERVER_HOST
@@ -93,6 +95,8 @@ def test_load_app_settings_reads_toml_defaults_from_explicit_file(
     assert settings.runtime.cache_dir == Path("file-cache")
     assert settings.runtime.use_cache is False
     assert settings.runtime.kv_cache_strategy == "streamed-segmented"
+    assert settings.runtime.kv_cache_lifecycle == "runtime-scoped"
+    assert settings.runtime.kv_cache_adaptation_mode == "observe-only"
     assert settings.generation.max_new_tokens == 64
     assert settings.generation.temperature == 0.25
     assert settings.generation.stream is False
@@ -181,6 +185,8 @@ def test_resolve_runtime_config_prefers_explicit_overrides() -> None:
         cache_dir=Path("/tmp/default-cache"),
         use_cache=True,
         kv_cache_strategy="chunked",
+        kv_cache_lifecycle="runtime-scoped",
+        kv_cache_adaptation_mode="observe-only",
         verbose=False,
     )
 
@@ -191,6 +197,8 @@ def test_resolve_runtime_config_prefers_explicit_overrides() -> None:
             device="mps",
             use_cache=False,
             kv_cache_strategy="streamed-segmented",
+            kv_cache_lifecycle="persistent",
+            kv_cache_adaptation_mode="automatic",
             verbose=True,
         ),
     )
@@ -201,6 +209,8 @@ def test_resolve_runtime_config_prefers_explicit_overrides() -> None:
     assert resolved.cache_dir == Path("/tmp/default-cache")
     assert resolved.use_cache is False
     assert resolved.kv_cache_strategy == "streamed-segmented"
+    assert resolved.kv_cache_lifecycle == "persistent"
+    assert resolved.kv_cache_adaptation_mode == "automatic"
     assert resolved.verbose is True
 
 
@@ -218,6 +228,8 @@ def test_resolve_runtime_config_cli_overrides_beat_loaded_settings(
             device="mps",
             use_cache=True,
             kv_cache_strategy="chunked",
+            kv_cache_lifecycle="persistent",
+            kv_cache_adaptation_mode="disabled",
         ),
     )
 
@@ -225,6 +237,8 @@ def test_resolve_runtime_config_cli_overrides_beat_loaded_settings(
     assert resolved.device == "mps"
     assert resolved.use_cache is True
     assert resolved.kv_cache_strategy == "chunked"
+    assert resolved.kv_cache_lifecycle == "persistent"
+    assert resolved.kv_cache_adaptation_mode == "disabled"
     assert resolved.backend == "transformers-generic"
 
 

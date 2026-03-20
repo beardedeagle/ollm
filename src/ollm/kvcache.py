@@ -7,6 +7,7 @@ from transformers import DynamicCache
 
 from ollm.async_io import path_exists, path_mkdir, remove_tree
 from ollm.kv_cache_journal_store import JournaledKVStore
+from ollm.kv_cache_matrix import describe_kv_cache_strategy
 from ollm.kv_cache_policy import KVCachePolicy, select_kv_cache_policy
 from ollm.kv_cache_state import KVCacheStateSnapshot
 from ollm.kv_cache_store import ChunkedKVStore
@@ -127,12 +128,24 @@ class oCache:
             if self.cache_strategy == "tiered-write-back"
             else self._pending_tails
         )
+        strategy_axes = describe_kv_cache_strategy(self.cache_strategy)
         return KVCacheStateSnapshot(
             strategy_id=self.cache_strategy,
             policy_id=self.policy.policy_id,
+            persistence_format=strategy_axes.persistence_format,
+            residency_mode=strategy_axes.residency_mode,
+            window_policy=strategy_axes.window_policy,
+            cold_tier_encoding=strategy_axes.cold_tier_encoding,
             persisted_layer_count=len(self._cache_store.persisted_layer_ids()),
             persisted_tokens=self._cache_store.persisted_token_count(),
             persisted_artifact_count=self._cache_store.persisted_artifact_count(),
+            resident_layer_count=len(self._resident_layers),
+            resident_tokens=sum(
+                _sequence_length(pair[0]) for pair in self._resident_layers.values()
+            ),
+            resident_bytes=sum(
+                _tensor_pair_nbytes(pair) for pair in self._resident_layers.values()
+            ),
             hot_layer_count=len(hot_tails),
             hot_tokens=sum(_sequence_length(pair[0]) for pair in hot_tails.values()),
             hot_bytes=sum(_tensor_pair_nbytes(pair) for pair in hot_tails.values()),

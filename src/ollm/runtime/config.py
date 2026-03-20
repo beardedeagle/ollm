@@ -4,6 +4,12 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ollm.kv_cache_matrix import (
+    DEFAULT_KV_CACHE_ADAPTATION_MODE,
+    DEFAULT_KV_CACHE_LIFECYCLE,
+    normalize_kv_cache_adaptation_mode,
+    normalize_kv_cache_lifecycle,
+)
 from ollm.kv_cache_strategy import (
     DEFAULT_KV_CACHE_STRATEGY,
     normalize_kv_cache_strategy,
@@ -54,6 +60,8 @@ class RuntimeConfig:
     cache_dir: Path = field(default_factory=lambda: Path("kv_cache"))
     use_cache: bool = True
     kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY
+    kv_cache_lifecycle: str = DEFAULT_KV_CACHE_LIFECYCLE
+    kv_cache_adaptation_mode: str = DEFAULT_KV_CACHE_ADAPTATION_MODE
     offload_cpu_layers: int = 0
     offload_gpu_layers: int = 0
     force_download: bool = False
@@ -80,6 +88,24 @@ class RuntimeConfig:
             return DEFAULT_KV_CACHE_STRATEGY
         return normalized_strategy
 
+    def resolved_kv_cache_lifecycle(self) -> str:
+        """Return the normalized cache lifecycle."""
+
+        normalized_lifecycle = normalize_kv_cache_lifecycle(self.kv_cache_lifecycle)
+        if normalized_lifecycle is None:
+            return DEFAULT_KV_CACHE_LIFECYCLE
+        return normalized_lifecycle
+
+    def resolved_kv_cache_adaptation_mode(self) -> str:
+        """Return the normalized cache adaptation mode."""
+
+        normalized_mode = normalize_kv_cache_adaptation_mode(
+            self.kv_cache_adaptation_mode
+        )
+        if normalized_mode is None:
+            return DEFAULT_KV_CACHE_ADAPTATION_MODE
+        return normalized_mode
+
     def resolved_adapter_dir(self) -> Path | None:
         """Return the absolute adapter directory when one is configured."""
         if self.adapter_dir is None:
@@ -93,6 +119,8 @@ class RuntimeConfig:
         if self.backend is not None:
             normalize_backend(self.backend)
         normalize_kv_cache_strategy(self.kv_cache_strategy)
+        normalize_kv_cache_lifecycle(self.kv_cache_lifecycle)
+        normalize_kv_cache_adaptation_mode(self.kv_cache_adaptation_mode)
         if self.verbose and self.quiet:
             raise ValueError("--verbose and --quiet cannot be used together")
         if (

@@ -17,6 +17,8 @@ runtime_config = RuntimeConfig(
     backend="transformers-generic",
     use_specialization=False,
     kv_cache_strategy="chunked",
+    kv_cache_lifecycle="runtime-scoped",
+    kv_cache_adaptation_mode="observe-only",
 )
 
 plan = client.describe_plan(runtime_config)

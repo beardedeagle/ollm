@@ -12,7 +12,13 @@ Use `RuntimeConfig` to describe:
 - backend override
 - multimodal enablement
 - specialization enablement
-- cache strategy, cache root, and offload behavior
+- cache strategy, cache lifecycle, adaptation mode, cache root, and offload behavior
+
+The current KV scaffolding now distinguishes:
+
+- `kv_cache_strategy` — the current preset such as `chunked` or `tiered-write-back`
+- `kv_cache_lifecycle` — `runtime-scoped` today, with future `persistent` support planned explicitly
+- `kv_cache_adaptation_mode` — scaffolded as `disabled`, `observe-only`, or `automatic`
 
 ## `GenerationConfig`
 

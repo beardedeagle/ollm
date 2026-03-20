@@ -15,6 +15,12 @@ from pydantic_settings import (
     TomlConfigSettingsSource,
 )
 
+from ollm.kv_cache_matrix import (
+    DEFAULT_KV_CACHE_ADAPTATION_MODE,
+    DEFAULT_KV_CACHE_LIFECYCLE,
+    normalize_kv_cache_adaptation_mode,
+    normalize_kv_cache_lifecycle,
+)
 from ollm.kv_cache_strategy import (
     DEFAULT_KV_CACHE_STRATEGY,
     normalize_kv_cache_strategy,
@@ -65,6 +71,8 @@ class RuntimeSettings(BaseModel):
     cache_dir: Path = Field(default_factory=lambda: Path("kv_cache"))
     use_cache: bool = True
     kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY
+    kv_cache_lifecycle: str = DEFAULT_KV_CACHE_LIFECYCLE
+    kv_cache_adaptation_mode: str = DEFAULT_KV_CACHE_ADAPTATION_MODE
     offload_cpu_layers: int = Field(default=0, ge=0)
     offload_gpu_layers: int = Field(default=0, ge=0)
     force_download: bool = False
@@ -84,6 +92,22 @@ class RuntimeSettings(BaseModel):
         if normalized_strategy is None:
             raise ValueError("kv_cache_strategy cannot be empty")
         return normalized_strategy
+
+    @field_validator("kv_cache_lifecycle")
+    @classmethod
+    def _normalize_kv_cache_lifecycle(cls, lifecycle: str) -> str:
+        normalized_lifecycle = normalize_kv_cache_lifecycle(lifecycle)
+        if normalized_lifecycle is None:
+            raise ValueError("kv_cache_lifecycle cannot be empty")
+        return normalized_lifecycle
+
+    @field_validator("kv_cache_adaptation_mode")
+    @classmethod
+    def _normalize_kv_cache_adaptation_mode(cls, mode: str) -> str:
+        normalized_mode = normalize_kv_cache_adaptation_mode(mode)
+        if normalized_mode is None:
+            raise ValueError("kv_cache_adaptation_mode cannot be empty")
+        return normalized_mode
 
 
 class GenerationSettings(BaseModel):
@@ -152,6 +176,8 @@ class RuntimeConfigOverrides(BaseModel):
     cache_dir: Path | None = None
     use_cache: bool | None = None
     kv_cache_strategy: str | None = None
+    kv_cache_lifecycle: str | None = None
+    kv_cache_adaptation_mode: str | None = None
     offload_cpu_layers: int | None = Field(default=None, ge=0)
     offload_gpu_layers: int | None = Field(default=None, ge=0)
     force_download: bool | None = None
@@ -168,6 +194,16 @@ class RuntimeConfigOverrides(BaseModel):
     @classmethod
     def _normalize_kv_cache_strategy(cls, strategy: str | None) -> str | None:
         return normalize_kv_cache_strategy(strategy)
+
+    @field_validator("kv_cache_lifecycle")
+    @classmethod
+    def _normalize_kv_cache_lifecycle(cls, lifecycle: str | None) -> str | None:
+        return normalize_kv_cache_lifecycle(lifecycle)
+
+    @field_validator("kv_cache_adaptation_mode")
+    @classmethod
+    def _normalize_kv_cache_adaptation_mode(cls, mode: str | None) -> str | None:
+        return normalize_kv_cache_adaptation_mode(mode)
 
 
 class GenerationConfigOverrides(BaseModel):
