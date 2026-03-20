@@ -2208,10 +2208,12 @@
 <li>multimodal enablement</li>
 <li>specialization enablement</li>
 <li>cache strategy, cache lifecycle, adaptation mode, cache root, and offload behavior</li>
+<li>sliding-window token budget when bounded-history KV is selected</li>
 </ul>
 <p>The current KV scaffolding now distinguishes:</p>
 <ul>
-<li><code>kv_cache_strategy</code> — the current preset such as <code>chunked</code>, <code>quantized-cold-tier</code>, or <code>tiered-write-back</code></li>
+<li><code>kv_cache_strategy</code> — the current preset such as <code>chunked</code>, <code>sliding-window-ring-buffer</code>, <code>quantized-cold-tier</code>, or <code>tiered-write-back</code></li>
+<li><code>kv_cache_window_tokens</code> — bounded recent-context token budget for <code>sliding-window-ring-buffer</code>; omitted for full-history strategies</li>
 <li><code>kv_cache_lifecycle</code> — <code>runtime-scoped</code> or explicit <code>persistent</code> reuse semantics</li>
 <li><code>kv_cache_adaptation_mode</code> — <code>disabled</code>, <code>observe-only</code>, or <code>automatic</code>; observe-only recommendation rules exist, but live switching is still disabled</li>
 </ul>

@@ -2250,12 +2250,18 @@
 <p><code>RuntimeConfig.kv_cache_strategy</code> now selects the optimized-native disk KV
 backend explicitly. <code>chunked</code> uses <code>cache_dir/kv_cache_chunked</code>, while
 <code>streamed-segmented</code> uses <code>cache_dir/kv_cache_streamed_segmented</code>,
-<code>log-structured-journal</code> uses <code>cache_dir/kv_cache_log_structured_journal</code>, and
-<code>tiered-write-back</code> uses <code>cache_dir/kv_cache_tiered_write_back</code> while keeping a
-bounded hot region in memory and a journal-backed cold tier on disk. All four
-use typed raw payloads plus explicit metadata instead of opaque torch cache
-blobs. The active runtime then applies a platform/resource-aware buffering or
-spill policy on top of the selected store.
+<code>log-structured-journal</code> uses <code>cache_dir/kv_cache_log_structured_journal</code>,
+<code>sliding-window-ring-buffer</code> uses
+<code>cache_dir/kv_cache_sliding_window_ring_buffer</code>, and <code>tiered-write-back</code> uses
+<code>cache_dir/kv_cache_tiered_write_back</code> while keeping a bounded hot region in
+memory and a journal-backed cold tier on disk. The bounded
+<code>sliding-window-ring-buffer</code> mode keeps only the most recent
+<code>kv_cache_window_tokens</code> cached tokens and evicts older history, so it is a
+semantic recent-context mode rather than a transparent replacement for the
+full-history strategies. All six use typed raw payloads plus explicit
+metadata instead of opaque torch cache blobs. The active runtime then applies a
+platform/resource-aware buffering or spill policy on top of the selected
+store.
 The low-level helper accepts the same switch directly through
 <code>Inference.DiskCache(cache_strategy=...)</code>.</p>
 <p>For compatible local Llama or Gemma3 directories, <code>AutoInference</code> remains the direct optimized-native helper:</p>

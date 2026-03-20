@@ -2290,6 +2290,13 @@ incomparable runs do not get mashed together.</p>
 <span class="w">  </span>--kv-cache-strategy<span class="w"> </span>log-structured-journal<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output<span class="w"> </span>.omx/runtime-benchmark-journal.json
 </code></pre></div>
+<p>The bounded sliding-window mode requires an explicit window size:</p>
+<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--device<span class="w"> </span>cpu<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--kv-cache-strategy<span class="w"> </span>sliding-window-ring-buffer<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--kv-cache-window-tokens<span class="w"> </span><span class="m">256</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>.omx/runtime-benchmark-sliding-window.json
+</code></pre></div>
 <p>The harness is designed to stay truthful on hardware-constrained machines:</p>
 <ul>
 <li>it always measures specialization planner overhead without loading model weights</li>
@@ -2360,13 +2367,15 @@ stats. Generic Transformers-backed runs may report <code>null</code> here.</p>
 <p>For disk KV requests, <code>disk-kv-cache</code> now refers to the explicit strategy root
 under <code>cache_dir/kv_cache_chunked</code>,
 <code>cache_dir/kv_cache_streamed_segmented</code>, or
-<code>cache_dir/kv_cache_tiered_write_back</code>, not to pickle-backed <code>.pt</code> layer
-artifacts. The request metrics report both <code>kv_cache_strategy</code> and
+<code>cache_dir/kv_cache_tiered_write_back</code>, or
+<code>cache_dir/kv_cache_sliding_window_ring_buffer</code>, not to pickle-backed <code>.pt</code>
+layer artifacts. The request metrics report both <code>kv_cache_strategy</code> and
 <code>cache_state</code>, so benchmark comparisons can distinguish the selected backend
 and, for tier-aware strategies, the current hot/cold split. <code>cache_dir_size_mb</code>
 describes only the persisted on-disk portion of the cache, while <code>cache_state</code>
 surfaces persisted artifact counts, compaction counts, cold-store format,
-cold-tier representation, hot in-memory tokens, and spill counts.
+cold-tier representation, hot in-memory tokens, spill counts, and, for bounded
+window strategies, the active window size plus eviction totals.
 Within one loaded runtime, the cache layer can satisfy repeated requests from
 an in-process resident KV snapshot instead of rereading the same persisted
 history from disk. In those cases, <code>kvload</code> may legitimately disappear even
@@ -2384,6 +2393,14 @@ occurs, <code>kvcompact</code> reports that rewrite separately.
 For <code>quantized-cold-tier</code>, the persisted cold journal uses the explicit
 <code>int8-symmetric-per-tensor</code> representation and benchmark output surfaces that
 representation through <code>cache_state.cold_tier_representation</code>.
+For <code>sliding-window-ring-buffer</code>, benchmark output also surfaces
+<code>cache_state.window_max_tokens</code>, <code>cache_state.eviction_policy</code>,
+<code>cache_state.eviction_count</code>, and <code>cache_state.evicted_tokens</code> so bounded
+history runs are never confused with full-history runs. When you benchmark this
+mode, pass an explicit <code>--kv-cache-window-tokens</code> value so benchmark history
+does not compare unlike window sizes. Current local CPU and MPS proof keeps
+this mode in the explicit opt-in bucket rather than the selector-default
+bucket; it materially bounds persisted KV, but it is not a general perf win.
 Cold, warm, prompt-scaling, output-scaling, and session-growth probes all use
 the same persistent benchmark-history ledger, so bounded proof runs remain
 recorded and comparable instead of becoming ad hoc local artifacts.
