@@ -29,7 +29,7 @@ Key runtime configuration fields:
 - `multimodal` — enable multimodal planning when non-text inputs are expected
 - `use_specialization` — whether optimized-native specialization is allowed
 - `cache_dir` / `use_cache` — disk KV cache controls
-- `kv_cache_strategy` — explicit disk KV backend selection (`chunked`, `streamed-segmented`, `log-structured-journal`, or `tiered-write-back`)
+- `kv_cache_strategy` — explicit disk KV backend selection (`chunked`, `streamed-segmented`, `log-structured-journal`, `quantized-cold-tier`, or `tiered-write-back`)
 - `kv_cache_lifecycle` — whether KV artifacts are `runtime-scoped` or explicitly `persistent`
 - `kv_cache_adaptation_mode` — whether adaptation telemetry is `disabled`, `observe-only`, or `automatic` (live switching is still not enabled)
 - `offload_cpu_layers` / `offload_gpu_layers` — native offload controls when supported

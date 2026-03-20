@@ -1,8 +1,8 @@
 # KV Strategy Matrix
 
 oLLM's current disk-KV presets are still selected as single strings such as
-`chunked`, `streamed-segmented`, `log-structured-journal`, and
-`tiered-write-back`.
+`chunked`, `streamed-segmented`, `log-structured-journal`,
+`quantized-cold-tier`, and `tiered-write-back`.
 
 That is still the public control surface today, but the system is now being
 scaffolded around a more explicit internal matrix so future strategies do not
@@ -31,6 +31,7 @@ Current presets are now understood as bundles of axis values:
 | `chunked` | `chunked-manifest` | `buffered-tail` | `full-history` | `full-precision` |
 | `streamed-segmented` | `streamed-segmented` | `buffered-tail` | `full-history` | `full-precision` |
 | `log-structured-journal` | `log-structured-journal` | `buffered-tail` | `full-history` | `full-precision` |
+| `quantized-cold-tier` | `log-structured-journal` | `buffered-tail` | `full-history` | `quantized` |
 | `tiered-write-back` | `log-structured-journal` | `tiered-write-back` | `full-history` | `full-precision` |
 
 This does not change runtime behavior yet. It only makes the shape explicit so
@@ -91,6 +92,7 @@ Current reporting now has room to distinguish:
 - persisted state
 - resident in-process state
 - hot/pending tails
+- cold-tier representation when the persisted encoding is quantized
 
 That matters because resident reuse can improve request behavior without showing
 up as persisted on-disk KV activity.

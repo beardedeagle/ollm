@@ -38,6 +38,10 @@ artifacts. When the selected runtime uses
 `kv_cache_strategy="log-structured-journal"`, it writes to
 `cache_dir/kv_cache_log_structured_journal` and compacts journal metadata
 deterministically once the configured entry threshold is reached. When it uses
+`kv_cache_strategy="quantized-cold-tier"`, it writes to
+`cache_dir/kv_cache_quantized_cold_tier` and persists colder KV entries in the
+explicit `int8-symmetric-per-tensor` representation while dequantizing back to
+the runtime dtype on load. When it uses
 `kv_cache_strategy="tiered-write-back"`, it writes the cold tier to
 `cache_dir/kv_cache_tiered_write_back` through a journal-backed append store
 while keeping a bounded hot tail in memory. The active runtime then applies a

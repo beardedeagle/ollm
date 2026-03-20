@@ -8,9 +8,11 @@ KNOWN_RUNTIME_BENCHMARK_PROFILES = ("quick", "full")
 DEFAULT_PROMPT_TOKEN_TARGETS = (32, 128, 512)
 DEFAULT_OUTPUT_TOKEN_TARGETS = (16, 64, 128)
 DEFAULT_SESSION_TURNS = 4
+DEFAULT_SESSION_MAX_NEW_TOKENS = 4
 QUICK_PROMPT_TOKEN_TARGETS = (32,)
 QUICK_OUTPUT_TOKEN_TARGETS = (16,)
 QUICK_SESSION_TURNS = 1
+QUICK_SESSION_MAX_NEW_TOKENS = 4
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,6 +25,7 @@ class RuntimeBenchmarkProfile:
     prompt_token_targets: tuple[int, ...]
     output_token_targets: tuple[int, ...]
     session_turns: int
+    session_max_new_tokens: int
     include_family_results: bool
     include_primary_extended_scenarios: bool
     cold_timeout_seconds: float
@@ -147,6 +150,7 @@ def resolve_runtime_benchmark_profile(
     prompt_token_targets: tuple[int, ...] | None = None,
     output_token_targets: tuple[int, ...] | None = None,
     session_turns: int | None = None,
+    session_max_new_tokens: int | None = None,
 ) -> RuntimeBenchmarkProfile:
     """Resolve a benchmark profile and apply any explicit CLI overrides."""
 
@@ -169,6 +173,11 @@ def resolve_runtime_benchmark_profile(
             session_turns=QUICK_SESSION_TURNS
             if session_turns is None
             else session_turns,
+            session_max_new_tokens=(
+                QUICK_SESSION_MAX_NEW_TOKENS
+                if session_max_new_tokens is None
+                else session_max_new_tokens
+            ),
             include_family_results=False,
             include_primary_extended_scenarios=False,
             cold_timeout_seconds=90.0,
@@ -191,6 +200,11 @@ def resolve_runtime_benchmark_profile(
             else output_token_targets
         ),
         session_turns=DEFAULT_SESSION_TURNS if session_turns is None else session_turns,
+        session_max_new_tokens=(
+            DEFAULT_SESSION_MAX_NEW_TOKENS
+            if session_max_new_tokens is None
+            else session_max_new_tokens
+        ),
         include_family_results=True,
         include_primary_extended_scenarios=True,
         cold_timeout_seconds=240.0,

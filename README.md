@@ -136,7 +136,8 @@ Runtime selection and inspection controls:
 `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` now all honor `--backend` and `--no-specialization`. `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` also support `--plan-json` for script-friendly inspection of the resolver/backend decision.
 `ollm prompt` and `ollm chat` also honor `--kv-cache-strategy` to switch the
 optimized-native disk KV backend between `chunked`,
-`streamed-segmented`, `log-structured-journal`, and `tiered-write-back`.
+`streamed-segmented`, `log-structured-journal`, `quantized-cold-tier`, and
+`tiered-write-back`.
 
 Configuration layering is now first-class:
 
@@ -327,7 +328,10 @@ uses `cache_dir/kv_cache_streamed_segmented` instead so the two strategies
 never share on-disk state. `kv_cache_strategy="log-structured-journal"` uses
 `cache_dir/kv_cache_log_structured_journal` and keeps append behavior cheap
 while compacting entry metadata deterministically when the journal gets too
-fragmented. `kv_cache_strategy="tiered-write-back"` uses
+fragmented. `kv_cache_strategy="quantized-cold-tier"` uses
+`cache_dir/kv_cache_quantized_cold_tier` and keeps the active in-process KV at
+normal precision while persisting colder full-history KV in an explicit
+`int8-symmetric-per-tensor` representation. `kv_cache_strategy="tiered-write-back"` uses
 `cache_dir/kv_cache_tiered_write_back` and keeps a bounded hot tail in memory
 while spilling colder KV to a journal-backed cold tier in batches. The runtime
 now also applies a platform/resource-aware buffering or spill policy on top of
@@ -413,6 +417,11 @@ The harness is designed to stay truthful on hardware-constrained machines:
 - family-wide comparisons stay bounded to cold-start and warm-runtime generic-vs-optimized results so the harness remains practical on development machines
 - unsupported metrics and non-executable optimized paths remain explicitly unavailable instead of being fabricated
 - peak RSS reports now carry source labels so warm/scaling/session sections can use stage-local sampled peaks instead of misleading process-lifetime maxima
+
+Session-growth now uses a dedicated small per-turn output cap rather than
+reusing the output-scaling sweep length. That keeps repeated-turn probes focused
+on retained-session growth instead of turning loader-streamed CPU families such
+as Gemma3 into a long-form generation or safetensor-streaming marathon.
 
 When an optimized-native run emits runtime timing stats, the request metrics now
 also include a `native_runtime_profile` section with:

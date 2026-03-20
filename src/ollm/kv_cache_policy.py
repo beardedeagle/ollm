@@ -98,6 +98,13 @@ def select_kv_cache_policy(
             available_ram=available_ram,
             available_accelerator=available_accelerator,
         )
+    if strategy == "quantized-cold-tier":
+        return _select_quantized_cold_tier_policy(
+            device=device,
+            snapshot=snapshot,
+            available_ram=available_ram,
+            available_accelerator=available_accelerator,
+        )
 
     if device.type == "cpu":
         if snapshot.platform == "darwin":
@@ -317,6 +324,29 @@ def _select_log_structured_journal_policy(
         write_back_retained_tokens=32,
         write_back_retained_bytes=2 * _MIB,
         journal_compaction_entry_threshold=compaction_entry_threshold,
+    )
+
+
+def _select_quantized_cold_tier_policy(
+    *,
+    device: torch.device,
+    snapshot: KVCacheResourceSnapshot,
+    available_ram: int,
+    available_accelerator: int,
+) -> KVCachePolicy:
+    base_policy = _select_log_structured_journal_policy(
+        device=device,
+        snapshot=snapshot,
+        available_ram=available_ram,
+        available_accelerator=available_accelerator,
+    )
+    return KVCachePolicy(
+        policy_id=base_policy.policy_id.replace("journal", "quantized-cold-tier"),
+        flush_token_threshold=base_policy.flush_token_threshold,
+        flush_byte_threshold=base_policy.flush_byte_threshold,
+        write_back_retained_tokens=base_policy.write_back_retained_tokens,
+        write_back_retained_bytes=base_policy.write_back_retained_bytes,
+        journal_compaction_entry_threshold=base_policy.journal_compaction_entry_threshold,
     )
 
 

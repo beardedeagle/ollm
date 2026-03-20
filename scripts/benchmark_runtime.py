@@ -20,12 +20,14 @@ from ollm.runtime.benchmarks import (
     choose_default_device,
     render_output_scaling_probe_json,
     render_prompt_scaling_probe_json,
+    render_reopen_session_growth_probe_json,
     render_report_json,
     render_runtime_probe_json,
     render_session_growth_probe_json,
     render_warm_runtime_probe_json,
     run_output_scaling_probe,
     run_prompt_scaling_probe,
+    run_reopen_session_growth_probe,
     run_runtime_probe,
     run_session_growth_probe,
     run_warm_runtime_probe,
@@ -126,6 +128,15 @@ def parse_args() -> argparse.Namespace:
         help="Measured turns for the primary target repeated-session growth sweep.",
     )
     parser.add_argument(
+        "--session-max-new-tokens",
+        type=positive_int,
+        default=None,
+        help=(
+            "Measured max new tokens per turn for the repeated-session growth "
+            "sweep. This is independent from --output-scale-tokens."
+        ),
+    )
+    parser.add_argument(
         "--probe-runtime",
         action="store_true",
         help=argparse.SUPPRESS,
@@ -218,6 +229,7 @@ def main() -> int:
         prompt_token_targets=prompt_scale_tokens,
         output_token_targets=output_scale_tokens,
         session_turns=args.session_turns,
+        session_max_new_tokens=args.session_max_new_tokens,
     )
     if args.probe_runtime:
         if args.probe_model is None:
@@ -289,6 +301,18 @@ def main() -> int:
                 max_new_tokens=args.probe_max_new_tokens,
             )
             rendered_probe = render_session_growth_probe_json(probe)
+        elif args.probe_mode == "reopen-session-growth":
+            probe = run_reopen_session_growth_probe(
+                model_reference=args.probe_model,
+                models_dir=Path(args.models_dir),
+                device=probe_device,
+                backend=args.probe_backend,
+                use_specialization=not args.probe_no_specialization,
+                kv_cache_strategy=args.probe_kv_cache_strategy,
+                session_turns=args.probe_session_turns,
+                max_new_tokens=args.probe_max_new_tokens,
+            )
+            rendered_probe = render_reopen_session_growth_probe_json(probe)
         else:
             raise SystemExit(f"Unsupported --probe-mode: {args.probe_mode}")
         if not args.no_record_history:
@@ -334,6 +358,7 @@ def main() -> int:
         prompt_token_targets=profile.prompt_token_targets,
         output_token_targets=profile.output_token_targets,
         session_turns=profile.session_turns,
+        session_max_new_tokens=profile.session_max_new_tokens,
         include_family_results=profile.include_family_results,
         include_primary_extended_scenarios=profile.include_primary_extended_scenarios,
         cold_timeout_seconds=profile.cold_timeout_seconds,
@@ -358,6 +383,7 @@ def main() -> int:
                 prompt_token_targets=profile.prompt_token_targets,
                 output_token_targets=profile.output_token_targets,
                 session_turns=profile.session_turns,
+                session_max_new_tokens=profile.session_max_new_tokens,
             ),
         )
         _emit_history_status(history_result)

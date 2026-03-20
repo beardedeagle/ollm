@@ -32,6 +32,17 @@ def test_describe_kv_cache_strategy_maps_tiered_axes() -> None:
     assert axes.compaction_capable is True
 
 
+def test_describe_kv_cache_strategy_maps_quantized_cold_tier_axes() -> None:
+    axes = describe_kv_cache_strategy("quantized-cold-tier")
+
+    assert axes.strategy_id == "quantized-cold-tier"
+    assert axes.persistence_format == "log-structured-journal"
+    assert axes.residency_mode == "buffered-tail"
+    assert axes.window_policy == "full-history"
+    assert axes.cold_tier_encoding == "quantized"
+    assert axes.compaction_capable is True
+
+
 def test_normalize_kv_cache_lifecycle_accepts_known_values() -> None:
     assert normalize_kv_cache_lifecycle("persistent") == "persistent"
     assert normalize_kv_cache_lifecycle("runtime-scoped") == "runtime-scoped"

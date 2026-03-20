@@ -385,7 +385,12 @@ def test_kvcache_buffers_tail_until_policy_threshold_then_flushes(
 
 @pytest.mark.parametrize(
     "cache_strategy",
-    ["chunked", "streamed-segmented", "log-structured-journal"],
+    [
+        "chunked",
+        "streamed-segmented",
+        "log-structured-journal",
+        "quantized-cold-tier",
+    ],
 )
 def test_kvcache_reuses_resident_layer_after_update(
     tmp_path: Path, cache_strategy: str

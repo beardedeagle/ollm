@@ -4,6 +4,7 @@ from typing import cast
 
 import torch
 
+import ollm.runtime.benchmark_targets as benchmark_targets_module
 from ollm.app.types import ContentPart, Message, MessageRole
 from ollm.client import RuntimeClient
 from ollm.runtime.backends.base import BackendRuntime
@@ -12,7 +13,12 @@ from ollm.runtime.benchmark_probe_execution import (
     execute_request_probe,
 )
 from ollm.runtime.benchmark_probes import RuntimeProbeResult
-from ollm.runtime.benchmark_types import resolve_runtime_benchmark_profile
+from ollm.runtime.benchmark_types import (
+    BenchmarkMeasurement,
+    BenchmarkStats,
+    RuntimeComparisonTarget,
+    resolve_runtime_benchmark_profile,
+)
 from ollm.runtime.benchmarks import (
     CommandBenchmarkSpec,
     build_runtime_probe_command,
@@ -328,6 +334,82 @@ def test_measure_runtime_probe_reports_unavailable_on_invalid_json(
     assert measurement.details["reason"] == "runtime probe did not emit valid JSON"
 
 
+def test_benchmark_runtime_target_uses_session_specific_max_new_tokens(
+    monkeypatch, tmp_path: Path
+) -> None:
+    session_commands: list[tuple[str, ...]] = []
+
+    def measured(name: str) -> BenchmarkMeasurement:
+        return BenchmarkMeasurement(
+            name=name,
+            status="measured",
+            stats=BenchmarkStats(
+                iterations=1,
+                warmup_iterations=0,
+                min_ms=1.0,
+                median_ms=1.0,
+                p95_ms=1.0,
+                max_ms=1.0,
+                mean_ms=1.0,
+            ),
+            details={},
+        )
+
+    monkeypatch.setattr(
+        benchmark_targets_module,
+        "measure_runtime_probe",
+        lambda spec, iterations, warmup_iterations, cwd: measured(spec.name),
+    )
+    monkeypatch.setattr(
+        benchmark_targets_module,
+        "measure_warm_runtime_probe",
+        lambda spec, cwd: measured(spec.name),
+    )
+    monkeypatch.setattr(
+        benchmark_targets_module,
+        "measure_prompt_scaling_probe",
+        lambda spec, cwd: measured(spec.name),
+    )
+    monkeypatch.setattr(
+        benchmark_targets_module,
+        "measure_output_scaling_probe",
+        lambda spec, cwd: measured(spec.name),
+    )
+
+    def fake_measure_session_growth_probe(spec, *, cwd):
+        del cwd
+        session_commands.append(spec.command)
+        return measured(spec.name)
+
+    monkeypatch.setattr(
+        benchmark_targets_module,
+        "measure_session_growth_probe",
+        fake_measure_session_growth_probe,
+    )
+
+    benchmark_targets_module.benchmark_runtime_target(
+        repo_root=tmp_path,
+        target=RuntimeComparisonTarget(
+            family="gemma3",
+            model_reference="gemma3-12B",
+            is_materialized=True,
+            model_path=str(tmp_path / "models" / "gemma3-12B"),
+        ),
+        models_dir=tmp_path / "models",
+        device="cpu",
+        iterations=1,
+        warmup_iterations=0,
+        include_extended_scenarios=True,
+        output_token_targets=(16, 64, 128),
+        session_turns=4,
+        session_max_new_tokens=4,
+    )
+
+    assert len(session_commands) == 2
+    for command in session_commands:
+        assert command[command.index("--probe-max-new-tokens") + 1] == "4"
+
+
 def test_resolve_runtime_benchmark_profile_quick_defaults() -> None:
     profile = resolve_runtime_benchmark_profile(profile="quick")
 
@@ -337,6 +419,7 @@ def test_resolve_runtime_benchmark_profile_quick_defaults() -> None:
     assert profile.include_family_results is False
     assert profile.include_primary_extended_scenarios is False
     assert profile.cold_timeout_seconds == 90.0
+    assert profile.session_max_new_tokens == 4
 
 
 def test_resolve_runtime_benchmark_profile_full_defaults() -> None:
@@ -348,3 +431,4 @@ def test_resolve_runtime_benchmark_profile_full_defaults() -> None:
     assert profile.include_family_results is True
     assert profile.include_primary_extended_scenarios is True
     assert profile.warm_timeout_seconds == 240.0
+    assert profile.session_max_new_tokens == 4

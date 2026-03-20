@@ -13,6 +13,8 @@ from ollm.runtime.benchmark_probe_types import (
     OutputScalingProbeResult,
     PromptScalingCase,
     PromptScalingProbeResult,
+    ReopenSessionGrowthProbeResult,
+    ReopenSessionGrowthTurn,
     RequestProbeMetrics,
     RuntimeProbeResult,
     SessionGrowthProbeResult,
@@ -43,6 +45,12 @@ def render_output_scaling_probe_json(probe: OutputScalingProbeResult) -> str:
 
 
 def render_session_growth_probe_json(probe: SessionGrowthProbeResult) -> str:
+    return json.dumps(probe.to_dict(), indent=2, sort_keys=True)
+
+
+def render_reopen_session_growth_probe_json(
+    probe: ReopenSessionGrowthProbeResult,
+) -> str:
     return json.dumps(probe.to_dict(), indent=2, sort_keys=True)
 
 
@@ -136,6 +144,31 @@ def parse_session_growth_probe_result(stdout: str) -> SessionGrowthProbeResult:
         turns=tuple(
             SessionGrowthTurn(
                 turn_index=_require_int(turn_payload, "turn_index"),
+                request=_parse_request_probe_metrics(
+                    _require_mapping(turn_payload, "request")
+                ),
+            )
+            for turn_payload in (
+                _require_object_mapping(item, f"turns[{index}]")
+                for index, item in enumerate(turn_items)
+            )
+        ),
+    )
+
+
+def parse_reopen_session_growth_probe_result(
+    stdout: str,
+) -> ReopenSessionGrowthProbeResult:
+    payload = _load_probe_payload(stdout)
+    turn_items = _require_sequence(payload, "turns")
+    return ReopenSessionGrowthProbeResult(
+        turns=tuple(
+            ReopenSessionGrowthTurn(
+                turn_index=_require_int(turn_payload, "turn_index"),
+                runtime_load_ms=_require_float(turn_payload, "runtime_load_ms"),
+                runtime_load_resources=_parse_stage_resources(
+                    _require_mapping(turn_payload, "runtime_load_resources")
+                ),
                 request=_parse_request_probe_metrics(
                     _require_mapping(turn_payload, "request")
                 ),
@@ -269,6 +302,7 @@ def _parse_cache_state(value: object) -> KVCacheStateSnapshot | None:
         residency_mode=_require_string(payload, "residency_mode"),
         window_policy=_require_string(payload, "window_policy"),
         cold_tier_encoding=_require_string(payload, "cold_tier_encoding"),
+        cold_tier_representation=_optional_string(payload, "cold_tier_representation"),
         persisted_layer_count=_require_int(payload, "persisted_layer_count"),
         persisted_tokens=_require_int(payload, "persisted_tokens"),
         persisted_artifact_count=_require_int(payload, "persisted_artifact_count"),

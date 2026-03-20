@@ -275,6 +275,13 @@ def summarize_cache_states(
         "cold_tier_encoding": single_optional_string(
             [snapshot.cold_tier_encoding for snapshot in snapshots]
         ),
+        "cold_tier_representation": single_optional_string(
+            [
+                snapshot.cold_tier_representation
+                for snapshot in snapshots
+                if snapshot.cold_tier_representation is not None
+            ]
+        ),
         "persisted_layer_count": summarize_numeric_values(
             [float(snapshot.persisted_layer_count) for snapshot in snapshots]
         ),

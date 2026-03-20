@@ -89,3 +89,18 @@ def test_select_kv_cache_policy_uses_larger_journal_threshold_for_roomy_hosts() 
 
     assert policy.policy_id == "windows-cuda-journal"
     assert policy.journal_compaction_entry_threshold == 6
+
+
+def test_select_kv_cache_policy_uses_quantized_profile_for_cpu() -> None:
+    policy = select_kv_cache_policy(
+        torch.device("cpu"),
+        strategy="quantized-cold-tier",
+        resource_snapshot=KVCacheResourceSnapshot(
+            platform="darwin",
+            available_system_memory_bytes=8 * 1024 * 1024 * 1024,
+            available_accelerator_memory_bytes=None,
+        ),
+    )
+
+    assert policy.policy_id == "darwin-cpu-quantized-cold-tier"
+    assert policy.journal_compaction_entry_threshold == 4

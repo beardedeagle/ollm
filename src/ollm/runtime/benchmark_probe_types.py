@@ -186,6 +186,32 @@ class SessionGrowthProbeResult:
 
 
 @dataclass(frozen=True, slots=True)
+class ReopenSessionGrowthTurn:
+    turn_index: int
+    runtime_load_ms: float
+    runtime_load_resources: StageResourceSnapshot
+    request: RequestProbeMetrics
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "turn_index": self.turn_index,
+            "runtime_load_ms": self.runtime_load_ms,
+            "runtime_load_resources": self.runtime_load_resources.to_dict(),
+            "request": self.request.to_dict(),
+        }
+
+
+@dataclass(frozen=True, slots=True)
+class ReopenSessionGrowthProbeResult:
+    turns: tuple[ReopenSessionGrowthTurn, ...]
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "turns": [turn.to_dict() for turn in self.turns],
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class RequestProbeExecution:
     metrics: RequestProbeMetrics
     response_text: str

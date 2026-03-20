@@ -68,6 +68,9 @@ class TieredWriteBackKVStore:
     def cold_store_format_id(self) -> str | None:
         return _COLD_STORE_FORMAT
 
+    def cold_tier_representation_id(self) -> str | None:
+        return None
+
     def compaction_count(self) -> int:
         return self._cold_store.compaction_count()
 

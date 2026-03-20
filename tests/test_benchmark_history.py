@@ -13,11 +13,14 @@ from ollm.runtime.benchmark_history import (
 from ollm.runtime.benchmark_metadata import (
     normalize_git_remote_url,
     probe_comparison_key,
+    report_comparison_key,
     resolve_history_codebase_label,
 )
 from ollm.runtime.benchmark_probe_types import (
     PromptScalingCase,
     PromptScalingProbeResult,
+    ReopenSessionGrowthProbeResult,
+    ReopenSessionGrowthTurn,
     RuntimeProbeResult,
     SessionGrowthProbeResult,
     SessionGrowthTurn,
@@ -220,6 +223,33 @@ def test_probe_comparison_key_includes_probe_specific_targets() -> None:
     assert first != second
 
 
+def test_report_comparison_key_includes_session_max_new_tokens() -> None:
+    first = report_comparison_key(
+        codebase_label="github.com/beardedeagle/ollm",
+        benchmark_model_reference="gemma3-12B",
+        device="cpu",
+        kv_cache_strategy="chunked",
+        profile_id="full",
+        prompt_token_targets=(32, 128, 512),
+        output_token_targets=(16, 64, 128),
+        session_turns=4,
+        session_max_new_tokens=4,
+    )
+    second = report_comparison_key(
+        codebase_label="github.com/beardedeagle/ollm",
+        benchmark_model_reference="gemma3-12B",
+        device="cpu",
+        kv_cache_strategy="chunked",
+        profile_id="full",
+        prompt_token_targets=(32, 128, 512),
+        output_token_targets=(16, 64, 128),
+        session_turns=4,
+        session_max_new_tokens=8,
+    )
+
+    assert first != second
+
+
 def test_summarize_benchmark_payload_for_session_growth_uses_final_turn() -> None:
     first = replace(build_request_probe_metrics(), total_ms=18.0)
     cache_state = build_request_probe_metrics().cache_state
@@ -251,6 +281,56 @@ def test_summarize_benchmark_payload_for_session_growth_uses_final_turn() -> Non
     assert summary["compaction_count"] == 2
     assert summary["persisted_artifact_count"] == 1
     assert summary["cold_store_format"] == "ollm-kv-journal"
+    assert summary["cold_tier_representation"] is None
+    assert summary["session_turns"] == 2
+
+
+def test_summarize_benchmark_payload_for_reopen_session_growth_uses_final_turn() -> (
+    None
+):
+    first = replace(build_request_probe_metrics(), total_ms=18.0)
+    cache_state = build_request_probe_metrics().cache_state
+    assert cache_state is not None
+    second = replace(
+        build_request_probe_metrics(),
+        total_ms=30.0,
+        cache_state=replace(
+            cache_state,
+            compaction_count=2,
+            persisted_artifact_count=1,
+            cold_store_format="ollm-kv-journal-quantized",
+            cold_tier_representation="int8-symmetric-per-tensor",
+        ),
+    )
+    payload = ReopenSessionGrowthProbeResult(
+        turns=(
+            ReopenSessionGrowthTurn(
+                turn_index=1,
+                runtime_load_ms=10.0,
+                runtime_load_resources=build_stage_resources(),
+                request=first,
+            ),
+            ReopenSessionGrowthTurn(
+                turn_index=2,
+                runtime_load_ms=14.0,
+                runtime_load_resources=build_stage_resources(),
+                request=second,
+            ),
+        ),
+    ).to_dict()
+
+    summary = summarize_benchmark_payload(
+        payload, run_kind="probe-reopen-session-growth"
+    )
+
+    assert summary["load_ms"] == 12.0
+    assert summary["final_runtime_load_ms"] == 14.0
+    assert summary["request_total_ms"] == 30.0
+    assert summary["mean_request_total_ms"] == 24.0
+    assert summary["compaction_count"] == 2
+    assert summary["persisted_artifact_count"] == 1
+    assert summary["cold_store_format"] == "ollm-kv-journal-quantized"
+    assert summary["cold_tier_representation"] == "int8-symmetric-per-tensor"
     assert summary["session_turns"] == 2
 
 

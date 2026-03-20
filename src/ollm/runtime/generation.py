@@ -328,6 +328,10 @@ class RuntimeExecutor:
             )
             if cache_state.cold_store_format is not None:
                 metadata["kv_cache_cold_store_format"] = cache_state.cold_store_format
+            if cache_state.cold_tier_representation is not None:
+                metadata["kv_cache_cold_tier_representation"] = (
+                    cache_state.cold_tier_representation
+                )
         adaptation_surface = build_kv_cache_adaptation_surface(
             adaptation_mode=runtime.config.resolved_kv_cache_adaptation_mode(),
             current_strategy=runtime.config.resolved_kv_cache_strategy(),

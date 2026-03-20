@@ -156,6 +156,15 @@ def describe_kv_cache_strategy(strategy: str | None) -> KVCacheStrategyAxes:
             cold_tier_encoding=KVCacheColdTierEncoding.FULL_PRECISION.value,
             compaction_capable=True,
         )
+    if strategy_id == "quantized-cold-tier":
+        return KVCacheStrategyAxes(
+            strategy_id=strategy_id,
+            persistence_format=KVCachePersistenceFormat.LOG_STRUCTURED_JOURNAL.value,
+            residency_mode=KVCacheResidencyMode.BUFFERED_TAIL.value,
+            window_policy=KVCacheWindowPolicy.FULL_HISTORY.value,
+            cold_tier_encoding=KVCacheColdTierEncoding.QUANTIZED.value,
+            compaction_capable=True,
+        )
     if strategy_id == "tiered-write-back":
         return KVCacheStrategyAxes(
             strategy_id=strategy_id,

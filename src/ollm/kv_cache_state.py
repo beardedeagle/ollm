@@ -13,6 +13,7 @@ class KVCacheStateSnapshot:
     residency_mode: str
     window_policy: str
     cold_tier_encoding: str
+    cold_tier_representation: str | None
     persisted_layer_count: int
     persisted_tokens: int
     persisted_artifact_count: int

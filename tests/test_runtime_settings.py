@@ -309,3 +309,11 @@ def test_runtime_settings_accept_log_structured_journal_strategy() -> None:
 
     assert settings.kv_cache_strategy == "log-structured-journal"
     assert overrides.kv_cache_strategy == "log-structured-journal"
+
+
+def test_runtime_settings_accept_quantized_cold_tier_strategy() -> None:
+    settings = RuntimeSettings(kv_cache_strategy="quantized-cold-tier")
+    overrides = RuntimeConfigOverrides(kv_cache_strategy="quantized-cold-tier")
+
+    assert settings.kv_cache_strategy == "quantized-cold-tier"
+    assert overrides.kv_cache_strategy == "quantized-cold-tier"

@@ -13,6 +13,7 @@ from ollm.kv_cache_matrix import (
     normalize_kv_cache_lifecycle,
 )
 from ollm.kv_cache_policy import KVCachePolicy, select_kv_cache_policy
+from ollm.kv_cache_quantized_store import QuantizedJournaledKVStore
 from ollm.kv_cache_state import KVCacheStateSnapshot
 from ollm.kv_cache_store import ChunkedKVStore
 from ollm.kv_cache_strategy import (
@@ -45,6 +46,8 @@ class _KVCacheStoreProtocol(Protocol):
     def persisted_artifact_count(self) -> int: ...
 
     def cold_store_format_id(self) -> str | None: ...
+
+    def cold_tier_representation_id(self) -> str | None: ...
 
     def compaction_count(self) -> int: ...
 
@@ -161,6 +164,7 @@ class oCache:
             residency_mode=strategy_axes.residency_mode,
             window_policy=strategy_axes.window_policy,
             cold_tier_encoding=strategy_axes.cold_tier_encoding,
+            cold_tier_representation=self._cache_store.cold_tier_representation_id(),
             persisted_layer_count=len(self._cache_store.persisted_layer_ids()),
             persisted_tokens=self._cache_store.persisted_token_count(),
             persisted_artifact_count=self._cache_store.persisted_artifact_count(),
@@ -289,6 +293,31 @@ def _resident_layer_for_device(
     return _move_tensor_pair(tensors, device)
 
 
+def _ensure_cache_layer_slot(cache: DynamicCache, layer_idx: int) -> None:
+    if len(cache.layers) > layer_idx:
+        return
+    layer_factory = getattr(cache, "layer_class_to_replicate", None)
+    if layer_factory is None:
+        raise IndexError(
+            "DynamicCache layer slot is missing and the cache cannot lazily create one"
+        )
+    while len(cache.layers) <= layer_idx:
+        cache.layers.append(layer_factory())
+
+
+def _prime_cache_layer(
+    cache: DynamicCache,
+    layer_idx: int,
+    tensors: tuple[torch.Tensor, torch.Tensor],
+) -> None:
+    _ensure_cache_layer_slot(cache, layer_idx)
+    layer = cache.layers[layer_idx]
+    lazy_initialization = getattr(layer, "lazy_initialization", None)
+    if callable(lazy_initialization):
+        lazy_initialization(tensors[0], tensors[1])
+    layer.keys, layer.values = tensors
+
+
 def _build_cache_store(
     cache_folder: Path, cache_strategy: str, policy: KVCachePolicy
 ) -> _KVCacheStoreProtocol:
@@ -298,6 +327,11 @@ def _build_cache_store(
         return StreamedSegmentedKVStore(cache_folder)
     if cache_strategy == "log-structured-journal":
         return JournaledKVStore(
+            cache_folder,
+            compaction_entry_threshold=policy.journal_compaction_entry_threshold,
+        )
+    if cache_strategy == "quantized-cold-tier":
+        return QuantizedJournaledKVStore(
             cache_folder,
             compaction_entry_threshold=policy.journal_compaction_entry_threshold,
         )
@@ -362,7 +396,7 @@ class KVCache(DynamicCache, oCache):
     ) -> tuple[torch.Tensor, torch.Tensor]:
         tensors = self.load_from_disk(layer_idx)
         if tensors is not None:
-            self.layers[layer_idx].keys, self.layers[layer_idx].values = tensors
+            _prime_cache_layer(self, layer_idx, tensors)
 
         out = super().update(key_states, value_states, layer_idx, cache_kwargs)
         self._remember_resident_layer(layer_idx, out)
