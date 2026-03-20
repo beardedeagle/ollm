@@ -23,6 +23,17 @@ def test_describe_kv_cache_strategy_maps_chunked_axes() -> None:
     assert axes.compaction_capable is False
 
 
+def test_describe_kv_cache_strategy_maps_paged_axes() -> None:
+    axes = describe_kv_cache_strategy("paged")
+
+    assert axes.strategy_id == "paged"
+    assert axes.persistence_format == "paged-manifest"
+    assert axes.residency_mode == "buffered-tail"
+    assert axes.window_policy == "full-history"
+    assert axes.cold_tier_encoding == "full-precision"
+    assert axes.compaction_capable is False
+
+
 def test_describe_kv_cache_strategy_maps_tiered_axes() -> None:
     axes = describe_kv_cache_strategy("tiered-write-back")
 

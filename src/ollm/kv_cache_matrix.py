@@ -16,6 +16,7 @@ class KVCachePersistenceFormat(StrEnum):
     """Describe how cold KV is persisted."""
 
     CHUNKED_MANIFEST = "chunked-manifest"
+    PAGED_MANIFEST = "paged-manifest"
     STREAMED_SEGMENTED = "streamed-segmented"
     LOG_STRUCTURED_JOURNAL = "log-structured-journal"
     SLIDING_WINDOW_RING_BUFFER = "sliding-window-ring-buffer"
@@ -185,6 +186,15 @@ def describe_kv_cache_strategy(strategy: str | None) -> KVCacheStrategyAxes:
         return KVCacheStrategyAxes(
             strategy_id=strategy_id,
             persistence_format=KVCachePersistenceFormat.CHUNKED_MANIFEST.value,
+            residency_mode=KVCacheResidencyMode.BUFFERED_TAIL.value,
+            window_policy=KVCacheWindowPolicy.FULL_HISTORY.value,
+            cold_tier_encoding=KVCacheColdTierEncoding.FULL_PRECISION.value,
+            compaction_capable=False,
+        )
+    if strategy_id == "paged":
+        return KVCacheStrategyAxes(
+            strategy_id=strategy_id,
+            persistence_format=KVCachePersistenceFormat.PAGED_MANIFEST.value,
             residency_mode=KVCacheResidencyMode.BUFFERED_TAIL.value,
             window_policy=KVCacheWindowPolicy.FULL_HISTORY.value,
             cold_tier_encoding=KVCacheColdTierEncoding.FULL_PRECISION.value,

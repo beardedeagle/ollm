@@ -73,6 +73,37 @@ class FakeSlidingWindowCache(FakeCache):
         )
 
 
+class FakePagedCache(FakeCache):
+    def cache_state_snapshot(self) -> KVCacheStateSnapshot:
+        self.snapshot_calls += 1
+        return KVCacheStateSnapshot(
+            strategy_id="paged",
+            policy_id="test-paged",
+            persistence_format="paged-manifest",
+            residency_mode="buffered-tail",
+            window_policy="full-history",
+            window_max_tokens=None,
+            eviction_policy=None,
+            cold_tier_encoding="full-precision",
+            cold_tier_representation=None,
+            persisted_layer_count=1,
+            persisted_tokens=80,
+            persisted_artifact_count=2,
+            resident_layer_count=1,
+            resident_tokens=80,
+            resident_bytes=4096,
+            hot_layer_count=0,
+            hot_tokens=0,
+            hot_bytes=0,
+            compaction_count=0,
+            spill_count=0,
+            spilled_tokens=0,
+            eviction_count=0,
+            evicted_tokens=0,
+            cold_store_format="ollm-kv-paged",
+        )
+
+
 def test_runtime_executor_includes_execution_device_details_in_metadata() -> None:
     capabilities = CapabilityProfile(support_level=SupportLevel.OPTIMIZED)
     runtime = build_runtime(capabilities)
@@ -175,3 +206,27 @@ def test_runtime_executor_reports_sliding_window_metadata() -> None:
     assert response.metadata["kv_cache_eviction_policy"] == "drop-oldest"
     assert response.metadata["kv_cache_eviction_count"] == "2"
     assert response.metadata["kv_cache_evicted_tokens"] == "32"
+
+
+def test_runtime_executor_reports_paged_metadata() -> None:
+    runtime = build_runtime(CapabilityProfile(support_level=SupportLevel.OPTIMIZED))
+    runtime.config.use_cache = True
+    runtime.config.kv_cache_strategy = "paged"
+    runtime.plan = replace(runtime.plan, supports_disk_cache=True)
+    runtime.backend.create_cache = (
+        lambda cache_dir, cache_strategy=None, cache_lifecycle=None, cache_window_tokens=None: (
+            FakePagedCache()
+        )
+    )
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("hello")]),
+    )
+
+    response = RuntimeExecutor().execute(runtime, request)
+
+    assert response.metadata["kv_cache_strategy"] == "paged"
+    assert response.metadata["kv_cache_policy_id"] == "test-paged"
+    assert response.metadata["kv_cache_persistence_format"] == "paged-manifest"
+    assert response.metadata["kv_cache_cold_store_format"] == "ollm-kv-paged"
+    assert response.metadata["kv_cache_persisted_artifacts"] == "2"

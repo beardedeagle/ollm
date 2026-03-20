@@ -54,6 +54,7 @@ The optimized-native disk KV cache now exposes six explicit
 strategies:
 
 - `chunked`
+- `paged`
 - `streamed-segmented`
 - `log-structured-journal`
 - `sliding-window-ring-buffer`
@@ -61,7 +62,10 @@ strategies:
 - `tiered-write-back`
 
 `chunked` persists a manifest-backed chunk store under
-`cache_dir/kv_cache_chunked`. `streamed-segmented` persists a sequential
+`cache_dir/kv_cache_chunked`. `paged` persists a fixed-capacity page table
+under `cache_dir/kv_cache_paged`, so movement and reconstruction stay aligned
+to deterministic page boundaries instead of variable chunk sizes.
+`streamed-segmented` persists a sequential
 segment-backed store under `cache_dir/kv_cache_streamed_segmented`.
 `log-structured-journal` persists a single append-oriented journal per layer
 under `cache_dir/kv_cache_log_structured_journal` and compacts entry metadata
@@ -79,7 +83,7 @@ explicit `int8-symmetric-per-tensor` representation and dequantizes back to
 the runtime dtype on load.
 `tiered-write-back` persists only the colder KV prefix under
 `cache_dir/kv_cache_tiered_write_back` while keeping a bounded hot region in
-memory; its cold tier now uses a journal-backed append store. All six use
+memory; its cold tier now uses a journal-backed append store. All seven use
 typed raw tensor payloads plus explicit metadata, and none uses opaque
 pickle-backed `.pt` cache blobs. The runtime also applies a
 platform/resource-aware buffering or spill policy on top of the selected

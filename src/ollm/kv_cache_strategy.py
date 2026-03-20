@@ -5,6 +5,7 @@ from pathlib import Path
 DEFAULT_KV_CACHE_STRATEGY = "chunked"
 KNOWN_KV_CACHE_STRATEGY_IDS = (
     "chunked",
+    "paged",
     "streamed-segmented",
     "log-structured-journal",
     "sliding-window-ring-buffer",
@@ -14,6 +15,7 @@ KNOWN_KV_CACHE_STRATEGY_IDS = (
 
 _CACHE_ROOT_BY_STRATEGY = {
     "chunked": "kv_cache_chunked",
+    "paged": "kv_cache_paged",
     "streamed-segmented": "kv_cache_streamed_segmented",
     "log-structured-journal": "kv_cache_log_structured_journal",
     "sliding-window-ring-buffer": "kv_cache_sliding_window_ring_buffer",

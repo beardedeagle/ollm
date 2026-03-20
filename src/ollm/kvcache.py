@@ -14,6 +14,7 @@ from ollm.kv_cache_matrix import (
     resolve_kv_cache_eviction_policy,
     resolve_kv_cache_window_tokens,
 )
+from ollm.kv_cache_paged_store import PagedKVStore
 from ollm.kv_cache_policy import KVCachePolicy, select_kv_cache_policy
 from ollm.kv_cache_quantized_store import QuantizedJournaledKVStore
 from ollm.kv_cache_sliding_window_store import SlidingWindowRingBufferKVStore
@@ -384,6 +385,8 @@ def _build_cache_store(
 ) -> _KVCacheStoreProtocol:
     if cache_strategy == "chunked":
         return ChunkedKVStore(cache_folder)
+    if cache_strategy == "paged":
+        return PagedKVStore(cache_folder)
     if cache_strategy == "streamed-segmented":
         return StreamedSegmentedKVStore(cache_folder)
     if cache_strategy == "log-structured-journal":

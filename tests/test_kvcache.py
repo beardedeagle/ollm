@@ -231,7 +231,7 @@ def test_kvcache_rejects_chunk_paths_outside_cache_root(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     "cache_strategy",
-    ["chunked", "streamed-segmented", "sliding-window-ring-buffer"],
+    ["chunked", "paged", "streamed-segmented", "sliding-window-ring-buffer"],
 )
 def test_qwen3_next_disk_cache_persists_sequence_growth(
     tmp_path: Path, cache_strategy: str
@@ -392,6 +392,7 @@ def test_kvcache_buffers_tail_until_policy_threshold_then_flushes(
     "cache_strategy",
     [
         "chunked",
+        "paged",
         "streamed-segmented",
         "log-structured-journal",
         "quantized-cold-tier",

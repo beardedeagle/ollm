@@ -136,7 +136,7 @@ Runtime selection and inspection controls:
 `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` now all honor `--backend` and `--no-specialization`. `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` also support `--plan-json` for script-friendly inspection of the resolver/backend decision.
 `ollm prompt` and `ollm chat` also honor `--kv-cache-strategy` to switch the
 optimized-native disk KV backend between `chunked`,
-`streamed-segmented`, `log-structured-journal`,
+`paged`, `streamed-segmented`, `log-structured-journal`,
 `sliding-window-ring-buffer`, `quantized-cold-tier`, and
 `tiered-write-back`. When the bounded `sliding-window-ring-buffer` mode is
 selected, `--kv-cache-window-tokens` sets the recent-context token budget and
@@ -329,7 +329,10 @@ That disk cache path now writes to `cache_dir/kv_cache_chunked` by default,
 using typed raw chunk payloads plus JSON metadata instead of opaque torch cache
 blobs. When `kv_cache_strategy="streamed-segmented"` is selected, the runtime
 uses `cache_dir/kv_cache_streamed_segmented` instead so the two strategies
-never share on-disk state. `kv_cache_strategy="log-structured-journal"` uses
+never share on-disk state. `kv_cache_strategy="paged"` uses
+`cache_dir/kv_cache_paged` and writes fixed-capacity pages behind an explicit
+page table, so selective movement is bounded to page-sized units instead of
+variable chunk files. `kv_cache_strategy="log-structured-journal"` uses
 `cache_dir/kv_cache_log_structured_journal` and keeps append behavior cheap
 while compacting entry metadata deterministically when the journal gets too
 fragmented. `kv_cache_strategy="sliding-window-ring-buffer"` uses

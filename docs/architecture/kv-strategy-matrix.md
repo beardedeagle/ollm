@@ -1,7 +1,7 @@
 # KV Strategy Matrix
 
 oLLM's current disk-KV presets are still selected as single strings such as
-`chunked`, `streamed-segmented`, `log-structured-journal`,
+`chunked`, `paged`, `streamed-segmented`, `log-structured-journal`,
 `sliding-window-ring-buffer`, `quantized-cold-tier`, and
 `tiered-write-back`.
 
@@ -30,6 +30,7 @@ Current presets are now understood as bundles of axis values:
 | Preset | Persistence Format | Residency Mode | Window Policy | Cold-Tier Encoding |
 | --- | --- | --- | --- | --- |
 | `chunked` | `chunked-manifest` | `buffered-tail` | `full-history` | `full-precision` |
+| `paged` | `paged-manifest` | `buffered-tail` | `full-history` | `full-precision` |
 | `streamed-segmented` | `streamed-segmented` | `buffered-tail` | `full-history` | `full-precision` |
 | `log-structured-journal` | `log-structured-journal` | `buffered-tail` | `full-history` | `full-precision` |
 | `sliding-window-ring-buffer` | `sliding-window-ring-buffer` | `buffered-tail` | `sliding-window` | `full-precision` |
