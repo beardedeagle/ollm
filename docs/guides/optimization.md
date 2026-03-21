@@ -92,9 +92,7 @@ pickle-backed `.pt` cache blobs. The runtime also applies a
 platform/resource-aware buffering or spill policy on top of the selected
 strategy so the cache can trade write amplification against memory headroom
 instead of flushing every delta identically on every machine.
-That preset is still not the full future GPU/CPU/SSD tiered architecture; the
-recommended multi-tier design is documented separately in
-[Tiered KV Cache Design](../architecture/tiered-kv-cache.md).
+That preset is still not the full future GPU/CPU/SSD tiered architecture.
 `resident` does not initialize any disk-KV root at all; it keeps full-history
 KV entirely in memory and exists as the explicit low-overhead baseline when the
 active runtime can afford that footprint. It is intentionally not aligned with

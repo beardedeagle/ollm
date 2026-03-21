@@ -45,7 +45,6 @@ nav:
   - Architecture:
       - Overview: architecture/overview.md
       - KV Strategy Matrix: architecture/kv-strategy-matrix.md
-      - Tiered KV Cache Design: architecture/tiered-kv-cache.md
       - Model Resolution: architecture/model-resolution.md
       - Backend Selection: architecture/backend-selection.md
       - Specialization: architecture/specialization.md
@@ -60,6 +59,7 @@ nav:
       - Inference Helpers: api/inference.md
   - Contributing:
       - Development: development.md
+      - Tiered KV Cache ADR: development/tiered-kv-cache-adr.md
       - Contributing Guide: guides/contributing.md
       - Python Standards: guides/python-standards.md
       - Python Standards Audit: guides/python-standards-audit.md

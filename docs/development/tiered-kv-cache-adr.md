@@ -1,7 +1,25 @@
-# Tiered KV Cache Design
+# Tiered KV Cache ADR
 
-This page is the design decision for the future KV cache architecture that
-spans GPU, CPU, and SSD-backed storage.
+This page is contributor-facing architectural guidance.
+
+It is not customer-facing product documentation and not an implementation
+claim. It records the recommended future direction for a GPU/CPU/SSD tiered KV
+cache so later implementation work stays grounded in the current oLLM
+architecture.
+
+## Status
+
+- audience: implementers and maintainers
+- kind: ADR / design decision
+- implementation status: not implemented
+
+## Scope
+
+This ADR defines the recommended architecture for a future KV cache that spans:
+
+- the active execution device
+- host memory
+- SSD-backed persistence
 
 It is intentionally separate from the current `tiered-write-back` preset.
 Today, `tiered-write-back` means:
@@ -86,10 +104,10 @@ The current code makes that limitation concrete:
 ## Critical truth constraint
 
 For standard full-attention decode, every token step still needs all prior KV.
-That means a future GPU/CPU/SSD cache is **not** just an eviction problem.
+That means a future GPU/CPU/SSD cache is not just an eviction problem.
 
 If the model path still expects one contiguous per-layer KV tensor on the
-accelerator, then "demoting old pages to CPU or SSD" only moves cost around; it
+accelerator, then demoting old pages to CPU or SSD only moves cost around; it
 does not create a real scalable runtime architecture.
 
 Because of that, accelerator tiering should only be claimed once the attention
@@ -101,7 +119,7 @@ This is the most important design guardrail in the whole document.
 
 ### Page unit
 
-Use **fixed-token, layer-local KV pages** as the primary movement unit.
+Use fixed-token, layer-local KV pages as the primary movement unit.
 
 Each page should represent:
 
@@ -126,13 +144,12 @@ Why fixed-token pages:
 
 - they match the existing `paged` strategy direction
 - they give a deterministic transfer unit for GPU/CPU/SSD movement
-- they keep benchmark comparisons aligned to logical units rather than raw file
-  counts
+- they keep benchmark comparisons aligned to logical units rather than raw file counts
 - they avoid the unbounded rewrite behavior of variable chunk ranges
 
 ### Authoritative persisted store
 
-The SSD tier should be the **authoritative persisted representation**.
+The SSD tier should be the authoritative persisted representation.
 
 Recommended persisted structure:
 
@@ -155,8 +172,7 @@ oLLM:
 Purpose:
 
 - hold the current working set required by the active decode/prefill step
-- prioritize append-biased recent pages plus any explicitly prefetched next
-  pages
+- prioritize append-biased recent pages plus any explicitly prefetched next pages
 
 This tier is not authoritative.
 
@@ -182,7 +198,7 @@ This is the durable source of truth for persistent lifecycle mode.
 
 ### Promotion
 
-Promotion should be **page-driven**, not tensor-global.
+Promotion should be page-driven, not tensor-global.
 
 Recommended promotion path:
 
@@ -202,8 +218,8 @@ Eviction should differ by tier:
 - CPU tier: evict least-recently-served pages subject to configured budget
 - SSD tier: do not "evict" as part of normal runtime pressure; use lifecycle GC
 
-The design should not describe SSD page removal as normal cache eviction.
-That is retention / GC, not working-set management.
+The design should not describe SSD page removal as normal cache eviction. That
+is retention / GC, not working-set management.
 
 ## Write path
 
@@ -268,11 +284,11 @@ the final architecture.
 The design should explicitly say:
 
 - current `tiered-write-back` proves hot/cold split reporting and batching
-- it does **not** yet prove true GPU/CPU/SSD page-aware tiering
+- it does not yet prove true GPU/CPU/SSD page-aware tiering
 
 ## Runtime planning and selector integration
 
-The runtime selector should not choose "tiered KV" as one opaque winner.
+The runtime selector should not choose tiered KV as one opaque winner.
 
 Instead, planning should eventually surface at least:
 
@@ -289,8 +305,8 @@ Relevant current surfaces:
 - `src/ollm/runtime/inspection.py`
 
 This should remain deterministic and table-driven. The selector may use
-observed budgets and platform/model family, but the ADR should reject a vague
-"online optimizer" claim.
+observed budgets and platform/model family, but this ADR rejects a vague online
+optimizer framing.
 
 ## Benchmark and inspection truth
 
@@ -309,7 +325,7 @@ Relevant current surfaces:
 
 - `src/ollm/runtime/benchmark_details.py`
 - `src/ollm/runtime/benchmark_history_summary_support.py`
-- [Benchmarking](../benchmarking.md)
+- `docs/benchmarking.md`
 
 The future tiered architecture should add explicit tier-aware observability:
 
@@ -323,21 +339,21 @@ The future tiered architecture should add explicit tier-aware observability:
 - demotion counts
 - quantized cold-page bytes vs decoded warm-page bytes
 
-Without those fields, oLLM would risk claiming "tiered wins" while hiding where
+Without those fields, oLLM would risk claiming tiered wins while hiding where
 the bytes and latency actually moved.
 
 ## Failure, recovery, and fallback
 
-The ADR should make these rules explicit:
+The ADR makes these rules explicit:
 
 - page blobs are immutable once published
 - root/page-table manifests are versioned
 - cache identity must include model, backend, encoding, page size, and schema
 - partial writes must never become authoritative
 - invalid manifests or missing page blobs invalidate the persistent cache root
-- multi-process access requires explicit coordination; it should not be implied
-- unsupported backends fall back to non-tiered strategies rather than pretending
-  to run tiered mode
+- multi-process access requires explicit coordination; it is not implied
+- unsupported backends fall back to non-tiered strategies rather than
+  pretending to run tiered mode
 
 Recommended persistent write rule:
 
@@ -389,8 +405,8 @@ fit.
 
 ## Recommendation
 
-Proceed with the future tiered KV architecture, but do it as a **paged,
-page-aware, benchmark-truthful** design.
+Proceed with the future tiered KV architecture, but do it as a paged,
+page-aware, benchmark-truthful design.
 
-Do **not** describe it as "current tiered-write-back generalized" and do
-**not** claim real GPU/CPU/SSD scaling before page-aware execution exists.
+Do not describe it as current `tiered-write-back` generalized and do not claim
+real GPU/CPU/SSD scaling before page-aware execution exists.

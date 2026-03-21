@@ -358,8 +358,7 @@ now also applies a platform/resource-aware buffering or spill policy on top of
 the selected format, so small KV deltas do not have to flush to disk on every
 update.
 That current preset is still not the full future GPU/CPU/SSD tiered
-architecture; the design direction for that broader cache hierarchy now lives in
-[docs/architecture/tiered-kv-cache.md](docs/architecture/tiered-kv-cache.md).
+architecture.
 Within one loaded runtime, the cache layer now also keeps a resident
 in-process per-layer KV snapshot so repeated updates do not have to reread and
 reconstruct the same persisted history every token. The streamed store also

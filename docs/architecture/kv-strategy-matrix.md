@@ -38,9 +38,8 @@ Current presets are now understood as bundles of axis values:
 | `quantized-cold-tier` | `log-structured-journal` | `buffered-tail` | `full-history` | `quantized` |
 | `tiered-write-back` | `log-structured-journal` | `tiered-write-back` | `full-history` | `full-precision` |
 
-The current `tiered-write-back` preset should not be confused with the future
-multi-tier GPU/CPU/SSD architecture. That design is tracked separately in
-[Tiered KV Cache Design](tiered-kv-cache.md).
+The current `tiered-write-back` preset should not be confused with a future
+broader multi-tier GPU/CPU/SSD architecture.
 
 This does not erase the semantic differences between presets. For example,
 `sliding-window-ring-buffer` deliberately preserves only a bounded recent
