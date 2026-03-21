@@ -2286,7 +2286,7 @@
 
 <span class="n">o</span> <span class="o">=</span> <span class="n">Inference</span><span class="p">(</span><span class="s2">&quot;llama3-1B-chat&quot;</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="n">logging</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">o</span><span class="o">.</span><span class="n">ini_model</span><span class="p">(</span><span class="n">models_dir</span><span class="o">=</span><span class="s2">&quot;./models/&quot;</span><span class="p">,</span> <span class="n">force_download</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-<span class="n">o</span><span class="o">.</span><span class="n">offload_layers_to_cpu</span><span class="p">(</span><span class="n">layers_num</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">o</span><span class="o">.</span><span class="n">offload_layers_to_cpu</span><span class="p">(</span><span class="n">layers_num</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">policy</span><span class="o">=</span><span class="s2">&quot;middle-band&quot;</span><span class="p">)</span>
 <span class="n">past_key_values</span> <span class="o">=</span> <span class="n">o</span><span class="o">.</span><span class="n">DiskCache</span><span class="p">(</span>
     <span class="n">cache_dir</span><span class="o">=</span><span class="s2">&quot;./kv_cache/&quot;</span><span class="p">,</span>
     <span class="n">cache_strategy</span><span class="o">=</span><span class="s2">&quot;streamed-segmented&quot;</span><span class="p">,</span>
@@ -2322,6 +2322,11 @@ while keeping a bounded hot tail in memory. The active runtime then applies a
 platform/resource-aware buffering or spill policy on top of the selected
 store. <code>Inference.DiskCache()</code> accepts the same switch through
 <code>cache_strategy=...</code>.</p>
+<p><code>Inference.offload_layers_to_cpu()</code> now also accepts an explicit
+<code>policy=...</code> argument. The current supported CPU placement policies are
+<code>auto</code>, <code>prefix</code>, <code>suffix</code>, and <code>middle-band</code>, where <code>auto</code> resolves to
+<code>middle-band</code>. The runtime currently rejects simultaneous CPU and GPU offload
+requests instead of pretending mixed policy placement is supported.</p>
 <h2 id="typical-autoinference-example">Typical <code>AutoInference</code> example<a class="headerlink" href="#typical-autoinference-example" title="Permanent link">&para;</a></h2>
 <div class="language-python highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">ollm</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoInference</span>
 

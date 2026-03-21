@@ -2246,6 +2246,14 @@
 <li><code>kv_cache_window_tokens</code> — bounded recent-context token budget for <code>sliding-window-ring-buffer</code>; omitted for full-history strategies</li>
 <li><code>kv_cache_lifecycle</code> — <code>runtime-scoped</code> or explicit <code>persistent</code> reuse semantics; <code>resident</code> requires <code>runtime-scoped</code></li>
 <li><code>kv_cache_adaptation_mode</code> — <code>disabled</code>, <code>observe-only</code>, or <code>automatic</code>; observe-only recommendation rules exist, but live switching is still disabled</li>
+<li><code>offload_cpu_layers</code> — requested CPU offload layer budget</li>
+<li><code>offload_cpu_policy</code> — CPU offload placement policy (<code>auto</code>, <code>prefix</code>, <code>suffix</code>, or <code>middle-band</code>)</li>
+<li><code>offload_gpu_layers</code> — requested GPU offload layer budget</li>
+</ul>
+<p>Current offload truth:</p>
+<ul>
+<li><code>offload_cpu_layers</code> requires an accelerator runtime device</li>
+<li><code>offload_cpu_layers</code> and <code>offload_gpu_layers</code> cannot be combined in the current implementation</li>
 </ul>
 <h2 id="generationconfig"><code>GenerationConfig</code><a class="headerlink" href="#generationconfig" title="Permanent link">&para;</a></h2>
 <p>Use <code>GenerationConfig</code> to describe:</p>

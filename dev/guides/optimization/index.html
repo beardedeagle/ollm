@@ -2410,6 +2410,16 @@
 </ul>
 <p>These controls are backend-dependent. The generic path does not expose the same
 low-level layer-placement controls as optimized-native runtimes.</p>
+<p>Current CPU offload policies are:</p>
+<ul>
+<li><code>auto</code></li>
+<li><code>prefix</code></li>
+<li><code>suffix</code></li>
+<li><code>middle-band</code></li>
+</ul>
+<p><code>auto</code> currently resolves to <code>middle-band</code>. Simultaneous CPU and GPU offload is
+intentionally rejected in this slice because the mixed-placement path is still
+prefix-shaped and would be misleading if reported as policy-driven.</p>
 <p>The optimized-native KV cache surface now exposes eight explicit presets:</p>
 <ul>
 <li><code>chunked</code></li>

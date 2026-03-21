@@ -2454,6 +2454,30 @@ bucket; it materially bounds persisted KV, but it is not a general perf win.
 For <code>resident</code>, benchmark output surfaces <code>cache_mode="resident-kv"</code> plus the
 resident layer/token/byte counters while leaving <code>cache_dir_size_mb</code> empty
 because there is no persisted KV root.
+CPU offload policy work can now be probed with:</p>
+<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--probe-runtime<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--probe-mode<span class="w"> </span>warm<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--model<span class="w"> </span>HuggingFaceTB/SmolLM2-1.7B-Instruct<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--models-dir<span class="w"> </span>models<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--device<span class="w"> </span>mps<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--probe-backend<span class="w"> </span>optimized-native<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--probe-kv-cache-strategy<span class="w"> </span>resident<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--probe-offload-cpu-layers<span class="w"> </span><span class="m">4</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--probe-offload-cpu-policy<span class="w"> </span>middle-band<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--probe-max-new-tokens<span class="w"> </span><span class="m">4</span>
+</code></pre></div>
+<p>Bounded local proof on <code>HuggingFaceTB/SmolLM2-1.7B-Instruct</code> over <code>mps</code> with
+<code>offload_cpu_layers=4</code> showed the current tradeoff clearly:</p>
+<ul>
+<li>no offload: mean request <code>1113.842 ms</code>, mean peak RSS <code>795.414 MB</code></li>
+<li><code>prefix</code>: mean request <code>757.589 ms</code>, mean peak RSS <code>1824.094 MB</code></li>
+<li><code>middle-band</code>: mean request <code>761.598 ms</code>, mean peak RSS <code>1823.039 MB</code></li>
+<li><code>suffix</code>: mean request <code>765.557 ms</code>, mean peak RSS <code>1822.805 MB</code></li>
+</ul>
+<p>So the current local evidence says policy-driven CPU offload can reduce request
+latency on that lane, but it materially increases host RSS. Mixed CPU+GPU
+offload remains intentionally unsupported in this slice.
 Cold, warm, prompt-scaling, output-scaling, and session-growth probes all use
 the same persistent benchmark-history ledger, so bounded proof runs remain
 recorded and comparable instead of becoming ad hoc local artifacts.

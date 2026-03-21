@@ -2270,7 +2270,7 @@
 
 <span class="n">o</span> <span class="o">=</span> <span class="n">Inference</span><span class="p">(</span><span class="s2">&quot;llama3-1B-chat&quot;</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="s2">&quot;cuda:0&quot;</span><span class="p">,</span> <span class="n">logging</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="n">o</span><span class="o">.</span><span class="n">ini_model</span><span class="p">(</span><span class="n">models_dir</span><span class="o">=</span><span class="s2">&quot;./models/&quot;</span><span class="p">,</span> <span class="n">force_download</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
-<span class="n">o</span><span class="o">.</span><span class="n">offload_layers_to_cpu</span><span class="p">(</span><span class="n">layers_num</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+<span class="n">o</span><span class="o">.</span><span class="n">offload_layers_to_cpu</span><span class="p">(</span><span class="n">layers_num</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">policy</span><span class="o">=</span><span class="s2">&quot;middle-band&quot;</span><span class="p">)</span>
 <span class="n">past_key_values</span> <span class="o">=</span> <span class="n">o</span><span class="o">.</span><span class="n">DiskCache</span><span class="p">(</span>
     <span class="n">cache_dir</span><span class="o">=</span><span class="s2">&quot;./kv_cache/&quot;</span><span class="p">,</span>
     <span class="n">cache_strategy</span><span class="o">=</span><span class="s2">&quot;streamed-segmented&quot;</span><span class="p">,</span>
@@ -2297,6 +2297,10 @@ metadata instead of opaque torch cache blobs. The active runtime then applies a
 platform/resource-aware buffering or spill policy on top of the selected
 store.
 The low-level helper accepts the same switch directly through
+<code>offload_layers_to_cpu(layers_num=..., policy=...)</code>.</p>
+<p>Current supported CPU offload policies are <code>auto</code>, <code>prefix</code>, <code>suffix</code>, and
+<code>middle-band</code>. <code>auto</code> currently resolves to <code>middle-band</code>, and combined
+CPU+GPU offload is intentionally unsupported in this slice.
 <code>Inference.DiskCache(cache_strategy=...)</code>.</p>
 <p>For compatible local Llama or Gemma3 directories, <code>AutoInference</code> remains the direct optimized-native helper:</p>
 <div class="language-python highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">ollm</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoInference</span>
