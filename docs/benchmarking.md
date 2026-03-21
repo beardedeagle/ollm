@@ -40,16 +40,29 @@ uv run python scripts/benchmark_runtime.py \
 
 Use `--no-record-history` only when you explicitly want to skip that ledger.
 The comparison key is based on the actual run shape, including model, device,
-backend, strategy, codebase label, and prompt/profile controls, so
+backend, requested strategy override, selector profile, codebase label, and prompt/profile controls, so
 incomparable runs do not get mashed together.
 
-For KV strategy A/B work, select the preset explicitly:
+By default, the benchmark harness now uses the runtime strategy selector with
+`--strategy-selector-profile balanced`.
+
+For KV strategy A/B work, pin the preset explicitly:
 
 ```bash
 uv run python scripts/benchmark_runtime.py \
   --device cpu \
   --kv-cache-strategy streamed-segmented \
   --output .omx/runtime-benchmark-streamed.json
+```
+
+To benchmark the selector path itself, leave `--kv-cache-strategy` unset and
+change only the selector profile:
+
+```bash
+uv run python scripts/benchmark_runtime.py \
+  --device cpu \
+  --strategy-selector-profile capacity \
+  --output .omx/runtime-benchmark-selector-capacity.json
 ```
 
 The paged strategy uses the same switch:
