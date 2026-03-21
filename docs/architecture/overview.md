@@ -24,3 +24,7 @@ oLLM is organized around a resolver-and-plan model instead of a fixed allowlist 
 - `RuntimeLoader`
 - `RuntimeExecutor`
 - specialization registry / matching / application
+
+See also:
+
+- [KV Strategy Matrix](kv-strategy-matrix.md)

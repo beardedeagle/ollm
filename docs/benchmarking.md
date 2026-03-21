@@ -197,6 +197,8 @@ can show up under the same `disk-kv-cache` storage path label.
 For `tiered-write-back`, the persisted cold tier now uses a journal-backed
 append store under `cache_dir/kv_cache_tiered_write_back/cold`, so the tiered
 spill path no longer depends on the chunked cold-store substrate.
+That current preset is still a bounded hot-tail plus cold journal strategy, not
+the future GPU/CPU/SSD multi-tier architecture.
 For `log-structured-journal`, compaction is visible both through
 `cache_state.compaction_count` and, when it occurs during a request, native
 runtime profile timing under `kvcompact`. `kvsave` now measures append-path

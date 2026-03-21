@@ -38,6 +38,9 @@ Current presets are now understood as bundles of axis values:
 | `quantized-cold-tier` | `log-structured-journal` | `buffered-tail` | `full-history` | `quantized` |
 | `tiered-write-back` | `log-structured-journal` | `tiered-write-back` | `full-history` | `full-precision` |
 
+The current `tiered-write-back` preset should not be confused with a future
+broader multi-tier GPU/CPU/SSD architecture.
+
 This does not erase the semantic differences between presets. For example,
 `sliding-window-ring-buffer` deliberately preserves only a bounded recent
 history under a `drop-oldest` eviction policy; it is not a transparent
@@ -111,6 +114,7 @@ This scaffold is meant to support the next wave of work:
 
 - paged persistence
 - quantized cold tiers
+- a future page-aware GPU / CPU / SSD tiered architecture
 - observe-only adaptation recommendations
 - stronger persistent lifecycle reuse and retention policy
 
