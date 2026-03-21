@@ -14,10 +14,7 @@ from ollm.runtime.benchmark_types import (
 )
 
 
-def build_cold_probe_details(
-    spec: CommandBenchmarkSpec,
-    samples: list[RuntimeProbeResult],
-) -> dict[str, object]:
+def build_cold_probe_details(spec: CommandBenchmarkSpec, samples: list[RuntimeProbeResult]) -> dict[str, object]:
     """Build the details payload for cold runtime probe measurements."""
 
     return {
@@ -34,11 +31,10 @@ def build_cold_probe_details(
         "text_excerpt": samples[-1].request.text_excerpt,
     }
 
-
-def summarize_request_metrics(
-    samples: list[RequestProbeMetrics],
-) -> dict[str, object]:
+def summarize_request_metrics(samples: list[RequestProbeMetrics]) -> dict[str, object]:
     """Summarize request-level runtime probe metrics."""
+
+    from ollm.runtime.benchmark_offload_summary import summarize_request_offload
 
     return {
         "latency_ms": {
@@ -105,6 +101,7 @@ def summarize_request_metrics(
             ),
             "cache_state": summarize_cache_states(samples),
         },
+        "offload": summarize_request_offload(samples),
         "allocator": {
             "allocator_gap_mb": optional_summary_dict(
                 [
@@ -123,7 +120,6 @@ def summarize_request_metrics(
         },
         "native_runtime_profile": summarize_native_runtime_profiles(samples),
     }
-
 
 def summarize_stage_resources(
     snapshots: list[StageResourceSnapshot],

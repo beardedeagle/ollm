@@ -72,6 +72,7 @@ def register_doctor_command(app: typer.Typer, services: CommandServices) -> None
             cache_dir=None,
             no_cache=None,
             offload_cpu_layers=None,
+            offload_cpu_policy=None,
             offload_gpu_layers=None,
             force_download=None,
             stats=None,

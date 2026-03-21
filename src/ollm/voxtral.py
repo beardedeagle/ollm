@@ -25,6 +25,8 @@ class _LayerLoaderContext(Protocol):
 class _OffloadProtocol(Protocol):
     num_hidden_layers: int
 
+    def offload_layers_to_cpu_indices(self, layer_indices: tuple[int, ...]) -> None: ...
+
 
 loader: _LoaderProtocol | None = None
 stats = None
@@ -95,15 +97,25 @@ setattr(llama, "MyLlamaDecoderLayer", MyLlamaDecoderLayer)
 
 
 class oForGeneration:
-    def offload_layers_to_cpu(self: _OffloadProtocol, layers_num: int = 2) -> None:
-        print(f"offloading layers to CPU {layers_num}/{self.num_hidden_layers}...")
+    def offload_layers_to_cpu_indices(
+        self: _OffloadProtocol, layer_indices: tuple[int, ...]
+    ) -> None:
+        print(
+            f"offloading layers to CPU {len(layer_indices)}/{self.num_hidden_layers}..."
+        )
         current_loader = _require_loader()
-        for layer_idx in range(min(layers_num, self.num_hidden_layers)):
+        for layer_idx in layer_indices:
             base = f"language_model.model.layers.{layer_idx}."
             current_loader.preload_layer_safetensors(base)
             current_loader.offload_dict_to_gpu_cpu(base, gpu=False)
         print(
-            f"./finished offloading layers to CPU {layers_num}/{self.num_hidden_layers}"
+            "./finished offloading layers to CPU "
+            f"{len(layer_indices)}/{self.num_hidden_layers}"
+        )
+
+    def offload_layers_to_cpu(self: _OffloadProtocol, layers_num: int = 2) -> None:
+        self.offload_layers_to_cpu_indices(
+            tuple(range(min(layers_num, self.num_hidden_layers)))
         )
 
 

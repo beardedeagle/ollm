@@ -207,6 +207,17 @@ def _parse_request_probe_metrics(payload: Mapping[str, object]) -> RequestProbeM
         output_tokens_per_second=_optional_float(payload, "output_tokens_per_second"),
         cache_mode=_require_string(payload, "cache_mode"),
         kv_cache_strategy=_optional_string(payload, "kv_cache_strategy"),
+        offload_cpu_policy=_optional_string(payload, "offload_cpu_policy"),
+        offload_cpu_requested_layers=_optional_int(
+            payload, "offload_cpu_requested_layers"
+        ),
+        offload_cpu_applied_layers=_optional_int(payload, "offload_cpu_applied_layers"),
+        offload_cpu_applied_indices=tuple(
+            _require_int({"value": value}, "value")
+            for value in _require_optional_sequence(
+                payload, "offload_cpu_applied_indices"
+            )
+        ),
         kv_cache_adaptation=_parse_kv_cache_adaptation(
             payload.get("kv_cache_adaptation")
         ),
@@ -367,6 +378,17 @@ def _require_object_mapping(value: object, field_name: str) -> Mapping[str, obje
 
 def _require_sequence(payload: Mapping[str, object], key: str) -> tuple[object, ...]:
     value = payload.get(key)
+    if not isinstance(value, list):
+        raise ValueError(f"probe field '{key}' must be a list")
+    return tuple(value)
+
+
+def _require_optional_sequence(
+    payload: Mapping[str, object], key: str
+) -> tuple[object, ...]:
+    value = payload.get(key)
+    if value is None:
+        return ()
     if not isinstance(value, list):
         raise ValueError(f"probe field '{key}' must be a list")
     return tuple(value)

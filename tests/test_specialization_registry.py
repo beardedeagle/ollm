@@ -55,7 +55,7 @@ class RegistryProvider(SpecializationProvider):
             create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None, cache_window_tokens=None: (
                 str(cache_dir)
             ),
-            apply_cpu_offload=lambda layers_num: None,
+            apply_cpu_offload=lambda layer_indices: None,
             apply_gpu_offload=None,
         )
 

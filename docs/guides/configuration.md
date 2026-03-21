@@ -33,7 +33,14 @@ Key runtime configuration fields:
 - `kv_cache_window_tokens` — bounded recent-context token budget for `sliding-window-ring-buffer`; the field is invalid for full-history strategies
 - `kv_cache_lifecycle` — whether KV artifacts are `runtime-scoped` or explicitly `persistent`; `resident` requires `runtime-scoped`
 - `kv_cache_adaptation_mode` — whether adaptation telemetry is `disabled`, `observe-only`, or `automatic` (live switching is still not enabled)
-- `offload_cpu_layers` / `offload_gpu_layers` — native offload controls when supported
+- `offload_cpu_layers` — native CPU offload layer budget when supported
+- `offload_cpu_policy` — CPU offload placement policy (`auto`, `prefix`, `suffix`, or `middle-band`)
+- `offload_gpu_layers` — GPU offload layer budget for mixed-placement-capable runtimes
+
+Current constraint:
+
+- `offload_cpu_layers` requires an accelerator runtime device
+- `offload_cpu_layers` cannot be combined with `offload_gpu_layers` in the current implementation
 
 Generation configuration fields:
 
@@ -64,6 +71,9 @@ Nested configuration keys use a double-underscore separator:
 - `OLLM_RUNTIME__KV_CACHE_WINDOW_TOKENS`
 - `OLLM_RUNTIME__KV_CACHE_LIFECYCLE`
 - `OLLM_RUNTIME__KV_CACHE_ADAPTATION_MODE`
+- `OLLM_RUNTIME__OFFLOAD_CPU_LAYERS`
+- `OLLM_RUNTIME__OFFLOAD_CPU_POLICY`
+- `OLLM_RUNTIME__OFFLOAD_GPU_LAYERS`
 - `OLLM_GENERATION__MAX_NEW_TOKENS`
 - `OLLM_GENERATION__STREAM`
 - `OLLM_SERVER__HOST`

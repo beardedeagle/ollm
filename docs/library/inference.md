@@ -21,7 +21,7 @@ from ollm import Inference, TextStreamer
 
 o = Inference("llama3-1B-chat", device="cuda:0", logging=True)
 o.ini_model(models_dir="./models/", force_download=False)
-o.offload_layers_to_cpu(layers_num=2)
+o.offload_layers_to_cpu(layers_num=2, policy="middle-band")
 past_key_values = o.DiskCache(
     cache_dir="./kv_cache/",
     cache_strategy="streamed-segmented",
@@ -58,6 +58,12 @@ while keeping a bounded hot tail in memory. The active runtime then applies a
 platform/resource-aware buffering or spill policy on top of the selected
 store. `Inference.DiskCache()` accepts the same switch through
 `cache_strategy=...`.
+
+`Inference.offload_layers_to_cpu()` now also accepts an explicit
+`policy=...` argument. The current supported CPU placement policies are
+`auto`, `prefix`, `suffix`, and `middle-band`, where `auto` resolves to
+`middle-band`. The runtime currently rejects simultaneous CPU and GPU offload
+requests instead of pretending mixed policy placement is supported.
 
 ## Typical `AutoInference` example
 

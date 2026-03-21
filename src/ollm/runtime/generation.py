@@ -26,6 +26,13 @@ class _StatsProtocol(Protocol):
 PLAN_METADATA_DETAIL_KEYS = (
     "execution_device_type",
     "specialization_device_profile",
+    "offload_cpu_requested_layers",
+    "offload_cpu_policy",
+    "offload_cpu_total_layers",
+    "offload_cpu_resolved_policy",
+    "offload_cpu_applied_layers",
+    "offload_cpu_applied_indices",
+    "offload_gpu_layers",
 )
 
 

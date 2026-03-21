@@ -50,6 +50,17 @@ When supported by the selected backend, oLLM can expose:
 These controls are backend-dependent. The generic path does not expose the same
 low-level layer-placement controls as optimized-native runtimes.
 
+Current CPU offload policies are:
+
+- `auto`
+- `prefix`
+- `suffix`
+- `middle-band`
+
+`auto` currently resolves to `middle-band`. Simultaneous CPU and GPU offload is
+intentionally rejected in this slice because the mixed-placement path is still
+prefix-shaped and would be misleading if reported as policy-driven.
+
 The optimized-native KV cache surface now exposes eight explicit presets:
 
 - `chunked`

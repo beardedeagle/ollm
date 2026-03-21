@@ -111,6 +111,13 @@ def execute_request_probe(
     cpu_outputs = output_tensor.cpu()
     response_text = executor._decode_response(runtime, inputs, cpu_outputs)
     cache_state = _extract_cache_state_snapshot(generate_kwargs.get("past_key_values"))
+    offload_cpu_applied_indices = tuple(
+        int(layer_idx)
+        for layer_idx in runtime.plan.details.get(
+            "offload_cpu_applied_indices", ""
+        ).split(",")
+        if layer_idx
+    )
     output_tokens = _count_output_tokens(runtime, inputs, cpu_outputs)
     time_to_first_token_ms = None
     if streamer.token_timestamps:
@@ -184,6 +191,14 @@ def execute_request_probe(
             output_tokens_per_second=output_tokens_per_second,
             cache_mode=cache_mode,
             kv_cache_strategy=kv_cache_strategy,
+            offload_cpu_policy=runtime.plan.details.get("offload_cpu_resolved_policy"),
+            offload_cpu_requested_layers=_optional_int_detail(
+                runtime.plan.details, "offload_cpu_requested_layers"
+            ),
+            offload_cpu_applied_layers=_optional_int_detail(
+                runtime.plan.details, "offload_cpu_applied_layers"
+            ),
+            offload_cpu_applied_indices=offload_cpu_applied_indices,
             kv_cache_adaptation=kv_cache_adaptation,
             cache_dir_size_mb=cache_dir_size,
             cache_state=cache_state,
@@ -344,3 +359,10 @@ def _extract_cache_state_snapshot(value: object) -> KVCacheStateSnapshot | None:
     if not isinstance(snapshot, KVCacheStateSnapshot):
         return None
     return snapshot
+
+
+def _optional_int_detail(details: dict[str, str], key: str) -> int | None:
+    raw_value = details.get(key)
+    if raw_value is None or not raw_value:
+        return None
+    return int(raw_value)

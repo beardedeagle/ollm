@@ -115,6 +115,24 @@ def test_summarize_request_metrics_reports_resident_cache_state() -> None:
     )
 
 
+def test_summarize_request_metrics_reports_cpu_offload_policy() -> None:
+    metrics = replace(
+        build_request_probe_metrics(),
+        offload_cpu_policy="middle-band",
+        offload_cpu_requested_layers=4,
+        offload_cpu_applied_layers=4,
+        offload_cpu_applied_indices=(10, 11, 12, 13),
+    )
+
+    summary = summarize_request_metrics([metrics])
+    offload = cast(dict[str, object], summary["offload"])
+
+    assert offload["cpu_policy"] == "middle-band"
+    assert cast(dict[str, float], offload["cpu_requested_layers"])["mean"] == 4.0
+    assert cast(dict[str, float], offload["cpu_applied_layers"])["mean"] == 4.0
+    assert offload["cpu_applied_indices"] == "10,11,12,13"
+
+
 def test_render_runtime_probe_json_round_trips_sliding_window_cache_state() -> None:
     base_metrics = build_request_probe_metrics()
     cache_state = base_metrics.cache_state

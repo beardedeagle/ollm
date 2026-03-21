@@ -1,5 +1,10 @@
 from ollm.runtime.backends.base import BackendRuntime, ExecutionBackend
 from ollm.runtime.config import RuntimeConfig
+from ollm.runtime.offload_policy import (
+    format_layer_indices,
+    plan_cpu_offload_placement,
+    require_hidden_layer_count,
+)
 from ollm.runtime.output_control import (
     suppress_external_runtime_noise,
     suppress_module_prints,
@@ -66,6 +71,7 @@ class NativeOptimizedBackend(ExecutionBackend):
             artifacts,
             config,
         )
+        details: dict[str, str] = {}
         return BackendRuntime(
             backend_id=self.backend_id,
             model=artifacts.model,
@@ -76,15 +82,36 @@ class NativeOptimizedBackend(ExecutionBackend):
             print_suppression_modules=artifacts.print_suppression_modules,
             create_cache=artifacts.create_cache,
             apply_offload=lambda runtime_config: _apply_native_offload(
-                artifacts, runtime_config
+                artifacts, runtime_config, details
             ),
             applied_specialization=applied_specialization,
+            details=details,
         )
 
 
 def _apply_native_offload(
-    artifacts: OptimizedModelArtifacts, config: RuntimeConfig
+    artifacts: OptimizedModelArtifacts,
+    config: RuntimeConfig,
+    details: dict[str, str],
 ) -> None:
+    details["offload_cpu_requested_layers"] = str(config.offload_cpu_layers)
+    details["offload_cpu_policy"] = config.resolved_offload_cpu_policy()
+    details["offload_gpu_layers"] = str(config.offload_gpu_layers)
+    details["offload_cpu_applied_layers"] = "0"
+    details["offload_cpu_applied_indices"] = ""
+    if config.offload_cpu_layers > 0:
+        total_layers = require_hidden_layer_count(artifacts.model)
+        placement = plan_cpu_offload_placement(
+            requested_layers=config.offload_cpu_layers,
+            total_layers=total_layers,
+            policy=config.offload_cpu_policy,
+        )
+        details["offload_cpu_total_layers"] = str(total_layers)
+        details["offload_cpu_resolved_policy"] = placement.resolved_policy_id
+        details["offload_cpu_applied_layers"] = str(placement.applied_layers)
+        details["offload_cpu_applied_indices"] = format_layer_indices(
+            placement.layer_indices
+        )
     if config.offload_gpu_layers > 0:
         if artifacts.apply_gpu_offload is None:
             raise ValueError(
@@ -101,7 +128,7 @@ def _apply_native_offload(
                 "The selected optimized specialization does not support CPU layer offload"
             )
         with suppress_module_prints(artifacts.print_suppression_modules):
-            artifacts.apply_cpu_offload(config.offload_cpu_layers)
+            artifacts.apply_cpu_offload(placement.layer_indices)
 
 
 def _modules_for_provider_id(provider_id: str) -> tuple:

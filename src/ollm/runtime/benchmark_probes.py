@@ -1,7 +1,6 @@
 """Runtime benchmark probe execution entrypoints."""
 
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from typing import cast
 
 from ollm.app.types import ContentPart, Message, MessageRole
@@ -13,6 +12,7 @@ from ollm.runtime.benchmark_probe_execution import (
     build_scaling_prompt,
     execute_request_probe,
 )
+from ollm.runtime.benchmark_probe_reopen import run_reopen_session_growth_probe
 from ollm.runtime.benchmark_probe_serialization import (
     parse_output_scaling_probe_result,
     parse_prompt_scaling_probe_result,
@@ -76,11 +76,40 @@ __all__ = [
     "render_warm_runtime_probe_json",
     "run_output_scaling_probe",
     "run_prompt_scaling_probe",
-    "run_reopen_session_growth_probe",
     "run_runtime_probe",
     "run_session_growth_probe",
     "run_warm_runtime_probe",
+    "run_reopen_session_growth_probe",
 ]
+
+
+def _build_probe_runtime_config(
+    *,
+    model_reference: str,
+    models_dir: Path,
+    device: str,
+    backend: str,
+    use_specialization: bool,
+    kv_cache_strategy: str,
+    kv_cache_window_tokens: int | None,
+    offload_cpu_layers: int,
+    offload_cpu_policy: str,
+    offload_gpu_layers: int,
+) -> RuntimeConfig:
+    return RuntimeConfig(
+        model_reference=model_reference,
+        models_dir=models_dir.expanduser().resolve(),
+        device=device,
+        backend=backend,
+        use_specialization=use_specialization,
+        use_cache=True,
+        kv_cache_strategy=kv_cache_strategy,
+        kv_cache_window_tokens=kv_cache_window_tokens,
+        offload_cpu_layers=offload_cpu_layers,
+        offload_cpu_policy=offload_cpu_policy,
+        offload_gpu_layers=offload_gpu_layers,
+        stats=True,
+    )
 
 
 def run_runtime_probe(
@@ -94,17 +123,21 @@ def run_runtime_probe(
     max_new_tokens: int,
     kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
     kv_cache_window_tokens: int | None = None,
+    offload_cpu_layers: int = 0,
+    offload_cpu_policy: str = "auto",
+    offload_gpu_layers: int = 0,
 ) -> RuntimeProbeResult:
-    runtime_config = RuntimeConfig(
+    runtime_config = _build_probe_runtime_config(
         model_reference=model_reference,
-        models_dir=models_dir.expanduser().resolve(),
+        models_dir=models_dir,
         device=device,
         backend=backend,
         use_specialization=use_specialization,
-        use_cache=True,
         kv_cache_strategy=kv_cache_strategy,
         kv_cache_window_tokens=kv_cache_window_tokens,
-        stats=True,
+        offload_cpu_layers=offload_cpu_layers,
+        offload_cpu_policy=offload_cpu_policy,
+        offload_gpu_layers=offload_gpu_layers,
     )
     generation_config = GenerationConfig(
         stream=True,
@@ -152,17 +185,21 @@ def run_warm_runtime_probe(
     warmup_iterations: int,
     kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
     kv_cache_window_tokens: int | None = None,
+    offload_cpu_layers: int = 0,
+    offload_cpu_policy: str = "auto",
+    offload_gpu_layers: int = 0,
 ) -> WarmRuntimeProbeResult:
-    runtime_config = RuntimeConfig(
+    runtime_config = _build_probe_runtime_config(
         model_reference=model_reference,
-        models_dir=models_dir.expanduser().resolve(),
+        models_dir=models_dir,
         device=device,
         backend=backend,
         use_specialization=use_specialization,
-        use_cache=True,
         kv_cache_strategy=kv_cache_strategy,
         kv_cache_window_tokens=kv_cache_window_tokens,
-        stats=True,
+        offload_cpu_layers=offload_cpu_layers,
+        offload_cpu_policy=offload_cpu_policy,
+        offload_gpu_layers=offload_gpu_layers,
     )
     generation_config = GenerationConfig(
         stream=True,
@@ -211,17 +248,21 @@ def run_prompt_scaling_probe(
     max_new_tokens: int,
     kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
     kv_cache_window_tokens: int | None = None,
+    offload_cpu_layers: int = 0,
+    offload_cpu_policy: str = "auto",
+    offload_gpu_layers: int = 0,
 ) -> PromptScalingProbeResult:
-    runtime_config = RuntimeConfig(
+    runtime_config = _build_probe_runtime_config(
         model_reference=model_reference,
-        models_dir=models_dir.expanduser().resolve(),
+        models_dir=models_dir,
         device=device,
         backend=backend,
         use_specialization=use_specialization,
-        use_cache=True,
         kv_cache_strategy=kv_cache_strategy,
         kv_cache_window_tokens=kv_cache_window_tokens,
-        stats=True,
+        offload_cpu_layers=offload_cpu_layers,
+        offload_cpu_policy=offload_cpu_policy,
+        offload_gpu_layers=offload_gpu_layers,
     )
     generation_config = GenerationConfig(
         stream=True,
@@ -281,17 +322,21 @@ def run_output_scaling_probe(
     output_token_targets: tuple[int, ...],
     kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
     kv_cache_window_tokens: int | None = None,
+    offload_cpu_layers: int = 0,
+    offload_cpu_policy: str = "auto",
+    offload_gpu_layers: int = 0,
 ) -> OutputScalingProbeResult:
-    runtime_config = RuntimeConfig(
+    runtime_config = _build_probe_runtime_config(
         model_reference=model_reference,
-        models_dir=models_dir.expanduser().resolve(),
+        models_dir=models_dir,
         device=device,
         backend=backend,
         use_specialization=use_specialization,
-        use_cache=True,
         kv_cache_strategy=kv_cache_strategy,
         kv_cache_window_tokens=kv_cache_window_tokens,
-        stats=True,
+        offload_cpu_layers=offload_cpu_layers,
+        offload_cpu_policy=offload_cpu_policy,
+        offload_gpu_layers=offload_gpu_layers,
     )
     client = RuntimeClient()
     runtime_result = measure_stage(
@@ -344,17 +389,21 @@ def run_session_growth_probe(
     max_new_tokens: int,
     kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
     kv_cache_window_tokens: int | None = None,
+    offload_cpu_layers: int = 0,
+    offload_cpu_policy: str = "auto",
+    offload_gpu_layers: int = 0,
 ) -> SessionGrowthProbeResult:
-    runtime_config = RuntimeConfig(
+    runtime_config = _build_probe_runtime_config(
         model_reference=model_reference,
-        models_dir=models_dir.expanduser().resolve(),
+        models_dir=models_dir,
         device=device,
         backend=backend,
         use_specialization=use_specialization,
-        use_cache=True,
         kv_cache_strategy=kv_cache_strategy,
         kv_cache_window_tokens=kv_cache_window_tokens,
-        stats=True,
+        offload_cpu_layers=offload_cpu_layers,
+        offload_cpu_policy=offload_cpu_policy,
+        offload_gpu_layers=offload_gpu_layers,
     )
     generation_config = GenerationConfig(
         stream=True,
@@ -404,81 +453,3 @@ def run_session_growth_probe(
         runtime_load_resources=runtime_result[2],
         turns=tuple(turns),
     )
-
-
-def run_reopen_session_growth_probe(
-    *,
-    model_reference: str,
-    models_dir: Path,
-    device: str,
-    backend: str,
-    use_specialization: bool,
-    session_turns: int,
-    max_new_tokens: int,
-    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
-    kv_cache_window_tokens: int | None = None,
-) -> ReopenSessionGrowthProbeResult:
-    generation_config = GenerationConfig(
-        stream=True,
-        max_new_tokens=max_new_tokens,
-        temperature=0.0,
-    )
-    history: list[Message] = []
-    turns: list[ReopenSessionGrowthTurn] = []
-    with TemporaryDirectory(prefix="ollm-reopen-session-growth-") as temp_dir:
-        persistent_cache_dir = Path(temp_dir)
-        for turn_index in range(1, session_turns + 1):
-            runtime_config = RuntimeConfig(
-                model_reference=model_reference,
-                models_dir=models_dir.expanduser().resolve(),
-                device=device,
-                backend=backend,
-                use_specialization=use_specialization,
-                cache_dir=persistent_cache_dir,
-                use_cache=True,
-                kv_cache_strategy=kv_cache_strategy,
-                kv_cache_lifecycle="persistent",
-                kv_cache_window_tokens=kv_cache_window_tokens,
-                stats=True,
-            )
-            client = RuntimeClient()
-            runtime_result = measure_stage(
-                runtime_config.device,
-                lambda: client.load(runtime_config),
-            )
-            runtime = cast(LoadedRuntime, runtime_result[0])
-            _clear_backend_stats(runtime)
-            user_message = Message(
-                role=MessageRole.USER,
-                content=[
-                    ContentPart.text(
-                        f"Turn {turn_index}: summarize the benchmark status in one sentence."
-                    )
-                ],
-            )
-            execution = execute_request_probe(
-                runtime=runtime,
-                request=build_prompt_request(
-                    runtime_config=runtime_config,
-                    generation_config=generation_config,
-                    messages=[
-                        Message(
-                            role=MessageRole.SYSTEM,
-                            content=[ContentPart.text(DEFAULT_SYSTEM_PROMPT)],
-                        ),
-                        *history,
-                        user_message,
-                    ],
-                ),
-            )
-            history.append(user_message)
-            history.append(Message.assistant_text(execution.response_text))
-            turns.append(
-                ReopenSessionGrowthTurn(
-                    turn_index=turn_index,
-                    runtime_load_ms=runtime_result[1],
-                    runtime_load_resources=runtime_result[2],
-                    request=execution.metrics,
-                )
-            )
-    return ReopenSessionGrowthProbeResult(turns=tuple(turns))

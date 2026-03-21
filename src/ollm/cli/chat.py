@@ -29,6 +29,7 @@ def run_chat_command(
     kv_cache_strategy: str | None,
     kv_cache_window_tokens: int | None,
     offload_cpu_layers: int | None,
+    offload_cpu_policy: str | None,
     offload_gpu_layers: int | None,
     force_download: bool | None,
     max_new_tokens: int | None,
@@ -64,6 +65,7 @@ def run_chat_command(
         kv_cache_strategy=kv_cache_strategy,
         kv_cache_window_tokens=kv_cache_window_tokens,
         offload_cpu_layers=offload_cpu_layers,
+        offload_cpu_policy=offload_cpu_policy,
         offload_gpu_layers=offload_gpu_layers,
         force_download=force_download,
         stats=stats,
@@ -174,6 +176,13 @@ def register_chat_surfaces(app: typer.Typer, services: CommandServices) -> None:
             min=0,
             help="Number of layers to offload to CPU.",
         ),
+        offload_cpu_policy: str | None = typer.Option(
+            None,
+            "--offload-cpu-policy",
+            help=(
+                "CPU offload placement policy: auto, prefix, suffix, or middle-band."
+            ),
+        ),
         offload_gpu_layers: int | None = typer.Option(
             None,
             "--offload-gpu-layers",
@@ -262,6 +271,7 @@ def register_chat_surfaces(app: typer.Typer, services: CommandServices) -> None:
             kv_cache_strategy=kv_cache_strategy,
             kv_cache_window_tokens=kv_cache_window_tokens,
             offload_cpu_layers=offload_cpu_layers,
+            offload_cpu_policy=offload_cpu_policy,
             offload_gpu_layers=offload_gpu_layers,
             force_download=force_download,
             max_new_tokens=max_new_tokens,

@@ -65,6 +65,17 @@ def test_backend_selector_records_accelerator_execution_profile_for_mps() -> Non
     assert plan.details["specialization_device_profile"] == "accelerator-resident"
 
 
+def test_backend_selector_records_requested_cpu_offload_policy_details() -> None:
+    plan = BackendSelector().select(
+        build_catalog_resolved_model(),
+        RuntimeConfig(device="mps", offload_cpu_layers=2, offload_cpu_policy="suffix"),
+    )
+
+    assert plan.details["offload_cpu_requested_layers"] == "2"
+    assert plan.details["offload_cpu_policy"] == "suffix"
+    assert plan.details["offload_gpu_layers"] == "0"
+
+
 def test_backend_selector_routes_catalog_models_with_adapters_to_generic_backend() -> (
     None
 ):

@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from types import ModuleType
 
@@ -28,6 +28,7 @@ class BackendRuntime:
     execute_prompt: Callable[[PromptRequest, StreamSink], PromptResponse] | None = None
     allows_multimodal_without_processor: bool = False
     applied_specialization: AppliedSpecialization | None = None
+    details: dict[str, str] = field(default_factory=dict)
 
 
 class ExecutionBackend(ABC):
