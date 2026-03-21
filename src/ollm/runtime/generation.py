@@ -208,15 +208,17 @@ class RuntimeExecutor:
             resolved_window_tokens = (
                 request.runtime_config.resolved_kv_cache_window_tokens()
             )
-            cache_base_dir = resolve_kv_cache_base_dir(
-                cache_dir=request.runtime_config.resolved_cache_dir(),
-                lifecycle=resolved_lifecycle,
-                model_reference=runtime.resolved_model.reference.raw,
-                normalized_name=runtime.resolved_model.normalized_name,
-                backend_id=runtime.plan.backend_id or "unknown",
-                specialization_provider_id=runtime.plan.specialization_provider_id,
-            )
-            cache = runtime.get_or_create_disk_cache(
+            cache_base_dir = request.runtime_config.resolved_cache_dir()
+            if resolved_strategy != "resident":
+                cache_base_dir = resolve_kv_cache_base_dir(
+                    cache_dir=request.runtime_config.resolved_cache_dir(),
+                    lifecycle=resolved_lifecycle,
+                    model_reference=runtime.resolved_model.reference.raw,
+                    normalized_name=runtime.resolved_model.normalized_name,
+                    backend_id=runtime.plan.backend_id or "unknown",
+                    specialization_provider_id=runtime.plan.specialization_provider_id,
+                )
+            cache = runtime.get_or_create_kv_cache(
                 cache_base_dir,
                 resolved_strategy,
                 resolved_lifecycle,
@@ -299,7 +301,11 @@ class RuntimeExecutor:
             "fallback_reason": runtime.plan.fallback_reason or "",
             "kv_cache_strategy": (
                 runtime.config.resolved_kv_cache_strategy()
-                if runtime.config.use_cache and runtime.plan.supports_disk_cache
+                if runtime.config.use_cache
+                and (
+                    runtime.plan.supports_disk_cache
+                    or runtime.config.resolved_kv_cache_strategy() == "resident"
+                )
                 else "none"
             ),
             "kv_cache_lifecycle": runtime.config.resolved_kv_cache_lifecycle(),
@@ -369,7 +375,10 @@ class RuntimeExecutor:
         if (
             "kv_cache_eviction_policy" not in metadata
             and runtime.config.use_cache
-            and runtime.plan.supports_disk_cache
+            and (
+                runtime.plan.supports_disk_cache
+                or runtime.config.resolved_kv_cache_strategy() == "resident"
+            )
         ):
             resolved_eviction_policy = resolve_kv_cache_eviction_policy(
                 runtime.config.resolved_kv_cache_strategy()

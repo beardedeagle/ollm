@@ -104,6 +104,37 @@ class FakePagedCache(FakeCache):
         )
 
 
+class FakeResidentCache(FakeCache):
+    def cache_state_snapshot(self) -> KVCacheStateSnapshot:
+        self.snapshot_calls += 1
+        return KVCacheStateSnapshot(
+            strategy_id="resident",
+            policy_id="resident-baseline",
+            persistence_format="resident-only",
+            residency_mode="fully-resident",
+            window_policy="full-history",
+            window_max_tokens=None,
+            eviction_policy=None,
+            cold_tier_encoding="full-precision",
+            cold_tier_representation=None,
+            persisted_layer_count=0,
+            persisted_tokens=0,
+            persisted_artifact_count=0,
+            resident_layer_count=2,
+            resident_tokens=64,
+            resident_bytes=2048,
+            hot_layer_count=0,
+            hot_tokens=0,
+            hot_bytes=0,
+            compaction_count=0,
+            spill_count=0,
+            spilled_tokens=0,
+            eviction_count=0,
+            evicted_tokens=0,
+            cold_store_format=None,
+        )
+
+
 def test_runtime_executor_includes_execution_device_details_in_metadata() -> None:
     capabilities = CapabilityProfile(support_level=SupportLevel.OPTIMIZED)
     runtime = build_runtime(capabilities)
@@ -230,3 +261,30 @@ def test_runtime_executor_reports_paged_metadata() -> None:
     assert response.metadata["kv_cache_persistence_format"] == "paged-manifest"
     assert response.metadata["kv_cache_cold_store_format"] == "ollm-kv-paged"
     assert response.metadata["kv_cache_persisted_artifacts"] == "2"
+
+
+def test_runtime_executor_reports_resident_metadata() -> None:
+    runtime = build_runtime(CapabilityProfile(support_level=SupportLevel.GENERIC))
+    runtime.config.use_cache = True
+    runtime.config.kv_cache_strategy = "resident"
+    runtime.backend.create_cache = (
+        lambda cache_dir, cache_strategy=None, cache_lifecycle=None, cache_window_tokens=None: (
+            FakeResidentCache()
+        )
+    )
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("hello")]),
+    )
+
+    response = RuntimeExecutor().execute(runtime, request)
+
+    assert response.metadata["kv_cache_strategy"] == "resident"
+    assert response.metadata["kv_cache_policy_id"] == "resident-baseline"
+    assert response.metadata["kv_cache_persistence_format"] == "resident-only"
+    assert response.metadata["kv_cache_residency_mode"] == "fully-resident"
+    assert response.metadata["kv_cache_persisted_tokens"] == "0"
+    assert response.metadata["kv_cache_persisted_artifacts"] == "0"
+    assert response.metadata["kv_cache_resident_layers"] == "2"
+    assert response.metadata["kv_cache_resident_tokens"] == "64"
+    assert "kv_cache_cold_store_format" not in response.metadata

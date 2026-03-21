@@ -134,13 +134,15 @@ Runtime selection and inspection controls:
 - `--plan-json` prints the resolved runtime plan as JSON and exits without running generation
 
 `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` now all honor `--backend` and `--no-specialization`. `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` also support `--plan-json` for script-friendly inspection of the resolver/backend decision.
-`ollm prompt` and `ollm chat` also honor `--kv-cache-strategy` to switch the
-optimized-native disk KV backend between `chunked`,
-`paged`, `streamed-segmented`, `log-structured-journal`,
+`ollm prompt` and `ollm chat` also honor `--kv-cache-strategy` to switch the KV
+cache strategy between `resident`, `chunked`, `paged`,
+`streamed-segmented`, `log-structured-journal`,
 `sliding-window-ring-buffer`, `quantized-cold-tier`, and
-`tiered-write-back`. When the bounded `sliding-window-ring-buffer` mode is
-selected, `--kv-cache-window-tokens` sets the recent-context token budget and
-oldest tokens are evicted once the window is exceeded.
+`tiered-write-back`. `resident` is the explicit no-disk baseline when the
+runtime can afford to keep full-history KV in memory. When the bounded
+`sliding-window-ring-buffer` mode is selected, `--kv-cache-window-tokens` sets
+the recent-context token budget and oldest tokens are evicted once the window
+is exceeded.
 
 Configuration layering is now first-class:
 
@@ -325,9 +327,13 @@ past_key_values = o.DiskCache(cache_dir="./kv_cache/")
 text_streamer = TextStreamer(o.tokenizer, skip_prompt=True, skip_special_tokens=False)
 ```
 
-That disk cache path now writes to `cache_dir/kv_cache_chunked` by default,
-using typed raw chunk payloads plus JSON metadata instead of opaque torch cache
-blobs. When `kv_cache_strategy="streamed-segmented"` is selected, the runtime
+When `kv_cache_strategy="resident"` is selected, the runtime keeps KV fully in
+memory and does not initialize any disk-KV root at all. That makes `resident`
+the truthful low-overhead baseline, but it is only appropriate when the
+model/workload/hardware envelope can hold the active KV state without spill.
+When disk-backed strategies are selected, the default path writes to
+`cache_dir/kv_cache_chunked`, using typed raw chunk payloads plus JSON metadata
+instead of opaque torch cache blobs. When `kv_cache_strategy="streamed-segmented"` is selected, the runtime
 uses `cache_dir/kv_cache_streamed_segmented` instead so the two strategies
 never share on-disk state. `kv_cache_strategy="paged"` uses
 `cache_dir/kv_cache_paged` and writes fixed-capacity pages behind an explicit
@@ -459,6 +465,8 @@ separately as `kvcompact` instead of being folded into `kvsave`.
 If a repeated request is satisfied from the resident in-process KV snapshot
 instead of rereading disk history, `kvload` can legitimately disappear for that
 step even though disk KV remains the active strategy.
+Resident requests now report `cache_mode="resident-kv"` with no on-disk cache
+size, so the in-memory baseline is not mislabeled as a disk-backed run.
 
 Useful knobs for the primary-target sweeps:
 

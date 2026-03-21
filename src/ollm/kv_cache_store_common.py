@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 from typing import cast
+from uuid import uuid4
 
 import torch
 
@@ -103,7 +104,7 @@ def read_json_object(path: Path) -> dict[str, object]:
 def atomic_write_text(path: Path, content: str) -> None:
     """Atomically replace a text file."""
 
-    temp_path = path.with_suffix(path.suffix + ".tmp")
+    temp_path = _atomic_temp_path(path)
     path_write_text(temp_path, content, encoding="utf-8")
     path_replace(temp_path, path)
 
@@ -111,9 +112,15 @@ def atomic_write_text(path: Path, content: str) -> None:
 def atomic_write_bytes(path: Path, content: bytes) -> None:
     """Atomically replace a binary file."""
 
-    temp_path = path.with_suffix(path.suffix + ".tmp")
+    temp_path = _atomic_temp_path(path)
     path_write_bytes(temp_path, content)
     path_replace(temp_path, path)
+
+
+def _atomic_temp_path(path: Path) -> Path:
+    """Return a unique same-directory temp path for atomic replacement."""
+
+    return path.with_name(f"{path.name}.{uuid4().hex}.tmp")
 
 
 def require_object_list(

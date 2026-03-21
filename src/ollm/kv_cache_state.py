@@ -1,11 +1,11 @@
-"""Typed runtime state snapshots for disk-backed KV strategies."""
+"""Typed runtime state snapshots for resident and disk-backed KV strategies."""
 
 from dataclasses import asdict, dataclass
 
 
 @dataclass(frozen=True, slots=True)
 class KVCacheStateSnapshot:
-    """Summarize hot and cold KV state for runtime and benchmark reporting."""
+    """Summarize resident, hot, and cold KV state for runtime reporting."""
 
     strategy_id: str
     policy_id: str

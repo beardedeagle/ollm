@@ -8,7 +8,10 @@ from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.reference import ModelReference
 from ollm.runtime.resolver import ModelSourceKind, NativeFamily, ResolvedModel
-from ollm.runtime.specialization.providers import LlamaSpecializationProvider
+from ollm.runtime.specialization.providers import (
+    Gemma3SpecializationProvider,
+    LlamaSpecializationProvider,
+)
 from ollm.utils import Stats
 
 
@@ -169,3 +172,92 @@ def test_llama_specialization_provider_wires_stats_into_gds_loader(
 
     assert fake_module.stats is fake_stats
     assert providers_module.gds_loader_module.stats is fake_stats
+
+
+def test_gemma3_specialization_provider_skips_processor_for_text_only_runtime(
+    tmp_path: Path, monkeypatch
+) -> None:
+    model_dir = tmp_path / "gemma3"
+    model_dir.mkdir()
+    (model_dir / "config.json").write_text(
+        json.dumps(
+            {
+                "model_type": "gemma3",
+                "architectures": ["Gemma3ForCausalLM"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (model_dir / "model.safetensors").write_text("safe", encoding="utf-8")
+
+    class FakeGemmaTextModel:
+        @classmethod
+        def from_pretrained(cls, *args, **kwargs):
+            del cls, args, kwargs
+            return FakeLoadedModel()
+
+    class FakeGemmaMultimodalModel:
+        @classmethod
+        def from_pretrained(cls, *args, **kwargs):
+            del cls, args, kwargs
+            return FakeLoadedModel()
+
+    fake_module = SimpleNamespace(
+        loader=None,
+        stats=None,
+        MyGemma3ForCausalLM=FakeGemmaTextModel,
+        MyGemma3ForConditionalGeneration=FakeGemmaMultimodalModel,
+    )
+    monkeypatch.setattr(
+        "ollm.runtime.specialization.providers.import_module",
+        lambda module_name: fake_module,
+    )
+    monkeypatch.setattr(
+        "ollm.runtime.specialization.providers.get_attention_implementation",
+        lambda: None,
+    )
+    monkeypatch.setattr(
+        "ollm.runtime.specialization.providers.DenseWeightsLoader",
+        lambda *args, **kwargs: object(),
+    )
+    monkeypatch.setattr(
+        "ollm.runtime.specialization.providers.AutoTokenizer.from_pretrained",
+        lambda *args, **kwargs: object(),
+    )
+    monkeypatch.setattr(
+        "ollm.runtime.specialization.providers.AutoProcessor.from_pretrained",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("AutoProcessor should not load for text-only Gemma3")
+        ),
+    )
+
+    provider = Gemma3SpecializationProvider()
+    resolved_model = ResolvedModel(
+        reference=ModelReference.parse("gemma3-12B"),
+        source_kind=ModelSourceKind.BUILTIN,
+        normalized_name="gemma3-12b",
+        model_path=model_dir,
+        repo_id="google/gemma-3-12b-it",
+        revision=None,
+        catalog_entry=None,
+        capabilities=CapabilityProfile(support_level=SupportLevel.OPTIMIZED),
+        native_family=NativeFamily.GEMMA3,
+        resolution_message="optimized",
+        architecture="Gemma3ForCausalLM",
+        model_type="gemma3",
+        generic_model_kind=GenericModelKind.CAUSAL_LM,
+    )
+
+    artifacts = provider.load(
+        resolved_model,
+        RuntimeConfig(
+            model_reference="gemma3-12B",
+            models_dir=tmp_path,
+            device="cpu",
+            multimodal=False,
+            use_cache=False,
+        ),
+        stats=None,
+    )
+
+    assert artifacts.processor is None

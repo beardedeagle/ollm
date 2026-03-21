@@ -58,8 +58,9 @@ past_key_values = o.DiskCache(
 text_streamer = TextStreamer(o.tokenizer, skip_prompt=True, skip_special_tokens=False)
 ```
 
-`RuntimeConfig.kv_cache_strategy` now selects the optimized-native disk KV
-backend explicitly. `chunked` uses `cache_dir/kv_cache_chunked`, while
+`RuntimeConfig.kv_cache_strategy` now selects the KV cache baseline explicitly.
+`resident` keeps full-history KV in memory with no disk root, while `chunked`
+uses `cache_dir/kv_cache_chunked`,
 `paged` uses `cache_dir/kv_cache_paged`,
 `streamed-segmented` uses `cache_dir/kv_cache_streamed_segmented`,
 `log-structured-journal` uses `cache_dir/kv_cache_log_structured_journal`,
@@ -72,7 +73,7 @@ memory and a journal-backed cold tier on disk. The bounded
 `kv_cache_window_tokens` cached tokens and evicts older history, so it is a
 semantic recent-context mode rather than a transparent replacement for the
 full-history strategies. The `paged` preset uses fixed-capacity pages with an
-explicit page table while still preserving full history. All seven use typed raw payloads plus explicit
+explicit page table while still preserving full history. All seven disk-backed presets use typed raw payloads plus explicit
 metadata instead of opaque torch cache blobs. The active runtime then applies a
 platform/resource-aware buffering or spill policy on top of the selected
 store.

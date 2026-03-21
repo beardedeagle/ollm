@@ -76,7 +76,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--kv-cache-strategy",
         default="chunked",
-        help="Disk KV strategy for optimized-native probes and comparisons.",
+        help="KV cache strategy for probes and comparisons.",
     )
     parser.add_argument(
         "--kv-cache-window-tokens",

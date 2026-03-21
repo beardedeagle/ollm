@@ -69,13 +69,13 @@ def register_prompt_command(app: typer.Typer, services: CommandServices) -> None
             None, "--cache-dir", help="KV cache directory."
         ),
         no_cache: bool | None = typer.Option(
-            None, "--no-cache", help="Disable disk KV cache."
+            None, "--no-cache", help="Disable KV cache."
         ),
         kv_cache_strategy: str | None = typer.Option(
             None,
             "--kv-cache-strategy",
             help=(
-                "Disk KV strategy: chunked, paged, streamed-segmented, "
+                "KV cache strategy: resident, chunked, paged, streamed-segmented, "
                 "log-structured-journal, sliding-window-ring-buffer, "
                 "quantized-cold-tier, or tiered-write-back."
             ),

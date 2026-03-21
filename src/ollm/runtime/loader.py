@@ -35,7 +35,7 @@ class LoadedRuntime:
     backend: BackendRuntime
     model_path: Path | None
     plan: RuntimePlan
-    _disk_cache_instances: dict[tuple[Path, str, str, int | None], object] = field(
+    _kv_cache_instances: dict[tuple[Path, str, str, int | None], object] = field(
         default_factory=dict
     )
 
@@ -81,23 +81,23 @@ class LoadedRuntime:
         """Expose the backend runtime device."""
         return self.backend.device
 
-    def get_or_create_disk_cache(
+    def get_or_create_kv_cache(
         self,
         cache_dir: Path,
         strategy: str,
         lifecycle: str,
         window_tokens: int | None,
     ) -> object | None:
-        """Reuse one disk-cache instance per cache root and strategy."""
+        """Reuse one KV-cache instance per resolved cache key."""
         cache_key = (cache_dir.resolve(), strategy, lifecycle, window_tokens)
-        cache = self._disk_cache_instances.get(cache_key)
+        cache = self._kv_cache_instances.get(cache_key)
         if cache is not None:
             return cache
         created_cache = self.backend.create_cache(
             cache_dir, strategy, lifecycle, window_tokens
         )
         if created_cache is not None:
-            self._disk_cache_instances[cache_key] = created_cache
+            self._kv_cache_instances[cache_key] = created_cache
         return created_cache
 
 

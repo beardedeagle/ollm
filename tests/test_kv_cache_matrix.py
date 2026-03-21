@@ -8,8 +8,20 @@ from ollm.kv_cache_matrix import (
     normalize_kv_cache_lifecycle,
     resolve_kv_cache_base_dir,
     resolve_kv_cache_eviction_policy,
+    resolve_kv_cache_lifecycle,
     resolve_kv_cache_window_tokens,
 )
+
+
+def test_describe_kv_cache_strategy_maps_resident_axes() -> None:
+    axes = describe_kv_cache_strategy("resident")
+
+    assert axes.strategy_id == "resident"
+    assert axes.persistence_format == "resident-only"
+    assert axes.residency_mode == "fully-resident"
+    assert axes.window_policy == "full-history"
+    assert axes.cold_tier_encoding == "full-precision"
+    assert axes.compaction_capable is False
 
 
 def test_describe_kv_cache_strategy_maps_chunked_axes() -> None:
@@ -70,6 +82,15 @@ def test_describe_kv_cache_strategy_maps_sliding_window_axes() -> None:
 def test_normalize_kv_cache_lifecycle_accepts_known_values() -> None:
     assert normalize_kv_cache_lifecycle("persistent") == "persistent"
     assert normalize_kv_cache_lifecycle("runtime-scoped") == "runtime-scoped"
+
+
+def test_resolve_kv_cache_lifecycle_rejects_persistent_resident() -> None:
+    try:
+        resolve_kv_cache_lifecycle("resident", "persistent")
+    except ValueError as exc:
+        assert "--kv-cache-strategy resident requires" in str(exc)
+    else:
+        raise AssertionError("Resident mode should reject persistent lifecycle")
 
 
 def test_normalize_kv_cache_adaptation_mode_accepts_known_values() -> None:
@@ -147,6 +168,20 @@ def test_build_kv_cache_adaptation_surface_recommends_journal_for_artifact_press
 
     assert surface.recommendation_available is True
     assert surface.recommended_strategy_id == "log-structured-journal"
+
+
+def test_build_kv_cache_adaptation_surface_pins_resident_baseline() -> None:
+    surface = build_kv_cache_adaptation_surface(
+        adaptation_mode="observe-only",
+        current_strategy="resident",
+        persisted_artifact_count=0,
+        spill_count=0,
+        resident_bytes=4096,
+        hot_bytes=0,
+    )
+
+    assert surface.recommendation_available is True
+    assert surface.recommended_strategy_id == "resident"
 
 
 def test_resolve_kv_cache_base_dir_namespaces_persistent_lifecycle() -> None:

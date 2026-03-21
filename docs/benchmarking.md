@@ -43,7 +43,7 @@ The comparison key is based on the actual run shape, including model, device,
 backend, strategy, codebase label, and prompt/profile controls, so
 incomparable runs do not get mashed together.
 
-For disk-KV A/B work, select the optimized-native store explicitly:
+For KV strategy A/B work, select the preset explicitly:
 
 ```bash
 uv run python scripts/benchmark_runtime.py \
@@ -77,6 +77,16 @@ uv run python scripts/benchmark_runtime.py \
   --device cpu \
   --kv-cache-strategy log-structured-journal \
   --output .omx/runtime-benchmark-journal.json
+```
+
+Resident mode uses the same switch, but it reports `cache_mode="resident-kv"`
+and leaves `cache_dir_size_mb` empty because no on-disk KV root is created:
+
+```bash
+uv run python scripts/benchmark_runtime.py \
+  --device cpu \
+  --kv-cache-strategy resident \
+  --output .omx/runtime-benchmark-resident.json
 ```
 
 The bounded sliding-window mode requires an explicit window size:
@@ -207,6 +217,9 @@ mode, pass an explicit `--kv-cache-window-tokens` value so benchmark history
 does not compare unlike window sizes. Current local CPU and MPS proof keeps
 this mode in the explicit opt-in bucket rather than the selector-default
 bucket; it materially bounds persisted KV, but it is not a general perf win.
+For `resident`, benchmark output surfaces `cache_mode="resident-kv"` plus the
+resident layer/token/byte counters while leaving `cache_dir_size_mb` empty
+because there is no persisted KV root.
 Cold, warm, prompt-scaling, output-scaling, and session-growth probes all use
 the same persistent benchmark-history ledger, so bounded proof runs remain
 recorded and comparable instead of becoming ad hoc local artifacts.
