@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../">
+        <link rel="prev" href="../tiered-kv-cache-adr/">
       
       
-        <link rel="next" href="../weight-transport-adr/">
+        <link rel="next" href="../../guides/contributing/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Tiered KV Cache ADR - oLLM</title>
+        <title>Weight Transport ADR - oLLM</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#tiered-kv-cache-adr" class="md-skip">
+        <a href="#weight-transport-adr" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Tiered KV Cache ADR
+              Weight Transport ADR
             
           </span>
         </div>
@@ -1966,6 +1966,34 @@
                 
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../tiered-kv-cache-adr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tiered KV Cache ADR
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
     
   
   
@@ -1985,7 +2013,7 @@
   <span class="md-ellipsis">
     
   
-    Tiered KV Cache ADR
+    Weight Transport ADR
   
 
     
@@ -2003,7 +2031,7 @@
   <span class="md-ellipsis">
     
   
-    Tiered KV Cache ADR
+    Weight Transport ADR
   
 
     
@@ -2097,33 +2125,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#critical-truth-constraint" class="md-nav__link">
+  <a href="#critical-truth-constraints" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Critical truth constraint
+        Critical truth constraints
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#recommended-data-model" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Recommended data model
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Recommended data model">
+    <nav class="md-nav" aria-label="Critical truth constraints">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#page-unit" class="md-nav__link">
+  <a href="#transport-encoding-is-not-at-rest-format" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Page unit
+        Transport encoding is not at-rest format
       
     </span>
   </a>
@@ -2131,10 +2148,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#authoritative-persisted-store" class="md-nav__link">
+  <a href="#fp8-staging-is-not-already-supported" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Authoritative persisted store
+        FP8 staging is not already supported
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimization-claims-require-upstream-baselines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimization claims require upstream baselines
       
     </span>
   </a>
@@ -2147,99 +2175,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#tier-model" class="md-nav__link">
+  <a href="#credible-options" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Tier model
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Tier model">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#tier-0-accelerator-hot-tier" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tier 0: accelerator hot tier
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tier-1-cpu-warm-tier" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tier 1: CPU warm tier
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tier-2-ssd-cold-tier" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tier 2: SSD cold tier
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#promotion-and-eviction-semantics" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Promotion and eviction semantics
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Promotion and eviction semantics">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#promotion" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Promotion
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#eviction" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Eviction
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#write-path" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Write path
+        Credible options
       
     </span>
   </a>
@@ -2247,82 +2186,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#interaction-with-existing-presets" class="md-nav__link">
+  <a href="#recommended-first-direction" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Interaction with existing presets
+        Recommended first direction
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Interaction with existing presets">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#resident" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        resident
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#paged" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        paged
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#quantized-cold-tier" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        quantized-cold-tier
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#sliding-window-ring-buffer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        sliding-window-ring-buffer
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tiered-write-back" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        tiered-write-back
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#runtime-planning-and-selector-integration" class="md-nav__link">
+  <a href="#recommended-transport-contract" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Runtime planning and selector integration
+        Recommended transport contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#safety-and-materialization-implications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Safety and materialization implications
       
     </span>
   </a>
@@ -2341,10 +2230,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#failure-recovery-and-fallback" class="md-nav__link">
+  <a href="#failure-and-fallback-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Failure, recovery, and fallback
+        Failure and fallback behavior
       
     </span>
   </a>
@@ -2423,49 +2312,10 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#recommendation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Recommendation
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
       
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../weight-transport-adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Weight Transport ADR
-  
-
-    
-  </span>
-  
-  
-
-      </a>
     </li>
   
 
@@ -2657,33 +2507,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#critical-truth-constraint" class="md-nav__link">
+  <a href="#critical-truth-constraints" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Critical truth constraint
+        Critical truth constraints
       
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#recommended-data-model" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Recommended data model
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Recommended data model">
+    <nav class="md-nav" aria-label="Critical truth constraints">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#page-unit" class="md-nav__link">
+  <a href="#transport-encoding-is-not-at-rest-format" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Page unit
+        Transport encoding is not at-rest format
       
     </span>
   </a>
@@ -2691,10 +2530,21 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#authoritative-persisted-store" class="md-nav__link">
+  <a href="#fp8-staging-is-not-already-supported" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Authoritative persisted store
+        FP8 staging is not already supported
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#optimization-claims-require-upstream-baselines" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Optimization claims require upstream baselines
       
     </span>
   </a>
@@ -2707,99 +2557,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#tier-model" class="md-nav__link">
+  <a href="#credible-options" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Tier model
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Tier model">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#tier-0-accelerator-hot-tier" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tier 0: accelerator hot tier
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tier-1-cpu-warm-tier" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tier 1: CPU warm tier
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tier-2-ssd-cold-tier" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tier 2: SSD cold tier
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#promotion-and-eviction-semantics" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Promotion and eviction semantics
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Promotion and eviction semantics">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#promotion" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Promotion
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#eviction" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Eviction
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#write-path" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Write path
+        Credible options
       
     </span>
   </a>
@@ -2807,82 +2568,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#interaction-with-existing-presets" class="md-nav__link">
+  <a href="#recommended-first-direction" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Interaction with existing presets
+        Recommended first direction
       
     </span>
   </a>
-  
-    <nav class="md-nav" aria-label="Interaction with existing presets">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#resident" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        resident
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#paged" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        paged
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#quantized-cold-tier" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        quantized-cold-tier
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#sliding-window-ring-buffer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        sliding-window-ring-buffer
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#tiered-write-back" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        tiered-write-back
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#runtime-planning-and-selector-integration" class="md-nav__link">
+  <a href="#recommended-transport-contract" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Runtime planning and selector integration
+        Recommended transport contract
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#safety-and-materialization-implications" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Safety and materialization implications
       
     </span>
   </a>
@@ -2901,10 +2612,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#failure-recovery-and-fallback" class="md-nav__link">
+  <a href="#failure-and-fallback-behavior" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Failure, recovery, and fallback
+        Failure and fallback behavior
       
     </span>
   </a>
@@ -2983,17 +2694,6 @@
   
 </li>
       
-        <li class="md-nav__item">
-  <a href="#recommendation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Recommendation
-      
-    </span>
-  </a>
-  
-</li>
-      
     </ul>
   
 </nav>
@@ -3020,12 +2720,12 @@
   
 
 
-<h1 id="tiered-kv-cache-adr">Tiered KV Cache ADR<a class="headerlink" href="#tiered-kv-cache-adr" title="Permanent link">&para;</a></h1>
+<h1 id="weight-transport-adr">Weight Transport ADR<a class="headerlink" href="#weight-transport-adr" title="Permanent link">&para;</a></h1>
 <p>This page is contributor-facing architectural guidance.</p>
 <p>It is not customer-facing product documentation and not an implementation
-claim. It records the recommended future direction for a GPU/CPU/SSD tiered KV
-cache so later implementation work stays grounded in the current oLLM
-architecture.</p>
+claim. It records the recommended direction for compressed or FP8-staged weight
+transport in streamed native runtimes so later implementation work stays
+grounded in the current oLLM architecture.</p>
 <h2 id="status">Status<a class="headerlink" href="#status" title="Permanent link">&para;</a></h2>
 <ul>
 <li>audience: implementers and maintainers</li>
@@ -3033,340 +2733,271 @@ architecture.</p>
 <li>implementation status: not implemented</li>
 </ul>
 <h2 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h2>
-<p>This ADR defines the recommended architecture for a future KV cache that spans:</p>
+<p>This ADR defines the recommended direction for reducing the amount of weight
+data moved during layer-streamed native execution.</p>
+<p>It covers:</p>
 <ul>
-<li>the active execution device</li>
-<li>host memory</li>
-<li>SSD-backed persistence</li>
+<li>layer-streamed weight loads from safetensors and <code>gds_export</code></li>
+<li>optional transport encodings separate from execution dtype</li>
+<li>required safety, materialization, and benchmark changes</li>
 </ul>
-<p>It is intentionally separate from the current <code>tiered-write-back</code> preset.
-Today, <code>tiered-write-back</code> means:</p>
-<ul>
-<li>one runtime-scoped strategy preset</li>
-<li>a bounded hot in-memory tail</li>
-<li>a colder journal-backed spill tier on disk</li>
-</ul>
-<p>That is useful, but it is not yet the full GPU/CPU/SSD architecture implied by
-"tiered KV cache" in the long-context roadmap.</p>
+<p>It does not propose a general model-format rewrite.</p>
 <h2 id="decision-summary">Decision summary<a class="headerlink" href="#decision-summary" title="Permanent link">&para;</a></h2>
-<p>oLLM should build the future multi-tier KV architecture around:</p>
+<p>oLLM should not start with generic "compressed transport" across all streamed
+native runtimes.</p>
+<p>The recommended direction is:</p>
 <ul>
-<li>immutable, fixed-token KV pages as the primary movement unit</li>
-<li>one authoritative persisted page store on SSD</li>
-<li>an optional decoded CPU residency tier</li>
-<li>an optional accelerator-resident hot tier</li>
-<li>page-driven promotion and eviction controlled by explicit runtime policy</li>
-<li>truthful benchmark and inspection reporting for each tier</li>
+<li>reject generic lossless compressed transport as the first implementation slice</li>
+<li>treat transport encoding as separate from both authoritative on-disk model
+  format and final execution dtype</li>
+<li>start with one explicit, manifest-backed transport contract on the custom
+  <code>gds_export</code> path</li>
+<li>make the first concrete implementation target CUDA-only FP8-staged transport
+  with explicit upcast before execution</li>
+<li>require transport-specific benchmark and inspection fields before any speed or
+  memory claim</li>
+<li>require separately labeled upstream concept baselines for optimization claims</li>
 </ul>
-<p>The first implementation slice should not attempt a monolithic rewrite. The
-recommended order is:</p>
-<ol>
-<li>formalize the page contract and persisted layout</li>
-<li>make SSD pages authoritative</li>
-<li>add a CPU residency tier and page-promotion metrics</li>
-<li>add accelerator page staging only when the attention path can consume pages</li>
-<li>compose quantized cold pages and selector integration on top</li>
-</ol>
 <h2 id="why-the-current-baseline-is-not-enough">Why the current baseline is not enough<a class="headerlink" href="#why-the-current-baseline-is-not-enough" title="Permanent link">&para;</a></h2>
-<p>Current oLLM already has several explicit KV presets:</p>
+<p>Current streamed native runtimes still move full execution-ready weight bytes
+for each loaded layer.</p>
+<p>That limitation is visible in the current code:</p>
 <ul>
-<li><code>resident</code></li>
-<li><code>chunked</code></li>
-<li><code>paged</code></li>
-<li><code>streamed-segmented</code></li>
-<li><code>log-structured-journal</code></li>
-<li><code>sliding-window-ring-buffer</code></li>
-<li><code>quantized-cold-tier</code></li>
-<li><code>tiered-write-back</code></li>
+<li><code>src/ollm/llama.py</code> and <code>src/ollm/gemma3.py</code>
+  preload and materialize one layer's safetensors, assign tensors into the live
+  module, then unload them again after the forward pass.</li>
+<li><code>src/ollm/gds_loader.py</code>
+  reads direct byte ranges from safetensor files or raw <code>gds_export</code> blobs into
+  CPU or CUDA buffers.</li>
+<li><code>src/ollm/gds_async.py</code>
+  returns execution-ready tensors from pending read helpers; it does not expose
+  a transport-decode stage yet.</li>
 </ul>
-<p>Those presets are useful, but they still assume one primary storage/runtime
-shape per request. Even the current <code>tiered-write-back</code> preset is still a
-single strategy bundle, not a general architecture for multi-tier full-history
-KV across GPU, CPU, and SSD.</p>
-<p>The current code makes that limitation concrete:</p>
-<ul>
-<li><code>src/ollm/kvcache.py</code>
-  still exposes one active cache object per request path and treats the current
-  persisted store as a single selected backend.</li>
-<li><code>src/ollm/kv_cache_policy.py</code>
-  selects flush and spill thresholds, but not a general promotion pipeline
-  across multiple authoritative residency tiers.</li>
-<li><code>src/ollm/kv_cache_state.py</code>
-  can report resident, hot, and persisted state, but it does not yet distinguish
-  accelerator-tier pages from CPU-tier pages.</li>
-</ul>
+<p>The benchmark docs already identify loader-streamed safetensor IO as a real
+cost on some lanes. That makes weight transport a credible future optimization
+target, but only if the design stays truthful about where the bytes and latency
+actually move.</p>
 <h2 id="design-goals">Design goals<a class="headerlink" href="#design-goals" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Preserve full-history KV semantics by default.</li>
-<li>Make GPU, CPU, and SSD ownership explicit instead of hidden behind one preset
-  string.</li>
-<li>Keep the persisted layout durable, inspectable, and benchmark-observable.</li>
-<li>Allow quantized cold storage to compose with the tiered architecture instead
-  of requiring a separate storage rewrite.</li>
-<li>Preserve deterministic selector behavior rather than turning this into an
-  online optimizer.</li>
+<li>Reduce moved bytes on loader-streamed paths where IO or transfer is the real
+  bottleneck.</li>
+<li>Keep transport encoding separate from execution dtype and from authoritative
+  at-rest model format.</li>
+<li>Preserve explicit safety validation for all transport artifacts.</li>
+<li>Make benchmark evidence able to distinguish encoded bytes, decode work, and
+  final runtime cost.</li>
+<li>Keep fallback behavior explicit instead of pretending an unsupported transport
+  path succeeded.</li>
 </ul>
 <h2 id="non-goals">Non-goals<a class="headerlink" href="#non-goals" title="Permanent link">&para;</a></h2>
 <ul>
-<li>Distributed inference or multi-host KV movement.</li>
-<li>Claiming that every backend can consume tiered KV immediately.</li>
-<li>Pretending the future architecture is just the current <code>tiered-write-back</code>
-  preset with bigger thresholds.</li>
-<li>Hiding bounded-history semantics inside tiering. Sliding-window behavior
-  remains a separate window-policy decision.</li>
+<li>Universal support across all native families in one slice.</li>
+<li>Replacing safetensors as the default model format.</li>
+<li>Hand-wavy 100B-plus claims without IO math and proof.</li>
+<li>Treating FP8-staged transport as end-to-end FP8 inference.</li>
+<li>Claiming GPU-side decompression before the repo has an explicit kernel/runtime
+  path for it.</li>
 </ul>
-<h2 id="critical-truth-constraint">Critical truth constraint<a class="headerlink" href="#critical-truth-constraint" title="Permanent link">&para;</a></h2>
-<p>For standard full-attention decode, every token step still needs all prior KV.
-That means a future GPU/CPU/SSD cache is not just an eviction problem.</p>
-<p>If the model path still expects one contiguous per-layer KV tensor on the
-accelerator, then demoting old pages to CPU or SSD only moves cost around; it
-does not create a real scalable runtime architecture.</p>
-<p>Because of that, accelerator tiering should only be claimed once the attention
-path can consume page-iterated KV or an equivalent staged block interface.</p>
-<p>This is the most important design guardrail in the whole document.</p>
-<h2 id="recommended-data-model">Recommended data model<a class="headerlink" href="#recommended-data-model" title="Permanent link">&para;</a></h2>
-<h3 id="page-unit">Page unit<a class="headerlink" href="#page-unit" title="Permanent link">&para;</a></h3>
-<p>Use fixed-token, layer-local KV pages as the primary movement unit.</p>
-<p>Each page should represent:</p>
+<h2 id="critical-truth-constraints">Critical truth constraints<a class="headerlink" href="#critical-truth-constraints" title="Permanent link">&para;</a></h2>
+<h3 id="transport-encoding-is-not-at-rest-format">Transport encoding is not at-rest format<a class="headerlink" href="#transport-encoding-is-not-at-rest-format" title="Permanent link">&para;</a></h3>
+<p>The ADR must keep three concepts separate:</p>
 <ul>
-<li>one layer</li>
-<li>one contiguous token range</li>
-<li>one encoding contract</li>
-<li>one key payload</li>
-<li>one value payload</li>
+<li>authoritative on-disk model format</li>
+<li>optional streamed transport encoding</li>
+<li>final runtime execution dtype</li>
 </ul>
-<p>Recommended page identity fields:</p>
+<p>If those are blurred together, the work stops being a transport design and
+quietly becomes a model-format rewrite proposal.</p>
+<h3 id="fp8-staging-is-not-already-supported">FP8 staging is not already supported<a class="headerlink" href="#fp8-staging-is-not-already-supported" title="Permanent link">&para;</a></h3>
+<p>Today the readers map storage bytes directly into execution-ready tensors.</p>
+<p>There is no current transport contract for:</p>
 <ul>
-<li><code>schema_version</code></li>
-<li><code>model_identity</code></li>
-<li><code>backend_identity</code></li>
-<li><code>layer_idx</code></li>
-<li><code>start_token</code></li>
-<li><code>end_token</code></li>
-<li><code>dtype_or_encoding</code></li>
-<li><code>page_checksum</code></li>
+<li>encoded dtype</li>
+<li>decode target dtype</li>
+<li>decode location</li>
+<li>scratch-buffer budget</li>
+<li>encoded versus decoded byte counts</li>
 </ul>
-<p>Why fixed-token pages:</p>
+<p>So FP8-staged transport is not a loader tweak. It needs a first-class contract.</p>
+<h3 id="optimization-claims-require-upstream-baselines">Optimization claims require upstream baselines<a class="headerlink" href="#optimization-claims-require-upstream-baselines" title="Permanent link">&para;</a></h3>
+<p>Fork-internal A/B results are not enough.</p>
+<p>Future transport work must compare:</p>
 <ul>
-<li>they match the existing <code>paged</code> strategy direction</li>
-<li>they give a deterministic transfer unit for GPU/CPU/SSD movement</li>
-<li>they keep benchmark comparisons aligned to logical units rather than raw file counts</li>
-<li>they avoid the unbounded rewrite behavior of variable chunk ranges</li>
+<li>current fork baseline</li>
+<li>transport-enabled fork result</li>
+<li>separately labeled upstream concept baseline where applicable</li>
 </ul>
-<h3 id="authoritative-persisted-store">Authoritative persisted store<a class="headerlink" href="#authoritative-persisted-store" title="Permanent link">&para;</a></h3>
-<p>The SSD tier should be the authoritative persisted representation.</p>
-<p>Recommended persisted structure:</p>
+<p>The existing benchmark workflow already documents how upstream baselines stay
+outside this repo tree and keep separate codebase labels.</p>
+<h2 id="credible-options">Credible options<a class="headerlink" href="#credible-options" title="Permanent link">&para;</a></h2>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Credibility in current architecture</th>
+<th>Why</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Generic seekable lossless compression over safetensors</td>
+<td>low</td>
+<td>Current safetensor readers depend on raw offset-addressable bytes and would need a new seekable compressed container plus decompression-aware readers</td>
+</tr>
+<tr>
+<td>FP8-staged transport with upcast before execution</td>
+<td>medium</td>
+<td>Credible only if modeled as an explicit transport encoding contract, not as a safetensor dtype shortcut</td>
+</tr>
+<tr>
+<td>Narrow first step on <code>gds_export</code> only</td>
+<td>high</td>
+<td><code>gds_export</code> already uses an explicit manifest, strict safety validation, and a dedicated GDS loader path</td>
+</tr>
+</tbody>
+</table>
+<h2 id="recommended-first-direction">Recommended first direction<a class="headerlink" href="#recommended-first-direction" title="Permanent link">&para;</a></h2>
+<p>The recommended first direction is:</p>
 <ul>
-<li>one root manifest per cache identity</li>
-<li>one per-layer page table</li>
-<li>immutable page blobs once sealed</li>
-<li>manifest updates written only after page blobs are durable</li>
+<li>define one explicit transport contract for <code>gds_export</code></li>
+<li>use that contract for CUDA-only FP8-staged transport</li>
+<li>upcast to the current execution dtype before layer execution</li>
 </ul>
-<p>That structure should preserve the current good properties already emerging in
-oLLM:</p>
+<p>Why this is the most credible first step:</p>
 <ul>
-<li>explicit manifests instead of opaque <code>.pt</code> blobs</li>
-<li>durable format/version checks</li>
-<li>cache-root identity scoped by model/backend/lifecycle</li>
+<li>GPT-OSS already has a manifest-backed <code>gds_export</code> specialization path</li>
+<li>the path is already safety-gated</li>
+<li>the path already bypasses the generic safetensor-reader assumptions</li>
+<li>benchmark/reporting can extend one explicit path without pretending the whole
+  runtime stack already supports transport encodings</li>
 </ul>
-<h2 id="tier-model">Tier model<a class="headerlink" href="#tier-model" title="Permanent link">&para;</a></h2>
-<h3 id="tier-0-accelerator-hot-tier">Tier 0: accelerator hot tier<a class="headerlink" href="#tier-0-accelerator-hot-tier" title="Permanent link">&para;</a></h3>
-<p>Purpose:</p>
+<p>The ADR explicitly rejects generic lossless compression as v1 because the
+current CPU and GPU safetensor readers assume direct typed byte ranges, not a
+compressed-block container.</p>
+<h2 id="recommended-transport-contract">Recommended transport contract<a class="headerlink" href="#recommended-transport-contract" title="Permanent link">&para;</a></h2>
+<p>The first transport-aware manifest should make these fields explicit per tensor:</p>
 <ul>
-<li>hold the current working set required by the active decode/prefill step</li>
-<li>prioritize append-biased recent pages plus any explicitly prefetched next pages</li>
+<li><code>encoding</code></li>
+<li><code>encoded_dtype</code></li>
+<li><code>encoded_nbytes</code></li>
+<li><code>decoded_dtype</code></li>
+<li><code>decoded_shape</code></li>
+<li><code>decoded_nbytes</code></li>
+<li><code>scale_encoding</code></li>
+<li><code>scale_path</code></li>
+<li><code>checksum</code></li>
+<li><code>decode_location</code></li>
 </ul>
-<p>This tier is not authoritative.</p>
-<h3 id="tier-1-cpu-warm-tier">Tier 1: CPU warm tier<a class="headerlink" href="#tier-1-cpu-warm-tier" title="Permanent link">&para;</a></h3>
-<p>Purpose:</p>
+<p>Recommended initial <code>decode_location</code> values:</p>
 <ul>
-<li>hold decoded full-precision pages ready for accelerator promotion</li>
-<li>absorb repeated page faults without rereading SSD immediately</li>
+<li><code>cuda-upcast</code></li>
+<li><code>cpu-decode-then-transfer</code></li>
 </ul>
-<p>This tier is also not authoritative.</p>
-<h3 id="tier-2-ssd-cold-tier">Tier 2: SSD cold tier<a class="headerlink" href="#tier-2-ssd-cold-tier" title="Permanent link">&para;</a></h3>
-<p>Purpose:</p>
+<p>The first implementation recommendation is to support only <code>cuda-upcast</code>.</p>
+<p>That keeps the runtime claim narrow and avoids pretending CPU or MPS benefits
+exist before they are proven.</p>
+<h2 id="safety-and-materialization-implications">Safety and materialization implications<a class="headerlink" href="#safety-and-materialization-implications" title="Permanent link">&para;</a></h2>
+<p>Current safety rules are intentionally strict:</p>
 <ul>
-<li>hold the authoritative long-lived page store</li>
-<li>optionally hold quantized cold pages in later phases</li>
+<li>unsafe model artifacts are rejected</li>
+<li>unsafe adapter artifacts are rejected</li>
+<li><code>gds_export</code> rejects torch-serialized and pickle-backed files</li>
+<li><code>gds_export</code> also rejects packed <code>mxfp4</code> artifacts</li>
 </ul>
-<p>This is the durable source of truth for persistent lifecycle mode.</p>
-<h2 id="promotion-and-eviction-semantics">Promotion and eviction semantics<a class="headerlink" href="#promotion-and-eviction-semantics" title="Permanent link">&para;</a></h2>
-<h3 id="promotion">Promotion<a class="headerlink" href="#promotion" title="Permanent link">&para;</a></h3>
-<p>Promotion should be page-driven, not tensor-global.</p>
-<p>Recommended promotion path:</p>
-<ol>
-<li>page requested by attention/runtime iterator</li>
-<li>serve from accelerator tier if present</li>
-<li>else serve from CPU tier and promote to accelerator</li>
-<li>else read from SSD into CPU tier, then optionally promote to accelerator</li>
-</ol>
-<p>Prefetch should follow the expected page scan order, not a generic recency
-heuristic.</p>
-<h3 id="eviction">Eviction<a class="headerlink" href="#eviction" title="Permanent link">&para;</a></h3>
-<p>Eviction should differ by tier:</p>
+<p>Any future transport format must preserve that bar.</p>
+<p>Required safety rules for a future transport implementation:</p>
 <ul>
-<li>accelerator tier: evict pages outside the active decode/prefetch window</li>
-<li>CPU tier: evict least-recently-served pages subject to configured budget</li>
-<li>SSD tier: do not "evict" as part of normal runtime pressure; use lifecycle GC</li>
+<li>transport manifests must remain inside the validated export root</li>
+<li>transport blobs must use explicit allowed extensions</li>
+<li>transport manifests must carry stable encoding identifiers and checksums</li>
+<li>unsafe executable, pickle-backed, or torch-serialized transport blobs remain
+  forbidden</li>
+<li>invalid, missing, or stale sidecar transport artifacts must invalidate the
+  transport path instead of being used opportunistically</li>
 </ul>
-<p>The design should not describe SSD page removal as normal cache eviction. That
-is retention / GC, not working-set management.</p>
-<h2 id="write-path">Write path<a class="headerlink" href="#write-path" title="Permanent link">&para;</a></h2>
-<p>The write path should not force every token append to rewrite existing pages.</p>
-<p>Recommended approach:</p>
+<p>Materialization implications:</p>
 <ul>
-<li>keep one append-oriented mutable tail per layer in memory</li>
-<li>seal that tail into immutable SSD pages when it crosses page capacity</li>
-<li>only then publish the updated page table</li>
+<li>managed downloads must know how to fetch transport manifests and blobs</li>
+<li>completeness checks must validate both base model artifacts and transport
+  sidecars</li>
+<li>the absence of valid transport artifacts must fall back to today's safe
+  safetensor or raw <code>gds_export</code> paths</li>
 </ul>
-<p>This allows the current journal-oriented work to remain useful as an ingest
-pattern without making the journal the final authoritative long-lived layout.</p>
-<p>Recommended relationship:</p>
-<ul>
-<li>journal: write-optimized ingress</li>
-<li>paged store: authoritative long-lived layout</li>
-</ul>
-<h2 id="interaction-with-existing-presets">Interaction with existing presets<a class="headerlink" href="#interaction-with-existing-presets" title="Permanent link">&para;</a></h2>
-<h3 id="resident"><code>resident</code><a class="headerlink" href="#resident" title="Permanent link">&para;</a></h3>
-<p><code>resident</code> remains the no-disk baseline.</p>
-<p>In the future design, it is effectively the degenerate case where:</p>
-<ul>
-<li>all pages remain in memory</li>
-<li>no SSD tier is used</li>
-<li>no CPU/accelerator demotion occurs</li>
-</ul>
-<h3 id="paged"><code>paged</code><a class="headerlink" href="#paged" title="Permanent link">&para;</a></h3>
-<p><code>paged</code> should become the persistence-format foundation for the future tiered
-architecture, not a competing direction.</p>
-<h3 id="quantized-cold-tier"><code>quantized-cold-tier</code><a class="headerlink" href="#quantized-cold-tier" title="Permanent link">&para;</a></h3>
-<p>Quantization should apply to SSD-resident cold pages only, not to the active
-accelerator hot tier by default.</p>
-<p>That means quantization is orthogonal to tiering:</p>
-<ul>
-<li>tiering defines where pages live</li>
-<li>cold-tier encoding defines how SSD pages are represented</li>
-</ul>
-<h3 id="sliding-window-ring-buffer"><code>sliding-window-ring-buffer</code><a class="headerlink" href="#sliding-window-ring-buffer" title="Permanent link">&para;</a></h3>
-<p>Sliding-window remains a separate window-policy axis.</p>
-<p>Do not merge bounded-history semantics into the first tiered design. Otherwise
-benchmarks will conflate:</p>
-<ul>
-<li>full-history tiering</li>
-<li>bounded-history eviction</li>
-</ul>
-<h3 id="tiered-write-back"><code>tiered-write-back</code><a class="headerlink" href="#tiered-write-back" title="Permanent link">&para;</a></h3>
-<p>Treat the current <code>tiered-write-back</code> preset as the closest precursor, not as
-the final architecture.</p>
-<p>The design should explicitly say:</p>
-<ul>
-<li>current <code>tiered-write-back</code> proves hot/cold split reporting and batching</li>
-<li>it does not yet prove true GPU/CPU/SSD page-aware tiering</li>
-</ul>
-<h2 id="runtime-planning-and-selector-integration">Runtime planning and selector integration<a class="headerlink" href="#runtime-planning-and-selector-integration" title="Permanent link">&para;</a></h2>
-<p>The runtime selector should not choose tiered KV as one opaque winner.</p>
-<p>Instead, planning should eventually surface at least:</p>
-<ul>
-<li>whether tiering is enabled</li>
-<li>page size</li>
-<li>cold-tier encoding</li>
-<li>CPU tier budget</li>
-<li>accelerator hot-tier budget</li>
-<li>expected fallback when tier-aware execution is unavailable</li>
-</ul>
-<p>Relevant current surfaces:</p>
-<ul>
-<li><code>src/ollm/runtime/plan.py</code></li>
-<li><code>src/ollm/runtime/inspection.py</code></li>
-</ul>
-<p>This should remain deterministic and table-driven. The selector may use
-observed budgets and platform/model family, but this ADR rejects a vague online
-optimizer framing.</p>
 <h2 id="benchmark-and-inspection-truth">Benchmark and inspection truth<a class="headerlink" href="#benchmark-and-inspection-truth" title="Permanent link">&para;</a></h2>
-<p>The current benchmark/reporting surfaces already understand:</p>
+<p>Current benchmark surfaces already show native IO events such as:</p>
 <ul>
-<li>strategy id</li>
-<li>persistence format</li>
-<li>residency mode</li>
-<li>persisted tokens / artifacts</li>
-<li>resident bytes</li>
-<li>hot bytes</li>
-<li>spill counts</li>
-<li>compaction counts</li>
+<li><code>gds_read</code></li>
+<li><code>safetensor_read</code></li>
+<li><code>safetensor_pread</code></li>
+<li><code>offloaded_cpu_to_cuda</code></li>
 </ul>
-<p>Relevant current surfaces:</p>
+<p>That is not enough for transport claims.</p>
+<p>Before any transport optimization claim, the future implementation must expose:</p>
 <ul>
-<li><code>src/ollm/runtime/benchmark_details.py</code></li>
-<li><code>src/ollm/runtime/benchmark_history_summary_support.py</code></li>
-<li><code>docs/benchmarking.md</code></li>
+<li>transport encoding used</li>
+<li>encoded bytes read</li>
+<li>decoded bytes produced</li>
+<li>decode or upcast time</li>
+<li>transport compression ratio</li>
+<li>scratch memory used for decode or upcast</li>
+<li>fallback reason when transport was requested but not used</li>
 </ul>
-<p>The future tiered architecture should add explicit tier-aware observability:</p>
-<ul>
-<li>accelerator-tier resident pages / bytes</li>
-<li>CPU-tier resident pages / bytes</li>
-<li>SSD authoritative pages / bytes</li>
-<li>promotion counts by source and destination</li>
-<li>page-fault counts</li>
-<li>prefetched pages / bytes</li>
-<li>useful-prefetch hit rate</li>
-<li>demotion counts</li>
-<li>quantized cold-page bytes vs decoded warm-page bytes</li>
-</ul>
-<p>Without those fields, oLLM would risk claiming tiered wins while hiding where
-the bytes and latency actually moved.</p>
-<h2 id="failure-recovery-and-fallback">Failure, recovery, and fallback<a class="headerlink" href="#failure-recovery-and-fallback" title="Permanent link">&para;</a></h2>
+<p>Without those fields, oLLM would risk claiming faster or smaller transport while
+hiding where the cost really moved.</p>
+<h2 id="failure-and-fallback-behavior">Failure and fallback behavior<a class="headerlink" href="#failure-and-fallback-behavior" title="Permanent link">&para;</a></h2>
 <p>The ADR makes these rules explicit:</p>
 <ul>
-<li>page blobs are immutable once published</li>
-<li>root/page-table manifests are versioned</li>
-<li>cache identity must include model, backend, encoding, page size, and schema</li>
-<li>partial writes must never become authoritative</li>
-<li>invalid manifests or missing page blobs invalidate the persistent cache root</li>
-<li>multi-process access requires explicit coordination; it is not implied</li>
-<li>unsupported backends fall back to non-tiered strategies rather than
-  pretending to run tiered mode</li>
+<li>unsupported backend or device combinations must fall back to the current
+  non-transport path</li>
+<li>fallback must be observable in runtime planning or benchmark output</li>
+<li>invalid transport manifests or blobs must reject the transport path, not be
+  silently tolerated</li>
+<li>the runtime must never claim FP8-staged transport if it actually ran on raw
+  safetensor or raw <code>gds_export</code> bytes</li>
 </ul>
-<p>Recommended persistent write rule:</p>
-<ol>
-<li>write page blob</li>
-<li>fsync/replace durable temp path</li>
-<li>update page table</li>
-<li>update root manifest last</li>
-</ol>
 <h2 id="recommended-phased-implementation-order">Recommended phased implementation order<a class="headerlink" href="#recommended-phased-implementation-order" title="Permanent link">&para;</a></h2>
 <h3 id="phase-1">Phase 1<a class="headerlink" href="#phase-1" title="Permanent link">&para;</a></h3>
-<p>Make fixed-token pages the authoritative persisted layout for one existing
-full-history strategy.</p>
+<p>Add transport-specific benchmark and inspection contract fields.</p>
 <p>Recommended first slice:</p>
 <ul>
-<li>extend <code>paged</code> into the canonical persisted page-table format</li>
-<li>keep runtime behavior otherwise single-tier</li>
-<li>add tier-capable metadata fields without claiming tiering yet</li>
+<li>extend native runtime reporting with encoded-bytes and decode-time fields</li>
+<li>make fallback reasons explicit</li>
+<li>keep runtime behavior otherwise unchanged</li>
 </ul>
 <h3 id="phase-2">Phase 2<a class="headerlink" href="#phase-2" title="Permanent link">&para;</a></h3>
-<p>Add a CPU warm-page tier above the authoritative SSD layout.</p>
-<p>Goals:</p>
+<p>Define one explicit transport manifest and validation contract for <code>gds_export</code>.</p>
+<p>Recommended first slice:</p>
 <ul>
-<li>avoid repeated SSD reads</li>
-<li>measure promotion and page-fault behavior</li>
-<li>keep accelerator behavior unchanged if page-aware attention is not ready</li>
+<li>one safe manifest schema</li>
+<li>one allowed transport encoding family</li>
+<li>one materialization completeness rule set</li>
 </ul>
 <h3 id="phase-3">Phase 3<a class="headerlink" href="#phase-3" title="Permanent link">&para;</a></h3>
-<p>Add page-aware accelerator staging for one optimized-native family and one
-device class.</p>
-<p>Only this phase should start making real GPU/CPU/SSD tiering claims.</p>
+<p>Implement CUDA-only FP8-staged transport on GPT-OSS <code>gds_export</code>.</p>
+<p>Recommended first slice:</p>
+<ul>
+<li>one model family</li>
+<li>one device class</li>
+<li>explicit upcast before execution</li>
+<li>benchmark proof against current-fork and upstream concept baselines</li>
+</ul>
 <h3 id="phase-4">Phase 4<a class="headerlink" href="#phase-4" title="Permanent link">&para;</a></h3>
-<p>Compose quantized cold pages with the authoritative SSD store and benchmark the
-quality/capacity tradeoff on top of the tiered layout.</p>
+<p>Evaluate expansion to other streamed native families.</p>
+<p>Do this only if:</p>
+<ul>
+<li>the new metrics show real end-to-end wins</li>
+<li>the quality or output delta is acceptable</li>
+<li>the transport contract still fits without pretending safetensors natively
+  carry transport metadata</li>
+</ul>
 <h3 id="phase-5">Phase 5<a class="headerlink" href="#phase-5" title="Permanent link">&para;</a></h3>
-<p>Integrate selector policy and observe-only tier recommendations based on page
-faults, promotion pressure, CPU residency pressure, and accelerator working-set
-fit.</p>
-<h2 id="recommendation">Recommendation<a class="headerlink" href="#recommendation" title="Permanent link">&para;</a></h2>
-<p>Proceed with the future tiered KV architecture, but do it as a paged,
-page-aware, benchmark-truthful design.</p>
-<p>Do not describe it as current <code>tiered-write-back</code> generalized and do not claim
-real GPU/CPU/SSD scaling before page-aware execution exists.</p>
+<p>Revisit lossless compression only if the repo gains one of:</p>
+<ul>
+<li>a seekable compressed-block reader contract</li>
+<li>an explicit GPU-side decompression path with named runtime support</li>
+</ul>
+<p>Until then, generic compressed transport remains a later research option, not
+the recommended first move.</p>
 
 
 
