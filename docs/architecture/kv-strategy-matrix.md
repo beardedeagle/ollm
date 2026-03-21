@@ -1,7 +1,7 @@
 # KV Strategy Matrix
 
-oLLM's current disk-KV presets are still selected as single strings such as
-`chunked`, `paged`, `streamed-segmented`, `log-structured-journal`,
+oLLM's current KV cache presets are still selected as single strings such as
+`resident`, `chunked`, `paged`, `streamed-segmented`, `log-structured-journal`,
 `sliding-window-ring-buffer`, `quantized-cold-tier`, and
 `tiered-write-back`.
 
@@ -29,6 +29,7 @@ Current presets are now understood as bundles of axis values:
 
 | Preset | Persistence Format | Residency Mode | Window Policy | Cold-Tier Encoding |
 | --- | --- | --- | --- | --- |
+| `resident` | `resident-only` | `fully-resident` | `full-history` | `full-precision` |
 | `chunked` | `chunked-manifest` | `buffered-tail` | `full-history` | `full-precision` |
 | `paged` | `paged-manifest` | `buffered-tail` | `full-history` | `full-precision` |
 | `streamed-segmented` | `streamed-segmented` | `buffered-tail` | `full-history` | `full-precision` |
@@ -41,8 +42,8 @@ This does not erase the semantic differences between presets. For example,
 `sliding-window-ring-buffer` deliberately preserves only a bounded recent
 history under a `drop-oldest` eviction policy; it is not a transparent
 substitute for the full-history strategies. The matrix still keeps the shape
-explicit so future presets such as `paged`, `resident`, or richer bounded
-window variants can compose cleanly.
+explicit so future presets and richer bounded window variants can compose
+cleanly.
 
 ## Cache lifecycle
 
@@ -109,7 +110,6 @@ up as persisted on-disk KV activity.
 This scaffold is meant to support the next wave of work:
 
 - paged persistence
-- resident baseline mode
 - quantized cold tiers
 - observe-only adaptation recommendations
 - stronger persistent lifecycle reuse and retention policy

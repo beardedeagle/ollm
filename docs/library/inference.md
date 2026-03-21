@@ -29,8 +29,10 @@ past_key_values = o.DiskCache(
 text_streamer = TextStreamer(o.tokenizer, skip_prompt=True, skip_special_tokens=False)
 ```
 
-That disk cache path now uses an explicit disk-KV store under
-`cache_dir/kv_cache_chunked` by default, with explicit
+When the selected runtime uses `kv_cache_strategy="resident"`, it keeps
+full-history KV entirely in memory and does not initialize any disk-KV path.
+When disk-backed strategies are selected, the default path uses an explicit
+disk-KV store under `cache_dir/kv_cache_chunked`, with explicit
 dtype/shape/sequence metadata and raw payloads instead of pickle-backed torch
 artifacts. When the selected runtime uses
 `kv_cache_strategy="paged"`, it writes to

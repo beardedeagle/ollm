@@ -1,9 +1,10 @@
-"""Explicit disk-KV strategy selection and cache-root helpers."""
+"""Explicit KV cache strategy selection and cache-root helpers."""
 
 from pathlib import Path
 
 DEFAULT_KV_CACHE_STRATEGY = "chunked"
 KNOWN_KV_CACHE_STRATEGY_IDS = (
+    "resident",
     "chunked",
     "paged",
     "streamed-segmented",
@@ -25,7 +26,7 @@ _CACHE_ROOT_BY_STRATEGY = {
 
 
 def normalize_kv_cache_strategy(strategy: str | None) -> str | None:
-    """Validate and normalize an explicit disk-KV strategy identifier."""
+    """Validate and normalize an explicit KV cache strategy identifier."""
 
     if strategy is None:
         return None
@@ -38,10 +39,24 @@ def normalize_kv_cache_strategy(strategy: str | None) -> str | None:
     return normalized_strategy
 
 
+def is_disk_backed_kv_cache_strategy(strategy: str | None) -> bool:
+    """Return whether a strategy persists any cold KV to disk."""
+
+    normalized_strategy = normalize_kv_cache_strategy(strategy)
+    strategy_id = (
+        DEFAULT_KV_CACHE_STRATEGY
+        if normalized_strategy is None
+        else normalized_strategy
+    )
+    return strategy_id != "resident"
+
+
 def kv_cache_root(cache_dir: Path | str, strategy: str) -> Path:
     """Return the strategy-specific cache root under the configured cache dir."""
 
     normalized_strategy = normalize_kv_cache_strategy(strategy)
     if normalized_strategy is None:
         raise ValueError("kv_cache_root requires an explicit strategy")
+    if not is_disk_backed_kv_cache_strategy(normalized_strategy):
+        raise ValueError("kv_cache_root requires a disk-backed KV cache strategy")
     return Path(cache_dir) / _CACHE_ROOT_BY_STRATEGY[normalized_strategy]

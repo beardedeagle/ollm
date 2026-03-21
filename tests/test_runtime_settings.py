@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from ollm.runtime.config import DEFAULT_DEVICE, DEFAULT_MAX_NEW_TOKENS
+from ollm.runtime.config import DEFAULT_DEVICE, DEFAULT_MAX_NEW_TOKENS, RuntimeConfig
 from ollm.runtime.settings import (
     DEFAULT_SERVER_HOST,
     DEFAULT_SERVER_PORT,
@@ -305,6 +305,14 @@ def test_runtime_settings_accept_tiered_write_back_strategy() -> None:
     assert overrides.kv_cache_strategy == "tiered-write-back"
 
 
+def test_runtime_settings_accept_resident_strategy() -> None:
+    settings = RuntimeSettings(kv_cache_strategy="resident")
+    overrides = RuntimeConfigOverrides(kv_cache_strategy="resident")
+
+    assert settings.kv_cache_strategy == "resident"
+    assert overrides.kv_cache_strategy == "resident"
+
+
 def test_runtime_settings_accept_paged_strategy() -> None:
     settings = RuntimeSettings(kv_cache_strategy="paged")
     overrides = RuntimeConfigOverrides(kv_cache_strategy="paged")
@@ -380,4 +388,34 @@ def test_runtime_settings_reject_window_tokens_without_sliding_strategy() -> Non
     else:
         raise AssertionError(
             "RuntimeSettings should reject window tokens without the sliding strategy"
+        )
+
+
+def test_runtime_settings_reject_persistent_lifecycle_for_resident_strategy() -> None:
+    try:
+        RuntimeSettings(
+            kv_cache_strategy="resident",
+            kv_cache_lifecycle="persistent",
+        )
+    except ValueError as exc:
+        assert "--kv-cache-strategy resident requires" in str(exc)
+    else:
+        raise AssertionError(
+            "RuntimeSettings should reject persistent lifecycle for resident mode"
+        )
+
+
+def test_runtime_config_rejects_persistent_lifecycle_for_resident_strategy() -> None:
+    config = RuntimeConfig(
+        kv_cache_strategy="resident",
+        kv_cache_lifecycle="persistent",
+    )
+
+    try:
+        config.validate()
+    except ValueError as exc:
+        assert "--kv-cache-strategy resident requires" in str(exc)
+    else:
+        raise AssertionError(
+            "RuntimeConfig should reject persistent lifecycle for resident mode"
         )

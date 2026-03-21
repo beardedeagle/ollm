@@ -11,7 +11,7 @@ from ollm.kv_cache_matrix import (
     resolve_kv_cache_base_dir,
 )
 from ollm.kv_cache_state import KVCacheStateSnapshot
-from ollm.kv_cache_strategy import kv_cache_root
+from ollm.kv_cache_strategy import is_disk_backed_kv_cache_strategy, kv_cache_root
 from ollm.runtime.benchmark_probe_types import (
     EventTimingSummary,
     NativeRuntimeProfile,
@@ -131,7 +131,9 @@ def execute_request_probe(
             6,
         )
     cache_dir_size = None
-    if kv_cache_strategy is not None:
+    if kv_cache_strategy is not None and is_disk_backed_kv_cache_strategy(
+        kv_cache_strategy
+    ):
         cache_base_dir = resolve_kv_cache_base_dir(
             cache_dir=request.runtime_config.resolved_cache_dir(),
             lifecycle=request.runtime_config.resolved_kv_cache_lifecycle(),
@@ -300,6 +302,8 @@ def _count_output_tokens(
 def _cache_mode(runtime: LoadedRuntime, request: PromptRequest) -> str:
     if not request.runtime_config.use_cache:
         return "none"
+    if request.runtime_config.resolved_kv_cache_strategy() == "resident":
+        return "resident-kv"
     if runtime.plan.supports_disk_cache:
         return "disk-kv"
     return "transformers-dynamic"
@@ -308,9 +312,12 @@ def _cache_mode(runtime: LoadedRuntime, request: PromptRequest) -> str:
 def _kv_cache_strategy(runtime: LoadedRuntime, request: PromptRequest) -> str | None:
     if not request.runtime_config.use_cache:
         return None
+    resolved_strategy = request.runtime_config.resolved_kv_cache_strategy()
+    if resolved_strategy == "resident":
+        return resolved_strategy
     if not runtime.plan.supports_disk_cache:
         return None
-    return request.runtime_config.resolved_kv_cache_strategy()
+    return resolved_strategy
 
 
 def _inter_token_latencies(token_timestamps: tuple[float, ...]) -> tuple[float, ...]:

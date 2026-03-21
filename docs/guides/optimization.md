@@ -50,8 +50,7 @@ When supported by the selected backend, oLLM can expose:
 These controls are backend-dependent. The generic path does not expose the same
 low-level layer-placement controls as optimized-native runtimes.
 
-The optimized-native disk KV cache now exposes six explicit
-strategies:
+The optimized-native KV cache surface now exposes eight explicit presets:
 
 - `chunked`
 - `paged`
@@ -60,6 +59,7 @@ strategies:
 - `sliding-window-ring-buffer`
 - `quantized-cold-tier`
 - `tiered-write-back`
+- `resident`
 
 `chunked` persists a manifest-backed chunk store under
 `cache_dir/kv_cache_chunked`. `paged` persists a fixed-capacity page table
@@ -81,14 +81,21 @@ default strategy.
 `cache_dir/kv_cache_quantized_cold_tier`, but stores colder entries in the
 explicit `int8-symmetric-per-tensor` representation and dequantizes back to
 the runtime dtype on load.
+`resident` keeps full-history KV entirely in memory and does not initialize any
+disk root. It is the truthful no-spill baseline, not a persistence strategy.
 `tiered-write-back` persists only the colder KV prefix under
 `cache_dir/kv_cache_tiered_write_back` while keeping a bounded hot region in
-memory; its cold tier now uses a journal-backed append store. All seven use
-typed raw tensor payloads plus explicit metadata, and none uses opaque
+memory; its cold tier now uses a journal-backed append store. All seven
+disk-backed presets use typed raw tensor payloads plus explicit metadata, and
+none uses opaque
 pickle-backed `.pt` cache blobs. The runtime also applies a
 platform/resource-aware buffering or spill policy on top of the selected
 strategy so the cache can trade write amplification against memory headroom
 instead of flushing every delta identically on every machine.
+`resident` does not initialize any disk-KV root at all; it keeps full-history
+KV entirely in memory and exists as the explicit low-overhead baseline when the
+active runtime can afford that footprint. It is intentionally not aligned with
+oLLM's large-model spill/offload goal.
 
 Within one loaded runtime, the cache layer now also keeps a resident in-process
 snapshot of the reconstructed per-layer KV state so repeated updates do not

@@ -19,8 +19,8 @@ from ollm.kv_cache_matrix import (
     DEFAULT_KV_CACHE_ADAPTATION_MODE,
     DEFAULT_KV_CACHE_LIFECYCLE,
     normalize_kv_cache_adaptation_mode,
-    normalize_kv_cache_lifecycle,
     normalize_kv_cache_window_tokens,
+    resolve_kv_cache_lifecycle,
     resolve_kv_cache_window_tokens,
 )
 from ollm.kv_cache_strategy import (
@@ -99,10 +99,7 @@ class RuntimeSettings(BaseModel):
     @field_validator("kv_cache_lifecycle")
     @classmethod
     def _normalize_kv_cache_lifecycle(cls, lifecycle: str) -> str:
-        normalized_lifecycle = normalize_kv_cache_lifecycle(lifecycle)
-        if normalized_lifecycle is None:
-            raise ValueError("kv_cache_lifecycle cannot be empty")
-        return normalized_lifecycle
+        return resolve_kv_cache_lifecycle(DEFAULT_KV_CACHE_STRATEGY, lifecycle)
 
     @field_validator("kv_cache_adaptation_mode")
     @classmethod
@@ -119,6 +116,10 @@ class RuntimeSettings(BaseModel):
 
     @model_validator(mode="after")
     def _validate_window_strategy_pair(self):
+        resolve_kv_cache_lifecycle(
+            self.kv_cache_strategy,
+            self.kv_cache_lifecycle,
+        )
         resolve_kv_cache_window_tokens(
             self.kv_cache_strategy,
             self.kv_cache_window_tokens,
@@ -215,7 +216,9 @@ class RuntimeConfigOverrides(BaseModel):
     @field_validator("kv_cache_lifecycle")
     @classmethod
     def _normalize_kv_cache_lifecycle(cls, lifecycle: str | None) -> str | None:
-        return normalize_kv_cache_lifecycle(lifecycle)
+        if lifecycle is None:
+            return None
+        return resolve_kv_cache_lifecycle(DEFAULT_KV_CACHE_STRATEGY, lifecycle)
 
     @field_validator("kv_cache_adaptation_mode")
     @classmethod
@@ -233,6 +236,10 @@ class RuntimeConfigOverrides(BaseModel):
             DEFAULT_KV_CACHE_STRATEGY
             if self.kv_cache_strategy is None
             else self.kv_cache_strategy
+        )
+        resolve_kv_cache_lifecycle(
+            strategy,
+            self.kv_cache_lifecycle,
         )
         resolve_kv_cache_window_tokens(
             strategy,

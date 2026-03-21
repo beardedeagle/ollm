@@ -8,7 +8,7 @@ from ollm.kv_cache_matrix import (
     DEFAULT_KV_CACHE_ADAPTATION_MODE,
     DEFAULT_KV_CACHE_LIFECYCLE,
     normalize_kv_cache_adaptation_mode,
-    normalize_kv_cache_lifecycle,
+    resolve_kv_cache_lifecycle,
     resolve_kv_cache_window_tokens,
 )
 from ollm.kv_cache_strategy import (
@@ -84,7 +84,7 @@ class RuntimeConfig:
         return self.cache_dir.expanduser().resolve()
 
     def resolved_kv_cache_strategy(self) -> str:
-        """Return the normalized disk-KV strategy."""
+        """Return the normalized KV cache strategy."""
         normalized_strategy = normalize_kv_cache_strategy(self.kv_cache_strategy)
         if normalized_strategy is None:
             return DEFAULT_KV_CACHE_STRATEGY
@@ -92,11 +92,10 @@ class RuntimeConfig:
 
     def resolved_kv_cache_lifecycle(self) -> str:
         """Return the normalized cache lifecycle."""
-
-        normalized_lifecycle = normalize_kv_cache_lifecycle(self.kv_cache_lifecycle)
-        if normalized_lifecycle is None:
-            return DEFAULT_KV_CACHE_LIFECYCLE
-        return normalized_lifecycle
+        return resolve_kv_cache_lifecycle(
+            self.kv_cache_strategy,
+            self.kv_cache_lifecycle,
+        )
 
     def resolved_kv_cache_adaptation_mode(self) -> str:
         """Return the normalized cache adaptation mode."""
@@ -129,7 +128,10 @@ class RuntimeConfig:
         if self.backend is not None:
             normalize_backend(self.backend)
         normalize_kv_cache_strategy(self.kv_cache_strategy)
-        normalize_kv_cache_lifecycle(self.kv_cache_lifecycle)
+        resolve_kv_cache_lifecycle(
+            self.kv_cache_strategy,
+            self.kv_cache_lifecycle,
+        )
         normalize_kv_cache_adaptation_mode(self.kv_cache_adaptation_mode)
         resolve_kv_cache_window_tokens(
             self.kv_cache_strategy,

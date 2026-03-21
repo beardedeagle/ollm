@@ -15,6 +15,7 @@ from ollm.kv_cache_strategy import (
 class KVCachePersistenceFormat(StrEnum):
     """Describe how cold KV is persisted."""
 
+    RESIDENT_ONLY = "resident-only"
     CHUNKED_MANIFEST = "chunked-manifest"
     PAGED_MANIFEST = "paged-manifest"
     STREAMED_SEGMENTED = "streamed-segmented"
@@ -113,6 +114,34 @@ def normalize_kv_cache_lifecycle(lifecycle: str | None) -> str | None:
         raise ValueError(f"kv_cache_lifecycle must be one of: {allowed}") from exc
 
 
+def resolve_kv_cache_lifecycle(
+    strategy: str | None,
+    lifecycle: str | None,
+) -> str:
+    """Resolve lifecycle semantics for one strategy preset."""
+
+    normalized_lifecycle = normalize_kv_cache_lifecycle(lifecycle)
+    resolved_lifecycle = (
+        DEFAULT_KV_CACHE_LIFECYCLE
+        if normalized_lifecycle is None
+        else normalized_lifecycle
+    )
+    normalized_strategy = normalize_kv_cache_strategy(strategy)
+    strategy_id = (
+        DEFAULT_KV_CACHE_STRATEGY
+        if normalized_strategy is None
+        else normalized_strategy
+    )
+    if (
+        strategy_id == "resident"
+        and resolved_lifecycle != KVCacheLifecycle.RUNTIME_SCOPED.value
+    ):
+        raise ValueError(
+            "--kv-cache-strategy resident requires --kv-cache-lifecycle runtime-scoped"
+        )
+    return resolved_lifecycle
+
+
 def normalize_kv_cache_adaptation_mode(mode: str | None) -> str | None:
     """Validate and normalize an adaptation-mode identifier."""
 
@@ -182,6 +211,15 @@ def describe_kv_cache_strategy(strategy: str | None) -> KVCacheStrategyAxes:
 
     normalized = normalize_kv_cache_strategy(strategy)
     strategy_id = DEFAULT_KV_CACHE_STRATEGY if normalized is None else normalized
+    if strategy_id == "resident":
+        return KVCacheStrategyAxes(
+            strategy_id=strategy_id,
+            persistence_format=KVCachePersistenceFormat.RESIDENT_ONLY.value,
+            residency_mode=KVCacheResidencyMode.FULLY_RESIDENT.value,
+            window_policy=KVCacheWindowPolicy.FULL_HISTORY.value,
+            cold_tier_encoding=KVCacheColdTierEncoding.FULL_PRECISION.value,
+            compaction_capable=False,
+        )
     if strategy_id == "chunked":
         return KVCacheStrategyAxes(
             strategy_id=strategy_id,
@@ -277,6 +315,13 @@ def build_kv_cache_adaptation_surface(
         else normalized_strategy
     )
     if resolved_mode == KVCacheAdaptationMode.OBSERVE_ONLY.value:
+        if strategy_id == "resident":
+            return KVCacheAdaptationSurface(
+                adaptation_mode=resolved_mode,
+                recommendation_available=True,
+                recommended_strategy_id=strategy_id,
+                reason="Resident mode is already the lowest-overhead full-history baseline.",
+            )
         if (
             strategy_id in {"chunked", "streamed-segmented"}
             and persisted_artifact_count is not None

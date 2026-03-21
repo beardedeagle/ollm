@@ -189,9 +189,11 @@ class Gemma3SpecializationProvider(SpecializationProvider):
         tokenizer = AutoTokenizer.from_pretrained(
             str(model_path), trust_remote_code=False
         )
-        processor = AutoProcessor.from_pretrained(
-            str(model_path), trust_remote_code=False
-        )
+        processor = None
+        if config.multimodal:
+            processor = AutoProcessor.from_pretrained(
+                str(model_path), trust_remote_code=False
+            )
         return OptimizedModelArtifacts(
             model=finalize_model(model, device),
             tokenizer=tokenizer,
