@@ -45,6 +45,7 @@ nav:
   - Architecture:
       - Overview: architecture/overview.md
       - KV Strategy Matrix: architecture/kv-strategy-matrix.md
+      - Tiered KV Cache Design: architecture/tiered-kv-cache.md
       - Model Resolution: architecture/model-resolution.md
       - Backend Selection: architecture/backend-selection.md
       - Specialization: architecture/specialization.md
