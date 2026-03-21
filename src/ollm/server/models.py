@@ -37,6 +37,7 @@ class RuntimeConfigResponseModel(BaseModel):
     kv_cache_adaptation_mode: str
     kv_cache_window_tokens: int | None
     offload_cpu_layers: int
+    offload_cpu_policy: str
     offload_gpu_layers: int
     force_download: bool
     stats: bool
@@ -83,6 +84,7 @@ class RuntimePlanResponseModel(BaseModel):
     specialization_state: str
     planned_specialization_pass_ids: list[str]
     reason: str
+    details: dict[str, str]
 
 
 class PlanResponseModel(BaseModel):
@@ -153,6 +155,7 @@ class RuntimeRequestModel(BaseModel):
     kv_cache_adaptation_mode: str | None = None
     kv_cache_window_tokens: int | None = Field(default=None, gt=0)
     offload_cpu_layers: int | None = Field(default=None, ge=0)
+    offload_cpu_policy: str | None = None
     offload_gpu_layers: int | None = Field(default=None, ge=0)
     force_download: bool | None = None
     stats: bool | None = None

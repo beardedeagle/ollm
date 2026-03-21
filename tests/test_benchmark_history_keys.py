@@ -98,3 +98,42 @@ def test_probe_comparison_key_includes_window_tokens() -> None:
     )
 
     assert first != second
+
+
+def test_probe_comparison_key_includes_cpu_offload_policy() -> None:
+    first = probe_comparison_key(
+        codebase_label="github.com/beardedeagle/ollm",
+        model_reference="HuggingFaceTB/SmolLM2-1.7B-Instruct",
+        device="mps",
+        backend="optimized-native",
+        kv_cache_strategy="resident",
+        offload_cpu_layers=2,
+        offload_cpu_policy="prefix",
+        probe_mode="warm",
+        prompt="Say hi.",
+        max_new_tokens=16,
+        iterations=1,
+        warmup_iterations=0,
+        prompt_token_targets=(32,),
+        output_token_targets=(16,),
+        session_turns=4,
+    )
+    second = probe_comparison_key(
+        codebase_label="github.com/beardedeagle/ollm",
+        model_reference="HuggingFaceTB/SmolLM2-1.7B-Instruct",
+        device="mps",
+        backend="optimized-native",
+        kv_cache_strategy="resident",
+        offload_cpu_layers=2,
+        offload_cpu_policy="middle-band",
+        probe_mode="warm",
+        prompt="Say hi.",
+        max_new_tokens=16,
+        iterations=1,
+        warmup_iterations=0,
+        prompt_token_targets=(32,),
+        output_token_targets=(16,),
+        session_turns=4,
+    )
+
+    assert first != second

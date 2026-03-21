@@ -322,10 +322,23 @@ from ollm import Inference, TextStreamer
 
 o = Inference("llama3-1B-chat", device="cuda:0", logging=True)
 o.ini_model(models_dir="./models/", force_download=False)
-o.offload_layers_to_cpu(layers_num=2)
+o.offload_layers_to_cpu(layers_num=2, policy="middle-band")
 past_key_values = o.DiskCache(cache_dir="./kv_cache/")
 text_streamer = TextStreamer(o.tokenizer, skip_prompt=True, skip_special_tokens=False)
 ```
+
+Native CPU offload is now policy-driven. The current supported policies are:
+
+- `auto`
+- `prefix`
+- `suffix`
+- `middle-band`
+
+`auto` currently resolves to `middle-band`, which preserves the earliest and
+latest layers on the active accelerator by offloading a contiguous middle band.
+This slice intentionally does **not** support simultaneous `offload_cpu_layers`
+and `offload_gpu_layers`; mixed placement still needs a separate truthful
+design.
 
 When `kv_cache_strategy="resident"` is selected, the runtime keeps KV fully in
 memory and does not initialize any disk-KV root at all. That makes `resident`

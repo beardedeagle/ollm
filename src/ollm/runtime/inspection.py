@@ -36,6 +36,7 @@ class RuntimePlanPayload(TypedDict):
     specialization_state: str
     planned_specialization_pass_ids: list[str]
     reason: str
+    details: dict[str, str]
 
 
 class MergedRuntimePayload(TypedDict):
@@ -79,6 +80,7 @@ class RuntimeConfigPayload(TypedDict):
     kv_cache_adaptation_mode: str
     kv_cache_window_tokens: int | None
     offload_cpu_layers: int
+    offload_cpu_policy: str
     offload_gpu_layers: int
     force_download: bool
     stats: bool
@@ -139,6 +141,7 @@ def runtime_plan_payload(runtime_plan: RuntimePlan) -> RuntimePlanPayload:
             pass_id.value for pass_id in runtime_plan.specialization_pass_ids
         ],
         "reason": runtime_plan.reason,
+        "details": dict(runtime_plan.details),
     }
 
 
@@ -189,6 +192,7 @@ def runtime_config_payload(runtime_config: RuntimeConfig) -> RuntimeConfigPayloa
             "kv_cache_adaptation_mode": runtime_config.resolved_kv_cache_adaptation_mode(),
             "kv_cache_window_tokens": runtime_config.resolved_kv_cache_window_tokens(),
             "offload_cpu_layers": runtime_config.offload_cpu_layers,
+            "offload_cpu_policy": runtime_config.resolved_offload_cpu_policy(),
             "offload_gpu_layers": runtime_config.offload_gpu_layers,
             "force_download": runtime_config.force_download,
             "stats": runtime_config.stats,

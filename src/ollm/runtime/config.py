@@ -15,6 +15,11 @@ from ollm.kv_cache_strategy import (
     DEFAULT_KV_CACHE_STRATEGY,
     normalize_kv_cache_strategy,
 )
+from ollm.runtime.offload_policy import (
+    DEFAULT_CPU_OFFLOAD_POLICY,
+    normalize_cpu_offload_policy,
+    resolve_cpu_offload_policy,
+)
 
 DEFAULT_MODEL_REFERENCE = "llama3-1B-chat"
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
@@ -65,6 +70,7 @@ class RuntimeConfig:
     kv_cache_adaptation_mode: str = DEFAULT_KV_CACHE_ADAPTATION_MODE
     kv_cache_window_tokens: int | None = None
     offload_cpu_layers: int = 0
+    offload_cpu_policy: str = DEFAULT_CPU_OFFLOAD_POLICY
     offload_gpu_layers: int = 0
     force_download: bool = False
     stats: bool = False
@@ -115,6 +121,11 @@ class RuntimeConfig:
             self.kv_cache_window_tokens,
         )
 
+    def resolved_offload_cpu_policy(self) -> str:
+        """Return the normalized CPU offload policy."""
+
+        return resolve_cpu_offload_policy(self.offload_cpu_policy)
+
     def resolved_adapter_dir(self) -> Path | None:
         """Return the absolute adapter directory when one is configured."""
         if self.adapter_dir is None:
@@ -137,6 +148,7 @@ class RuntimeConfig:
             self.kv_cache_strategy,
             self.kv_cache_window_tokens,
         )
+        normalize_cpu_offload_policy(self.offload_cpu_policy)
         if self.verbose and self.quiet:
             raise ValueError("--verbose and --quiet cannot be used together")
         if (
@@ -148,6 +160,15 @@ class RuntimeConfig:
             )
         if self.offload_cpu_layers < 0:
             raise ValueError("--offload-cpu-layers must be zero or greater")
+        if self.offload_cpu_layers > 0 and self.device == "cpu":
+            raise ValueError(
+                "--offload-cpu-layers requires an accelerator runtime device"
+            )
+        if self.offload_cpu_layers > 0 and self.offload_gpu_layers > 0:
+            raise ValueError(
+                "--offload-cpu-layers cannot be combined with "
+                "--offload-gpu-layers in this runtime"
+            )
         if self.offload_gpu_layers < 0:
             raise ValueError("--offload-gpu-layers must be zero or greater")
 

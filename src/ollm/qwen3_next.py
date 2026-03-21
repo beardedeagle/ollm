@@ -348,7 +348,17 @@ class MyQwen3NextForCausalLM(Qwen3NextForCausalLM):
             return super().generate(**args)
 
     def offload_layers_to_cpu(self, layers_num=2):
-        self.offload_layers_to_gpu_cpu(cpu_layers_num=layers_num)
+        self.offload_layers_to_cpu_indices(
+            tuple(range(min(layers_num, self.num_hidden_layers)))
+        )
+
+    def offload_layers_to_cpu_indices(self, layer_indices: tuple[int, ...]) -> None:
+        print("offloading layers to CPU...")
+        for layer_idx in layer_indices:
+            base = f"model.layers.{layer_idx}."
+            loader.preload_layer_safetensors(base)
+            loader.offload_dict_to_gpu_cpu(base, gpu=False)
+        print("finished offloading layers to CPU")
 
     def offload_layers_to_gpu_cpu(self, gpu_layers_num=0, cpu_layers_num=0):
         print("offloading layers to CPU/GPU...")

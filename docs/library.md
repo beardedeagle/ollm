@@ -50,7 +50,7 @@ from ollm import Inference, TextStreamer
 
 o = Inference("llama3-1B-chat", device="cuda:0", logging=True)
 o.ini_model(models_dir="./models/", force_download=False)
-o.offload_layers_to_cpu(layers_num=2)
+o.offload_layers_to_cpu(layers_num=2, policy="middle-band")
 past_key_values = o.DiskCache(
     cache_dir="./kv_cache/",
     cache_strategy="streamed-segmented",
@@ -78,6 +78,11 @@ metadata instead of opaque torch cache blobs. The active runtime then applies a
 platform/resource-aware buffering or spill policy on top of the selected
 store.
 The low-level helper accepts the same switch directly through
+`offload_layers_to_cpu(layers_num=..., policy=...)`.
+
+Current supported CPU offload policies are `auto`, `prefix`, `suffix`, and
+`middle-band`. `auto` currently resolves to `middle-band`, and combined
+CPU+GPU offload is intentionally unsupported in this slice.
 `Inference.DiskCache(cache_strategy=...)`.
 
 For compatible local Llama or Gemma3 directories, `AutoInference` remains the direct optimized-native helper:

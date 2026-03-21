@@ -123,8 +123,8 @@ class LlamaSpecializationProvider(SpecializationProvider):
             create_cache=build_kv_cache_factory(
                 config=config, device=device, stats=stats
             ),
-            apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(
-                layers_num=layers_num
+            apply_cpu_offload=lambda layer_indices: model.offload_layers_to_cpu_indices(
+                layer_indices
             ),
             apply_gpu_offload=None,
             provided_pass_ids=(SpecializationPassId.MLP_CHUNKING,),
@@ -207,8 +207,8 @@ class Gemma3SpecializationProvider(SpecializationProvider):
             create_cache=build_kv_cache_factory(
                 config=config, device=device, stats=stats
             ),
-            apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(
-                layers_num=layers_num
+            apply_cpu_offload=lambda layer_indices: model.offload_layers_to_cpu_indices(
+                layer_indices
             ),
             apply_gpu_offload=None,
             provided_pass_ids=(SpecializationPassId.MLP_CHUNKING,),
@@ -285,8 +285,8 @@ class Qwen3NextSpecializationProvider(SpecializationProvider):
                 device=device,
                 stats=stats,
             ),
-            apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(
-                layers_num=layers_num
+            apply_cpu_offload=lambda layer_indices: model.offload_layers_to_cpu_indices(
+                layer_indices
             ),
             apply_gpu_offload=(
                 lambda gpu_layers_num, cpu_layers_num: model.offload_layers_to_gpu_cpu(
@@ -375,8 +375,8 @@ class GptOssSpecializationProvider(SpecializationProvider):
             supports_gpu_offload=False,
             print_suppression_modules=(module,),
             create_cache=unsupported_disk_cache_factory(resolved_model.reference.raw),
-            apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(
-                layers_num=layers_num
+            apply_cpu_offload=lambda layer_indices: model.offload_layers_to_cpu_indices(
+                layer_indices
             ),
             apply_gpu_offload=None,
             provided_pass_ids=(
@@ -454,8 +454,8 @@ class VoxtralSpecializationProvider(SpecializationProvider):
             create_cache=build_kv_cache_factory(
                 config=config, device=device, stats=stats
             ),
-            apply_cpu_offload=lambda layers_num: model.offload_layers_to_cpu(
-                layers_num=layers_num
+            apply_cpu_offload=lambda layer_indices: model.offload_layers_to_cpu_indices(
+                layer_indices
             ),
             apply_gpu_offload=None,
             provided_pass_ids=(),

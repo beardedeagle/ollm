@@ -419,3 +419,33 @@ def test_runtime_config_rejects_persistent_lifecycle_for_resident_strategy() -> 
         raise AssertionError(
             "RuntimeConfig should reject persistent lifecycle for resident mode"
         )
+
+
+def test_runtime_settings_accept_cpu_offload_policy() -> None:
+    settings = RuntimeSettings(offload_cpu_policy="suffix")
+    overrides = RuntimeConfigOverrides(offload_cpu_policy="middle-band")
+
+    assert settings.offload_cpu_policy == "suffix"
+    assert overrides.offload_cpu_policy == "middle-band"
+
+
+def test_runtime_settings_reject_cpu_offload_on_cpu_device() -> None:
+    try:
+        RuntimeSettings(device="cpu", offload_cpu_layers=1)
+    except ValueError as exc:
+        assert "--offload-cpu-layers requires an accelerator runtime device" in str(exc)
+    else:
+        raise AssertionError(
+            "RuntimeSettings should reject CPU offload on a CPU execution device"
+        )
+
+
+def test_runtime_settings_reject_mixed_cpu_and_gpu_offload() -> None:
+    try:
+        RuntimeSettings(device="mps", offload_cpu_layers=1, offload_gpu_layers=1)
+    except ValueError as exc:
+        assert "--offload-cpu-layers cannot be combined" in str(exc)
+    else:
+        raise AssertionError(
+            "RuntimeSettings should reject simultaneous CPU and GPU offload"
+        )

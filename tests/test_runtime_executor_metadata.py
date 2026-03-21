@@ -170,6 +170,32 @@ def test_runtime_executor_includes_execution_device_details_in_metadata() -> Non
     assert response.metadata["specialization_device_profile"] == "accelerator-resident"
 
 
+def test_runtime_executor_includes_offload_details_in_metadata() -> None:
+    runtime = build_runtime(CapabilityProfile(support_level=SupportLevel.OPTIMIZED))
+    runtime.plan = replace(
+        runtime.plan,
+        details={
+            "offload_cpu_requested_layers": "2",
+            "offload_cpu_policy": "suffix",
+            "offload_cpu_resolved_policy": "suffix",
+            "offload_cpu_applied_layers": "2",
+            "offload_cpu_applied_indices": "6,7",
+        },
+    )
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("hello")]),
+    )
+
+    response = RuntimeExecutor().execute(runtime, request)
+
+    assert response.metadata["offload_cpu_requested_layers"] == "2"
+    assert response.metadata["offload_cpu_policy"] == "suffix"
+    assert response.metadata["offload_cpu_resolved_policy"] == "suffix"
+    assert response.metadata["offload_cpu_applied_layers"] == "2"
+    assert response.metadata["offload_cpu_applied_indices"] == "6,7"
+
+
 def test_runtime_executor_includes_kv_cache_state_metadata() -> None:
     runtime = build_runtime(CapabilityProfile(support_level=SupportLevel.OPTIMIZED))
     runtime.config.use_cache = True

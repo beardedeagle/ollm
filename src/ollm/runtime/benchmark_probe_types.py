@@ -55,6 +55,10 @@ class RequestProbeMetrics:
     native_runtime_profile: NativeRuntimeProfile | None
     resources: StageResourceSnapshot
     text_excerpt: str
+    offload_cpu_policy: str | None = None
+    offload_cpu_requested_layers: int | None = None
+    offload_cpu_applied_layers: int | None = None
+    offload_cpu_applied_indices: tuple[int, ...] = ()
 
     def to_dict(self) -> dict[str, object]:
         payload = asdict(self)

@@ -33,6 +33,7 @@ class FakeProvider(SpecializationProvider):
     def __init__(self):
         self.load_calls: list[str] = []
         self.cache_calls: list[tuple[Path, str | None, str | None]] = []
+        self.cpu_offload_calls: list[tuple[int, ...]] = []
 
     def match(
         self, resolved_model: ResolvedModel, config: RuntimeConfig
@@ -74,7 +75,9 @@ class FakeProvider(SpecializationProvider):
                 cache_calls.append((cache_dir, cache_strategy, cache_lifecycle))
                 or str(cache_dir)
             ),
-            apply_cpu_offload=lambda layers_num: None,
+            apply_cpu_offload=lambda layer_indices: self.cpu_offload_calls.append(
+                layer_indices
+            ),
             apply_gpu_offload=None,
         )
 
@@ -169,6 +172,32 @@ def test_inference_disk_cache_forwards_explicit_strategy(tmp_path: Path) -> None
 
     assert cache_value == str(cache_root.resolve())
     assert provider.cache_calls == [(cache_root.resolve(), "streamed-segmented", None)]
+
+
+def test_inference_offload_layers_to_cpu_applies_policy_selected_indices(
+    tmp_path: Path,
+) -> None:
+    model_dir = tmp_path / "llama3-1B-chat"
+    model_dir.mkdir()
+    (model_dir / "config.json").write_text(
+        json.dumps({"model_type": "llama", "architectures": ["LlamaForCausalLM"]}),
+        encoding="utf-8",
+    )
+    provider = FakeProvider()
+    registry = SpecializationRegistry((provider,))
+
+    inference = Inference(
+        "llama3-1B-chat",
+        device="mps",
+        logging=False,
+        specialization_registry=registry,
+    )
+    inference.load_model(str(model_dir))
+    inference.model = type("FakeModel", (), {"num_hidden_layers": 8})()
+
+    inference.offload_layers_to_cpu(2, policy="suffix")
+
+    assert provider.cpu_offload_calls == [(6, 7)]
 
 
 def test_inference_load_model_does_not_prune_caller_owned_local_files(

@@ -20,7 +20,9 @@ LOGGER = logging.getLogger(__name__)
 
 
 class _CpuOffloadModel(Protocol):
-    def offload_layers_to_cpu(self, layers_num: int = 2) -> None: ...
+    num_hidden_layers: int
+
+    def offload_layers_to_cpu_indices(self, layer_indices: tuple[int, ...]) -> None: ...
 
 
 class _GpuCpuOffloadModel(_CpuOffloadModel, Protocol):

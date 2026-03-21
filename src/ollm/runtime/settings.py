@@ -35,6 +35,10 @@ from ollm.runtime.config import (
     RuntimeConfig,
     normalize_backend,
 )
+from ollm.runtime.offload_policy import (
+    DEFAULT_CPU_OFFLOAD_POLICY,
+    normalize_cpu_offload_policy,
+)
 
 DEFAULT_SERVER_HOST = "127.0.0.1"
 DEFAULT_SERVER_PORT = 8000
@@ -77,6 +81,7 @@ class RuntimeSettings(BaseModel):
     kv_cache_adaptation_mode: str = DEFAULT_KV_CACHE_ADAPTATION_MODE
     kv_cache_window_tokens: int | None = Field(default=None, gt=0)
     offload_cpu_layers: int = Field(default=0, ge=0)
+    offload_cpu_policy: str = DEFAULT_CPU_OFFLOAD_POLICY
     offload_gpu_layers: int = Field(default=0, ge=0)
     force_download: bool = False
     stats: bool = False
@@ -114,6 +119,14 @@ class RuntimeSettings(BaseModel):
     def _normalize_kv_cache_window_tokens(cls, window_tokens: int | None) -> int | None:
         return normalize_kv_cache_window_tokens(window_tokens)
 
+    @field_validator("offload_cpu_policy")
+    @classmethod
+    def _normalize_offload_cpu_policy(cls, policy: str) -> str:
+        normalized_policy = normalize_cpu_offload_policy(policy)
+        if normalized_policy is None:
+            raise ValueError("offload_cpu_policy cannot be empty")
+        return normalized_policy
+
     @model_validator(mode="after")
     def _validate_window_strategy_pair(self):
         resolve_kv_cache_lifecycle(
@@ -124,6 +137,15 @@ class RuntimeSettings(BaseModel):
             self.kv_cache_strategy,
             self.kv_cache_window_tokens,
         )
+        if self.offload_cpu_layers > 0 and self.device == "cpu":
+            raise ValueError(
+                "--offload-cpu-layers requires an accelerator runtime device"
+            )
+        if self.offload_cpu_layers > 0 and self.offload_gpu_layers > 0:
+            raise ValueError(
+                "--offload-cpu-layers cannot be combined with "
+                "--offload-gpu-layers in this runtime"
+            )
         return self
 
 
@@ -197,6 +219,7 @@ class RuntimeConfigOverrides(BaseModel):
     kv_cache_adaptation_mode: str | None = None
     kv_cache_window_tokens: int | None = Field(default=None, gt=0)
     offload_cpu_layers: int | None = Field(default=None, ge=0)
+    offload_cpu_policy: str | None = None
     offload_gpu_layers: int | None = Field(default=None, ge=0)
     force_download: bool | None = None
     stats: bool | None = None
@@ -230,6 +253,11 @@ class RuntimeConfigOverrides(BaseModel):
     def _normalize_kv_cache_window_tokens(cls, window_tokens: int | None) -> int | None:
         return normalize_kv_cache_window_tokens(window_tokens)
 
+    @field_validator("offload_cpu_policy")
+    @classmethod
+    def _normalize_offload_cpu_policy(cls, policy: str | None) -> str | None:
+        return normalize_cpu_offload_policy(policy)
+
     @model_validator(mode="after")
     def _validate_window_strategy_pair(self):
         strategy = (
@@ -245,6 +273,22 @@ class RuntimeConfigOverrides(BaseModel):
             strategy,
             self.kv_cache_window_tokens,
         )
+        offload_cpu_layers = (
+            0 if self.offload_cpu_layers is None else self.offload_cpu_layers
+        )
+        offload_gpu_layers = (
+            0 if self.offload_gpu_layers is None else self.offload_gpu_layers
+        )
+        resolved_device = DEFAULT_DEVICE if self.device is None else self.device
+        if offload_cpu_layers > 0 and resolved_device == "cpu":
+            raise ValueError(
+                "--offload-cpu-layers requires an accelerator runtime device"
+            )
+        if offload_cpu_layers > 0 and offload_gpu_layers > 0:
+            raise ValueError(
+                "--offload-cpu-layers cannot be combined with "
+                "--offload-gpu-layers in this runtime"
+            )
         return self
 
 

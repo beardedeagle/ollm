@@ -129,7 +129,7 @@ def test_transformers_generic_backend_rejects_custom_offload_controls(
         build_plan(GenericModelKind.CAUSAL_LM, model_path), RuntimeConfig(device="cpu")
     )
     with pytest.raises(ValueError):
-        runtime.apply_offload(RuntimeConfig(device="cpu", offload_cpu_layers=1))
+        runtime.apply_offload(RuntimeConfig(device="mps", offload_cpu_layers=1))
 
 
 def test_transformers_generic_backend_rejects_unsafe_weight_artifacts(

@@ -31,6 +31,7 @@ class StubProvider(SpecializationProvider):
     def __init__(self):
         self.load_count = 0
         self._module = types.ModuleType("stub_native_module")
+        self.applied_cpu_indices: list[tuple[int, ...]] = []
 
     def match(
         self, resolved_model: ResolvedModel, config: RuntimeConfig
@@ -56,7 +57,7 @@ class StubProvider(SpecializationProvider):
         del resolved_model, config, stats
         self.load_count += 1
         return OptimizedModelArtifacts(
-            model=object(),
+            model=types.SimpleNamespace(num_hidden_layers=8),
             tokenizer=object(),
             processor=None,
             device=torch.device("cpu"),
@@ -68,8 +69,8 @@ class StubProvider(SpecializationProvider):
             create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None, cache_window_tokens=None: (
                 str(cache_dir)
             ),
-            apply_cpu_offload=lambda layers_num: self._module.print(
-                f"cpu-offload:{layers_num}"
+            apply_cpu_offload=lambda layer_indices: self.applied_cpu_indices.append(
+                layer_indices
             ),
             apply_gpu_offload=None,
         )
@@ -248,10 +249,19 @@ def test_native_optimized_backend_suppresses_module_prints_during_offload(
         plan,
         RuntimeConfig(device="cpu"),
     )
-    runtime.apply_offload(RuntimeConfig(device="cpu", offload_cpu_layers=1))
+    runtime.apply_offload(
+        RuntimeConfig(
+            device="mps",
+            offload_cpu_layers=2,
+            offload_cpu_policy="suffix",
+        )
+    )
 
     captured = capfd.readouterr()
     assert captured.out == ""
+    assert provider.applied_cpu_indices == [(6, 7)]
+    assert runtime.details["offload_cpu_resolved_policy"] == "suffix"
+    assert runtime.details["offload_cpu_applied_indices"] == "6,7"
 
 
 def test_native_optimized_backend_wraps_runtime_error_load_failures(

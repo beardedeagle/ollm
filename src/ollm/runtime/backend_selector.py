@@ -108,6 +108,9 @@ class BackendSelector:
             "specialization_pass_ids": ",".join(
                 pass_id.value for pass_id in planned_specialization.pass_ids
             ),
+            "offload_cpu_requested_layers": str(config.offload_cpu_layers),
+            "offload_cpu_policy": config.resolved_offload_cpu_policy(),
+            "offload_gpu_layers": str(config.offload_gpu_layers),
         }
         for key, value in specialization_match.traits.details.items():
             details[key] = value

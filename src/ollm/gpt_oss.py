@@ -346,10 +346,16 @@ class MyGptOssForCausalLM(GptOssForCausalLM):
         with torch.no_grad():
             return super().generate(**args)
 
-    def offload_layers_to_cpu(self, layers_num=2):
+    def offload_layers_to_cpu_indices(self, layer_indices: tuple[int, ...]) -> None:
         layer = oDecoderLayer()
-        for layer_idx in range(min(layers_num, self.num_hidden_layers)):
+        for layer_idx in layer_indices:
             layer.layer_idx = layer_idx
             for manifest_name, attr_path in layer._get_my_manifests():
+                del attr_path
                 loader.offload_param_to_cpu(manifest_name)
         print("./gpt_oss offloading layers to CPU. Done.")
+
+    def offload_layers_to_cpu(self, layers_num=2):
+        self.offload_layers_to_cpu_indices(
+            tuple(range(min(layers_num, self.num_hidden_layers)))
+        )

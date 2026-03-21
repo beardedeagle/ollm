@@ -338,10 +338,12 @@ class RuntimeLoader:
     def _finalize_runtime_plan(
         self, runtime_plan: RuntimePlan, backend_runtime: BackendRuntime
     ) -> RuntimePlan:
-        if backend_runtime.applied_specialization is None:
-            return runtime_plan
-        applied_specialization = backend_runtime.applied_specialization
         details = dict(runtime_plan.details)
+        for key, value in backend_runtime.details.items():
+            details[key] = value
+        if backend_runtime.applied_specialization is None:
+            return replace(runtime_plan, details=details)
+        applied_specialization = backend_runtime.applied_specialization
         details["applied_specialization_pass_ids"] = ",".join(
             pass_id.value for pass_id in applied_specialization.applied_pass_ids
         )

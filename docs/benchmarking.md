@@ -222,6 +222,33 @@ bucket; it materially bounds persisted KV, but it is not a general perf win.
 For `resident`, benchmark output surfaces `cache_mode="resident-kv"` plus the
 resident layer/token/byte counters while leaving `cache_dir_size_mb` empty
 because there is no persisted KV root.
+CPU offload policy work can now be probed with:
+
+```bash
+uv run python scripts/benchmark_runtime.py \
+  --probe-runtime \
+  --probe-mode warm \
+  --model HuggingFaceTB/SmolLM2-1.7B-Instruct \
+  --models-dir models \
+  --device mps \
+  --probe-backend optimized-native \
+  --probe-kv-cache-strategy resident \
+  --probe-offload-cpu-layers 4 \
+  --probe-offload-cpu-policy middle-band \
+  --probe-max-new-tokens 4
+```
+
+Bounded local proof on `HuggingFaceTB/SmolLM2-1.7B-Instruct` over `mps` with
+`offload_cpu_layers=4` showed the current tradeoff clearly:
+
+- no offload: mean request `1113.842 ms`, mean peak RSS `795.414 MB`
+- `prefix`: mean request `757.589 ms`, mean peak RSS `1824.094 MB`
+- `middle-band`: mean request `761.598 ms`, mean peak RSS `1823.039 MB`
+- `suffix`: mean request `765.557 ms`, mean peak RSS `1822.805 MB`
+
+So the current local evidence says policy-driven CPU offload can reduce request
+latency on that lane, but it materially increases host RSS. Mixed CPU+GPU
+offload remains intentionally unsupported in this slice.
 Cold, warm, prompt-scaling, output-scaling, and session-growth probes all use
 the same persistent benchmark-history ledger, so bounded proof runs remain
 recorded and comparable instead of becoming ad hoc local artifacts.

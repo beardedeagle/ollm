@@ -19,6 +19,10 @@ from ollm.runtime.materialization import (
     hf_runtime_artifacts_complete,
     prune_hf_runtime_artifacts,
 )
+from ollm.runtime.offload_policy import (
+    plan_cpu_offload_placement,
+    require_hidden_layer_count,
+)
 from ollm.runtime.reference import ModelReference
 from ollm.runtime.resolver import ModelResolver, ModelSourceKind
 from ollm.runtime.safety import validate_safe_adapter_artifacts
@@ -229,11 +233,19 @@ class Inference:
         self._apply_cpu_offload = artifacts.apply_cpu_offload
         self._apply_gpu_offload = artifacts.apply_gpu_offload
 
-    def offload_layers_to_cpu(self, layers_num: int) -> None:
+    def offload_layers_to_cpu(self, layers_num: int, policy: str = "prefix") -> None:
         """Apply CPU layer offload through the selected specialization when supported."""
         if self._apply_cpu_offload is None:
             raise ValueError(f"{self.model_id} does not support CPU layer offload")
-        self._apply_cpu_offload(layers_num)
+        model = getattr(self, "model", None)
+        if model is None:
+            raise ValueError(f"{self.model_id} is not loaded")
+        placement = plan_cpu_offload_placement(
+            requested_layers=layers_num,
+            total_layers=require_hidden_layer_count(model),
+            policy=policy,
+        )
+        self._apply_cpu_offload(placement.layer_indices)
 
     def offload_layers_to_gpu_cpu(
         self, gpu_layers_num: int = 0, cpu_layers_num: int = 0

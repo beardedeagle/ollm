@@ -4,6 +4,11 @@ import sys
 from pathlib import Path
 from typing import cast
 
+from benchmark_runtime_support import (
+    non_negative_int,
+    parse_positive_int_list,
+    positive_int,
+)
 from ollm.runtime.benchmark_history import record_benchmark_history
 from ollm.runtime.benchmark_metadata import (
     probe_comparison_key,
@@ -32,20 +37,6 @@ from ollm.runtime.benchmarks import (
     run_session_growth_probe,
     run_warm_runtime_probe,
 )
-
-
-def positive_int(value: str) -> int:
-    parsed = int(value)
-    if parsed <= 0:
-        raise argparse.ArgumentTypeError("must be a positive integer")
-    return parsed
-
-
-def non_negative_int(value: str) -> int:
-    parsed = int(value)
-    if parsed < 0:
-        raise argparse.ArgumentTypeError("must be a non-negative integer")
-    return parsed
 
 
 def parse_args() -> argparse.Namespace:
@@ -83,6 +74,23 @@ def parse_args() -> argparse.Namespace:
         type=positive_int,
         default=None,
         help="Sliding-window token budget for bounded KV strategies.",
+    )
+    parser.add_argument(
+        "--offload-cpu-layers",
+        type=non_negative_int,
+        default=0,
+        help="CPU offload layer budget for runtime probes and comparisons.",
+    )
+    parser.add_argument(
+        "--offload-cpu-policy",
+        default="auto",
+        help="CPU offload placement policy.",
+    )
+    parser.add_argument(
+        "--offload-gpu-layers",
+        type=non_negative_int,
+        default=0,
+        help="GPU offload layer budget for runtime probes and comparisons.",
     )
     parser.add_argument(
         "--iterations",
@@ -161,6 +169,23 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help=argparse.SUPPRESS,
     )
+    parser.add_argument(
+        "--probe-offload-cpu-layers",
+        type=non_negative_int,
+        default=0,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--probe-offload-cpu-policy",
+        default="auto",
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--probe-offload-gpu-layers",
+        type=non_negative_int,
+        default=0,
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument("--probe-prompt", help=argparse.SUPPRESS, default="Say hi.")
     parser.add_argument(
         "--probe-max-new-tokens",
@@ -202,20 +227,6 @@ def parse_args() -> argparse.Namespace:
         help=argparse.SUPPRESS,
     )
     return parser.parse_args()
-
-
-def parse_positive_int_list(value: str) -> tuple[int, ...]:
-    if not value.strip():
-        raise SystemExit("expected a comma-separated list of positive integers")
-    try:
-        values = tuple(int(item.strip()) for item in value.split(",") if item.strip())
-    except ValueError as exc:
-        raise SystemExit(
-            "expected a comma-separated list of positive integers"
-        ) from exc
-    if not values or any(item <= 0 for item in values):
-        raise SystemExit("expected a comma-separated list of positive integers")
-    return values
 
 
 def main() -> int:
@@ -260,6 +271,9 @@ def main() -> int:
                 use_specialization=not args.probe_no_specialization,
                 kv_cache_strategy=args.probe_kv_cache_strategy,
                 kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
+                offload_cpu_layers=args.probe_offload_cpu_layers,
+                offload_cpu_policy=args.probe_offload_cpu_policy,
+                offload_gpu_layers=args.probe_offload_gpu_layers,
                 prompt=args.probe_prompt,
                 max_new_tokens=args.probe_max_new_tokens,
             )
@@ -273,6 +287,9 @@ def main() -> int:
                 use_specialization=not args.probe_no_specialization,
                 kv_cache_strategy=args.probe_kv_cache_strategy,
                 kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
+                offload_cpu_layers=args.probe_offload_cpu_layers,
+                offload_cpu_policy=args.probe_offload_cpu_policy,
+                offload_gpu_layers=args.probe_offload_gpu_layers,
                 prompt=args.probe_prompt,
                 max_new_tokens=args.probe_max_new_tokens,
                 iterations=args.probe_iterations,
@@ -288,6 +305,9 @@ def main() -> int:
                 use_specialization=not args.probe_no_specialization,
                 kv_cache_strategy=args.probe_kv_cache_strategy,
                 kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
+                offload_cpu_layers=args.probe_offload_cpu_layers,
+                offload_cpu_policy=args.probe_offload_cpu_policy,
+                offload_gpu_layers=args.probe_offload_gpu_layers,
                 prompt_token_targets=prompt_token_targets,
                 max_new_tokens=args.probe_max_new_tokens,
             )
@@ -301,6 +321,9 @@ def main() -> int:
                 use_specialization=not args.probe_no_specialization,
                 kv_cache_strategy=args.probe_kv_cache_strategy,
                 kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
+                offload_cpu_layers=args.probe_offload_cpu_layers,
+                offload_cpu_policy=args.probe_offload_cpu_policy,
+                offload_gpu_layers=args.probe_offload_gpu_layers,
                 prompt=args.probe_prompt,
                 output_token_targets=output_token_targets,
             )
@@ -314,6 +337,9 @@ def main() -> int:
                 use_specialization=not args.probe_no_specialization,
                 kv_cache_strategy=args.probe_kv_cache_strategy,
                 kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
+                offload_cpu_layers=args.probe_offload_cpu_layers,
+                offload_cpu_policy=args.probe_offload_cpu_policy,
+                offload_gpu_layers=args.probe_offload_gpu_layers,
                 session_turns=args.probe_session_turns,
                 max_new_tokens=args.probe_max_new_tokens,
             )
@@ -327,6 +353,9 @@ def main() -> int:
                 use_specialization=not args.probe_no_specialization,
                 kv_cache_strategy=args.probe_kv_cache_strategy,
                 kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
+                offload_cpu_layers=args.probe_offload_cpu_layers,
+                offload_cpu_policy=args.probe_offload_cpu_policy,
+                offload_gpu_layers=args.probe_offload_gpu_layers,
                 session_turns=args.probe_session_turns,
                 max_new_tokens=args.probe_max_new_tokens,
             )
@@ -350,6 +379,9 @@ def main() -> int:
                     backend=args.probe_backend,
                     kv_cache_strategy=args.probe_kv_cache_strategy,
                     kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
+                    offload_cpu_layers=args.probe_offload_cpu_layers,
+                    offload_cpu_policy=args.probe_offload_cpu_policy,
+                    offload_gpu_layers=args.probe_offload_gpu_layers,
                     probe_mode=args.probe_mode,
                     prompt=args.probe_prompt,
                     max_new_tokens=args.probe_max_new_tokens,
@@ -373,6 +405,9 @@ def main() -> int:
         device=device,
         kv_cache_strategy=args.kv_cache_strategy,
         kv_cache_window_tokens=args.kv_cache_window_tokens,
+        offload_cpu_layers=args.offload_cpu_layers,
+        offload_cpu_policy=args.offload_cpu_policy,
+        offload_gpu_layers=args.offload_gpu_layers,
         iterations=profile.iterations,
         warmup_iterations=profile.warmup_iterations,
         prompt_token_targets=profile.prompt_token_targets,
@@ -400,6 +435,9 @@ def main() -> int:
                 device=device,
                 kv_cache_strategy=args.kv_cache_strategy,
                 kv_cache_window_tokens=args.kv_cache_window_tokens,
+                offload_cpu_layers=args.offload_cpu_layers,
+                offload_cpu_policy=args.offload_cpu_policy,
+                offload_gpu_layers=args.offload_gpu_layers,
                 profile_id=profile.profile_id,
                 prompt_token_targets=profile.prompt_token_targets,
                 output_token_targets=profile.output_token_targets,
