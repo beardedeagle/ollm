@@ -2212,9 +2212,9 @@
 </ul>
 <p>The current KV scaffolding now distinguishes:</p>
 <ul>
-<li><code>kv_cache_strategy</code> — the current preset such as <code>chunked</code>, <code>paged</code>, <code>sliding-window-ring-buffer</code>, <code>quantized-cold-tier</code>, or <code>tiered-write-back</code></li>
+<li><code>kv_cache_strategy</code> — the current preset such as <code>resident</code>, <code>chunked</code>, <code>paged</code>, <code>streamed-segmented</code>, <code>log-structured-journal</code>, <code>sliding-window-ring-buffer</code>, <code>quantized-cold-tier</code>, or <code>tiered-write-back</code></li>
 <li><code>kv_cache_window_tokens</code> — bounded recent-context token budget for <code>sliding-window-ring-buffer</code>; omitted for full-history strategies</li>
-<li><code>kv_cache_lifecycle</code> — <code>runtime-scoped</code> or explicit <code>persistent</code> reuse semantics</li>
+<li><code>kv_cache_lifecycle</code> — <code>runtime-scoped</code> or explicit <code>persistent</code> reuse semantics; <code>resident</code> requires <code>runtime-scoped</code></li>
 <li><code>kv_cache_adaptation_mode</code> — <code>disabled</code>, <code>observe-only</code>, or <code>automatic</code>; observe-only recommendation rules exist, but live switching is still disabled</li>
 </ul>
 <h2 id="generationconfig"><code>GenerationConfig</code><a class="headerlink" href="#generationconfig" title="Permanent link">&para;</a></h2>

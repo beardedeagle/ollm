@@ -2285,8 +2285,8 @@
 
 
 <h1 id="kv-strategy-matrix">KV Strategy Matrix<a class="headerlink" href="#kv-strategy-matrix" title="Permanent link">&para;</a></h1>
-<p>oLLM's current disk-KV presets are still selected as single strings such as
-<code>chunked</code>, <code>paged</code>, <code>streamed-segmented</code>, <code>log-structured-journal</code>,
+<p>oLLM's current KV cache presets are still selected as single strings such as
+<code>resident</code>, <code>chunked</code>, <code>paged</code>, <code>streamed-segmented</code>, <code>log-structured-journal</code>,
 <code>sliding-window-ring-buffer</code>, <code>quantized-cold-tier</code>, and
 <code>tiered-write-back</code>.</p>
 <p>That is still the public control surface today, but the system is now being
@@ -2317,6 +2317,13 @@ that preset is owned and how telemetry may influence future runtime choices.</p>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td><code>resident</code></td>
+<td><code>resident-only</code></td>
+<td><code>fully-resident</code></td>
+<td><code>full-history</code></td>
+<td><code>full-precision</code></td>
+</tr>
 <tr>
 <td><code>chunked</code></td>
 <td><code>chunked-manifest</code></td>
@@ -2372,8 +2379,8 @@ that preset is owned and how telemetry may influence future runtime choices.</p>
 <code>sliding-window-ring-buffer</code> deliberately preserves only a bounded recent
 history under a <code>drop-oldest</code> eviction policy; it is not a transparent
 substitute for the full-history strategies. The matrix still keeps the shape
-explicit so future presets such as <code>paged</code>, <code>resident</code>, or richer bounded
-window variants can compose cleanly.</p>
+explicit so future presets and richer bounded window variants can compose
+cleanly.</p>
 <h2 id="cache-lifecycle">Cache lifecycle<a class="headerlink" href="#cache-lifecycle" title="Permanent link">&para;</a></h2>
 <p>Cache lifecycle is intentionally treated as a separate axis:</p>
 <ul>
@@ -2431,7 +2438,6 @@ up as persisted on-disk KV activity.</p>
 <p>This scaffold is meant to support the next wave of work:</p>
 <ul>
 <li>paged persistence</li>
-<li>resident baseline mode</li>
 <li>quantized cold tiers</li>
 <li>observe-only adaptation recommendations</li>
 <li>stronger persistent lifecycle reuse and retention policy</li>

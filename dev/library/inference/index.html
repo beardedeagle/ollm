@@ -2263,8 +2263,10 @@
 <span class="p">)</span>
 <span class="n">text_streamer</span> <span class="o">=</span> <span class="n">TextStreamer</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">tokenizer</span><span class="p">,</span> <span class="n">skip_prompt</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">skip_special_tokens</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
-<p>That disk cache path now uses an explicit disk-KV store under
-<code>cache_dir/kv_cache_chunked</code> by default, with explicit
+<p>When the selected runtime uses <code>kv_cache_strategy="resident"</code>, it keeps
+full-history KV entirely in memory and does not initialize any disk-KV path.
+When disk-backed strategies are selected, the default path uses an explicit
+disk-KV store under <code>cache_dir/kv_cache_chunked</code>, with explicit
 dtype/shape/sequence metadata and raw payloads instead of pickle-backed torch
 artifacts. When the selected runtime uses
 <code>kv_cache_strategy="paged"</code>, it writes to

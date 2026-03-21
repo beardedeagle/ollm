@@ -1940,10 +1940,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ollm.runtime.loader.LoadedRuntime.get_or_create_disk_cache" class="md-nav__link">
+  <a href="#ollm.runtime.loader.LoadedRuntime.get_or_create_kv_cache" class="md-nav__link">
     <span class="md-ellipsis">
       
-        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;get_or_create_disk_cache
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;get_or_create_kv_cache
       
     </span>
   </a>
@@ -2336,10 +2336,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#ollm.runtime.loader.LoadedRuntime.get_or_create_disk_cache" class="md-nav__link">
+  <a href="#ollm.runtime.loader.LoadedRuntime.get_or_create_kv_cache" class="md-nav__link">
     <span class="md-ellipsis">
       
-        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;get_or_create_disk_cache
+        <code class="doc-symbol doc-symbol-toc doc-symbol-method"></code>&nbsp;get_or_create_kv_cache
       
     </span>
   </a>
@@ -2543,7 +2543,7 @@
     <span class="n">backend</span><span class="p">:</span> <span class="n">BackendRuntime</span>
     <span class="n">model_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span>
     <span class="n">plan</span><span class="p">:</span> <span class="n">RuntimePlan</span>
-    <span class="n">_disk_cache_instances</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">],</span> <span class="nb">object</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
+    <span class="n">_kv_cache_instances</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="n">Path</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">,</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">],</span> <span class="nb">object</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span>
         <span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span>
     <span class="p">)</span>
 
@@ -2589,23 +2589,23 @@
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Expose the backend runtime device.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">device</span>
 
-    <span class="k">def</span><span class="w"> </span><span class="nf">get_or_create_disk_cache</span><span class="p">(</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_or_create_kv_cache</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
         <span class="n">cache_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
         <span class="n">strategy</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">lifecycle</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">window_tokens</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">object</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reuse one disk-cache instance per cache root and strategy.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reuse one KV-cache instance per resolved cache key.&quot;&quot;&quot;</span>
         <span class="n">cache_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">cache_dir</span><span class="o">.</span><span class="n">resolve</span><span class="p">(),</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">lifecycle</span><span class="p">,</span> <span class="n">window_tokens</span><span class="p">)</span>
-        <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_disk_cache_instances</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
+        <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kv_cache_instances</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="k">return</span> <span class="n">cache</span>
         <span class="n">created_cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">create_cache</span><span class="p">(</span>
             <span class="n">cache_dir</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">lifecycle</span><span class="p">,</span> <span class="n">window_tokens</span>
         <span class="p">)</span>
         <span class="k">if</span> <span class="n">created_cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">_disk_cache_instances</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">created_cache</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_kv_cache_instances</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">created_cache</span>
         <span class="k">return</span> <span class="n">created_cache</span>
 </code></pre></div></td></tr></table></div>
               </details>
@@ -2746,12 +2746,12 @@
 <div class="doc doc-object doc-function">
 
 
-<h2 id="ollm.runtime.loader.LoadedRuntime.get_or_create_disk_cache" class="doc doc-heading">
-<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">get_or_create_disk_cache</span>
+<h2 id="ollm.runtime.loader.LoadedRuntime.get_or_create_kv_cache" class="doc doc-heading">
+<code class="doc-symbol doc-symbol-heading doc-symbol-method"></code>            <span class="doc doc-object-name doc-function-name">get_or_create_kv_cache</span>
 
 
-<a href="#ollm.runtime.loader.LoadedRuntime.get_or_create_disk_cache" class="headerlink" title="Permanent link">&para;</a></h2>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span class="nf">get_or_create_disk_cache</span><span class="p">(</span>
+<a href="#ollm.runtime.loader.LoadedRuntime.get_or_create_kv_cache" class="headerlink" title="Permanent link">&para;</a></h2>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span class="nf">get_or_create_kv_cache</span><span class="p">(</span>
     <span class="n">cache_dir</span><span class="p">:</span> <span class="n"><span title="pathlib.Path">Path</span></span><span class="p">,</span>
     <span class="n">strategy</span><span class="p">:</span> <span class="n"><span title="str">str</span></span><span class="p">,</span>
     <span class="n">lifecycle</span><span class="p">:</span> <span class="n"><span title="str">str</span></span><span class="p">,</span>
@@ -2761,7 +2761,7 @@
 
     <div class="doc doc-contents ">
 
-        <p>Reuse one disk-cache instance per cache root and strategy.</p>
+        <p>Reuse one KV-cache instance per resolved cache key.</p>
 
 
             <details class="mkdocstrings-source">
@@ -2783,23 +2783,23 @@
 <span class="normal"> 98</span>
 <span class="normal"> 99</span>
 <span class="normal">100</span>
-<span class="normal">101</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_or_create_disk_cache</span><span class="p">(</span>
+<span class="normal">101</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_or_create_kv_cache</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">cache_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
     <span class="n">strategy</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">lifecycle</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">window_tokens</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">object</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reuse one disk-cache instance per cache root and strategy.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reuse one KV-cache instance per resolved cache key.&quot;&quot;&quot;</span>
     <span class="n">cache_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">cache_dir</span><span class="o">.</span><span class="n">resolve</span><span class="p">(),</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">lifecycle</span><span class="p">,</span> <span class="n">window_tokens</span><span class="p">)</span>
-    <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_disk_cache_instances</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
+    <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kv_cache_instances</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="n">cache</span>
     <span class="n">created_cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">create_cache</span><span class="p">(</span>
         <span class="n">cache_dir</span><span class="p">,</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">lifecycle</span><span class="p">,</span> <span class="n">window_tokens</span>
     <span class="p">)</span>
     <span class="k">if</span> <span class="n">created_cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_disk_cache_instances</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">created_cache</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_kv_cache_instances</span><span class="p">[</span><span class="n">cache_key</span><span class="p">]</span> <span class="o">=</span> <span class="n">created_cache</span>
     <span class="k">return</span> <span class="n">created_cache</span>
 </code></pre></div></td></tr></table></div>
             </details>

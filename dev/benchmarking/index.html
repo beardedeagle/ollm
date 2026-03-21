@@ -2272,7 +2272,7 @@ different stable grouping:</p>
 The comparison key is based on the actual run shape, including model, device,
 backend, strategy, codebase label, and prompt/profile controls, so
 incomparable runs do not get mashed together.</p>
-<p>For disk-KV A/B work, select the optimized-native store explicitly:</p>
+<p>For KV strategy A/B work, select the preset explicitly:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--device<span class="w"> </span>cpu<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--kv-cache-strategy<span class="w"> </span>streamed-segmented<span class="w"> </span><span class="se">\</span>
@@ -2295,6 +2295,13 @@ incomparable runs do not get mashed together.</p>
 <span class="w">  </span>--device<span class="w"> </span>cpu<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--kv-cache-strategy<span class="w"> </span>log-structured-journal<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output<span class="w"> </span>.omx/runtime-benchmark-journal.json
+</code></pre></div>
+<p>Resident mode uses the same switch, but it reports <code>cache_mode="resident-kv"</code>
+and leaves <code>cache_dir_size_mb</code> empty because no on-disk KV root is created:</p>
+<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--device<span class="w"> </span>cpu<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--kv-cache-strategy<span class="w"> </span>resident<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>.omx/runtime-benchmark-resident.json
 </code></pre></div>
 <p>The bounded sliding-window mode requires an explicit window size:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
@@ -2412,6 +2419,9 @@ mode, pass an explicit <code>--kv-cache-window-tokens</code> value so benchmark 
 does not compare unlike window sizes. Current local CPU and MPS proof keeps
 this mode in the explicit opt-in bucket rather than the selector-default
 bucket; it materially bounds persisted KV, but it is not a general perf win.
+For <code>resident</code>, benchmark output surfaces <code>cache_mode="resident-kv"</code> plus the
+resident layer/token/byte counters while leaving <code>cache_dir_size_mb</code> empty
+because there is no persisted KV root.
 Cold, warm, prompt-scaling, output-scaling, and session-growth probes all use
 the same persistent benchmark-history ledger, so bounded proof runs remain
 recorded and comparable instead of becoming ad hoc local artifacts.

@@ -2380,8 +2380,7 @@
 </ul>
 <p>These controls are backend-dependent. The generic path does not expose the same
 low-level layer-placement controls as optimized-native runtimes.</p>
-<p>The optimized-native disk KV cache now exposes six explicit
-strategies:</p>
+<p>The optimized-native KV cache surface now exposes eight explicit presets:</p>
 <ul>
 <li><code>chunked</code></li>
 <li><code>paged</code></li>
@@ -2390,6 +2389,7 @@ strategies:</p>
 <li><code>sliding-window-ring-buffer</code></li>
 <li><code>quantized-cold-tier</code></li>
 <li><code>tiered-write-back</code></li>
+<li><code>resident</code></li>
 </ul>
 <p><code>chunked</code> persists a manifest-backed chunk store under
 <code>cache_dir/kv_cache_chunked</code>. <code>paged</code> persists a fixed-capacity page table
@@ -2411,14 +2411,21 @@ default strategy.
 <code>cache_dir/kv_cache_quantized_cold_tier</code>, but stores colder entries in the
 explicit <code>int8-symmetric-per-tensor</code> representation and dequantizes back to
 the runtime dtype on load.
+<code>resident</code> keeps full-history KV entirely in memory and does not initialize any
+disk root. It is the truthful no-spill baseline, not a persistence strategy.
 <code>tiered-write-back</code> persists only the colder KV prefix under
 <code>cache_dir/kv_cache_tiered_write_back</code> while keeping a bounded hot region in
-memory; its cold tier now uses a journal-backed append store. All seven use
-typed raw tensor payloads plus explicit metadata, and none uses opaque
+memory; its cold tier now uses a journal-backed append store. All seven
+disk-backed presets use typed raw tensor payloads plus explicit metadata, and
+none uses opaque
 pickle-backed <code>.pt</code> cache blobs. The runtime also applies a
 platform/resource-aware buffering or spill policy on top of the selected
 strategy so the cache can trade write amplification against memory headroom
-instead of flushing every delta identically on every machine.</p>
+instead of flushing every delta identically on every machine.
+<code>resident</code> does not initialize any disk-KV root at all; it keeps full-history
+KV entirely in memory and exists as the explicit low-overhead baseline when the
+active runtime can afford that footprint. It is intentionally not aligned with
+oLLM's large-model spill/offload goal.</p>
 <p>Within one loaded runtime, the cache layer now also keeps a resident in-process
 snapshot of the reconstructed per-layer KV state so repeated updates do not
 need to reread and rebuild the same on-disk history every token. For the
