@@ -2000,6 +2000,8 @@
       
         
       
+        
+      
     
     
     
@@ -2060,6 +2062,34 @@
     
   
     Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/tiered-kv-cache-adr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tiered KV Cache ADR
   
 
     
@@ -2375,6 +2405,8 @@ that preset is owned and how telemetry may influence future runtime choices.</p>
 </tr>
 </tbody>
 </table>
+<p>The current <code>tiered-write-back</code> preset should not be confused with a future
+broader multi-tier GPU/CPU/SSD architecture.</p>
 <p>This does not erase the semantic differences between presets. For example,
 <code>sliding-window-ring-buffer</code> deliberately preserves only a bounded recent
 history under a <code>drop-oldest</code> eviction policy; it is not a transparent
@@ -2439,6 +2471,7 @@ up as persisted on-disk KV activity.</p>
 <ul>
 <li>paged persistence</li>
 <li>quantized cold tiers</li>
+<li>a future page-aware GPU / CPU / SSD tiered architecture</li>
 <li>observe-only adaptation recommendations</li>
 <li>stronger persistent lifecycle reuse and retention policy</li>
 </ul>

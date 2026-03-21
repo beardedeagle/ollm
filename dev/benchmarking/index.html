@@ -1978,6 +1978,8 @@
       
         
       
+        
+      
     
     
     
@@ -2038,6 +2040,34 @@
     
   
     Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/tiered-kv-cache-adr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tiered KV Cache ADR
   
 
     
@@ -2399,6 +2429,8 @@ can show up under the same <code>disk-kv-cache</code> storage path label.
 For <code>tiered-write-back</code>, the persisted cold tier now uses a journal-backed
 append store under <code>cache_dir/kv_cache_tiered_write_back/cold</code>, so the tiered
 spill path no longer depends on the chunked cold-store substrate.
+That current preset is still a bounded hot-tail plus cold journal strategy, not
+the future GPU/CPU/SSD multi-tier architecture.
 For <code>log-structured-journal</code>, compaction is visible both through
 <code>cache_state.compaction_count</code> and, when it occurs during a request, native
 runtime profile timing under <code>kvcompact</code>. <code>kvsave</code> now measures append-path

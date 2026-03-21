@@ -11,10 +11,10 @@
       
       
       
-        <link rel="prev" href="../../development/tiered-kv-cache-adr/">
+        <link rel="prev" href="../">
       
       
-        <link rel="next" href="../python-standards/">
+        <link rel="next" href="../../guides/contributing/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>Contributing Guide - oLLM</title>
+        <title>Tiered KV Cache ADR - oLLM</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#contributing-guide" class="md-skip">
+        <a href="#tiered-kv-cache-adr" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Contributing Guide
+              Tiered KV Cache ADR
             
           </span>
         </div>
@@ -375,7 +375,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../../development/" class="md-tabs__link">
+        <a href="../" class="md-tabs__link">
           
   
   
@@ -514,7 +514,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../installation/" class="md-nav__link">
+      <a href="../../guides/installation/" class="md-nav__link">
         
   
   
@@ -542,7 +542,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../configuration/" class="md-nav__link">
+      <a href="../../guides/configuration/" class="md-nav__link">
         
   
   
@@ -570,7 +570,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../quickstart/" class="md-nav__link">
+      <a href="../../guides/quickstart/" class="md-nav__link">
         
   
   
@@ -705,7 +705,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../local-server/" class="md-nav__link">
+      <a href="../../guides/local-server/" class="md-nav__link">
         
   
   
@@ -733,7 +733,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../model-references/" class="md-nav__link">
+      <a href="../../guides/model-references/" class="md-nav__link">
         
   
   
@@ -761,7 +761,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../multimodal/" class="md-nav__link">
+      <a href="../../guides/multimodal/" class="md-nav__link">
         
   
   
@@ -789,7 +789,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../runtime-planning/" class="md-nav__link">
+      <a href="../../guides/runtime-planning/" class="md-nav__link">
         
   
   
@@ -817,7 +817,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../models-discovery/" class="md-nav__link">
+      <a href="../../guides/models-discovery/" class="md-nav__link">
         
   
   
@@ -845,7 +845,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../optimization/" class="md-nav__link">
+      <a href="../../guides/optimization/" class="md-nav__link">
         
   
   
@@ -873,7 +873,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../troubleshooting/" class="md-nav__link">
+      <a href="../../guides/troubleshooting/" class="md-nav__link">
         
   
   
@@ -1939,7 +1939,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../development/" class="md-nav__link">
+      <a href="../" class="md-nav__link">
         
   
   
@@ -1947,34 +1947,6 @@
     
   
     Development
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-              
-            
-              
-                
-  
-  
-  
-  
-    <li class="md-nav__item">
-      <a href="../../development/tiered-kv-cache-adr/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Tiered KV Cache ADR
   
 
     
@@ -2011,7 +1983,7 @@
   <span class="md-ellipsis">
     
   
-    Contributing Guide
+    Tiered KV Cache ADR
   
 
     
@@ -2029,7 +2001,7 @@
   <span class="md-ellipsis">
     
   
-    Contributing Guide
+    Tiered KV Cache ADR
   
 
     
@@ -2057,10 +2029,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#local-development-workflow" class="md-nav__link">
+  <a href="#status" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Local development workflow
+        Status
       
     </span>
   </a>
@@ -2068,10 +2040,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#verification-expectations" class="md-nav__link">
+  <a href="#scope" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Verification expectations
+        Scope
       
     </span>
   </a>
@@ -2079,10 +2051,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#documentation-expectations" class="md-nav__link">
+  <a href="#decision-summary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Documentation expectations
+        Decision summary
       
     </span>
   </a>
@@ -2090,10 +2062,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#standards-expectations" class="md-nav__link">
+  <a href="#why-the-current-baseline-is-not-enough" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Standards expectations
+        Why the current baseline is not enough
       
     </span>
   </a>
@@ -2101,10 +2073,359 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#testing-style" class="md-nav__link">
+  <a href="#design-goals" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Testing style
+        Design goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#non-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#critical-truth-constraint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Critical truth constraint
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-data-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended data model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recommended data model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#page-unit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Page unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authoritative-persisted-store" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authoritative persisted store
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tier model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tier-0-accelerator-hot-tier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 0: accelerator hot tier
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tier-1-cpu-warm-tier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 1: CPU warm tier
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tier-2-ssd-cold-tier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 2: SSD cold tier
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#promotion-and-eviction-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Promotion and eviction semantics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Promotion and eviction semantics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#promotion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Promotion
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#eviction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Eviction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#write-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Write path
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interaction-with-existing-presets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interaction with existing presets
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Interaction with existing presets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#resident" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resident
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#paged" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        paged
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quantized-cold-tier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        quantized-cold-tier
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sliding-window-ring-buffer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sliding-window-ring-buffer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tiered-write-back" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tiered-write-back
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#runtime-planning-and-selector-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime planning and selector integration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#benchmark-and-inspection-truth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benchmark and inspection truth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#failure-recovery-and-fallback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure, recovery, and fallback
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-phased-implementation-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended phased implementation order
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recommended phased implementation order">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 4
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 5
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommendation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommendation
       
     </span>
   </a>
@@ -2127,7 +2448,35 @@
   
   
     <li class="md-nav__item">
-      <a href="../python-standards/" class="md-nav__link">
+      <a href="../../guides/contributing/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Contributing Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../guides/python-standards/" class="md-nav__link">
         
   
   
@@ -2155,7 +2504,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../python-standards-audit/" class="md-nav__link">
+      <a href="../../guides/python-standards-audit/" class="md-nav__link">
         
   
   
@@ -2212,10 +2561,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#local-development-workflow" class="md-nav__link">
+  <a href="#status" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Local development workflow
+        Status
       
     </span>
   </a>
@@ -2223,10 +2572,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#verification-expectations" class="md-nav__link">
+  <a href="#scope" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Verification expectations
+        Scope
       
     </span>
   </a>
@@ -2234,10 +2583,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#documentation-expectations" class="md-nav__link">
+  <a href="#decision-summary" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Documentation expectations
+        Decision summary
       
     </span>
   </a>
@@ -2245,10 +2594,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#standards-expectations" class="md-nav__link">
+  <a href="#why-the-current-baseline-is-not-enough" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Standards expectations
+        Why the current baseline is not enough
       
     </span>
   </a>
@@ -2256,10 +2605,359 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#testing-style" class="md-nav__link">
+  <a href="#design-goals" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Testing style
+        Design goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#non-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Non-goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#critical-truth-constraint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Critical truth constraint
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-data-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended data model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recommended data model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#page-unit" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Page unit
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#authoritative-persisted-store" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Authoritative persisted store
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tier-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier model
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Tier model">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#tier-0-accelerator-hot-tier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 0: accelerator hot tier
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tier-1-cpu-warm-tier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 1: CPU warm tier
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tier-2-ssd-cold-tier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tier 2: SSD cold tier
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#promotion-and-eviction-semantics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Promotion and eviction semantics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Promotion and eviction semantics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#promotion" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Promotion
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#eviction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Eviction
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#write-path" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Write path
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interaction-with-existing-presets" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interaction with existing presets
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Interaction with existing presets">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#resident" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        resident
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#paged" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        paged
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#quantized-cold-tier" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        quantized-cold-tier
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#sliding-window-ring-buffer" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        sliding-window-ring-buffer
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#tiered-write-back" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        tiered-write-back
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#runtime-planning-and-selector-integration" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime planning and selector integration
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#benchmark-and-inspection-truth" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Benchmark and inspection truth
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#failure-recovery-and-fallback" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Failure, recovery, and fallback
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-phased-implementation-order" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended phased implementation order
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Recommended phased implementation order">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#phase-1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 1
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 2
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-3" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 3
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-4" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 4
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#phase-5" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Phase 5
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommendation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommendation
       
     </span>
   </a>
@@ -2292,47 +2990,353 @@
   
 
 
-<h1 id="contributing-guide">Contributing Guide<a class="headerlink" href="#contributing-guide" title="Permanent link">&para;</a></h1>
-<h2 id="local-development-workflow">Local development workflow<a class="headerlink" href="#local-development-workflow" title="Permanent link">&para;</a></h2>
-<p>Recommended setup:</p>
-<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--group<span class="w"> </span>dev<span class="w"> </span>--group<span class="w"> </span>docs
-</code></pre></div>
-<h2 id="verification-expectations">Verification expectations<a class="headerlink" href="#verification-expectations" title="Permanent link">&para;</a></h2>
-<p>Before sending a documentation or code change, run the relevant gates:</p>
-<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>format<span class="w"> </span>src<span class="w"> </span>tests<span class="w"> </span>examples<span class="w"> </span>scripts
-uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>src<span class="w"> </span>tests<span class="w"> </span>examples<span class="w"> </span>scripts
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/check_python_standards.py
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>compileall<span class="w"> </span>src<span class="w"> </span>tests<span class="w"> </span>examples<span class="w"> </span>scripts
-uv<span class="w"> </span>run<span class="w"> </span>ty<span class="w"> </span>check<span class="w"> </span>src<span class="w"> </span>tests
-uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-q
-uv<span class="w"> </span>build
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pip_audit
-uv<span class="w"> </span>run<span class="w"> </span>--group<span class="w"> </span>docs<span class="w"> </span>mkdocs<span class="w"> </span>build<span class="w"> </span>--strict
-</code></pre></div>
-<p>For docs-only changes, still verify the docs build and run at least the tests affected by the changed examples or commands.</p>
-<h2 id="documentation-expectations">Documentation expectations<a class="headerlink" href="#documentation-expectations" title="Permanent link">&para;</a></h2>
-<p>This project treats docs as part of the product surface:</p>
+<h1 id="tiered-kv-cache-adr">Tiered KV Cache ADR<a class="headerlink" href="#tiered-kv-cache-adr" title="Permanent link">&para;</a></h1>
+<p>This page is contributor-facing architectural guidance.</p>
+<p>It is not customer-facing product documentation and not an implementation
+claim. It records the recommended future direction for a GPU/CPU/SSD tiered KV
+cache so later implementation work stays grounded in the current oLLM
+architecture.</p>
+<h2 id="status">Status<a class="headerlink" href="#status" title="Permanent link">&para;</a></h2>
 <ul>
-<li>keep README and <code>docs/</code> aligned</li>
-<li>keep the canonical standards contract in <a href="../python-standards/">Python Standards</a></li>
-<li>keep CLI/help text and docs terminology aligned</li>
-<li>avoid internal implementation-plan language in user-facing docs</li>
-<li>prefer truthful statements over broad claims that cannot be proved on the current host</li>
+<li>audience: implementers and maintainers</li>
+<li>kind: ADR / design decision</li>
+<li>implementation status: not implemented</li>
 </ul>
-<h2 id="standards-expectations">Standards expectations<a class="headerlink" href="#standards-expectations" title="Permanent link">&para;</a></h2>
-<p><code>ollm</code> is being treated as a greenfield codebase:</p>
+<h2 id="scope">Scope<a class="headerlink" href="#scope" title="Permanent link">&para;</a></h2>
+<p>This ADR defines the recommended architecture for a future KV cache that spans:</p>
 <ul>
-<li>no legacy-only code paths</li>
-<li>no compatibility scaffolding</li>
-<li>no preserving bad structures because they already exist</li>
+<li>the active execution device</li>
+<li>host memory</li>
+<li>SSD-backed persistence</li>
 </ul>
-<p>The mechanically enforced rules live in <code>scripts/check_python_standards.py</code>, and the current
-repo-wide remediation matrix lives in <a href="../python-standards-audit/">Python Standards Audit</a>.</p>
-<h2 id="testing-style">Testing style<a class="headerlink" href="#testing-style" title="Permanent link">&para;</a></h2>
+<p>It is intentionally separate from the current <code>tiered-write-back</code> preset.
+Today, <code>tiered-write-back</code> means:</p>
 <ul>
-<li>prefer fakes and tiny real fixtures over mocks</li>
-<li>use targeted CLI or script smokes when touching runtime-heavy flows</li>
+<li>one runtime-scoped strategy preset</li>
+<li>a bounded hot in-memory tail</li>
+<li>a colder journal-backed spill tier on disk</li>
 </ul>
+<p>That is useful, but it is not yet the full GPU/CPU/SSD architecture implied by
+"tiered KV cache" in the long-context roadmap.</p>
+<h2 id="decision-summary">Decision summary<a class="headerlink" href="#decision-summary" title="Permanent link">&para;</a></h2>
+<p>oLLM should build the future multi-tier KV architecture around:</p>
+<ul>
+<li>immutable, fixed-token KV pages as the primary movement unit</li>
+<li>one authoritative persisted page store on SSD</li>
+<li>an optional decoded CPU residency tier</li>
+<li>an optional accelerator-resident hot tier</li>
+<li>page-driven promotion and eviction controlled by explicit runtime policy</li>
+<li>truthful benchmark and inspection reporting for each tier</li>
+</ul>
+<p>The first implementation slice should not attempt a monolithic rewrite. The
+recommended order is:</p>
+<ol>
+<li>formalize the page contract and persisted layout</li>
+<li>make SSD pages authoritative</li>
+<li>add a CPU residency tier and page-promotion metrics</li>
+<li>add accelerator page staging only when the attention path can consume pages</li>
+<li>compose quantized cold pages and selector integration on top</li>
+</ol>
+<h2 id="why-the-current-baseline-is-not-enough">Why the current baseline is not enough<a class="headerlink" href="#why-the-current-baseline-is-not-enough" title="Permanent link">&para;</a></h2>
+<p>Current oLLM already has several explicit KV presets:</p>
+<ul>
+<li><code>resident</code></li>
+<li><code>chunked</code></li>
+<li><code>paged</code></li>
+<li><code>streamed-segmented</code></li>
+<li><code>log-structured-journal</code></li>
+<li><code>sliding-window-ring-buffer</code></li>
+<li><code>quantized-cold-tier</code></li>
+<li><code>tiered-write-back</code></li>
+</ul>
+<p>Those presets are useful, but they still assume one primary storage/runtime
+shape per request. Even the current <code>tiered-write-back</code> preset is still a
+single strategy bundle, not a general architecture for multi-tier full-history
+KV across GPU, CPU, and SSD.</p>
+<p>The current code makes that limitation concrete:</p>
+<ul>
+<li><code>src/ollm/kvcache.py</code>
+  still exposes one active cache object per request path and treats the current
+  persisted store as a single selected backend.</li>
+<li><code>src/ollm/kv_cache_policy.py</code>
+  selects flush and spill thresholds, but not a general promotion pipeline
+  across multiple authoritative residency tiers.</li>
+<li><code>src/ollm/kv_cache_state.py</code>
+  can report resident, hot, and persisted state, but it does not yet distinguish
+  accelerator-tier pages from CPU-tier pages.</li>
+</ul>
+<h2 id="design-goals">Design goals<a class="headerlink" href="#design-goals" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Preserve full-history KV semantics by default.</li>
+<li>Make GPU, CPU, and SSD ownership explicit instead of hidden behind one preset
+  string.</li>
+<li>Keep the persisted layout durable, inspectable, and benchmark-observable.</li>
+<li>Allow quantized cold storage to compose with the tiered architecture instead
+  of requiring a separate storage rewrite.</li>
+<li>Preserve deterministic selector behavior rather than turning this into an
+  online optimizer.</li>
+</ul>
+<h2 id="non-goals">Non-goals<a class="headerlink" href="#non-goals" title="Permanent link">&para;</a></h2>
+<ul>
+<li>Distributed inference or multi-host KV movement.</li>
+<li>Claiming that every backend can consume tiered KV immediately.</li>
+<li>Pretending the future architecture is just the current <code>tiered-write-back</code>
+  preset with bigger thresholds.</li>
+<li>Hiding bounded-history semantics inside tiering. Sliding-window behavior
+  remains a separate window-policy decision.</li>
+</ul>
+<h2 id="critical-truth-constraint">Critical truth constraint<a class="headerlink" href="#critical-truth-constraint" title="Permanent link">&para;</a></h2>
+<p>For standard full-attention decode, every token step still needs all prior KV.
+That means a future GPU/CPU/SSD cache is not just an eviction problem.</p>
+<p>If the model path still expects one contiguous per-layer KV tensor on the
+accelerator, then demoting old pages to CPU or SSD only moves cost around; it
+does not create a real scalable runtime architecture.</p>
+<p>Because of that, accelerator tiering should only be claimed once the attention
+path can consume page-iterated KV or an equivalent staged block interface.</p>
+<p>This is the most important design guardrail in the whole document.</p>
+<h2 id="recommended-data-model">Recommended data model<a class="headerlink" href="#recommended-data-model" title="Permanent link">&para;</a></h2>
+<h3 id="page-unit">Page unit<a class="headerlink" href="#page-unit" title="Permanent link">&para;</a></h3>
+<p>Use fixed-token, layer-local KV pages as the primary movement unit.</p>
+<p>Each page should represent:</p>
+<ul>
+<li>one layer</li>
+<li>one contiguous token range</li>
+<li>one encoding contract</li>
+<li>one key payload</li>
+<li>one value payload</li>
+</ul>
+<p>Recommended page identity fields:</p>
+<ul>
+<li><code>schema_version</code></li>
+<li><code>model_identity</code></li>
+<li><code>backend_identity</code></li>
+<li><code>layer_idx</code></li>
+<li><code>start_token</code></li>
+<li><code>end_token</code></li>
+<li><code>dtype_or_encoding</code></li>
+<li><code>page_checksum</code></li>
+</ul>
+<p>Why fixed-token pages:</p>
+<ul>
+<li>they match the existing <code>paged</code> strategy direction</li>
+<li>they give a deterministic transfer unit for GPU/CPU/SSD movement</li>
+<li>they keep benchmark comparisons aligned to logical units rather than raw file counts</li>
+<li>they avoid the unbounded rewrite behavior of variable chunk ranges</li>
+</ul>
+<h3 id="authoritative-persisted-store">Authoritative persisted store<a class="headerlink" href="#authoritative-persisted-store" title="Permanent link">&para;</a></h3>
+<p>The SSD tier should be the authoritative persisted representation.</p>
+<p>Recommended persisted structure:</p>
+<ul>
+<li>one root manifest per cache identity</li>
+<li>one per-layer page table</li>
+<li>immutable page blobs once sealed</li>
+<li>manifest updates written only after page blobs are durable</li>
+</ul>
+<p>That structure should preserve the current good properties already emerging in
+oLLM:</p>
+<ul>
+<li>explicit manifests instead of opaque <code>.pt</code> blobs</li>
+<li>durable format/version checks</li>
+<li>cache-root identity scoped by model/backend/lifecycle</li>
+</ul>
+<h2 id="tier-model">Tier model<a class="headerlink" href="#tier-model" title="Permanent link">&para;</a></h2>
+<h3 id="tier-0-accelerator-hot-tier">Tier 0: accelerator hot tier<a class="headerlink" href="#tier-0-accelerator-hot-tier" title="Permanent link">&para;</a></h3>
+<p>Purpose:</p>
+<ul>
+<li>hold the current working set required by the active decode/prefill step</li>
+<li>prioritize append-biased recent pages plus any explicitly prefetched next pages</li>
+</ul>
+<p>This tier is not authoritative.</p>
+<h3 id="tier-1-cpu-warm-tier">Tier 1: CPU warm tier<a class="headerlink" href="#tier-1-cpu-warm-tier" title="Permanent link">&para;</a></h3>
+<p>Purpose:</p>
+<ul>
+<li>hold decoded full-precision pages ready for accelerator promotion</li>
+<li>absorb repeated page faults without rereading SSD immediately</li>
+</ul>
+<p>This tier is also not authoritative.</p>
+<h3 id="tier-2-ssd-cold-tier">Tier 2: SSD cold tier<a class="headerlink" href="#tier-2-ssd-cold-tier" title="Permanent link">&para;</a></h3>
+<p>Purpose:</p>
+<ul>
+<li>hold the authoritative long-lived page store</li>
+<li>optionally hold quantized cold pages in later phases</li>
+</ul>
+<p>This is the durable source of truth for persistent lifecycle mode.</p>
+<h2 id="promotion-and-eviction-semantics">Promotion and eviction semantics<a class="headerlink" href="#promotion-and-eviction-semantics" title="Permanent link">&para;</a></h2>
+<h3 id="promotion">Promotion<a class="headerlink" href="#promotion" title="Permanent link">&para;</a></h3>
+<p>Promotion should be page-driven, not tensor-global.</p>
+<p>Recommended promotion path:</p>
+<ol>
+<li>page requested by attention/runtime iterator</li>
+<li>serve from accelerator tier if present</li>
+<li>else serve from CPU tier and promote to accelerator</li>
+<li>else read from SSD into CPU tier, then optionally promote to accelerator</li>
+</ol>
+<p>Prefetch should follow the expected page scan order, not a generic recency
+heuristic.</p>
+<h3 id="eviction">Eviction<a class="headerlink" href="#eviction" title="Permanent link">&para;</a></h3>
+<p>Eviction should differ by tier:</p>
+<ul>
+<li>accelerator tier: evict pages outside the active decode/prefetch window</li>
+<li>CPU tier: evict least-recently-served pages subject to configured budget</li>
+<li>SSD tier: do not "evict" as part of normal runtime pressure; use lifecycle GC</li>
+</ul>
+<p>The design should not describe SSD page removal as normal cache eviction. That
+is retention / GC, not working-set management.</p>
+<h2 id="write-path">Write path<a class="headerlink" href="#write-path" title="Permanent link">&para;</a></h2>
+<p>The write path should not force every token append to rewrite existing pages.</p>
+<p>Recommended approach:</p>
+<ul>
+<li>keep one append-oriented mutable tail per layer in memory</li>
+<li>seal that tail into immutable SSD pages when it crosses page capacity</li>
+<li>only then publish the updated page table</li>
+</ul>
+<p>This allows the current journal-oriented work to remain useful as an ingest
+pattern without making the journal the final authoritative long-lived layout.</p>
+<p>Recommended relationship:</p>
+<ul>
+<li>journal: write-optimized ingress</li>
+<li>paged store: authoritative long-lived layout</li>
+</ul>
+<h2 id="interaction-with-existing-presets">Interaction with existing presets<a class="headerlink" href="#interaction-with-existing-presets" title="Permanent link">&para;</a></h2>
+<h3 id="resident"><code>resident</code><a class="headerlink" href="#resident" title="Permanent link">&para;</a></h3>
+<p><code>resident</code> remains the no-disk baseline.</p>
+<p>In the future design, it is effectively the degenerate case where:</p>
+<ul>
+<li>all pages remain in memory</li>
+<li>no SSD tier is used</li>
+<li>no CPU/accelerator demotion occurs</li>
+</ul>
+<h3 id="paged"><code>paged</code><a class="headerlink" href="#paged" title="Permanent link">&para;</a></h3>
+<p><code>paged</code> should become the persistence-format foundation for the future tiered
+architecture, not a competing direction.</p>
+<h3 id="quantized-cold-tier"><code>quantized-cold-tier</code><a class="headerlink" href="#quantized-cold-tier" title="Permanent link">&para;</a></h3>
+<p>Quantization should apply to SSD-resident cold pages only, not to the active
+accelerator hot tier by default.</p>
+<p>That means quantization is orthogonal to tiering:</p>
+<ul>
+<li>tiering defines where pages live</li>
+<li>cold-tier encoding defines how SSD pages are represented</li>
+</ul>
+<h3 id="sliding-window-ring-buffer"><code>sliding-window-ring-buffer</code><a class="headerlink" href="#sliding-window-ring-buffer" title="Permanent link">&para;</a></h3>
+<p>Sliding-window remains a separate window-policy axis.</p>
+<p>Do not merge bounded-history semantics into the first tiered design. Otherwise
+benchmarks will conflate:</p>
+<ul>
+<li>full-history tiering</li>
+<li>bounded-history eviction</li>
+</ul>
+<h3 id="tiered-write-back"><code>tiered-write-back</code><a class="headerlink" href="#tiered-write-back" title="Permanent link">&para;</a></h3>
+<p>Treat the current <code>tiered-write-back</code> preset as the closest precursor, not as
+the final architecture.</p>
+<p>The design should explicitly say:</p>
+<ul>
+<li>current <code>tiered-write-back</code> proves hot/cold split reporting and batching</li>
+<li>it does not yet prove true GPU/CPU/SSD page-aware tiering</li>
+</ul>
+<h2 id="runtime-planning-and-selector-integration">Runtime planning and selector integration<a class="headerlink" href="#runtime-planning-and-selector-integration" title="Permanent link">&para;</a></h2>
+<p>The runtime selector should not choose tiered KV as one opaque winner.</p>
+<p>Instead, planning should eventually surface at least:</p>
+<ul>
+<li>whether tiering is enabled</li>
+<li>page size</li>
+<li>cold-tier encoding</li>
+<li>CPU tier budget</li>
+<li>accelerator hot-tier budget</li>
+<li>expected fallback when tier-aware execution is unavailable</li>
+</ul>
+<p>Relevant current surfaces:</p>
+<ul>
+<li><code>src/ollm/runtime/plan.py</code></li>
+<li><code>src/ollm/runtime/inspection.py</code></li>
+</ul>
+<p>This should remain deterministic and table-driven. The selector may use
+observed budgets and platform/model family, but this ADR rejects a vague online
+optimizer framing.</p>
+<h2 id="benchmark-and-inspection-truth">Benchmark and inspection truth<a class="headerlink" href="#benchmark-and-inspection-truth" title="Permanent link">&para;</a></h2>
+<p>The current benchmark/reporting surfaces already understand:</p>
+<ul>
+<li>strategy id</li>
+<li>persistence format</li>
+<li>residency mode</li>
+<li>persisted tokens / artifacts</li>
+<li>resident bytes</li>
+<li>hot bytes</li>
+<li>spill counts</li>
+<li>compaction counts</li>
+</ul>
+<p>Relevant current surfaces:</p>
+<ul>
+<li><code>src/ollm/runtime/benchmark_details.py</code></li>
+<li><code>src/ollm/runtime/benchmark_history_summary_support.py</code></li>
+<li><code>docs/benchmarking.md</code></li>
+</ul>
+<p>The future tiered architecture should add explicit tier-aware observability:</p>
+<ul>
+<li>accelerator-tier resident pages / bytes</li>
+<li>CPU-tier resident pages / bytes</li>
+<li>SSD authoritative pages / bytes</li>
+<li>promotion counts by source and destination</li>
+<li>page-fault counts</li>
+<li>prefetched pages / bytes</li>
+<li>useful-prefetch hit rate</li>
+<li>demotion counts</li>
+<li>quantized cold-page bytes vs decoded warm-page bytes</li>
+</ul>
+<p>Without those fields, oLLM would risk claiming tiered wins while hiding where
+the bytes and latency actually moved.</p>
+<h2 id="failure-recovery-and-fallback">Failure, recovery, and fallback<a class="headerlink" href="#failure-recovery-and-fallback" title="Permanent link">&para;</a></h2>
+<p>The ADR makes these rules explicit:</p>
+<ul>
+<li>page blobs are immutable once published</li>
+<li>root/page-table manifests are versioned</li>
+<li>cache identity must include model, backend, encoding, page size, and schema</li>
+<li>partial writes must never become authoritative</li>
+<li>invalid manifests or missing page blobs invalidate the persistent cache root</li>
+<li>multi-process access requires explicit coordination; it is not implied</li>
+<li>unsupported backends fall back to non-tiered strategies rather than
+  pretending to run tiered mode</li>
+</ul>
+<p>Recommended persistent write rule:</p>
+<ol>
+<li>write page blob</li>
+<li>fsync/replace durable temp path</li>
+<li>update page table</li>
+<li>update root manifest last</li>
+</ol>
+<h2 id="recommended-phased-implementation-order">Recommended phased implementation order<a class="headerlink" href="#recommended-phased-implementation-order" title="Permanent link">&para;</a></h2>
+<h3 id="phase-1">Phase 1<a class="headerlink" href="#phase-1" title="Permanent link">&para;</a></h3>
+<p>Make fixed-token pages the authoritative persisted layout for one existing
+full-history strategy.</p>
+<p>Recommended first slice:</p>
+<ul>
+<li>extend <code>paged</code> into the canonical persisted page-table format</li>
+<li>keep runtime behavior otherwise single-tier</li>
+<li>add tier-capable metadata fields without claiming tiering yet</li>
+</ul>
+<h3 id="phase-2">Phase 2<a class="headerlink" href="#phase-2" title="Permanent link">&para;</a></h3>
+<p>Add a CPU warm-page tier above the authoritative SSD layout.</p>
+<p>Goals:</p>
+<ul>
+<li>avoid repeated SSD reads</li>
+<li>measure promotion and page-fault behavior</li>
+<li>keep accelerator behavior unchanged if page-aware attention is not ready</li>
+</ul>
+<h3 id="phase-3">Phase 3<a class="headerlink" href="#phase-3" title="Permanent link">&para;</a></h3>
+<p>Add page-aware accelerator staging for one optimized-native family and one
+device class.</p>
+<p>Only this phase should start making real GPU/CPU/SSD tiering claims.</p>
+<h3 id="phase-4">Phase 4<a class="headerlink" href="#phase-4" title="Permanent link">&para;</a></h3>
+<p>Compose quantized cold pages with the authoritative SSD store and benchmark the
+quality/capacity tradeoff on top of the tiered layout.</p>
+<h3 id="phase-5">Phase 5<a class="headerlink" href="#phase-5" title="Permanent link">&para;</a></h3>
+<p>Integrate selector policy and observe-only tier recommendations based on page
+faults, promotion pressure, CPU residency pressure, and accelerator working-set
+fit.</p>
+<h2 id="recommendation">Recommendation<a class="headerlink" href="#recommendation" title="Permanent link">&para;</a></h2>
+<p>Proceed with the future tiered KV architecture, but do it as a paged,
+page-aware, benchmark-truthful design.</p>
+<p>Do not describe it as current <code>tiered-write-back</code> generalized and do not claim
+real GPU/CPU/SSD scaling before page-aware execution exists.</p>
 
 
 

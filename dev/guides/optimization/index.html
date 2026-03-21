@@ -2028,6 +2028,8 @@
       
         
       
+        
+      
     
     
     
@@ -2088,6 +2090,34 @@
     
   
     Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../development/tiered-kv-cache-adr/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Tiered KV Cache ADR
   
 
     
@@ -2422,6 +2452,7 @@ pickle-backed <code>.pt</code> cache blobs. The runtime also applies a
 platform/resource-aware buffering or spill policy on top of the selected
 strategy so the cache can trade write amplification against memory headroom
 instead of flushing every delta identically on every machine.
+That preset is still not the full future GPU/CPU/SSD tiered architecture.
 <code>resident</code> does not initialize any disk-KV root at all; it keeps full-history
 KV entirely in memory and exists as the explicit low-overhead baseline when the
 active runtime can afford that footprint. It is intentionally not aligned with
