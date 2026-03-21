@@ -57,6 +57,15 @@ Preview locally:
 uv run --group docs mkdocs serve
 ```
 
+## Contributor ADRs
+
+Longer-horizon contributor-facing design decisions live under `docs/development/`.
+
+Current ADR pages:
+
+- [Tiered KV Cache ADR](development/tiered-kv-cache-adr.md)
+- [Weight Transport ADR](development/weight-transport-adr.md)
+
 ## Examples and manual scripts
 
 - end-user smoke examples live in `examples/`
