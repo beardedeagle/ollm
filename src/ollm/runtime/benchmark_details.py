@@ -14,7 +14,9 @@ from ollm.runtime.benchmark_types import (
 )
 
 
-def build_cold_probe_details(spec: CommandBenchmarkSpec, samples: list[RuntimeProbeResult]) -> dict[str, object]:
+def build_cold_probe_details(
+    spec: CommandBenchmarkSpec, samples: list[RuntimeProbeResult]
+) -> dict[str, object]:
     """Build the details payload for cold runtime probe measurements."""
 
     return {
@@ -30,6 +32,7 @@ def build_cold_probe_details(spec: CommandBenchmarkSpec, samples: list[RuntimePr
         "metrics": summarize_request_metrics([sample.request for sample in samples]),
         "text_excerpt": samples[-1].request.text_excerpt,
     }
+
 
 def summarize_request_metrics(samples: list[RequestProbeMetrics]) -> dict[str, object]:
     """Summarize request-level runtime probe metrics."""
@@ -120,6 +123,7 @@ def summarize_request_metrics(samples: list[RequestProbeMetrics]) -> dict[str, o
         },
         "native_runtime_profile": summarize_native_runtime_profiles(samples),
     }
+
 
 def summarize_stage_resources(
     snapshots: list[StageResourceSnapshot],

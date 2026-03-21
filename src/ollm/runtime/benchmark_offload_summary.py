@@ -33,7 +33,9 @@ def summarize_request_offload(samples: list[RequestProbeMetrics]) -> dict[str, o
         ),
         "cpu_applied_indices": single_optional_string(
             [
-                ",".join(str(layer_idx) for layer_idx in sample.offload_cpu_applied_indices)
+                ",".join(
+                    str(layer_idx) for layer_idx in sample.offload_cpu_applied_indices
+                )
                 for sample in samples
                 if sample.offload_cpu_applied_indices
             ]
