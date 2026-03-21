@@ -27,6 +27,7 @@ def run_chat_command(
     cache_dir: Path | None,
     no_cache: bool | None,
     kv_cache_strategy: str | None,
+    strategy_selector_profile: str | None,
     kv_cache_window_tokens: int | None,
     offload_cpu_layers: int | None,
     offload_cpu_policy: str | None,
@@ -63,6 +64,7 @@ def run_chat_command(
         cache_dir=cache_dir,
         no_cache=no_cache,
         kv_cache_strategy=kv_cache_strategy,
+        strategy_selector_profile=strategy_selector_profile,
         kv_cache_window_tokens=kv_cache_window_tokens,
         offload_cpu_layers=offload_cpu_layers,
         offload_cpu_policy=offload_cpu_policy,
@@ -159,10 +161,14 @@ def register_chat_surfaces(app: typer.Typer, services: CommandServices) -> None:
             None,
             "--kv-cache-strategy",
             help=(
-                "KV cache strategy: resident, chunked, paged, streamed-segmented, "
-                "log-structured-journal, sliding-window-ring-buffer, "
-                "quantized-cold-tier, or tiered-write-back."
+                "Explicit KV cache strategy override. When omitted, the runtime "
+                "strategy selector chooses the strategy."
             ),
+        ),
+        strategy_selector_profile: str | None = typer.Option(
+            None,
+            "--strategy-selector-profile",
+            help="Selector profile: balanced, latency, capacity, or bounded-window.",
         ),
         kv_cache_window_tokens: int | None = typer.Option(
             None,
@@ -269,6 +275,7 @@ def register_chat_surfaces(app: typer.Typer, services: CommandServices) -> None:
             cache_dir=cache_dir,
             no_cache=no_cache,
             kv_cache_strategy=kv_cache_strategy,
+            strategy_selector_profile=strategy_selector_profile,
             kv_cache_window_tokens=kv_cache_window_tokens,
             offload_cpu_layers=offload_cpu_layers,
             offload_cpu_policy=offload_cpu_policy,

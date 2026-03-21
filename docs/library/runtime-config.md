@@ -17,7 +17,8 @@ Use `RuntimeConfig` to describe:
 
 The current KV scaffolding now distinguishes:
 
-- `kv_cache_strategy` — the current preset such as `resident`, `chunked`, `paged`, `streamed-segmented`, `log-structured-journal`, `sliding-window-ring-buffer`, `quantized-cold-tier`, or `tiered-write-back`
+- `strategy_selector_profile` — the deterministic selector profile (`balanced`, `latency`, `capacity`, or `bounded-window`)
+- `kv_cache_strategy` — optional explicit strategy override; when omitted, the selector chooses a concrete preset
 - `kv_cache_window_tokens` — bounded recent-context token budget for `sliding-window-ring-buffer`; omitted for full-history strategies
 - `kv_cache_lifecycle` — `runtime-scoped` or explicit `persistent` reuse semantics; `resident` requires `runtime-scoped`
 - `kv_cache_adaptation_mode` — `disabled`, `observe-only`, or `automatic`; observe-only recommendation rules exist, but live switching is still disabled
@@ -29,6 +30,12 @@ Current offload truth:
 
 - `offload_cpu_layers` requires an accelerator runtime device
 - `offload_cpu_layers` and `offload_gpu_layers` cannot be combined in the current implementation
+
+Current selector truth:
+
+- selector-default candidates are `paged`, `resident`, and `quantized-cold-tier`
+- `sliding-window-ring-buffer` remains explicit bounded-history opt-in only
+- `streamed-segmented`, `log-structured-journal`, and `tiered-write-back` remain explicit override choices, not selector defaults
 
 ## `GenerationConfig`
 

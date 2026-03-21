@@ -196,6 +196,37 @@ def test_runtime_executor_includes_offload_details_in_metadata() -> None:
     assert response.metadata["offload_cpu_applied_indices"] == "6,7"
 
 
+def test_runtime_executor_includes_strategy_selector_details_in_metadata() -> None:
+    runtime = build_runtime(CapabilityProfile(support_level=SupportLevel.OPTIMIZED))
+    runtime.plan = replace(
+        runtime.plan,
+        details={
+            "strategy_selector_profile": "balanced",
+            "strategy_selector_rule_id": "balanced-paged-default",
+            "strategy_selector_requested_override": "",
+            "strategy_selector_selected_kv_cache_strategy": "paged",
+            "strategy_selector_applied_kv_cache_strategy": "paged",
+            "strategy_selector_fallback_chain": "paged,chunked,resident",
+            "strategy_selector_reason": "Using the canonical paged default.",
+        },
+    )
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("hello")]),
+    )
+
+    response = RuntimeExecutor().execute(runtime, request)
+
+    assert response.metadata["strategy_selector_profile"] == "balanced"
+    assert response.metadata["strategy_selector_rule_id"] == "balanced-paged-default"
+    assert response.metadata["strategy_selector_selected_kv_cache_strategy"] == "paged"
+    assert response.metadata["strategy_selector_applied_kv_cache_strategy"] == "paged"
+    assert (
+        response.metadata["strategy_selector_fallback_chain"]
+        == "paged,chunked,resident"
+    )
+
+
 def test_runtime_executor_includes_kv_cache_state_metadata() -> None:
     runtime = build_runtime(CapabilityProfile(support_level=SupportLevel.OPTIMIZED))
     runtime.config.use_cache = True

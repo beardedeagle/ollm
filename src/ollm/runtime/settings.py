@@ -1,19 +1,11 @@
 """Boundary-layer settings models and precedence helpers for oLLM."""
 
-from collections.abc import Mapping
 from enum import StrEnum
 from functools import lru_cache
 from pathlib import Path
-from typing import cast
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
-from pydantic_settings import (
-    BaseSettings,
-    EnvSettingsSource,
-    PydanticBaseSettingsSource,
-    SettingsConfigDict,
-    TomlConfigSettingsSource,
-)
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from ollm.kv_cache_matrix import (
     DEFAULT_KV_CACHE_ADAPTATION_MODE,
@@ -33,11 +25,17 @@ from ollm.runtime.config import (
     DEFAULT_MODEL_REFERENCE,
     GenerationConfig,
     RuntimeConfig,
+    _window_strategy_for_validation,
     normalize_backend,
 )
 from ollm.runtime.offload_policy import (
     DEFAULT_CPU_OFFLOAD_POLICY,
     normalize_cpu_offload_policy,
+)
+from ollm.runtime.settings_sources import load_settings_payload
+from ollm.runtime.strategy_selector import (
+    DEFAULT_STRATEGY_SELECTOR_PROFILE,
+    normalize_strategy_selector_profile,
 )
 
 DEFAULT_SERVER_HOST = "127.0.0.1"
@@ -76,7 +74,8 @@ class RuntimeSettings(BaseModel):
     use_specialization: bool = True
     cache_dir: Path = Field(default_factory=lambda: Path("kv_cache"))
     use_cache: bool = True
-    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY
+    kv_cache_strategy: str | None = None
+    strategy_selector_profile: str = DEFAULT_STRATEGY_SELECTOR_PROFILE
     kv_cache_lifecycle: str = DEFAULT_KV_CACHE_LIFECYCLE
     kv_cache_adaptation_mode: str = DEFAULT_KV_CACHE_ADAPTATION_MODE
     kv_cache_window_tokens: int | None = Field(default=None, gt=0)
@@ -95,11 +94,16 @@ class RuntimeSettings(BaseModel):
 
     @field_validator("kv_cache_strategy")
     @classmethod
-    def _normalize_kv_cache_strategy(cls, strategy: str) -> str:
-        normalized_strategy = normalize_kv_cache_strategy(strategy)
-        if normalized_strategy is None:
-            raise ValueError("kv_cache_strategy cannot be empty")
-        return normalized_strategy
+    def _normalize_kv_cache_strategy(cls, strategy: str | None) -> str | None:
+        return normalize_kv_cache_strategy(strategy)
+
+    @field_validator("strategy_selector_profile")
+    @classmethod
+    def _normalize_strategy_selector_profile(cls, profile: str) -> str:
+        normalized_profile = normalize_strategy_selector_profile(profile)
+        if normalized_profile is None:
+            raise ValueError("strategy_selector_profile cannot be empty")
+        return normalized_profile
 
     @field_validator("kv_cache_lifecycle")
     @classmethod
@@ -134,7 +138,11 @@ class RuntimeSettings(BaseModel):
             self.kv_cache_lifecycle,
         )
         resolve_kv_cache_window_tokens(
-            self.kv_cache_strategy,
+            _window_strategy_for_validation(
+                self.kv_cache_strategy,
+                self.strategy_selector_profile,
+                self.kv_cache_window_tokens,
+            ),
             self.kv_cache_window_tokens,
         )
         if self.offload_cpu_layers > 0 and self.device == "cpu":
@@ -188,18 +196,6 @@ class AppSettings(BaseSettings):
     server: ServerSettings = Field(default_factory=ServerSettings)
 
 
-class SettingsSourceConfig(BaseSettings):
-    """Resolve external settings-source location controls."""
-
-    model_config = SettingsConfigDict(
-        env_prefix="OLLM_",
-        extra="ignore",
-        frozen=True,
-    )
-
-    config_file: Path = DEFAULT_SETTINGS_FILE
-
-
 class RuntimeConfigOverrides(BaseModel):
     """Explicit runtime overrides layered on top of runtime settings."""
 
@@ -215,6 +211,7 @@ class RuntimeConfigOverrides(BaseModel):
     cache_dir: Path | None = None
     use_cache: bool | None = None
     kv_cache_strategy: str | None = None
+    strategy_selector_profile: str | None = None
     kv_cache_lifecycle: str | None = None
     kv_cache_adaptation_mode: str | None = None
     kv_cache_window_tokens: int | None = Field(default=None, gt=0)
@@ -235,6 +232,11 @@ class RuntimeConfigOverrides(BaseModel):
     @classmethod
     def _normalize_kv_cache_strategy(cls, strategy: str | None) -> str | None:
         return normalize_kv_cache_strategy(strategy)
+
+    @field_validator("strategy_selector_profile")
+    @classmethod
+    def _normalize_strategy_selector_profile(cls, profile: str | None) -> str | None:
+        return normalize_strategy_selector_profile(profile)
 
     @field_validator("kv_cache_lifecycle")
     @classmethod
@@ -260,17 +262,17 @@ class RuntimeConfigOverrides(BaseModel):
 
     @model_validator(mode="after")
     def _validate_window_strategy_pair(self):
-        strategy = (
-            DEFAULT_KV_CACHE_STRATEGY
-            if self.kv_cache_strategy is None
-            else self.kv_cache_strategy
-        )
+        strategy = self.kv_cache_strategy
         resolve_kv_cache_lifecycle(
-            strategy,
+            DEFAULT_KV_CACHE_STRATEGY if strategy is None else strategy,
             self.kv_cache_lifecycle,
         )
         resolve_kv_cache_window_tokens(
-            strategy,
+            _window_strategy_for_validation(
+                strategy,
+                self.strategy_selector_profile,
+                self.kv_cache_window_tokens,
+            ),
             self.kv_cache_window_tokens,
         )
         offload_cpu_layers = (
@@ -333,60 +335,6 @@ def default_app_settings() -> AppSettings:
     )
 
 
-def _resolve_settings_file(config_file: Path | None) -> tuple[Path, bool]:
-    if config_file is not None:
-        return config_file.expanduser().resolve(), True
-    source_config = SettingsSourceConfig()
-    return (
-        source_config.config_file.expanduser().resolve(),
-        "config_file" in source_config.model_fields_set,
-    )
-
-
-def _settings_source_payload(
-    source: PydanticBaseSettingsSource,
-) -> dict[str, object]:
-    return {key: value for key, value in source().items()}
-
-
-def _merge_settings_payload(
-    base: dict[str, object],
-    overlay: Mapping[str, object],
-) -> dict[str, object]:
-    merged: dict[str, object] = dict(base)
-    for key, value in overlay.items():
-        existing = merged.get(key)
-        if isinstance(existing, dict) and isinstance(value, Mapping):
-            merged[key] = _merge_settings_payload(
-                cast(dict[str, object], existing),
-                cast(Mapping[str, object], value),
-            )
-            continue
-        merged[key] = value
-    return merged
-
-
-def _load_env_settings_payload() -> dict[str, object]:
-    return _settings_source_payload(EnvSettingsSource(AppSettings))
-
-
-def _load_toml_settings_payload(
-    config_file: Path | None,
-) -> dict[str, object]:
-    resolved_config_file, config_file_is_explicit = _resolve_settings_file(config_file)
-    if not resolved_config_file.exists():
-        if config_file_is_explicit:
-            raise ValueError(f"Settings file '{resolved_config_file}' does not exist")
-        return {}
-    if not resolved_config_file.is_file():
-        raise ValueError(
-            f"Settings file '{resolved_config_file}' is not a regular file"
-        )
-    return _settings_source_payload(
-        TomlConfigSettingsSource(AppSettings, toml_file=resolved_config_file)
-    )
-
-
 def load_app_settings(config_file: Path | None = None) -> AppSettings:
     """Load application settings from TOML and environment sources.
 
@@ -398,14 +346,11 @@ def load_app_settings(config_file: Path | None = None) -> AppSettings:
         AppSettings: The merged application settings following the canonical
             precedence contract.
     """
-    merged_settings = default_app_settings().model_dump(mode="python")
-    merged_settings = _merge_settings_payload(
-        merged_settings,
-        _load_toml_settings_payload(config_file),
-    )
-    merged_settings = _merge_settings_payload(
-        merged_settings,
-        _load_env_settings_payload(),
+    merged_settings = load_settings_payload(
+        app_settings_cls=AppSettings,
+        default_settings_file=DEFAULT_SETTINGS_FILE,
+        config_file=config_file,
+        default_payload=default_app_settings().model_dump(mode="python"),
     )
     return AppSettings.model_validate(merged_settings)
 

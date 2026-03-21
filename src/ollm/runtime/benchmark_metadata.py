@@ -6,6 +6,8 @@ from pathlib import Path
 from subprocess import CompletedProcess, run
 from urllib.parse import urlparse
 
+from ollm.runtime.strategy_selector import DEFAULT_STRATEGY_SELECTOR_PROFILE
+
 
 def build_history_host_summary() -> dict[str, object]:
     """Capture host identity for benchmark history records."""
@@ -60,7 +62,10 @@ def probe_comparison_key(
     model_reference: str,
     device: str,
     backend: str,
-    kv_cache_strategy: str,
+    kv_cache_strategy: str | None,
+    strategy_selector_profile: str = DEFAULT_STRATEGY_SELECTOR_PROFILE,
+    strategy_selector_rule_id: str | None = None,
+    strategy_selector_applied_kv_cache_strategy: str | None = None,
     kv_cache_window_tokens: int | None = None,
     offload_cpu_layers: int = 0,
     offload_cpu_policy: str = "auto",
@@ -82,7 +87,12 @@ def probe_comparison_key(
         "model_reference": model_reference,
         "device": device,
         "backend": backend,
-        "kv_cache_strategy": kv_cache_strategy,
+        "kv_cache_strategy": _requested_strategy_key(kv_cache_strategy),
+        "strategy_selector_profile": strategy_selector_profile,
+        "strategy_selector_rule_id": strategy_selector_rule_id,
+        "strategy_selector_applied_kv_cache_strategy": (
+            strategy_selector_applied_kv_cache_strategy
+        ),
         "kv_cache_window_tokens": kv_cache_window_tokens,
         "offload_cpu_layers": offload_cpu_layers,
         "offload_cpu_policy": offload_cpu_policy,
@@ -102,7 +112,10 @@ def report_comparison_key(
     codebase_label: str,
     benchmark_model_reference: str,
     device: str,
-    kv_cache_strategy: str,
+    kv_cache_strategy: str | None,
+    strategy_selector_profile: str = DEFAULT_STRATEGY_SELECTOR_PROFILE,
+    strategy_selector_rule_id: str | None = None,
+    strategy_selector_applied_kv_cache_strategy: str | None = None,
     kv_cache_window_tokens: int | None = None,
     offload_cpu_layers: int = 0,
     offload_cpu_policy: str = "auto",
@@ -120,7 +133,12 @@ def report_comparison_key(
         "codebase_label": codebase_label,
         "benchmark_model_reference": benchmark_model_reference,
         "device": device,
-        "kv_cache_strategy": kv_cache_strategy,
+        "kv_cache_strategy": _requested_strategy_key(kv_cache_strategy),
+        "strategy_selector_profile": strategy_selector_profile,
+        "strategy_selector_rule_id": strategy_selector_rule_id,
+        "strategy_selector_applied_kv_cache_strategy": (
+            strategy_selector_applied_kv_cache_strategy
+        ),
         "kv_cache_window_tokens": kv_cache_window_tokens,
         "offload_cpu_layers": offload_cpu_layers,
         "offload_cpu_policy": offload_cpu_policy,
@@ -180,3 +198,9 @@ def _normalize_repo_path(raw_path: str) -> str | None:
     if path.endswith(".git"):
         path = path[:-4]
     return path or None
+
+
+def _requested_strategy_key(strategy: str | None) -> str:
+    if strategy is None:
+        return "auto"
+    return strategy

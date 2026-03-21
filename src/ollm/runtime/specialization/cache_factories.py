@@ -59,7 +59,7 @@ def build_kv_cache_factory(
                 device=device,
                 stats=stats,
                 cache_strategy=(
-                    config.kv_cache_strategy
+                    config.resolved_kv_cache_strategy()
                     if cache_strategy is None
                     else cache_strategy
                 ),
@@ -99,7 +99,7 @@ def build_qwen3_cache_factory(
                 device=device,
                 stats=stats,
                 cache_strategy=(
-                    config.kv_cache_strategy
+                    config.resolved_kv_cache_strategy()
                     if cache_strategy is None
                     else cache_strategy
                 ),

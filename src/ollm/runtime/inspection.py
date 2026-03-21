@@ -76,6 +76,7 @@ class RuntimeConfigPayload(TypedDict):
     cache_dir: str
     use_cache: bool
     kv_cache_strategy: str
+    strategy_selector_profile: str
     kv_cache_lifecycle: str
     kv_cache_adaptation_mode: str
     kv_cache_window_tokens: int | None
@@ -187,7 +188,14 @@ def runtime_config_payload(runtime_config: RuntimeConfig) -> RuntimeConfigPayloa
             "use_specialization": runtime_config.use_specialization,
             "cache_dir": str(runtime_config.resolved_cache_dir()),
             "use_cache": runtime_config.use_cache,
-            "kv_cache_strategy": runtime_config.resolved_kv_cache_strategy(),
+            "kv_cache_strategy": (
+                "auto"
+                if runtime_config.requested_kv_cache_strategy() is None
+                else runtime_config.requested_kv_cache_strategy()
+            ),
+            "strategy_selector_profile": (
+                runtime_config.resolved_strategy_selector_profile()
+            ),
             "kv_cache_lifecycle": runtime_config.resolved_kv_cache_lifecycle(),
             "kv_cache_adaptation_mode": runtime_config.resolved_kv_cache_adaptation_mode(),
             "kv_cache_window_tokens": runtime_config.resolved_kv_cache_window_tokens(),

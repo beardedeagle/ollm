@@ -39,6 +39,7 @@ def build_runtime_config(
     verbose: bool | None,
     quiet: bool | None,
     kv_cache_strategy: str | None = None,
+    strategy_selector_profile: str | None = None,
     kv_cache_window_tokens: int | None = None,
     settings: AppSettings | None = None,
 ) -> RuntimeConfig:
@@ -58,6 +59,7 @@ def build_runtime_config(
             cache_dir=cache_dir,
             use_cache=None if no_cache is None else not no_cache,
             kv_cache_strategy=kv_cache_strategy,
+            strategy_selector_profile=strategy_selector_profile,
             kv_cache_window_tokens=kv_cache_window_tokens,
             offload_cpu_layers=offload_cpu_layers,
             offload_cpu_policy=offload_cpu_policy,

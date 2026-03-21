@@ -33,6 +33,7 @@ class RuntimeConfigResponseModel(BaseModel):
     cache_dir: str
     use_cache: bool
     kv_cache_strategy: str
+    strategy_selector_profile: str
     kv_cache_lifecycle: str
     kv_cache_adaptation_mode: str
     kv_cache_window_tokens: int | None
@@ -151,6 +152,7 @@ class RuntimeRequestModel(BaseModel):
     cache_dir: Path | None = None
     use_cache: bool | None = None
     kv_cache_strategy: str | None = None
+    strategy_selector_profile: str | None = None
     kv_cache_lifecycle: str | None = None
     kv_cache_adaptation_mode: str | None = None
     kv_cache_window_tokens: int | None = Field(default=None, gt=0)

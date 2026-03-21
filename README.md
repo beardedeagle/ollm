@@ -134,12 +134,28 @@ Runtime selection and inspection controls:
 - `--plan-json` prints the resolved runtime plan as JSON and exits without running generation
 
 `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` now all honor `--backend` and `--no-specialization`. `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` also support `--plan-json` for script-friendly inspection of the resolver/backend decision.
-`ollm prompt` and `ollm chat` also honor `--kv-cache-strategy` to switch the KV
-cache strategy between `resident`, `chunked`, `paged`,
-`streamed-segmented`, `log-structured-journal`,
-`sliding-window-ring-buffer`, `quantized-cold-tier`, and
-`tiered-write-back`. `resident` is the explicit no-disk baseline when the
-runtime can afford to keep full-history KV in memory. When the bounded
+`ollm prompt` and `ollm chat` also honor:
+
+- `--strategy-selector-profile` to pick the deterministic selector profile
+  (`balanced`, `latency`, `capacity`, or `bounded-window`)
+- `--kv-cache-strategy` to pin an explicit KV cache strategy override
+
+When no explicit KV strategy override is supplied, the selector chooses among
+the current selector-default candidates:
+
+- `paged` for the balanced full-history default
+- `resident` for high-headroom latency-oriented cases
+- `quantized-cold-tier` for conservative capacity-oriented cases
+
+The remaining presets stay explicit opt-in only for now:
+
+- `sliding-window-ring-buffer`
+- `streamed-segmented`
+- `log-structured-journal`
+- `tiered-write-back`
+
+`resident` is the explicit no-disk baseline when the runtime can afford to keep
+full-history KV in memory. When the bounded
 `sliding-window-ring-buffer` mode is selected, `--kv-cache-window-tokens` sets
 the recent-context token budget and oldest tokens are evicted once the window
 is exceeded.
@@ -163,7 +179,8 @@ device = "mps"
 backend = "optimized-native"
 cache_dir = "kv_cache"
 use_cache = true
-kv_cache_strategy = "chunked"
+strategy_selector_profile = "balanced"
+# kv_cache_strategy = "paged"  # explicit override; omit to let the selector choose
 # kv_cache_window_tokens = 256  # only for sliding-window-ring-buffer
 kv_cache_lifecycle = "runtime-scoped"
 kv_cache_adaptation_mode = "observe-only"

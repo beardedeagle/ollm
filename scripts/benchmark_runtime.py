@@ -2,12 +2,14 @@ import argparse
 import json
 import sys
 from pathlib import Path
-from typing import cast
 
 from benchmark_runtime_support import (
+    emit_history_status,
+    extract_probe_selector_result,
     non_negative_int,
     parse_positive_int_list,
     positive_int,
+    resolve_report_selector_result,
 )
 from ollm.runtime.benchmark_history import record_benchmark_history
 from ollm.runtime.benchmark_metadata import (
@@ -37,6 +39,7 @@ from ollm.runtime.benchmarks import (
     run_session_growth_probe,
     run_warm_runtime_probe,
 )
+from ollm.runtime.strategy_selector import DEFAULT_STRATEGY_SELECTOR_PROFILE
 
 
 def parse_args() -> argparse.Namespace:
@@ -66,8 +69,13 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--kv-cache-strategy",
-        default="chunked",
-        help="KV cache strategy for probes and comparisons.",
+        default=None,
+        help="Explicit KV cache strategy override for probes and comparisons.",
+    )
+    parser.add_argument(
+        "--strategy-selector-profile",
+        default=DEFAULT_STRATEGY_SELECTOR_PROFILE,
+        help="Runtime strategy selector profile for probes and comparisons.",
     )
     parser.add_argument(
         "--kv-cache-window-tokens",
@@ -150,17 +158,18 @@ def parse_args() -> argparse.Namespace:
             "sweep. This is independent from --output-scale-tokens."
         ),
     )
-    parser.add_argument(
-        "--probe-runtime",
-        action="store_true",
-        help=argparse.SUPPRESS,
-    )
+    parser.add_argument("--probe-runtime", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--probe-mode", default="cold", help=argparse.SUPPRESS)
     parser.add_argument("--model", dest="probe_model", help=argparse.SUPPRESS)
     parser.add_argument("--probe-backend", help=argparse.SUPPRESS)
     parser.add_argument(
         "--probe-kv-cache-strategy",
-        default="chunked",
+        default=None,
+        help=argparse.SUPPRESS,
+    )
+    parser.add_argument(
+        "--probe-strategy-selector-profile",
+        default=DEFAULT_STRATEGY_SELECTOR_PROFILE,
         help=argparse.SUPPRESS,
     )
     parser.add_argument(
@@ -270,6 +279,7 @@ def main() -> int:
                 backend=args.probe_backend,
                 use_specialization=not args.probe_no_specialization,
                 kv_cache_strategy=args.probe_kv_cache_strategy,
+                strategy_selector_profile=args.probe_strategy_selector_profile,
                 kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
                 offload_cpu_layers=args.probe_offload_cpu_layers,
                 offload_cpu_policy=args.probe_offload_cpu_policy,
@@ -286,6 +296,7 @@ def main() -> int:
                 backend=args.probe_backend,
                 use_specialization=not args.probe_no_specialization,
                 kv_cache_strategy=args.probe_kv_cache_strategy,
+                strategy_selector_profile=args.probe_strategy_selector_profile,
                 kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
                 offload_cpu_layers=args.probe_offload_cpu_layers,
                 offload_cpu_policy=args.probe_offload_cpu_policy,
@@ -304,6 +315,7 @@ def main() -> int:
                 backend=args.probe_backend,
                 use_specialization=not args.probe_no_specialization,
                 kv_cache_strategy=args.probe_kv_cache_strategy,
+                strategy_selector_profile=args.probe_strategy_selector_profile,
                 kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
                 offload_cpu_layers=args.probe_offload_cpu_layers,
                 offload_cpu_policy=args.probe_offload_cpu_policy,
@@ -320,6 +332,7 @@ def main() -> int:
                 backend=args.probe_backend,
                 use_specialization=not args.probe_no_specialization,
                 kv_cache_strategy=args.probe_kv_cache_strategy,
+                strategy_selector_profile=args.probe_strategy_selector_profile,
                 kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
                 offload_cpu_layers=args.probe_offload_cpu_layers,
                 offload_cpu_policy=args.probe_offload_cpu_policy,
@@ -336,6 +349,7 @@ def main() -> int:
                 backend=args.probe_backend,
                 use_specialization=not args.probe_no_specialization,
                 kv_cache_strategy=args.probe_kv_cache_strategy,
+                strategy_selector_profile=args.probe_strategy_selector_profile,
                 kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
                 offload_cpu_layers=args.probe_offload_cpu_layers,
                 offload_cpu_policy=args.probe_offload_cpu_policy,
@@ -352,6 +366,7 @@ def main() -> int:
                 backend=args.probe_backend,
                 use_specialization=not args.probe_no_specialization,
                 kv_cache_strategy=args.probe_kv_cache_strategy,
+                strategy_selector_profile=args.probe_strategy_selector_profile,
                 kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
                 offload_cpu_layers=args.probe_offload_cpu_layers,
                 offload_cpu_policy=args.probe_offload_cpu_policy,
@@ -364,6 +379,10 @@ def main() -> int:
             raise SystemExit(f"Unsupported --probe-mode: {args.probe_mode}")
         if not args.no_record_history:
             payload = json.loads(rendered_probe)
+            selector_rule_id, selector_applied_strategy = extract_probe_selector_result(
+                payload,
+                probe_mode=args.probe_mode,
+            )
             history_result = record_benchmark_history(
                 repo_root=repo_root,
                 payload=payload,
@@ -378,6 +397,11 @@ def main() -> int:
                     device=probe_device,
                     backend=args.probe_backend,
                     kv_cache_strategy=args.probe_kv_cache_strategy,
+                    strategy_selector_profile=args.probe_strategy_selector_profile,
+                    strategy_selector_rule_id=selector_rule_id,
+                    strategy_selector_applied_kv_cache_strategy=(
+                        selector_applied_strategy
+                    ),
                     kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
                     offload_cpu_layers=args.probe_offload_cpu_layers,
                     offload_cpu_policy=args.probe_offload_cpu_policy,
@@ -392,7 +416,7 @@ def main() -> int:
                     session_turns=args.probe_session_turns,
                 ),
             )
-            _emit_history_status(history_result)
+            emit_history_status(history_result)
         sys.stdout.write(rendered_probe)
         sys.stdout.write("\n")
         return 0
@@ -404,6 +428,7 @@ def main() -> int:
         models_dir=Path(args.models_dir),
         device=device,
         kv_cache_strategy=args.kv_cache_strategy,
+        strategy_selector_profile=args.strategy_selector_profile,
         kv_cache_window_tokens=args.kv_cache_window_tokens,
         offload_cpu_layers=args.offload_cpu_layers,
         offload_cpu_policy=args.offload_cpu_policy,
@@ -423,6 +448,17 @@ def main() -> int:
     )
     rendered = render_report_json(report)
     if not args.no_record_history:
+        selector_rule_id, selector_applied_strategy = resolve_report_selector_result(
+            model_reference=args.model_reference,
+            models_dir=Path(args.models_dir),
+            device=device,
+            kv_cache_strategy=args.kv_cache_strategy,
+            strategy_selector_profile=args.strategy_selector_profile,
+            kv_cache_window_tokens=args.kv_cache_window_tokens,
+            offload_cpu_layers=args.offload_cpu_layers,
+            offload_cpu_policy=args.offload_cpu_policy,
+            offload_gpu_layers=args.offload_gpu_layers,
+        )
         history_result = record_benchmark_history(
             repo_root=repo_root,
             payload=json.loads(rendered),
@@ -434,6 +470,9 @@ def main() -> int:
                 benchmark_model_reference=args.model_reference,
                 device=device,
                 kv_cache_strategy=args.kv_cache_strategy,
+                strategy_selector_profile=args.strategy_selector_profile,
+                strategy_selector_rule_id=selector_rule_id,
+                strategy_selector_applied_kv_cache_strategy=selector_applied_strategy,
                 kv_cache_window_tokens=args.kv_cache_window_tokens,
                 offload_cpu_layers=args.offload_cpu_layers,
                 offload_cpu_policy=args.offload_cpu_policy,
@@ -445,7 +484,7 @@ def main() -> int:
                 session_max_new_tokens=profile.session_max_new_tokens,
             ),
         )
-        _emit_history_status(history_result)
+        emit_history_status(history_result)
     if args.output is not None:
         output_path = Path(args.output).expanduser().resolve()
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -453,31 +492,6 @@ def main() -> int:
     sys.stdout.write(rendered)
     sys.stdout.write("\n")
     return 0
-
-
-def _emit_history_status(history_result: dict[str, object]) -> None:
-    record_path = history_result.get("record_path")
-    if isinstance(record_path, str):
-        codebase = history_result.get("codebase_label")
-        if isinstance(codebase, str):
-            print(
-                f"benchmark history recorded [{codebase}]: {record_path}",
-                file=sys.stderr,
-            )
-        else:
-            print(f"benchmark history recorded: {record_path}", file=sys.stderr)
-    comparison = history_result.get("comparison_to_previous")
-    if not isinstance(comparison, dict):
-        return
-    comparison_payload = cast(dict[str, object], comparison)
-    regressions = comparison_payload.get("potential_regressions")
-    if not isinstance(regressions, list) or not regressions:
-        return
-    print(
-        "potential benchmark regressions: "
-        + ", ".join(str(item) for item in regressions),
-        file=sys.stderr,
-    )
 
 
 if __name__ == "__main__":

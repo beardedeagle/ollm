@@ -191,6 +191,28 @@ def execute_request_probe(
             output_tokens_per_second=output_tokens_per_second,
             cache_mode=cache_mode,
             kv_cache_strategy=kv_cache_strategy,
+            strategy_selector_profile=runtime.plan.details.get(
+                "strategy_selector_profile"
+            ),
+            strategy_selector_rule_id=runtime.plan.details.get(
+                "strategy_selector_rule_id"
+            ),
+            strategy_selector_requested_override=runtime.plan.details.get(
+                "strategy_selector_requested_override"
+            ),
+            strategy_selector_selected_kv_cache_strategy=runtime.plan.details.get(
+                "strategy_selector_selected_kv_cache_strategy"
+            ),
+            strategy_selector_applied_kv_cache_strategy=runtime.plan.details.get(
+                "strategy_selector_applied_kv_cache_strategy"
+            ),
+            strategy_selector_fallback_chain=tuple(
+                item
+                for item in runtime.plan.details.get(
+                    "strategy_selector_fallback_chain", ""
+                ).split(",")
+                if item
+            ),
             offload_cpu_policy=runtime.plan.details.get("offload_cpu_resolved_policy"),
             offload_cpu_requested_layers=_optional_int_detail(
                 runtime.plan.details, "offload_cpu_requested_layers"

@@ -24,6 +24,11 @@ from ollm.runtime.specialization import (
     SpecializationRegistry,
     build_default_specialization_registry,
 )
+from ollm.runtime.strategy_selector import select_runtime_strategy
+from ollm.runtime.strategy_selector_application import (
+    apply_strategy_selection_to_config,
+    plan_with_strategy_selection,
+)
 
 
 @dataclass(slots=True)
@@ -189,29 +194,63 @@ class RuntimeLoader:
         model_path = self._ensure_local_model(resolved_model, config.force_download)
         execution_model = self._refresh_materialized_model(resolved_model, model_path)
 
-        runtime_plan = self._refine_runtime_plan(
+        preliminary_plan = self._refine_runtime_plan(
             self._selector.select(execution_model, config), config
+        )
+        strategy_selection = select_runtime_strategy(
+            resolved_model=execution_model,
+            runtime_plan=preliminary_plan,
+            requested_strategy_override=config.requested_kv_cache_strategy(),
+            strategy_selector_profile=config.resolved_strategy_selector_profile(),
+            requested_window_tokens=config.kv_cache_window_tokens,
+        )
+        effective_config = apply_strategy_selection_to_config(
+            config, strategy_selection
+        )
+        runtime_plan = plan_with_strategy_selection(
+            preliminary_plan,
+            strategy_selection,
+            requested_config=config,
+            effective_config=effective_config,
         )
         if not runtime_plan.is_executable():
             raise ValueError(runtime_plan.reason)
-        self._validate_runtime_plan(runtime_plan, config)
+        self._validate_runtime_plan(runtime_plan, effective_config)
         try:
-            backend_runtime = self._load_backend_runtime(runtime_plan, config)
+            backend_runtime = self._load_backend_runtime(runtime_plan, effective_config)
             runtime_plan = self._finalize_runtime_plan(runtime_plan, backend_runtime)
         except (SpecializationApplicationError, SpecializationLoadError) as exc:
             fallback_plan = self._build_generic_fallback_plan(
                 execution_model=execution_model,
                 runtime_plan=runtime_plan,
-                config=config,
+                config=effective_config,
                 error=exc,
             )
             if fallback_plan is None:
                 raise ValueError(str(exc)) from exc
-            backend_runtime = self._load_backend_runtime(fallback_plan, config)
+            strategy_selection = select_runtime_strategy(
+                resolved_model=execution_model,
+                runtime_plan=fallback_plan,
+                requested_strategy_override=config.requested_kv_cache_strategy(),
+                strategy_selector_profile=config.resolved_strategy_selector_profile(),
+                requested_window_tokens=config.kv_cache_window_tokens,
+            )
+            effective_config = apply_strategy_selection_to_config(
+                config, strategy_selection
+            )
+            fallback_plan = plan_with_strategy_selection(
+                fallback_plan,
+                strategy_selection,
+                requested_config=config,
+                effective_config=effective_config,
+            )
+            backend_runtime = self._load_backend_runtime(
+                fallback_plan, effective_config
+            )
             runtime_plan = self._finalize_runtime_plan(fallback_plan, backend_runtime)
         return LoadedRuntime(
             resolved_model=runtime_plan.resolved_model,
-            config=config,
+            config=effective_config,
             backend=backend_runtime,
             model_path=runtime_plan.model_path,
             plan=runtime_plan,
@@ -224,14 +263,46 @@ class RuntimeLoader:
             config.model_reference, config.resolved_models_dir()
         )
         if resolved_model.model_path is None or not resolved_model.model_path.exists():
-            return self._refine_runtime_plan(
+            preliminary_plan = self._refine_runtime_plan(
                 self._selector.select(resolved_model, config), config
+            )
+            strategy_selection = select_runtime_strategy(
+                resolved_model=resolved_model,
+                runtime_plan=preliminary_plan,
+                requested_strategy_override=config.requested_kv_cache_strategy(),
+                strategy_selector_profile=config.resolved_strategy_selector_profile(),
+                requested_window_tokens=config.kv_cache_window_tokens,
+            )
+            effective_config = apply_strategy_selection_to_config(
+                config, strategy_selection
+            )
+            return plan_with_strategy_selection(
+                preliminary_plan,
+                strategy_selection,
+                requested_config=config,
+                effective_config=effective_config,
             )
         execution_model = self._refresh_materialized_model(
             resolved_model, resolved_model.model_path
         )
-        return self._refine_runtime_plan(
+        preliminary_plan = self._refine_runtime_plan(
             self._selector.select(execution_model, config), config
+        )
+        strategy_selection = select_runtime_strategy(
+            resolved_model=execution_model,
+            runtime_plan=preliminary_plan,
+            requested_strategy_override=config.requested_kv_cache_strategy(),
+            strategy_selector_profile=config.resolved_strategy_selector_profile(),
+            requested_window_tokens=config.kv_cache_window_tokens,
+        )
+        effective_config = apply_strategy_selection_to_config(
+            config, strategy_selection
+        )
+        return plan_with_strategy_selection(
+            preliminary_plan,
+            strategy_selection,
+            requested_config=config,
+            effective_config=effective_config,
         )
 
     def _refresh_materialized_model(

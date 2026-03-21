@@ -207,6 +207,27 @@ def _parse_request_probe_metrics(payload: Mapping[str, object]) -> RequestProbeM
         output_tokens_per_second=_optional_float(payload, "output_tokens_per_second"),
         cache_mode=_require_string(payload, "cache_mode"),
         kv_cache_strategy=_optional_string(payload, "kv_cache_strategy"),
+        strategy_selector_profile=_optional_string(
+            payload, "strategy_selector_profile"
+        ),
+        strategy_selector_rule_id=_optional_string(
+            payload, "strategy_selector_rule_id"
+        ),
+        strategy_selector_requested_override=_optional_string(
+            payload, "strategy_selector_requested_override"
+        ),
+        strategy_selector_selected_kv_cache_strategy=_optional_string(
+            payload, "strategy_selector_selected_kv_cache_strategy"
+        ),
+        strategy_selector_applied_kv_cache_strategy=_optional_string(
+            payload, "strategy_selector_applied_kv_cache_strategy"
+        ),
+        strategy_selector_fallback_chain=tuple(
+            _require_string({"value": value}, "value")
+            for value in _require_optional_sequence(
+                payload, "strategy_selector_fallback_chain"
+            )
+        ),
         offload_cpu_policy=_optional_string(payload, "offload_cpu_policy"),
         offload_cpu_requested_layers=_optional_int(
             payload, "offload_cpu_requested_layers"

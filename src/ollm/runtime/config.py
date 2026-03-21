@@ -20,6 +20,12 @@ from ollm.runtime.offload_policy import (
     normalize_cpu_offload_policy,
     resolve_cpu_offload_policy,
 )
+from ollm.runtime.strategy_selector import (
+    DEFAULT_STRATEGY_SELECTOR_PROFILE,
+    StrategySelectorProfile,
+    normalize_strategy_selector_profile,
+    resolve_strategy_selector_profile,
+)
 
 DEFAULT_MODEL_REFERENCE = "llama3-1B-chat"
 DEFAULT_SYSTEM_PROMPT = "You are a helpful assistant."
@@ -52,6 +58,22 @@ def normalize_backend(backend: str | None) -> str | None:
     return normalized_backend
 
 
+def _window_strategy_for_validation(
+    strategy: str | None,
+    strategy_selector_profile: str | None,
+    window_tokens: int | None,
+) -> str | None:
+    resolved_profile = resolve_strategy_selector_profile(strategy_selector_profile)
+    if strategy is not None:
+        return strategy
+    if (
+        window_tokens is not None
+        or resolved_profile == StrategySelectorProfile.BOUNDED_WINDOW.value
+    ):
+        return "sliding-window-ring-buffer"
+    return strategy
+
+
 @dataclass(slots=True)
 class RuntimeConfig:
     """Describe how a model reference should be resolved and executed."""
@@ -65,7 +87,8 @@ class RuntimeConfig:
     use_specialization: bool = True
     cache_dir: Path = field(default_factory=lambda: Path("kv_cache"))
     use_cache: bool = True
-    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY
+    kv_cache_strategy: str | None = None
+    strategy_selector_profile: str = DEFAULT_STRATEGY_SELECTOR_PROFILE
     kv_cache_lifecycle: str = DEFAULT_KV_CACHE_LIFECYCLE
     kv_cache_adaptation_mode: str = DEFAULT_KV_CACHE_ADAPTATION_MODE
     kv_cache_window_tokens: int | None = None
@@ -89,9 +112,19 @@ class RuntimeConfig:
         """Return the absolute cache directory."""
         return self.cache_dir.expanduser().resolve()
 
+    def requested_kv_cache_strategy(self) -> str | None:
+        """Return the normalized explicit KV strategy override when one exists."""
+
+        return normalize_kv_cache_strategy(self.kv_cache_strategy)
+
+    def resolved_strategy_selector_profile(self) -> str:
+        """Return the normalized selector profile."""
+
+        return resolve_strategy_selector_profile(self.strategy_selector_profile)
+
     def resolved_kv_cache_strategy(self) -> str:
         """Return the normalized KV cache strategy."""
-        normalized_strategy = normalize_kv_cache_strategy(self.kv_cache_strategy)
+        normalized_strategy = self.requested_kv_cache_strategy()
         if normalized_strategy is None:
             return DEFAULT_KV_CACHE_STRATEGY
         return normalized_strategy
@@ -117,7 +150,11 @@ class RuntimeConfig:
         """Return the normalized sliding-window token budget."""
 
         return resolve_kv_cache_window_tokens(
-            self.kv_cache_strategy,
+            _window_strategy_for_validation(
+                self.kv_cache_strategy,
+                self.strategy_selector_profile,
+                self.kv_cache_window_tokens,
+            ),
             self.kv_cache_window_tokens,
         )
 
@@ -139,13 +176,18 @@ class RuntimeConfig:
         if self.backend is not None:
             normalize_backend(self.backend)
         normalize_kv_cache_strategy(self.kv_cache_strategy)
+        normalize_strategy_selector_profile(self.strategy_selector_profile)
         resolve_kv_cache_lifecycle(
             self.kv_cache_strategy,
             self.kv_cache_lifecycle,
         )
         normalize_kv_cache_adaptation_mode(self.kv_cache_adaptation_mode)
         resolve_kv_cache_window_tokens(
-            self.kv_cache_strategy,
+            _window_strategy_for_validation(
+                self.kv_cache_strategy,
+                self.strategy_selector_profile,
+                self.kv_cache_window_tokens,
+            ),
             self.kv_cache_window_tokens,
         )
         normalize_cpu_offload_policy(self.offload_cpu_policy)

@@ -16,7 +16,6 @@ from transformers import PreTrainedTokenizerFast
 from transformers.models.t5 import T5Config, T5ForConditionalGeneration
 
 from ollm.client import RuntimeClient
-from ollm.kv_cache_strategy import DEFAULT_KV_CACHE_STRATEGY
 from ollm.runtime.benchmark_commands import (
     measure_callable,
     measure_command,
@@ -59,6 +58,7 @@ from ollm.runtime.benchmark_types import (
     unavailable_measurement,
 )
 from ollm.runtime.config import RuntimeConfig
+from ollm.runtime.strategy_selector import DEFAULT_STRATEGY_SELECTOR_PROFILE
 
 __all__ = [
     "BenchmarkMeasurement",
@@ -101,7 +101,8 @@ def build_runtime_benchmark_report(
     benchmark_model_reference: str,
     models_dir: Path,
     device: str,
-    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
+    kv_cache_strategy: str | None = None,
+    strategy_selector_profile: str = DEFAULT_STRATEGY_SELECTOR_PROFILE,
     kv_cache_window_tokens: int | None = None,
     offload_cpu_layers: int = 0,
     offload_cpu_policy: str = "auto",
@@ -169,6 +170,7 @@ def build_runtime_benchmark_report(
         models_dir=models_root,
         device=device,
         kv_cache_strategy=kv_cache_strategy,
+        strategy_selector_profile=strategy_selector_profile,
         kv_cache_window_tokens=kv_cache_window_tokens,
         offload_cpu_layers=offload_cpu_layers,
         offload_cpu_policy=offload_cpu_policy,
@@ -327,7 +329,8 @@ def _measure_runtime_comparison(
     benchmark_model_reference: str,
     models_dir: Path,
     device: str,
-    kv_cache_strategy: str,
+    kv_cache_strategy: str | None,
+    strategy_selector_profile: str,
     kv_cache_window_tokens: int | None,
     offload_cpu_layers: int,
     offload_cpu_policy: str,
@@ -365,6 +368,7 @@ def _measure_runtime_comparison(
         models_dir=models_dir,
         device=device,
         kv_cache_strategy=kv_cache_strategy,
+        strategy_selector_profile=strategy_selector_profile,
         kv_cache_window_tokens=kv_cache_window_tokens,
         offload_cpu_layers=offload_cpu_layers,
         offload_cpu_policy=offload_cpu_policy,
@@ -389,6 +393,7 @@ def _measure_runtime_comparison(
                 models_dir=models_dir,
                 device=device,
                 kv_cache_strategy=kv_cache_strategy,
+                strategy_selector_profile=strategy_selector_profile,
                 kv_cache_window_tokens=kv_cache_window_tokens,
                 offload_cpu_layers=offload_cpu_layers,
                 offload_cpu_policy=offload_cpu_policy,
