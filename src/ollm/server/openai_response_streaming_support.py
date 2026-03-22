@@ -16,6 +16,7 @@ from ollm.server.openai_response_models import (
     OpenAIResponseOutputMessageResponseModel,
     OpenAIResponseOutputTextDeltaEventModel,
     OpenAIResponseOutputTextDoneEventModel,
+    OpenAIResponseOutputTextResponseModel,
     OpenAIResponseResponseModel,
 )
 
@@ -59,7 +60,7 @@ def structured_output_events(
                     response_id=response_id,
                     item_id=output_item.id,
                     output_index=output_index,
-                    part=content_part,
+                    part=_in_progress_content_part(content_part),
                     sequence_number=resolved_next_sequence_number(),
                 ).model_dump(exclude_none=True),
             )
@@ -178,3 +179,9 @@ def _in_progress_output_item(
     if isinstance(output_item, OpenAIResponseOutputMessageResponseModel):
         return output_item.model_copy(update={"status": "in_progress", "content": []})
     return output_item.model_copy(update={"status": "in_progress"})
+
+
+def _in_progress_content_part(
+    content_part: OpenAIResponseOutputTextResponseModel,
+) -> OpenAIResponseOutputTextResponseModel:
+    return content_part.model_copy(update={"text": ""})

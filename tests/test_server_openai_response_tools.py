@@ -139,6 +139,102 @@ def test_openai_responses_stream_function_call_events(monkeypatch) -> None:
     )
 
 
+def test_openai_responses_tool_mode_accepts_plain_text_with_braces(monkeypatch) -> None:
+    configure_response_store(monkeypatch, backend="memory")
+    application_service = build_application_service()
+    runtime_executor = cast(
+        FakeRuntimeExecutor,
+        application_service.runtime_client.runtime_executor,
+    )
+    runtime_executor.fixed_response_text = "Use the set {a, b} for examples."
+    app = create_server_app(application_service)
+    client = build_test_client(app)
+
+    response = cast(
+        JsonResponseProtocol,
+        client.post(
+            "/v1/responses",
+            json={
+                "model": "llama3-1B-chat",
+                "input": "weather?",
+                "tools": [
+                    {
+                        "type": "function",
+                        "name": "get_weather",
+                        "parameters": {"type": "object"},
+                    }
+                ],
+            },
+        ),
+    )
+
+    payload = json_object(response)
+    output_items = payload_list(payload["output"])
+    output_message = payload_dict(output_items[0])
+    output_content = payload_list(output_message["content"])
+    output_text = payload_dict(output_content[0])
+
+    assert response.status_code == 200
+    assert output_message["type"] == "message"
+    assert output_text["text"] == "Use the set {a, b} for examples."
+
+
+def test_openai_responses_stream_message_tools_adds_empty_content_part_first(
+    monkeypatch,
+) -> None:
+    configure_response_store(monkeypatch, backend="memory")
+    application_service = build_application_service()
+    runtime_executor = cast(
+        FakeRuntimeExecutor,
+        application_service.runtime_client.runtime_executor,
+    )
+    runtime_executor.fixed_response_text = '{"type":"message","content":"done"}'
+    app = create_server_app(application_service)
+    client = build_test_client(app)
+
+    with cast(
+        StreamResponseProtocol,
+        client.stream(
+            "POST",
+            "/v1/responses",
+            json={
+                "model": "llama3-1B-chat",
+                "stream": True,
+                "input": "weather?",
+                "tools": [
+                    {
+                        "type": "function",
+                        "name": "get_weather",
+                        "parameters": {"type": "object"},
+                    }
+                ],
+            },
+        ),
+    ) as response:
+        lines = [line for line in response.iter_lines() if line]
+
+    events, payloads = decode_stream_lines(lines)
+    content_part_added_payload = payloads[3]
+    delta_payload = payloads[4]
+    content_part_done_payload = payloads[6]
+
+    assert response.status_code == 200
+    assert events == [
+        "response.created",
+        "response.in_progress",
+        "response.output_item.added",
+        "response.content_part.added",
+        "response.output_text.delta",
+        "response.output_text.done",
+        "response.content_part.done",
+        "response.output_item.done",
+        "response.completed",
+    ]
+    assert payload_dict(content_part_added_payload["part"])["text"] == ""
+    assert delta_payload["delta"] == "done"
+    assert payload_dict(content_part_done_payload["part"])["text"] == "done"
+
+
 def test_openai_responses_chain_previous_response_and_function_call_output(
     monkeypatch,
 ) -> None:

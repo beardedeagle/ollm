@@ -110,10 +110,7 @@ def parse_model_output(
     """Parse model text into a message or one or more function-call items."""
 
     if not tools:
-        message_text = raw_text.strip()
-        if not message_text:
-            raise ValueError("responses model output must not be empty")
-        return ParsedOpenAIResponseOutput(message_text=message_text, function_calls=())
+        return _message_output_from_raw_text(raw_text)
 
     json_candidate = _extract_json_candidate(raw_text)
     if json_candidate is None:
@@ -121,12 +118,22 @@ def parse_model_output(
             raise ValueError(
                 "responses tool call generation requires structured JSON output"
             )
-        message_text = raw_text.strip()
-        if not message_text:
-            raise ValueError("responses model output must not be empty")
-        return ParsedOpenAIResponseOutput(message_text=message_text, function_calls=())
+        return _message_output_from_raw_text(raw_text)
 
-    payload = _load_json_object(json_candidate)
+    try:
+        payload = _load_json_object(json_candidate)
+    except ValueError:
+        if _tool_call_required(tool_choice):
+            raise
+        return _message_output_from_raw_text(raw_text)
+
+    if payload.get("type") not in {"message", "function_call"}:
+        if _tool_call_required(tool_choice):
+            raise ValueError(
+                "responses structured output must use type 'message' or 'function_call'"
+            )
+        return _message_output_from_raw_text(raw_text)
+
     parsed = _parse_structured_payload(
         payload,
         tools=tools,
@@ -152,6 +159,13 @@ def build_runtime_tool_output_text(*, call_id: str, output_text: str) -> str:
         f"{output_text}\n"
         "[/function_call_output]"
     )
+
+
+def _message_output_from_raw_text(raw_text: str) -> ParsedOpenAIResponseOutput:
+    message_text = raw_text.strip()
+    if not message_text:
+        raise ValueError("responses model output must not be empty")
+    return ParsedOpenAIResponseOutput(message_text=message_text, function_calls=())
 
 
 def _validate_tools(tools: list[OpenAIResponseFunctionToolRequestModel]) -> None:

@@ -169,6 +169,18 @@ def test_parse_model_output_rejects_missing_required_tool_call() -> None:
         )
 
 
+def test_parse_model_output_treats_brace_text_as_plain_message_in_auto_mode() -> None:
+    parsed = parse_model_output(
+        "Use the set {a, b} for examples.",
+        tools=[_function_tool()],
+        tool_choice="auto",
+        parallel_tool_calls=True,
+    )
+
+    assert parsed.is_message is True
+    assert parsed.message_text == "Use the set {a, b} for examples."
+
+
 def test_structured_output_events_emit_content_part_done_for_messages() -> None:
     response = build_response_payload(
         response_id="resp_1",
@@ -188,6 +200,9 @@ def test_structured_output_events_emit_content_part_done_for_messages() -> None:
 
     lines = list(structured_output_events(response_id="resp_1", response=response))
     event_names = [line.splitlines()[0].removeprefix("event: ") for line in lines]
+    payloads = [
+        json.loads(line.splitlines()[1].removeprefix("data: ")) for line in lines
+    ]
 
     assert event_names == [
         "response.output_item.added",
@@ -197,3 +212,6 @@ def test_structured_output_events_emit_content_part_done_for_messages() -> None:
         "response.content_part.done",
         "response.output_item.done",
     ]
+    assert payloads[1]["part"]["text"] == ""
+    assert payloads[2]["delta"] == "hello"
+    assert payloads[4]["part"]["text"] == "hello"
