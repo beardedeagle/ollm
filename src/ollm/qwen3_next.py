@@ -24,6 +24,7 @@ from transformers.models.qwen3_next.modeling_qwen3_next import (
 )
 
 from ollm.device_staging import (
+    attach_parent_lm_head,
     restore_static_modules_after_forward,
     stage_static_modules_on_host,
 )
@@ -340,7 +341,7 @@ modeling.Qwen3NextModel = MyQwen3NextModel
 class MyQwen3NextForCausalLM(Qwen3NextForCausalLM):
     def __init__(self, config):
         super().__init__(config)
-        self.model.parent_lm_head = self.lm_head  # link
+        attach_parent_lm_head(self.model, self.lm_head)
         self.num_hidden_layers = config.num_hidden_layers
 
     def generate(self, **args):

@@ -24,6 +24,7 @@ from transformers.models.gpt_oss.modeling_gpt_oss import (
 )
 
 from ollm.device_staging import (
+    attach_parent_lm_head,
     restore_static_modules_after_forward,
     stage_static_modules_on_host,
 )
@@ -339,7 +340,7 @@ modeling.eager_attention_forward = my_eager_attention_forward
 class MyGptOssForCausalLM(GptOssForCausalLM):
     def __init__(self, config):
         super().__init__(config)
-        self.model.parent_lm_head = self.lm_head  # link
+        attach_parent_lm_head(self.model, self.lm_head)
         self.num_hidden_layers = config.num_hidden_layers
 
     def generate(self, **args):

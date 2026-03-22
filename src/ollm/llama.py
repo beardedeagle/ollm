@@ -22,6 +22,7 @@ from transformers.models.llama.modeling_llama import (
 )
 
 from ollm.device_staging import (
+    attach_parent_lm_head,
     restore_static_modules_after_forward,
     stage_static_modules_on_host,
 )
@@ -279,5 +280,5 @@ class MyLlamaForCausalLM(LlamaForCausalLM, oForGeneration):
     def __init__(self, config: LlamaConfig):
         with _temporary_llama_modeling_patch():
             super().__init__(config)
-        self.model.parent_lm_head = self.lm_head
+        attach_parent_lm_head(self.model, self.lm_head)
         self.num_hidden_layers = _coerce_hidden_layer_count(config.num_hidden_layers)

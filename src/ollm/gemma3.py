@@ -19,6 +19,7 @@ from transformers.models.gemma3.modeling_gemma3 import (
     TransformersKwargs,
 )
 
+from ollm.device_staging import attach_parent_lm_head
 from ollm.utils import _assign_tensor_to_module, _set_meta_placeholder, _walk_to_parent
 
 
@@ -198,7 +199,7 @@ class oForGeneration(loaderLayer):
 class MyGemma3ForCausalLM(Gemma3ForCausalLM, oForGeneration):
     def __init__(self, config: Gemma3TextConfig):
         super().__init__(config)
-        self.model.parent_lm_head = self.lm_head
+        attach_parent_lm_head(self.model, self.lm_head)
         self.num_hidden_layers = _coerce_hidden_layer_count(config.num_hidden_layers)
 
 

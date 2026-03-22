@@ -3,11 +3,18 @@
 from typing import Protocol
 
 import torch
+from torch import nn
 
 
 class DeviceStagingTarget(Protocol):
     def cpu(self) -> object: ...
     def to(self, device: torch.device) -> object: ...
+
+
+def attach_parent_lm_head(model: nn.Module, lm_head: nn.Module) -> None:
+    """Attach an output-head reference without registering a duplicate submodule."""
+
+    model.__dict__["parent_lm_head"] = lm_head
 
 
 def stage_static_modules_on_host(
