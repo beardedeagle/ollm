@@ -51,6 +51,8 @@ class OpenAIResponseStore(Protocol):
 
     def require(self, response_id: str) -> StoredOpenAIResponse: ...
 
+    def delete(self, response_id: str) -> bool: ...
+
 
 @dataclass(slots=True)
 class DisabledOpenAIResponseStore:
@@ -66,6 +68,10 @@ class DisabledOpenAIResponseStore:
         return None
 
     def require(self, response_id: str) -> StoredOpenAIResponse:
+        del response_id
+        raise ValueError("Responses storage is disabled for this server")
+
+    def delete(self, response_id: str) -> bool:
         del response_id
         raise ValueError("Responses storage is disabled for this server")
 
@@ -93,6 +99,10 @@ class MemoryOpenAIResponseStore:
         if stored_response is None:
             raise ValueError(f"Response '{response_id}' does not exist")
         return stored_response
+
+    def delete(self, response_id: str) -> bool:
+        with self._lock:
+            return self._responses.pop(response_id, None) is not None
 
 
 def build_openai_response_store(server_settings: ServerSettings) -> OpenAIResponseStore:

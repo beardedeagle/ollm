@@ -109,26 +109,34 @@ def test_openai_responses_stream_function_call_events(monkeypatch) -> None:
         lines = [line for line in response.iter_lines() if line]
 
     events, payloads = decode_stream_lines(lines)
-    output_item_added_payload = payloads[1]
-    arguments_delta_payload = payloads[2]
-    arguments_done_payload = payloads[3]
-    output_item_done_payload = payloads[4]
-    completed_payload = payloads[5]
+    in_progress_payload = payloads[1]
+    output_item_added_payload = payloads[2]
+    arguments_delta_payload = payloads[3]
+    arguments_done_payload = payloads[4]
+    output_item_done_payload = payloads[5]
+    completed_payload = payloads[6]
 
     assert response.status_code == 200
     assert events == [
         "response.created",
+        "response.in_progress",
         "response.output_item.added",
         "response.function_call_arguments.delta",
         "response.function_call_arguments.done",
         "response.output_item.done",
         "response.completed",
     ]
+    assert in_progress_payload["type"] == "response.in_progress"
     assert payload_dict(output_item_added_payload["item"])["type"] == "function_call"
+    assert payload_dict(output_item_added_payload["item"])["status"] == "in_progress"
     assert arguments_delta_payload["delta"] == '{"city":"Paris"}'
     assert arguments_done_payload["arguments"] == '{"city":"Paris"}'
     assert output_item_done_payload["type"] == "response.output_item.done"
+    assert payload_dict(output_item_done_payload["item"])["status"] == "completed"
     assert completed_payload["type"] == "response.completed"
+    assert [payload["sequence_number"] for payload in payloads] == list(
+        range(1, len(payloads) + 1)
+    )
 
 
 def test_openai_responses_chain_previous_response_and_function_call_output(

@@ -11,6 +11,7 @@ from ollm.server.openai_response_models import (
     OpenAIResponseFunctionCallResponseModel,
     OpenAIResponseFunctionToolChoiceRequestModel,
     OpenAIResponseFunctionToolRequestModel,
+    OpenAIResponseIncompleteDetailsResponseModel,
     OpenAIResponseInputContentPartRequestModel,
     OpenAIResponseInputMessageRequestModel,
     OpenAIResponseOutputMessageResponseModel,
@@ -201,8 +202,14 @@ def translate_input_part(
         if not part.audio_url:
             raise ValueError("responses audio parts require audio_url")
         return ContentPart.audio(part.audio_url)
+    if part.type == "input_file":
+        if part.file_url:
+            return ContentPart.text(f"[input_file url={part.file_url}]")
+        if part.file_id:
+            return ContentPart.text(f"[input_file id={part.file_id}]")
+        raise ValueError("responses file parts require file_url or file_id")
     raise ValueError(
-        "responses input currently supports only text, image, and audio content parts"
+        "responses input currently supports text, image, audio, and file content parts"
     )
 
 
@@ -219,12 +226,29 @@ def build_response_payload(
     created_at: int,
     model: str,
     parsed_output: ParsedOpenAIResponseOutput,
-    instructions: str | None,
-    previous_response_id: str | None,
+    input_items: str
+    | list[
+        OpenAIResponseInputMessageRequestModel
+        | OpenAIResponseFunctionCallOutputRequestModel
+    ]
+    | None = None,
+    instructions: str | None = None,
+    previous_response_id: str | None = None,
     tools: list[OpenAIResponseFunctionToolRequestModel],
     tool_choice: str | OpenAIResponseFunctionToolChoiceRequestModel,
     parallel_tool_calls: bool,
     status: str = "completed",
+    completed_at: int | None = None,
+    max_output_tokens: int | None = None,
+    temperature: float | None = None,
+    top_p: float | None = None,
+    store: bool = False,
+    reasoning_effort: str | None = None,
+    truncation: str = "disabled",
+    metadata: dict[str, object] | None = None,
+    error: object | None = None,
+    incomplete_reason: str | None = None,
+    output_item_status: str = "completed",
     output_items: list[
         OpenAIResponseOutputMessageResponseModel
         | OpenAIResponseFunctionCallResponseModel
@@ -237,6 +261,7 @@ def build_response_payload(
         build_output_items(
             parsed_output=parsed_output,
             output_message_id=output_message_id,
+            item_status=output_item_status,
         )
         if output_items is None
         else output_items
@@ -245,6 +270,14 @@ def build_response_payload(
         id=response_id,
         created_at=created_at,
         status=status,
+        completed_at=completed_at,
+        incomplete_details=(
+            OpenAIResponseIncompleteDetailsResponseModel(reason=incomplete_reason)
+            if incomplete_reason is not None
+            else None
+        ),
+        input=input_items,
+        max_output_tokens=max_output_tokens,
         model=model,
         output=resolved_output_items,
         instructions=instructions,
@@ -252,6 +285,13 @@ def build_response_payload(
         tools=list(tools),
         tool_choice=tool_choice,
         parallel_tool_calls=parallel_tool_calls,
+        reasoning_effort=reasoning_effort,
+        store=store,
+        temperature=temperature,
+        top_p=top_p,
+        truncation=truncation,
+        metadata={} if metadata is None else dict(metadata),
+        error=error,
     )
 
 
@@ -259,6 +299,7 @@ def build_output_items(
     *,
     parsed_output: ParsedOpenAIResponseOutput,
     output_message_id: str,
+    item_status: str,
 ) -> list[
     OpenAIResponseOutputMessageResponseModel | OpenAIResponseFunctionCallResponseModel
 ]:
@@ -268,6 +309,7 @@ def build_output_items(
         return [
             OpenAIResponseOutputMessageResponseModel(
                 id=output_message_id,
+                status=item_status,
                 content=[
                     OpenAIResponseOutputTextResponseModel(
                         text=parsed_output.message_text or ""
@@ -281,6 +323,7 @@ def build_output_items(
             call_id=function_call.call_id,
             name=function_call.name,
             arguments=function_call.arguments,
+            status=item_status,
         )
         for function_call in parsed_output.function_calls
     ]

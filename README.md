@@ -233,6 +233,7 @@ The current local REST surface is:
 - `POST /v1/chat/completions`
 - `POST /v1/responses`
 - `GET /v1/responses/{response_id}`
+- `DELETE /v1/responses/{response_id}`
 - `GET /v1/ollm/models`
 - `GET /v1/ollm/models/{model_reference}`
 - `POST /v1/plan`
@@ -265,8 +266,10 @@ curl -N -X POST http://127.0.0.1:8000/v1/prompt/stream \
 The streaming transport is SSE-based and the current server-side sessions are
 in-memory only. The OpenAI-compatible `/v1/responses` surface now supports
 custom `type=function` tools, `tool_choice`, `function_call_output` chaining,
-and typed function-call streaming events. A complete example config file lives
-at `examples/ollm.toml`.
+typed function-call streaming events, and `DELETE /v1/responses/{response_id}`
+when a response-store backend is enabled. Responses inputs also accept
+`input_file` parts as explicit file-reference markers for local-model prompts.
+A complete example config file lives at `examples/ollm.toml`.
 
 Runtime vocabulary:
 - support levels:

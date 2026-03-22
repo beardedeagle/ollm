@@ -14,6 +14,8 @@ class OpenAIResponseInputContentPartRequestModel(BaseModel):
     text: str | None = None
     image_url: str | None = None
     audio_url: str | None = None
+    file_url: str | None = None
+    file_id: str | None = None
 
 
 class OpenAIResponseInputMessageRequestModel(BaseModel):
@@ -117,15 +119,61 @@ class OpenAIResponseFunctionCallResponseModel(BaseModel):
     status: str = "completed"
 
 
-class OpenAIResponseResponseModel(BaseModel):
-    """OpenAI-compatible response object."""
+class OpenAIResponseIncompleteDetailsResponseModel(BaseModel):
+    """Incomplete-response details for the Responses API."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
+    reason: str
+
+
+class OpenAIResponseTextFormatTypeResponseModel(BaseModel):
+    """Concrete text-format descriptor for a response."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    type: str = "text"
+
+
+class OpenAIResponseTextFormatResponseModel(BaseModel):
+    """Text-format wrapper for the Responses API."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    format: OpenAIResponseTextFormatTypeResponseModel = Field(
+        default_factory=OpenAIResponseTextFormatTypeResponseModel
+    )
+
+
+class OpenAIResponseResponseModel(BaseModel):
+    """OpenAI-compatible response object."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        populate_by_name=True,
+        serialize_by_alias=True,
+    )
+
     id: str
-    object: str = "response"
+    object_type: str = Field(
+        default="response",
+        alias="object",
+        serialization_alias="object",
+    )
     created_at: int
     status: str
+    completed_at: int | None = None
+    incomplete_details: OpenAIResponseIncompleteDetailsResponseModel | None = None
+    input: (
+        str
+        | list[
+            OpenAIResponseInputMessageRequestModel
+            | OpenAIResponseFunctionCallOutputRequestModel
+        ]
+        | None
+    ) = None
+    max_output_tokens: int | None = None
     model: str
     output: list[
         OpenAIResponseOutputMessageResponseModel
@@ -136,6 +184,17 @@ class OpenAIResponseResponseModel(BaseModel):
     tools: list[OpenAIResponseFunctionToolRequestModel] = Field(default_factory=list)
     tool_choice: str | OpenAIResponseFunctionToolChoiceRequestModel | None = None
     parallel_tool_calls: bool = True
+    reasoning_effort: str | None = None
+    store: bool = False
+    temperature: float | None = None
+    text: OpenAIResponseTextFormatResponseModel = Field(
+        default_factory=OpenAIResponseTextFormatResponseModel
+    )
+    top_p: float | None = None
+    truncation: str = "disabled"
+    usage: builtins.object | None = None
+    user: str | None = None
+    metadata: dict[str, object] = Field(default_factory=dict)
     error: builtins.object | None = None
 
 
@@ -145,7 +204,18 @@ class OpenAIResponseCreatedEventModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     type: str = "response.created"
-    response: OpenAIResponseResponseModel
+    response: dict[str, object]
+    sequence_number: int
+
+
+class OpenAIResponseInProgressEventModel(BaseModel):
+    """Streaming event emitted when a response remains in progress."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    type: str = "response.in_progress"
+    response: dict[str, object]
+    sequence_number: int
 
 
 class OpenAIResponseOutputItemAddedEventModel(BaseModel):
@@ -160,6 +230,7 @@ class OpenAIResponseOutputItemAddedEventModel(BaseModel):
         OpenAIResponseOutputMessageResponseModel
         | OpenAIResponseFunctionCallResponseModel
     )
+    sequence_number: int
 
 
 class OpenAIResponseContentPartAddedEventModel(BaseModel):
@@ -173,6 +244,21 @@ class OpenAIResponseContentPartAddedEventModel(BaseModel):
     output_index: int = 0
     content_index: int = 0
     part: OpenAIResponseOutputTextResponseModel
+    sequence_number: int
+
+
+class OpenAIResponseContentPartDoneEventModel(BaseModel):
+    """Streaming event emitted when a content part completes."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    type: str = "response.content_part.done"
+    response_id: str
+    item_id: str
+    output_index: int = 0
+    content_index: int = 0
+    part: OpenAIResponseOutputTextResponseModel
+    sequence_number: int
 
 
 class OpenAIResponseOutputTextDeltaEventModel(BaseModel):
@@ -186,6 +272,7 @@ class OpenAIResponseOutputTextDeltaEventModel(BaseModel):
     output_index: int = 0
     content_index: int = 0
     delta: str
+    sequence_number: int
 
 
 class OpenAIResponseOutputTextDoneEventModel(BaseModel):
@@ -199,6 +286,7 @@ class OpenAIResponseOutputTextDoneEventModel(BaseModel):
     output_index: int = 0
     content_index: int = 0
     text: str
+    sequence_number: int
 
 
 class OpenAIResponseOutputItemDoneEventModel(BaseModel):
@@ -213,6 +301,7 @@ class OpenAIResponseOutputItemDoneEventModel(BaseModel):
         OpenAIResponseOutputMessageResponseModel
         | OpenAIResponseFunctionCallResponseModel
     )
+    sequence_number: int
 
 
 class OpenAIResponseFunctionCallArgumentsDeltaEventModel(BaseModel):
@@ -225,6 +314,7 @@ class OpenAIResponseFunctionCallArgumentsDeltaEventModel(BaseModel):
     item_id: str
     output_index: int = 0
     delta: str
+    sequence_number: int
 
 
 class OpenAIResponseFunctionCallArgumentsDoneEventModel(BaseModel):
@@ -237,6 +327,7 @@ class OpenAIResponseFunctionCallArgumentsDoneEventModel(BaseModel):
     item_id: str
     output_index: int = 0
     arguments: str
+    sequence_number: int
 
 
 class OpenAIResponseCompletedEventModel(BaseModel):
@@ -245,4 +336,34 @@ class OpenAIResponseCompletedEventModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     type: str = "response.completed"
-    response: OpenAIResponseResponseModel
+    response: dict[str, object]
+    sequence_number: int
+
+
+class OpenAIResponseFailedEventModel(BaseModel):
+    """Streaming event emitted when a response fails."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    type: str = "response.failed"
+    response: dict[str, object]
+    sequence_number: int
+
+
+class OpenAIDeletedResponseModel(BaseModel):
+    """OpenAI-compatible delete-response payload."""
+
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        populate_by_name=True,
+        serialize_by_alias=True,
+    )
+
+    id: str
+    object_type: str = Field(
+        default="response",
+        alias="object",
+        serialization_alias="object",
+    )
+    deleted: bool = True

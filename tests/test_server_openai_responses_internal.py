@@ -154,6 +154,7 @@ def test_structured_output_events_emit_function_call_argument_events() -> None:
         "response.function_call_arguments.done",
         "response.output_item.done",
     ]
+    assert payloads[0]["sequence_number"] == 1
     assert payloads[1]["delta"] == '{"city":"Paris"}'
     assert payloads[2]["arguments"] == '{"city":"Paris"}'
 
@@ -166,3 +167,33 @@ def test_parse_model_output_rejects_missing_required_tool_call() -> None:
             tool_choice="required",
             parallel_tool_calls=True,
         )
+
+
+def test_structured_output_events_emit_content_part_done_for_messages() -> None:
+    response = build_response_payload(
+        response_id="resp_1",
+        output_message_id="msg_1",
+        created_at=1,
+        model="llama3-1B-chat",
+        parsed_output=parse_model_output(
+            '{"type":"message","content":"hello"}',
+            tools=[_function_tool()],
+            tool_choice="auto",
+            parallel_tool_calls=True,
+        ),
+        tools=[_function_tool()],
+        tool_choice="auto",
+        parallel_tool_calls=True,
+    )
+
+    lines = list(structured_output_events(response_id="resp_1", response=response))
+    event_names = [line.splitlines()[0].removeprefix("event: ") for line in lines]
+
+    assert event_names == [
+        "response.output_item.added",
+        "response.content_part.added",
+        "response.output_text.delta",
+        "response.output_text.done",
+        "response.content_part.done",
+        "response.output_item.done",
+    ]

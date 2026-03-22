@@ -54,6 +54,15 @@ class FastAPIApplication(Protocol):
         tags: list[str],
     ) -> Callable[[Callable[..., object]], Callable[..., object]]: ...
 
+    def delete(
+        self,
+        path: str,
+        *,
+        response_model: type[object],
+        summary: str,
+        tags: list[str],
+    ) -> Callable[[Callable[..., object]], Callable[..., object]]: ...
+
 
 class FastAPIFactory(Protocol):
     """Protocol for the imported FastAPI application constructor."""

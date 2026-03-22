@@ -97,6 +97,7 @@ The current REST surface is:
 - `POST /v1/chat/completions`
 - `POST /v1/responses`
 - `GET /v1/responses/{response_id}`
+- `DELETE /v1/responses/{response_id}`
 - `GET /v1/ollm/models`
 - `GET /v1/ollm/models/{model_reference}`
 - `POST /v1/plan`
@@ -110,9 +111,9 @@ The current REST surface is:
 The streaming transport is SSE-based and the current server-side sessions are
 in-memory only. The OpenAI-compatible `/v1/responses` surface supports custom
 function tools, `tool_choice`, `function_call_output` chaining, and typed
-function-call SSE events. See [Local Server API](guides/local-server.md) for the
-complete HTTP surface and [CLI `ollm serve`](cli/server.md) for command-specific
-usage.
+function-call SSE events, plus delete/retrieval when a response-store backend is
+enabled. See [Local Server API](guides/local-server.md) for the complete HTTP
+surface and [CLI `ollm serve`](cli/server.md) for command-specific usage.
 
 ## Model references
 

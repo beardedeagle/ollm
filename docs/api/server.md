@@ -16,6 +16,7 @@ with `ollm serve`.
 - `POST /v1/chat/completions`
 - `POST /v1/responses`
 - `GET /v1/responses/{response_id}`
+- `DELETE /v1/responses/{response_id}`
 
 ## Native oLLM routes
 
@@ -38,7 +39,7 @@ with `ollm serve`.
   text-part arrays only.
 - Responses requests support:
   - plain string input
-  - message arrays with text, image, and audio content parts
+  - message arrays with text, image, audio, and file-reference content parts
   - `function_call_output` tool-result input items
   - custom `type=function` tool definitions plus `tool_choice`
 - `POST /v1/chat/completions` supports both standard JSON responses and SSE
@@ -47,6 +48,8 @@ with `ollm serve`.
   response events.
 - `GET /v1/responses/{response_id}` and `previous_response_id` require a
   configured response-store backend.
+- `DELETE /v1/responses/{response_id}` also requires a configured response-store
+  backend.
 - Responses output items include assistant messages and `function_call` items.
 - The server continues to expose native oLLM-only runtime planning, prompt, and
   session endpoints beside the compatibility layer.
@@ -57,11 +60,13 @@ with `ollm serve`.
 - OpenAI-compatible streaming responses use `text/event-stream` chat-completion
   chunks plus a final `data: [DONE]` line.
 - Responses streaming uses typed SSE events such as `response.created`,
+  `response.in_progress`,
   `response.output_item.added`, `response.content_part.added`,
   `response.output_text.delta`, `response.output_text.done`,
+  `response.content_part.done`,
   `response.function_call_arguments.delta`,
   `response.function_call_arguments.done`,
-  `response.output_item.done`, and `response.completed`.
+  `response.output_item.done`, `response.completed`, and `response.failed`.
 - Native streaming responses still use oLLM's SSE event family.
 - Server-side sessions are in-memory only.
 - Responses storage is disabled by default; enable a response-store backend when

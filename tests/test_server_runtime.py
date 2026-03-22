@@ -49,6 +49,7 @@ def test_create_server_app_attaches_application_service_to_app_state(
     assert ("GET", "/v1/models") in app.routes
     assert ("GET", "/v1/responses/{response_id}") in app.routes
     assert ("GET", "/v1/ollm/models") in app.routes
+    assert ("DELETE", "/v1/responses/{response_id}") in app.routes
     assert ("POST", "/v1/chat/completions") in app.routes
     assert ("POST", "/v1/responses") in app.routes
     assert ("POST", "/v1/prompt/stream") in app.routes

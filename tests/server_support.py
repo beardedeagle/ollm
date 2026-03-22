@@ -40,6 +40,17 @@ class FakeFastAPIApp:
         del response_model, summary, tags
         return self._register("POST", path)
 
+    def delete(
+        self,
+        path: str,
+        *,
+        response_model: type[object],
+        summary: str,
+        tags: list[str],
+    ):
+        del response_model, summary, tags
+        return self._register("DELETE", path)
+
     def _register(self, method: str, path: str):
         def decorator(handler: Callable[..., object]) -> Callable[..., object]:
             self.routes[(method, path)] = handler

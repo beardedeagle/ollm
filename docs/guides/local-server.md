@@ -27,6 +27,7 @@ The local server publishes:
 - `POST /v1/chat/completions`
 - `POST /v1/responses`
 - `GET /v1/responses/{response_id}`
+- `DELETE /v1/responses/{response_id}`
 
 ## Native oLLM routes
 
@@ -49,21 +50,23 @@ The local server publishes:
 - Chat-completions requests currently support plain string content and structured
   text-part arrays only.
 - Responses requests support plain string input, message arrays with text/image/audio
-  content parts, `function_call_output` tool-result items, and custom
+  and file-reference content parts, `function_call_output` tool-result items, and custom
   `type=function` tools with `tool_choice`.
 - OpenAI-compatible chat streaming uses `text/event-stream` with chat-completion
   chunks and a final `data: [DONE]` marker.
 - Responses streaming uses typed SSE events such as `response.created`,
+  `response.in_progress`,
   `response.output_item.added`, `response.content_part.added`,
   `response.output_text.delta`, `response.output_text.done`,
+  `response.content_part.done`,
   `response.function_call_arguments.delta`,
   `response.function_call_arguments.done`,
-  `response.output_item.done`, and `response.completed`.
+  `response.output_item.done`, `response.completed`, and `response.failed`.
 - Native prompt streaming continues to use the oLLM-specific SSE event shape.
 - Server-side sessions are in-memory only in the current slice.
 - Responses storage is disabled by default. Configure a response-store backend
-  if you want `GET /v1/responses/{response_id}` or `previous_response_id`
-  chaining.
+  if you want `GET /v1/responses/{response_id}`,
+  `DELETE /v1/responses/{response_id}`, or `previous_response_id` chaining.
 - Runtime and generation defaults still follow the standard config layering
   contract for native endpoints.
 
