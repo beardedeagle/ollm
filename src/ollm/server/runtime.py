@@ -6,11 +6,12 @@ from importlib.metadata import PackageNotFoundError, version
 from typing import Protocol, cast
 
 from ollm.app.service import ApplicationService, build_default_application_service
-from ollm.runtime.settings import ServerSettings
+from ollm.runtime.settings import ServerSettings, load_app_settings
 from ollm.server.dependencies import (
     SERVER_EXTRA_INSTALL_HINT,
     ServerDependenciesError,
 )
+from ollm.server.openai_response_store import build_openai_response_store
 from ollm.server.routes import HTTPExceptionFactory, register_rest_routes
 from ollm.server.session_store import ServerSessionStore
 
@@ -18,7 +19,10 @@ LOCAL_SERVER_MODE = "local-only"
 OPENAPI_SCHEMA_PATH = "/openapi.json"
 OPENAPI_DOCS_PATH = "/docs"
 OPENAPI_REDOC_PATH = "/redoc"
-SERVER_DESCRIPTION = "Local-only oLLM REST API with OpenAPI schema and docs."
+SERVER_DESCRIPTION = (
+    "Local-only oLLM REST API with native runtime controls and an "
+    "OpenAI-compatible chat surface."
+)
 
 
 class FastAPIApplication(Protocol):
@@ -42,6 +46,15 @@ class FastAPIApplication(Protocol):
     ) -> Callable[[Callable[..., object]], Callable[..., object]]: ...
 
     def post(
+        self,
+        path: str,
+        *,
+        response_model: type[object],
+        summary: str,
+        tags: list[str],
+    ) -> Callable[[Callable[..., object]], Callable[..., object]]: ...
+
+    def delete(
         self,
         path: str,
         *,
@@ -130,6 +143,7 @@ def _load_uvicorn_module() -> UvicornModule:
 
 def create_server_app(
     application_service: ApplicationService | None = None,
+    server_settings: ServerSettings | None = None,
 ) -> FastAPIApplication:
     """Create the local-only server application."""
     fastapi = _load_fastapi_module()
@@ -146,9 +160,17 @@ def create_server_app(
         if application_service is None
         else application_service
     )
+    resolved_server_settings = (
+        load_app_settings().server if server_settings is None else server_settings
+    )
     setattr(app.state, "application_service", resolved_application_service)
     setattr(app.state, "server_mode", LOCAL_SERVER_MODE)
     setattr(app.state, "session_store", ServerSessionStore())
+    setattr(
+        app.state,
+        "openai_response_store",
+        build_openai_response_store(resolved_server_settings),
+    )
     register_rest_routes(
         app,
         cast(HTTPExceptionFactory, fastapi.HTTPException),
@@ -173,7 +195,7 @@ def serve_application(
         )
     else:
         config = uvicorn.Config(
-            create_server_app(application_service),
+            create_server_app(application_service, server_settings),
             host=server_settings.host,
             port=server_settings.port,
             reload=False,

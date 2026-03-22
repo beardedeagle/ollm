@@ -194,6 +194,8 @@ stream = true
 host = "127.0.0.1"
 port = 8000
 reload = false
+response_store_backend = "none"
+# response_store_factory = "custom.module:build_store"
 ```
 
 Example environment overrides:
@@ -215,7 +217,7 @@ uv sync --extra server
 ollm serve
 ```
 
-`ollm serve` resolves its host, port, reload, and log-level settings through the same `CLI > env > config file > defaults` contract. The default bind is `127.0.0.1`, and the server publishes machine-readable and interactive OpenAPI surfaces at `/openapi.json`, `/docs`, and `/redoc`.
+`ollm serve` resolves its host, port, reload, log-level, and response-store settings through the same `CLI > env > config file > defaults` contract. The default bind is `127.0.0.1`, and the server publishes machine-readable and interactive OpenAPI surfaces at `/openapi.json`, `/docs`, and `/redoc`.
 
 Runtime benchmarking now records a persistent history ledger under
 `.omx/logs/benchmark-history/` by default. Each record includes a stable
@@ -227,7 +229,13 @@ The current local REST surface is:
 
 - `GET /v1/health`
 - `GET /v1/models`
-- `GET /v1/models/{model_reference}`
+- `GET /v1/models/{model_id}`
+- `POST /v1/chat/completions`
+- `POST /v1/responses`
+- `GET /v1/responses/{response_id}`
+- `DELETE /v1/responses/{response_id}`
+- `GET /v1/ollm/models`
+- `GET /v1/ollm/models/{model_reference}`
 - `POST /v1/plan`
 - `POST /v1/prompt`
 - `POST /v1/prompt/stream`
@@ -240,6 +248,13 @@ Example:
 
 ```bash
 curl http://127.0.0.1:8000/v1/health
+curl http://127.0.0.1:8000/v1/models
+curl -X POST http://127.0.0.1:8000/v1/chat/completions \
+  -H "content-type: application/json" \
+  -d '{"model":"llama3-1B-chat","messages":[{"role":"user","content":"List planets"}]}'
+curl -X POST http://127.0.0.1:8000/v1/responses \
+  -H "content-type: application/json" \
+  -d '{"model":"llama3-1B-chat","input":"List planets"}'
 curl -X POST http://127.0.0.1:8000/v1/plan \
   -H "content-type: application/json" \
   -d '{"runtime":{"model_reference":"llama3-1B-chat"}}'
@@ -249,7 +264,12 @@ curl -N -X POST http://127.0.0.1:8000/v1/prompt/stream \
 ```
 
 The streaming transport is SSE-based and the current server-side sessions are
-in-memory only. A complete example config file lives at `examples/ollm.toml`.
+in-memory only. The OpenAI-compatible `/v1/responses` surface now supports
+custom `type=function` tools, `tool_choice`, `function_call_output` chaining,
+typed function-call streaming events, and `DELETE /v1/responses/{response_id}`
+when a response-store backend is enabled. Responses inputs also accept
+`input_file` parts as explicit file-reference markers for local-model prompts.
+A complete example config file lives at `examples/ollm.toml`.
 
 Runtime vocabulary:
 - support levels:

@@ -20,3 +20,5 @@ host = "127.0.0.1"
 port = 8000
 reload = false
 log_level = "info"
+response_store_backend = "none"
+# response_store_factory = "custom.module:build_store"

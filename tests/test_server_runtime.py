@@ -39,12 +39,19 @@ def test_create_server_app_attaches_application_service_to_app_state(
     assert getattr(app.state, "application_service") is application_service
     assert getattr(app.state, "server_mode") == LOCAL_SERVER_MODE
     assert getattr(app.state, "session_store") is not None
+    assert getattr(app.state, "openai_response_store") is not None
     assert fastapi_module.apps[0][0] == "oLLM"
     assert fastapi_module.apps[0][1] == SERVER_DESCRIPTION
     assert app.openapi_url == OPENAPI_SCHEMA_PATH
     assert app.docs_url == OPENAPI_DOCS_PATH
     assert app.redoc_url == OPENAPI_REDOC_PATH
     assert ("GET", "/v1/health") in app.routes
+    assert ("GET", "/v1/models") in app.routes
+    assert ("GET", "/v1/responses/{response_id}") in app.routes
+    assert ("GET", "/v1/ollm/models") in app.routes
+    assert ("DELETE", "/v1/responses/{response_id}") in app.routes
+    assert ("POST", "/v1/chat/completions") in app.routes
+    assert ("POST", "/v1/responses") in app.routes
     assert ("POST", "/v1/prompt/stream") in app.routes
     assert ("POST", "/v1/sessions") in app.routes
 

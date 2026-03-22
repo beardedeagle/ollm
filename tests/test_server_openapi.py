@@ -37,7 +37,12 @@ def test_server_app_publishes_openapi_and_docs_routes() -> None:
     for path in (
         "/v1/health",
         "/v1/models",
-        "/v1/models/{model_reference}",
+        "/v1/models/{model_id}",
+        "/v1/chat/completions",
+        "/v1/responses",
+        "/v1/responses/{response_id}",
+        "/v1/ollm/models",
+        "/v1/ollm/models/{model_reference}",
         "/v1/plan",
         "/v1/prompt",
         "/v1/prompt/stream",

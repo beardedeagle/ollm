@@ -88,6 +88,36 @@ def test_serve_command_cli_flags_override_loaded_server_settings(
     assert server_settings.log_level == "warning"
 
 
+def test_serve_command_accepts_response_store_overrides(monkeypatch) -> None:
+    runner, _, app = build_test_app()
+    captured: dict[str, object] = {}
+
+    def fake_serve_application(server_settings, application_service) -> None:
+        del application_service
+        captured["settings"] = server_settings
+
+    monkeypatch.setattr(
+        "ollm.cli.server.serve_application",
+        fake_serve_application,
+    )
+
+    result = runner.invoke(
+        app,
+        [
+            "serve",
+            "--response-store-backend",
+            "plugin",
+            "--response-store-factory",
+            "custom.module:build_store",
+        ],
+    )
+
+    assert result.exit_code == 0
+    server_settings = cast(ServerSettings, captured["settings"])
+    assert server_settings.response_store_backend == "plugin"
+    assert server_settings.response_store_factory == "custom.module:build_store"
+
+
 def test_serve_command_reports_missing_server_dependencies_cleanly(
     monkeypatch,
 ) -> None:

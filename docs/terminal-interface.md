@@ -59,6 +59,7 @@ stream = true
 [server]
 host = "127.0.0.1"
 port = 8000
+response_store_backend = "none"
 ```
 
 The current settings surface covers runtime defaults, generation defaults, and
@@ -79,7 +80,8 @@ Then start the local-only server:
 ollm serve
 ```
 
-`ollm serve` resolves `host`, `port`, `reload`, and `log_level` through the
+`ollm serve` resolves `host`, `port`, `reload`, `log_level`, and response-store
+settings through the
 same settings-precedence contract as the rest of the CLI. The default bind is
 `127.0.0.1`, and the server also publishes:
 
@@ -91,7 +93,13 @@ The current REST surface is:
 
 - `GET /v1/health`
 - `GET /v1/models`
-- `GET /v1/models/{model_reference}`
+- `GET /v1/models/{model_id}`
+- `POST /v1/chat/completions`
+- `POST /v1/responses`
+- `GET /v1/responses/{response_id}`
+- `DELETE /v1/responses/{response_id}`
+- `GET /v1/ollm/models`
+- `GET /v1/ollm/models/{model_reference}`
 - `POST /v1/plan`
 - `POST /v1/prompt`
 - `POST /v1/prompt/stream`
@@ -101,8 +109,11 @@ The current REST surface is:
 - `POST /v1/sessions/{session_id}/prompt/stream`
 
 The streaming transport is SSE-based and the current server-side sessions are
-in-memory only. See [Local Server API](guides/local-server.md) for the complete
-HTTP surface and [CLI `ollm serve`](cli/server.md) for command-specific usage.
+in-memory only. The OpenAI-compatible `/v1/responses` surface supports custom
+function tools, `tool_choice`, `function_call_output` chaining, and typed
+function-call SSE events, plus delete/retrieval when a response-store backend is
+enabled. See [Local Server API](guides/local-server.md) for the complete HTTP
+surface and [CLI `ollm serve`](cli/server.md) for command-specific usage.
 
 ## Model references
 

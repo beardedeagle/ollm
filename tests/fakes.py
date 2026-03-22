@@ -21,7 +21,7 @@ class FakeLoadedRuntime:
 
 
 class FakeRuntimeLoader:
-    def __init__(self):
+    def __init__(self) -> None:
         self.load_calls: list[str] = []
         self.loaded_configs: list[RuntimeConfig] = []
         self.download_calls: list[tuple[str, Path, bool]] = []
@@ -86,20 +86,35 @@ class FakeRuntimeLoader:
 
 
 class FakeRuntimeExecutor:
-    def __init__(self):
+    def __init__(self) -> None:
         self.prompts: list[str] = []
+        self.requests: list[object] = []
+        self.message_batches: list[list[Message]] = []
+        self.response_prefix = "echo:"
+        self.fixed_response_text: str | None = None
+        self.response_metadata: dict[str, str] = {}
 
     def execute(self, runtime, request, sink=None) -> PromptResponse:
         del runtime
-        prompt_text = request.messages[-1].text_content()
+        self.requests.append(request)
+        messages = list(request.messages)
+        self.message_batches.append(messages)
+        prompt_text = messages[-1].text_content()
         self.prompts.append(prompt_text)
-        text = f"echo:{prompt_text}"
+        text = (
+            self.fixed_response_text
+            if self.fixed_response_text is not None
+            else f"{self.response_prefix}{prompt_text}"
+        )
+        metadata = dict(self.response_metadata)
         if sink is not None:
             sink.on_status("fake")
             sink.on_text(text)
             sink.on_complete(text)
         return PromptResponse(
-            text=text, assistant_message=Message.assistant_text(text), metadata={}
+            text=text,
+            assistant_message=Message.assistant_text(text),
+            metadata=metadata,
         )
 
 

@@ -32,6 +32,10 @@ from ollm.runtime.offload_policy import (
     DEFAULT_CPU_OFFLOAD_POLICY,
     normalize_cpu_offload_policy,
 )
+from ollm.runtime.server_settings_support import (
+    DEFAULT_RESPONSE_STORE_BACKEND,
+    normalize_response_store_backend,
+)
 from ollm.runtime.settings_sources import load_settings_payload
 from ollm.runtime.strategy_selector import (
     DEFAULT_STRATEGY_SELECTOR_PROFILE,
@@ -179,6 +183,41 @@ class ServerSettings(BaseModel):
     port: int = Field(default=DEFAULT_SERVER_PORT, gt=0, le=65535)
     reload: bool = False
     log_level: str = "info"
+    response_store_backend: str = DEFAULT_RESPONSE_STORE_BACKEND
+    response_store_factory: str | None = None
+
+    @field_validator("response_store_backend")
+    @classmethod
+    def _normalize_response_store_backend(cls, backend: str) -> str:
+        normalized_backend = normalize_response_store_backend(backend)
+        if normalized_backend is None:
+            raise ValueError("response_store_backend cannot be empty")
+        return normalized_backend
+
+    @field_validator("response_store_factory")
+    @classmethod
+    def _normalize_response_store_factory(cls, factory: str | None) -> str | None:
+        if factory is None:
+            return None
+        normalized_factory = factory.strip()
+        if not normalized_factory:
+            raise ValueError("response_store_factory cannot be empty")
+        return normalized_factory
+
+    @model_validator(mode="after")
+    def _validate_response_store_pair(self):
+        if (
+            self.response_store_backend == "plugin"
+            and self.response_store_factory is None
+        ):
+            raise ValueError(
+                "response_store_factory is required when response_store_backend=plugin"
+            )
+        if self.response_store_backend != "plugin" and self.response_store_factory:
+            raise ValueError(
+                "response_store_factory is only valid when response_store_backend=plugin"
+            )
+        return self
 
 
 class AppSettings(BaseSettings):
@@ -316,6 +355,23 @@ class ServerSettingsOverrides(BaseModel):
     port: int | None = Field(default=None, gt=0, le=65535)
     reload: bool | None = None
     log_level: str | None = None
+    response_store_backend: str | None = None
+    response_store_factory: str | None = None
+
+    @field_validator("response_store_backend")
+    @classmethod
+    def _normalize_response_store_backend(cls, backend: str | None) -> str | None:
+        return normalize_response_store_backend(backend)
+
+    @field_validator("response_store_factory")
+    @classmethod
+    def _normalize_response_store_factory(cls, factory: str | None) -> str | None:
+        if factory is None:
+            return None
+        normalized_factory = factory.strip()
+        if not normalized_factory:
+            raise ValueError("response_store_factory cannot be empty")
+        return normalized_factory
 
 
 @lru_cache(maxsize=1)

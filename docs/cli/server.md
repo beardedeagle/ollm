@@ -8,6 +8,8 @@
 - `--port`
 - `--reload / --no-reload`
 - `--log-level`
+- `--response-store-backend`
+- `--response-store-factory`
 
 ## Settings precedence
 
@@ -19,6 +21,12 @@
 4. built-in defaults
 
 The default bind is `127.0.0.1:8000`.
+
+Responses storage is disabled by default. Use:
+
+- `--response-store-backend memory` for process-scoped dev/test retrieval
+- `--response-store-backend plugin --response-store-factory package.module:factory`
+  for a custom backend
 
 ## OpenAPI and docs endpoints
 
@@ -34,6 +42,9 @@ When the server is running locally, FastAPI publishes:
 uv sync --extra server
 ollm serve
 ollm serve --port 9001 --log-level debug
+ollm serve --response-store-backend memory
+ollm serve --response-store-backend plugin \
+  --response-store-factory custom.module:build_store
 OLLM_SERVER__PORT=8123 ollm serve
 ```
 

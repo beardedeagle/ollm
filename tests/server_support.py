@@ -40,6 +40,17 @@ class FakeFastAPIApp:
         del response_model, summary, tags
         return self._register("POST", path)
 
+    def delete(
+        self,
+        path: str,
+        *,
+        response_model: type[object],
+        summary: str,
+        tags: list[str],
+    ):
+        del response_model, summary, tags
+        return self._register("DELETE", path)
+
     def _register(self, method: str, path: str):
         def decorator(handler: Callable[..., object]) -> Callable[..., object]:
             self.routes[(method, path)] = handler
@@ -49,7 +60,7 @@ class FakeFastAPIApp:
 
 
 class FakeHTTPException(Exception):
-    def __init__(self, *, status_code: int, detail: str) -> None:
+    def __init__(self, *, status_code: int, detail: object) -> None:
         super().__init__(detail)
         self.status_code = status_code
         self.detail = detail
