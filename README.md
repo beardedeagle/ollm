@@ -160,6 +160,13 @@ full-history KV in memory. When the bounded
 the recent-context token budget and oldest tokens are evicted once the window
 is exceeded.
 
+On optimized-native decoder-only text runtimes, long prompts are now ingested
+through bounded prefill chunks before the final decode step. That keeps prompt
+execution from growing one full prompt-wide activation step at a time on very
+long inputs while preserving the external prompt/chat contract. Prompt-scaling
+benchmarks remain the right place to evaluate the TTFT and memory tradeoff on
+target hardware.
+
 Configuration layering is now first-class:
 
 - built-in defaults remain the lowest-precedence layer

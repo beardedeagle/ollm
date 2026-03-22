@@ -58,6 +58,7 @@ PLAN_METADATA_DETAIL_KEYS = (
     "offload_cpu_applied_indices",
     "offload_gpu_layers",
 )
+DEFAULT_PREFILL_CHUNK_TOKENS = 512
 
 
 @dataclass(slots=True)
@@ -93,6 +94,12 @@ class RuntimeExecutor:
             runtime, request, streamer
         )
         filtered_inputs = _normalize_generate_inputs(inputs)
+        filtered_inputs, generate_kwargs = self._prepare_generate_inputs(
+            runtime,
+            request,
+            filtered_inputs,
+            generate_kwargs,
+        )
 
         with torch.inference_mode():
             with suppress_module_prints(runtime.backend.print_suppression_modules):
@@ -272,6 +279,84 @@ class RuntimeExecutor:
             clear_sampling_fields(generation_config)
 
         return generate_kwargs, generation_config
+
+    def _prepare_generate_inputs(
+        self,
+        runtime: LoadedRuntime,
+        request: PromptRequest,
+        inputs: dict[str, object],
+        generate_kwargs: dict[str, object],
+    ) -> tuple[dict[str, object], dict[str, object]]:
+        input_ids_value = inputs.get("input_ids")
+        if not isinstance(input_ids_value, torch.Tensor):
+            return inputs, generate_kwargs
+        if input_ids_value.ndim != 2 or input_ids_value.shape[0] != 1:
+            return inputs, generate_kwargs
+        if runtime.processor is not None:
+            return inputs, generate_kwargs
+        if runtime.plan.backend_id != "optimized-native":
+            return inputs, generate_kwargs
+        runtime_kind = (
+            runtime.plan.generic_model_kind or runtime.resolved_model.generic_model_kind
+        )
+        if runtime_kind is not GenericModelKind.CAUSAL_LM:
+            return inputs, generate_kwargs
+        prefill_token_count = input_ids_value.shape[1] - 1
+        if prefill_token_count <= DEFAULT_PREFILL_CHUNK_TOKENS:
+            return inputs, generate_kwargs
+        return self._run_chunked_prefill(runtime, inputs, generate_kwargs)
+
+    def _run_chunked_prefill(
+        self,
+        runtime: LoadedRuntime,
+        inputs: dict[str, object],
+        generate_kwargs: dict[str, object],
+    ) -> tuple[dict[str, object], dict[str, object]]:
+        forward_method = getattr(runtime.model, "forward", None)
+        if not callable(forward_method):
+            return inputs, generate_kwargs
+        input_ids = _require_tensor(inputs["input_ids"])
+        attention_mask_value = inputs.get("attention_mask")
+        attention_mask = (
+            None
+            if attention_mask_value is None
+            else _require_tensor(attention_mask_value)
+        )
+        prefill_cache = generate_kwargs.get("past_key_values")
+        prefill_end = input_ids.shape[1] - 1
+        with torch.inference_mode():
+            with suppress_module_prints(runtime.backend.print_suppression_modules):
+                for chunk_start in range(0, prefill_end, DEFAULT_PREFILL_CHUNK_TOKENS):
+                    chunk_end = min(
+                        prefill_end, chunk_start + DEFAULT_PREFILL_CHUNK_TOKENS
+                    )
+                    forward_inputs: dict[str, object] = {
+                        "input_ids": input_ids[:, chunk_start:chunk_end],
+                        "use_cache": True,
+                        "cache_position": torch.arange(
+                            chunk_start,
+                            chunk_end,
+                            device=input_ids.device,
+                            dtype=torch.long,
+                        ),
+                    }
+                    if attention_mask is not None:
+                        forward_inputs["attention_mask"] = attention_mask[:, :chunk_end]
+                    if prefill_cache is not None:
+                        forward_inputs["past_key_values"] = prefill_cache
+                    outputs = forward_method(**forward_inputs)
+                    prefill_cache = getattr(outputs, "past_key_values", None)
+                    if prefill_cache is None:
+                        raise PromptExecutionError(
+                            "Chunked prefill requires a causal runtime that returns past_key_values."
+                        )
+        updated_inputs = dict(inputs)
+        updated_inputs["input_ids"] = input_ids[:, -1:]
+        if attention_mask is not None:
+            updated_inputs["attention_mask"] = attention_mask
+        updated_generate_kwargs = dict(generate_kwargs)
+        updated_generate_kwargs["past_key_values"] = prefill_cache
+        return updated_inputs, updated_generate_kwargs
 
     def _decode_response(
         self, runtime: LoadedRuntime, inputs: dict[str, object], outputs
