@@ -405,7 +405,12 @@ class DenseWeightsLoader:
             return offloaded
         return self.load_dict_from_disk(base, device=self.device)
 
+    def _supports_layer_prefetch(self) -> bool:
+        return self.device.type in {"cpu", "cuda"}
+
     def prefetch_layer_weights(self, base: str) -> None:
+        if not self._supports_layer_prefetch():
+            return
         self._preload_base_tensors(base)
 
     def offload_dict_to_gpu_cpu(self, base: str, gpu: bool = False) -> None:

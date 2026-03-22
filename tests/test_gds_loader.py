@@ -277,6 +277,34 @@ def test_dense_weights_loader_prefetch_layer_weights_stages_sharded_tensors(
     assert torch.equal(loaded["mlp.gate_proj.weight"], expected)
 
 
+def test_dense_weights_loader_prefetch_layer_weights_skips_unsupported_device(
+    tmp_path: Path,
+) -> None:
+    model_dir = tmp_path / "sharded-dense-mps"
+    model_dir.mkdir()
+    filename = "model-00001-of-00001.safetensors"
+    tensor_name = "model.layers.0.mlp.gate_proj.weight"
+    _write_minimal_safetensor(
+        model_dir / filename,
+        tensor_name,
+        torch.tensor([13.0, 14.0], dtype=torch.float32),
+    )
+    (model_dir / "model.safetensors.index.json").write_text(
+        json.dumps(
+            {
+                "metadata": {"total_size": 8},
+                "weight_map": {tensor_name: filename},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    loader = gds_loader.DenseWeightsLoader(str(model_dir), device="mps")
+    loader.prefetch_layer_weights("model.layers.0.")
+
+    assert loader.safetensors == {}
+
+
 def test_gds_weights_preload_defers_future_wait(monkeypatch, tmp_path: Path) -> None:
     export_dir = tmp_path / "gds_export"
     export_dir.mkdir()
