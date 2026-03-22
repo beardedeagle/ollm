@@ -58,32 +58,33 @@ past_key_values = o.DiskCache(
 text_streamer = TextStreamer(o.tokenizer, skip_prompt=True, skip_special_tokens=False)
 ```
 
-`RuntimeConfig.kv_cache_strategy` now selects the KV cache baseline explicitly.
-`resident` keeps full-history KV in memory with no disk root, while `chunked`
-uses `cache_dir/kv_cache_chunked`,
-`paged` uses `cache_dir/kv_cache_paged`,
-`streamed-segmented` uses `cache_dir/kv_cache_streamed_segmented`,
-`log-structured-journal` uses `cache_dir/kv_cache_log_structured_journal`,
-`quantized-cold-tier` uses `cache_dir/kv_cache_quantized_cold_tier`,
-`sliding-window-ring-buffer` uses
-`cache_dir/kv_cache_sliding_window_ring_buffer`, and `tiered-write-back` uses
-`cache_dir/kv_cache_tiered_write_back` while keeping a bounded hot region in
-memory and a journal-backed cold tier on disk. The bounded
-`sliding-window-ring-buffer` mode keeps only the most recent
-`kv_cache_window_tokens` cached tokens and evicts older history, so it is a
-semantic recent-context mode rather than a transparent replacement for the
-full-history strategies. The `paged` preset uses fixed-capacity pages with an
-explicit page table while still preserving full history. All seven disk-backed presets use typed raw payloads plus explicit
-metadata instead of opaque torch cache blobs. The active runtime then applies a
-platform/resource-aware buffering or spill policy on top of the selected
-store.
-The low-level helper accepts the same switch directly through
-`offload_layers_to_cpu(layers_num=..., policy=...)`.
+`RuntimeConfig.kv_cache_strategy` selects the KV cache baseline explicitly.
+
+- `resident` keeps full-history KV in memory with no disk root.
+- `chunked` uses `cache_dir/kv_cache_chunked`.
+- `paged` uses `cache_dir/kv_cache_paged` and preserves full history through an
+  explicit page table.
+- `streamed-segmented` uses `cache_dir/kv_cache_streamed_segmented`.
+- `log-structured-journal` uses `cache_dir/kv_cache_log_structured_journal`.
+- `quantized-cold-tier` uses `cache_dir/kv_cache_quantized_cold_tier`.
+- `sliding-window-ring-buffer` uses
+  `cache_dir/kv_cache_sliding_window_ring_buffer` and retains only the most
+  recent `kv_cache_window_tokens` cached tokens.
+- `tiered-write-back` uses `cache_dir/kv_cache_tiered_write_back` while keeping
+  a bounded hot region in memory and a journal-backed cold tier on disk.
+
+The bounded `sliding-window-ring-buffer` mode is a semantic recent-context mode,
+not a transparent replacement for the full-history strategies. All seven
+disk-backed presets use typed raw payloads plus explicit metadata instead of
+opaque torch cache blobs. The active runtime then applies a
+platform/resource-aware buffering or spill policy on top of the selected store.
+
+The low-level optimized-native helper exposes the same cache switch directly
+through `Inference.DiskCache(cache_strategy=...)`.
 
 Current supported CPU offload policies are `auto`, `prefix`, `suffix`, and
 `middle-band`. `auto` currently resolves to `middle-band`, and combined
 CPU+GPU offload is intentionally unsupported in this slice.
-`Inference.DiskCache(cache_strategy=...)`.
 
 For compatible local Llama or Gemma3 directories, `AutoInference` remains the direct optimized-native helper:
 

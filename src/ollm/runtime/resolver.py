@@ -39,7 +39,27 @@ class NativeFamily(str, Enum):
 
 @dataclass(frozen=True, slots=True)
 class ResolvedModel:
-    """Resolved model metadata used by planning, inspection, and loading."""
+    """Resolved model metadata used by planning, inspection, and loading.
+
+    Attributes:
+        reference (ModelReference): Parsed user-facing model reference.
+        source_kind (ModelSourceKind): Where the model was resolved from.
+        normalized_name (str): Stable display name used by planning and docs.
+        model_path (Path | None): Local materialization path when one exists.
+        repo_id (str | None): Hugging Face repository identifier when
+            materialization is supported.
+        revision (str | None): Optional requested revision.
+        catalog_entry (ModelCatalogEntry | None): Built-in catalog entry when
+            one matched.
+        capabilities (CapabilityProfile): Capability and support metadata.
+        native_family (NativeFamily | None): Matching optimized-native family
+            when one exists.
+        resolution_message (str): Human-readable resolution summary.
+        architecture (str | None): Inspected architecture for local models.
+        model_type (str | None): Inspected model type for local models.
+        generic_model_kind (GenericModelKind | None): Generic execution kind
+            when one can be inferred.
+    """
 
     reference: ModelReference
     source_kind: ModelSourceKind
@@ -56,18 +76,38 @@ class ResolvedModel:
     generic_model_kind: GenericModelKind | None
 
     def is_downloadable(self) -> bool:
-        """Return whether the resolved model can be materialized locally."""
+        """Return whether the resolved model can be materialized locally.
+
+        Returns:
+            bool: ``True`` when both a repository ID and a local model path are
+            available.
+        """
         return self.repo_id is not None and self.model_path is not None
 
 
 class ModelResolver:
-    """Resolve model references into built-in, local, or Hugging Face forms."""
+    """Resolve model references into built-in, local, or Hugging Face forms.
+
+    Args:
+        capability_discovery (CapabilityDiscovery | None): Optional capability
+            discovery helper for inspecting local model directories.
+    """
 
     def __init__(self, capability_discovery: CapabilityDiscovery | None = None):
         self._capability_discovery = capability_discovery or CapabilityDiscovery()
 
     def resolve(self, raw_reference: str, models_dir: Path) -> ResolvedModel:
-        """Resolve a raw model reference without loading model weights."""
+        """Resolve a raw model reference without loading model weights.
+
+        Args:
+            raw_reference (str): User-facing model reference string.
+            models_dir (Path): Local models root used for implicit path
+                resolution.
+
+        Returns:
+            ResolvedModel: Normalized model metadata used by planning and
+            loading.
+        """
         reference = ModelReference.parse(raw_reference)
         model_root = models_dir.expanduser().resolve()
 
@@ -127,7 +167,15 @@ class ModelResolver:
         )
 
     def discover_local_models(self, models_dir: Path) -> tuple[ResolvedModel, ...]:
-        """Inspect local materialized model directories under a models root."""
+        """Inspect local materialized model directories under a models root.
+
+        Args:
+            models_dir (Path): Local models root to scan.
+
+        Returns:
+            tuple[ResolvedModel, ...]: Resolved local model directories found
+            under the given root.
+        """
         model_root = models_dir.expanduser().resolve()
         if not model_root.exists() or not model_root.is_dir():
             return ()
@@ -149,7 +197,24 @@ class ModelResolver:
         revision: str | None,
         catalog_entry: ModelCatalogEntry | None,
     ) -> ResolvedModel:
-        """Inspect a materialized local model directory and derive runtime capabilities."""
+        """Inspect a materialized local model directory and derive capabilities.
+
+        Args:
+            reference (ModelReference): Parsed reference associated with the
+                local model path.
+            model_path (Path): Materialized model directory to inspect.
+            source_kind (ModelSourceKind): Source bucket for the materialized
+                model.
+            repo_id (str | None): Optional repository ID for materialized
+                managed models.
+            revision (str | None): Optional requested revision.
+            catalog_entry (ModelCatalogEntry | None): Matching built-in catalog
+                entry when one exists.
+
+        Returns:
+            ResolvedModel: Inspected model metadata with derived capabilities and
+            native-family information.
+        """
         inspection = self._capability_discovery.inspect_model_path(model_path)
         capabilities = inspection.capabilities
         if catalog_entry is not None and source_kind in {

@@ -76,7 +76,13 @@ def _window_strategy_for_validation(
 
 @dataclass(slots=True)
 class RuntimeConfig:
-    """Describe how a model reference should be resolved and executed."""
+    """Describe how a model reference should be resolved and executed.
+
+    This is the shared execution contract used by the CLI, the library, and the
+    local server. Field annotations remain the source of truth for supported
+    options, while the helper methods normalize and validate those fields for
+    planning and execution.
+    """
 
     model_reference: str = DEFAULT_MODEL_REFERENCE
     models_dir: Path = field(default_factory=lambda: Path("models"))
@@ -170,7 +176,12 @@ class RuntimeConfig:
         return self.adapter_dir.expanduser().resolve()
 
     def validate(self) -> None:
-        """Validate the configuration before planning or execution."""
+        """Validate the configuration before planning or execution.
+
+        Raises:
+            ValueError: Raised when any runtime option is structurally invalid,
+                contradictory, or unsupported for the current execution model.
+        """
         if not self.model_reference.strip():
             raise ValueError("--model cannot be empty")
         if self.backend is not None:
@@ -217,7 +228,11 @@ class RuntimeConfig:
 
 @dataclass(slots=True)
 class GenerationConfig:
-    """Describe generation-time sampling and streaming behavior."""
+    """Describe generation-time sampling and streaming behavior.
+
+    Field annotations remain the source of truth for supported sampling controls.
+    Use :meth:`validate` before execution when constructing this type directly.
+    """
 
     max_new_tokens: int = DEFAULT_MAX_NEW_TOKENS
     temperature: float = 0.0
@@ -227,7 +242,12 @@ class GenerationConfig:
     stream: bool = True
 
     def validate(self) -> None:
-        """Validate sampling and generation limits."""
+        """Validate sampling and generation limits.
+
+        Raises:
+            ValueError: Raised when token or sampling limits fall outside the
+                supported runtime range.
+        """
         if self.max_new_tokens <= 0:
             raise ValueError("--max-new-tokens must be greater than zero")
         if self.temperature < 0:
@@ -238,5 +258,9 @@ class GenerationConfig:
             raise ValueError("--top-k must be greater than zero")
 
     def sampling_enabled(self) -> bool:
-        """Return whether stochastic sampling is enabled."""
+        """Return whether stochastic sampling is enabled.
+
+        Returns:
+            bool: ``True`` when ``temperature`` enables stochastic sampling.
+        """
         return self.temperature > 0

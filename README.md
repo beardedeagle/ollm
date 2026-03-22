@@ -383,32 +383,37 @@ the truthful low-overhead baseline, but it is only appropriate when the
 model/workload/hardware envelope can hold the active KV state without spill.
 When disk-backed strategies are selected, the default path writes to
 `cache_dir/kv_cache_chunked`, using typed raw chunk payloads plus JSON metadata
-instead of opaque torch cache blobs. When `kv_cache_strategy="streamed-segmented"` is selected, the runtime
-uses `cache_dir/kv_cache_streamed_segmented` instead so the two strategies
-never share on-disk state. `kv_cache_strategy="paged"` uses
-`cache_dir/kv_cache_paged` and writes fixed-capacity pages behind an explicit
-page table, so selective movement is bounded to page-sized units instead of
-variable chunk files. `kv_cache_strategy="log-structured-journal"` uses
-`cache_dir/kv_cache_log_structured_journal` and keeps append behavior cheap
-while compacting entry metadata deterministically when the journal gets too
-fragmented. `kv_cache_strategy="sliding-window-ring-buffer"` uses
-`cache_dir/kv_cache_sliding_window_ring_buffer` and keeps only the most recent
-bounded KV tail on disk and in memory; once the configured
-`kv_cache_window_tokens` limit is exceeded, the oldest cached tokens are
-dropped under a `drop-oldest` eviction policy. This is a semantic mode, not a
-transparent storage optimization: it deliberately trades full-history
-preservation for bounded KV cost. Current local proof keeps it as an explicit
-opt-in mode, not a general selector default. `kv_cache_strategy="quantized-cold-tier"` uses
-`cache_dir/kv_cache_quantized_cold_tier` and keeps the active in-process KV at
-normal precision while persisting colder full-history KV in an explicit
-`int8-symmetric-per-tensor` representation. `kv_cache_strategy="tiered-write-back"` uses
-`cache_dir/kv_cache_tiered_write_back` and keeps a bounded hot tail in memory
-while spilling colder KV to a journal-backed cold tier in batches. The runtime
-now also applies a platform/resource-aware buffering or spill policy on top of
-the selected format, so small KV deltas do not have to flush to disk on every
-update.
-That current preset is still not the full future GPU/CPU/SSD tiered
-architecture.
+instead of opaque torch cache blobs.
+
+- `kv_cache_strategy="streamed-segmented"` uses
+  `cache_dir/kv_cache_streamed_segmented` so it never shares on-disk state with
+  the chunked root.
+- `kv_cache_strategy="paged"` uses `cache_dir/kv_cache_paged` and writes
+  fixed-capacity pages behind an explicit page table, so selective movement is
+  bounded to page-sized units instead of variable chunk files.
+- `kv_cache_strategy="log-structured-journal"` uses
+  `cache_dir/kv_cache_log_structured_journal` and keeps append behavior cheap
+  while compacting entry metadata deterministically when the journal gets too
+  fragmented.
+- `kv_cache_strategy="sliding-window-ring-buffer"` uses
+  `cache_dir/kv_cache_sliding_window_ring_buffer` and keeps only the most recent
+  bounded KV tail on disk and in memory. Once the configured
+  `kv_cache_window_tokens` limit is exceeded, the oldest cached tokens are
+  dropped under a `drop-oldest` eviction policy. This is a semantic mode, not a
+  transparent storage optimization, so current local proof still keeps it as an
+  explicit opt-in mode rather than a selector default.
+- `kv_cache_strategy="quantized-cold-tier"` uses
+  `cache_dir/kv_cache_quantized_cold_tier` and keeps the active in-process KV at
+  normal precision while persisting colder full-history KV in an explicit
+  `int8-symmetric-per-tensor` representation.
+- `kv_cache_strategy="tiered-write-back"` uses
+  `cache_dir/kv_cache_tiered_write_back` and keeps a bounded hot tail in memory
+  while spilling colder KV to a journal-backed cold tier in batches.
+
+The runtime also applies a platform/resource-aware buffering or spill policy on
+top of the selected format, so small KV deltas do not have to flush to disk on
+every update. That current preset family is still not the full future
+GPU/CPU/SSD tiered architecture.
 Within one loaded runtime, the cache layer now also keeps a resident
 in-process per-layer KV snapshot so repeated updates do not have to reread and
 reconstruct the same persisted history every token. The streamed store also
