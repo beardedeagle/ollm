@@ -1,4 +1,4 @@
-"""REST route registration for the oLLM server surface."""
+"""REST route registration for the native and OpenAI-compatible server APIs."""
 
 from collections.abc import Callable
 from importlib.metadata import PackageNotFoundError, version
@@ -8,6 +8,7 @@ from typing import Protocol, cast
 from ollm.app.service import ApplicationService
 from ollm.app.types import ContentPart
 from ollm.runtime.catalog import list_model_catalog
+from ollm.runtime.config import GenerationConfig, RuntimeConfig
 from ollm.runtime.inspection import merged_runtime_payload
 from ollm.runtime.settings import (
     GenerationConfigOverrides,
@@ -29,6 +30,7 @@ from ollm.server.models import (
     SessionPromptRequestModel,
     SessionResponseModel,
 )
+from ollm.server.openai_routes import register_openai_compat_routes
 from ollm.server.session_store import ServerSessionStore
 from ollm.server.streaming import build_sse_response
 
@@ -36,7 +38,7 @@ from ollm.server.streaming import build_sse_response
 class HTTPExceptionFactory(Protocol):
     """Protocol for FastAPI HTTPException construction."""
 
-    def __call__(self, *, status_code: int, detail: str) -> Exception: ...
+    def __call__(self, *, status_code: int, detail: object) -> Exception: ...
 
 
 RouteDecorator = Callable[[Callable[..., object]], Callable[..., object]]
@@ -80,9 +82,7 @@ def _http_bad_request(
     return http_exception(status_code=400, detail=str(exc))
 
 
-def _build_runtime_config(
-    request_runtime,
-):
+def _build_runtime_config(request_runtime) -> RuntimeConfig:
     settings = load_app_settings()
     return resolve_runtime_config(
         settings.runtime,
@@ -109,7 +109,7 @@ def _build_runtime_config(
     )
 
 
-def _build_generation_config(request_generation):
+def _build_generation_config(request_generation) -> GenerationConfig:
     settings = load_app_settings()
     return resolve_generation_config(
         settings.generation,
@@ -185,11 +185,60 @@ def _model_info_payload(
     )
 
 
+def _native_model_entries(
+    application_service: ApplicationService,
+    *,
+    installed: bool,
+    backend: str | None,
+    no_specialization: bool | None,
+    models_dir: str | None,
+) -> list[ModelInfoResponseModel]:
+    model_dir = _model_dir(models_dir)
+    entries: list[ModelInfoResponseModel] = []
+    seen_paths: set[str] = set()
+    use_specialization = None if no_specialization is None else not no_specialization
+
+    for entry in list_model_catalog():
+        payload = _model_info_payload(
+            application_service,
+            model_reference=entry.model_id,
+            model_dir=model_dir,
+            backend=backend,
+            multimodal=None,
+            use_specialization=use_specialization,
+            discovery_source="built-in",
+        )
+        if installed and not payload.materialized:
+            continue
+        entries.append(payload)
+        if payload.path is not None:
+            seen_paths.add(payload.path)
+
+    for resolved_model in application_service.discover_local_models(model_dir):
+        payload = _model_info_payload(
+            application_service,
+            model_reference=resolved_model.reference.raw,
+            model_dir=model_dir,
+            backend=backend,
+            multimodal=None,
+            use_specialization=use_specialization,
+            discovery_source="discovered-local",
+        )
+        if payload.path is not None and payload.path in seen_paths:
+            continue
+        if installed and not payload.materialized:
+            continue
+        entries.append(payload)
+
+    entries.sort(key=lambda item: (item.source_kind, item.model_reference))
+    return entries
+
+
 def register_rest_routes(
     app: RouteRegistryApp,
     http_exception: HTTPExceptionFactory,
 ) -> None:
-    """Register the first REST API surface on a FastAPI application."""
+    """Register the native and OpenAI-compatible REST routes on the app."""
     application_service = cast(
         ApplicationService,
         getattr(app.state, "application_service"),
@@ -213,70 +262,59 @@ def register_rest_routes(
             server_mode=cast(str, getattr(app.state, "server_mode")),
         )
 
+    register_openai_compat_routes(
+        app,
+        application_service=application_service,
+        list_model_entries=lambda: _native_model_entries(
+            application_service,
+            installed=False,
+            backend=None,
+            no_specialization=None,
+            models_dir=None,
+        ),
+        load_model_info=lambda model_id: _model_info_payload(
+            application_service,
+            model_reference=model_id,
+            model_dir=_model_dir(None),
+            backend=None,
+            multimodal=None,
+            use_specialization=None,
+            discovery_source=None,
+        ),
+    )
+
     @app.get(
-        "/v1/models",
+        "/v1/ollm/models",
         response_model=ModelsListResponseModel,
-        summary="List known and local models",
+        summary="List known and local models (native)",
         tags=["models"],
     )
-    def list_models(
+    def native_list_models(
         installed: bool = False,
         backend: str | None = None,
         no_specialization: bool | None = None,
         models_dir: str | None = None,
     ) -> ModelsListResponseModel:
         try:
-            model_dir = _model_dir(models_dir)
-            entries: list[ModelInfoResponseModel] = []
-            seen_paths: set[str] = set()
-            use_specialization = (
-                None if no_specialization is None else not no_specialization
+            return ModelsListResponseModel(
+                models=_native_model_entries(
+                    application_service,
+                    installed=installed,
+                    backend=backend,
+                    no_specialization=no_specialization,
+                    models_dir=models_dir,
+                )
             )
-
-            for entry in list_model_catalog():
-                payload = _model_info_payload(
-                    application_service,
-                    model_reference=entry.model_id,
-                    model_dir=model_dir,
-                    backend=backend,
-                    multimodal=None,
-                    use_specialization=use_specialization,
-                    discovery_source="built-in",
-                )
-                if installed and not payload.materialized:
-                    continue
-                entries.append(payload)
-                if payload.path is not None:
-                    seen_paths.add(payload.path)
-
-            for resolved_model in application_service.discover_local_models(model_dir):
-                payload = _model_info_payload(
-                    application_service,
-                    model_reference=resolved_model.reference.raw,
-                    model_dir=model_dir,
-                    backend=backend,
-                    multimodal=None,
-                    use_specialization=use_specialization,
-                    discovery_source="discovered-local",
-                )
-                if payload.path is not None and payload.path in seen_paths:
-                    continue
-                if installed and not payload.materialized:
-                    continue
-                entries.append(payload)
-
-            entries.sort(key=lambda item: (item.source_kind, item.model_reference))
-            return ModelsListResponseModel(models=entries)
         except ValueError as exc:
             raise _http_bad_request(http_exception, exc) from exc
 
     @app.get(
-        "/v1/models/{model_reference:path}",
+        "/v1/ollm/models/{model_reference:path}",
         response_model=ModelInfoResponseModel,
-        summary="Inspect one model reference",
+        summary="Inspect one model reference (native)",
         tags=["models"],
     )
-    def model_info(
+    def native_model_info(
         model_reference: str,
         models_dir: str | None = None,
         backend: str | None = None,

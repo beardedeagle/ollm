@@ -45,6 +45,9 @@ def test_create_server_app_attaches_application_service_to_app_state(
     assert app.docs_url == OPENAPI_DOCS_PATH
     assert app.redoc_url == OPENAPI_REDOC_PATH
     assert ("GET", "/v1/health") in app.routes
+    assert ("GET", "/v1/models") in app.routes
+    assert ("GET", "/v1/ollm/models") in app.routes
+    assert ("POST", "/v1/chat/completions") in app.routes
     assert ("POST", "/v1/prompt/stream") in app.routes
     assert ("POST", "/v1/sessions") in app.routes
 

@@ -18,7 +18,10 @@ LOCAL_SERVER_MODE = "local-only"
 OPENAPI_SCHEMA_PATH = "/openapi.json"
 OPENAPI_DOCS_PATH = "/docs"
 OPENAPI_REDOC_PATH = "/redoc"
-SERVER_DESCRIPTION = "Local-only oLLM REST API with OpenAPI schema and docs."
+SERVER_DESCRIPTION = (
+    "Local-only oLLM REST API with native runtime controls and an "
+    "OpenAI-compatible chat surface."
+)
 
 
 class FastAPIApplication(Protocol):

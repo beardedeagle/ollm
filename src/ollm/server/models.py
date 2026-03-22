@@ -1,4 +1,4 @@
-"""Pydantic transport models for the oLLM REST server surface."""
+"""Pydantic transport models for the native and OpenAI-compatible server APIs."""
 
 from pathlib import Path
 
@@ -19,7 +19,7 @@ class HealthResponseModel(BaseModel):
 
 
 class RuntimeConfigResponseModel(BaseModel):
-    """Serialized runtime configuration for API responses."""
+    """Serialized runtime configuration for native API responses."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -47,7 +47,7 @@ class RuntimeConfigResponseModel(BaseModel):
 
 
 class ResolvedModelResponseModel(BaseModel):
-    """Serialized resolved-model payload for API responses."""
+    """Serialized resolved-model payload for native API responses."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -70,7 +70,7 @@ class ResolvedModelResponseModel(BaseModel):
 
 
 class RuntimePlanResponseModel(BaseModel):
-    """Serialized runtime-plan payload for API responses."""
+    """Serialized runtime-plan payload for native API responses."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -99,7 +99,7 @@ class PlanResponseModel(BaseModel):
 
 
 class ModelInfoResponseModel(BaseModel):
-    """Serialized model discovery/info payload for API responses."""
+    """Serialized native model discovery/info payload."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -130,7 +130,7 @@ class ModelInfoResponseModel(BaseModel):
 
 
 class ModelsListResponseModel(BaseModel):
-    """Response model for the models list endpoint."""
+    """Response model for the native models list endpoint."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -138,7 +138,7 @@ class ModelsListResponseModel(BaseModel):
 
 
 class RuntimeRequestModel(BaseModel):
-    """Request overrides for runtime configuration."""
+    """Request overrides for native runtime configuration."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -166,7 +166,7 @@ class RuntimeRequestModel(BaseModel):
 
 
 class GenerationRequestModel(BaseModel):
-    """Request overrides for generation configuration."""
+    """Request overrides for native generation configuration."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -186,7 +186,7 @@ class PlanRequestModel(BaseModel):
 
 
 class PromptRequestModel(BaseModel):
-    """Request model for prompt execution."""
+    """Request model for native prompt execution."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -197,7 +197,7 @@ class PromptRequestModel(BaseModel):
 
 
 class PromptResponseModel(BaseModel):
-    """Response model for prompt execution."""
+    """Response model for native prompt execution."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -206,7 +206,7 @@ class PromptResponseModel(BaseModel):
 
 
 class ContentPartResponseModel(BaseModel):
-    """Serialized content part for session responses."""
+    """Serialized content part for native session responses."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -215,7 +215,7 @@ class ContentPartResponseModel(BaseModel):
 
 
 class MessageResponseModel(BaseModel):
-    """Serialized message payload for session responses."""
+    """Serialized message payload for native session responses."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -252,3 +252,148 @@ class SessionPromptRequestModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     prompt: str
+
+
+class OpenAIModelResponseModel(BaseModel):
+    """OpenAI-compatible model object."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    id: str
+    object: str = "model"
+    created: int
+    owned_by: str
+
+
+class OpenAIModelsListResponseModel(BaseModel):
+    """OpenAI-compatible model list response."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    object: str = "list"
+    data: list[OpenAIModelResponseModel]
+
+
+class OpenAIChatMessageContentPartRequestModel(BaseModel):
+    """Structured content part for chat-completions messages."""
+
+    model_config = ConfigDict(extra="allow", frozen=True)
+
+    type: str
+    text: str | None = None
+
+
+class OpenAIChatMessageRequestModel(BaseModel):
+    """OpenAI-compatible request message."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    role: str
+    content: str | list[OpenAIChatMessageContentPartRequestModel]
+    name: str | None = None
+
+
+class OpenAIChatCompletionRequestModel(BaseModel):
+    """OpenAI-compatible chat-completions request."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    model: str
+    messages: list[OpenAIChatMessageRequestModel]
+    stream: bool = False
+    max_tokens: int | None = Field(default=None, gt=0)
+    temperature: float | None = Field(default=None, ge=0.0)
+    top_p: float | None = Field(default=None, gt=0.0, le=1.0)
+    seed: int | None = None
+
+
+class OpenAIChatCompletionMessageResponseModel(BaseModel):
+    """OpenAI-compatible response message."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    role: str = "assistant"
+    content: str
+
+
+class OpenAIChatCompletionChoiceResponseModel(BaseModel):
+    """OpenAI-compatible non-streaming choice payload."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    index: int
+    message: OpenAIChatCompletionMessageResponseModel
+    finish_reason: str | None = None
+
+
+class OpenAIUsageResponseModel(BaseModel):
+    """OpenAI-compatible usage payload."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+
+
+class OpenAIChatCompletionResponseModel(BaseModel):
+    """OpenAI-compatible non-streaming chat completion response."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    id: str
+    object: str = "chat.completion"
+    created: int
+    model: str
+    choices: list[OpenAIChatCompletionChoiceResponseModel]
+    usage: OpenAIUsageResponseModel | None = None
+
+
+class OpenAIChatCompletionDeltaResponseModel(BaseModel):
+    """OpenAI-compatible streaming delta payload."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    role: str | None = None
+    content: str | None = None
+
+
+class OpenAIChatCompletionChunkChoiceResponseModel(BaseModel):
+    """OpenAI-compatible streaming choice payload."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    index: int
+    delta: OpenAIChatCompletionDeltaResponseModel
+    finish_reason: str | None = None
+
+
+class OpenAIChatCompletionChunkResponseModel(BaseModel):
+    """OpenAI-compatible streaming chat completion chunk."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    id: str
+    object: str = "chat.completion.chunk"
+    created: int
+    model: str
+    choices: list[OpenAIChatCompletionChunkChoiceResponseModel]
+
+
+class OpenAIErrorResponseModel(BaseModel):
+    """OpenAI-compatible error object."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    message: str
+    type: str
+    param: str | None = None
+    code: str | None = None
+
+
+class OpenAIErrorEnvelopeResponseModel(BaseModel):
+    """OpenAI-compatible top-level error envelope."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    error: OpenAIErrorResponseModel

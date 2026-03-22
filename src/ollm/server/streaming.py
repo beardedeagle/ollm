@@ -1,4 +1,4 @@
-"""SSE streaming helpers for the oLLM server surface."""
+"""SSE streaming helpers for the oLLM server surfaces."""
 
 import json
 from collections.abc import Callable, Iterable, Iterator
@@ -18,7 +18,7 @@ class StreamingResponseFactory(Protocol):
 
 
 class EventStreamSink(StreamSink):
-    """Stream sink that serializes runtime callbacks into SSE events."""
+    """Stream sink that serializes native runtime callbacks into SSE events."""
 
     def __init__(self, queue: Queue[str | None]) -> None:
         self._queue = queue
@@ -66,10 +66,12 @@ def _event_iterator(execute: Callable[[StreamSink], None]) -> Iterator[str]:
         yield item
 
 
-def build_sse_response(execute: Callable[[StreamSink], None]) -> object:
-    """Build an SSE response around a blocking runtime execution callback."""
+def build_sse_response_from_iterator(content: Iterable[str]) -> object:
+    """Build an SSE response from a prepared event iterator."""
     streaming_response = _load_streaming_response_factory()
-    return streaming_response(
-        _event_iterator(execute),
-        media_type="text/event-stream",
-    )
+    return streaming_response(content, media_type="text/event-stream")
+
+
+def build_sse_response(execute: Callable[[StreamSink], None]) -> object:
+    """Build an SSE response around a blocking native runtime callback."""
+    return build_sse_response_from_iterator(_event_iterator(execute))

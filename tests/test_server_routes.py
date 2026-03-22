@@ -5,6 +5,10 @@ from ollm.server.models import (
     HealthResponseModel,
     ModelInfoResponseModel,
     ModelsListResponseModel,
+    OpenAIChatCompletionRequestModel,
+    OpenAIChatCompletionResponseModel,
+    OpenAIModelResponseModel,
+    OpenAIModelsListResponseModel,
     PlanRequestModel,
     PlanResponseModel,
     PromptRequestModel,
@@ -14,6 +18,7 @@ from ollm.server.models import (
     SessionResponseModel,
 )
 from ollm.server.runtime import LOCAL_SERVER_MODE, create_server_app
+from tests.fakes import FakeRuntimeExecutor
 from tests.server_support import (
     FakeFastAPIApp,
     FakeFastAPIModule,
@@ -39,6 +44,68 @@ def test_health_route_returns_local_only_metadata(monkeypatch) -> None:
     assert payload.ok is True
     assert payload.service == "ollm"
     assert payload.server_mode == LOCAL_SERVER_MODE
+
+
+def test_openai_models_route_returns_compatible_shape(monkeypatch) -> None:
+    fastapi_module = FakeFastAPIModule()
+    monkeypatch.setattr(
+        "ollm.server.runtime._load_fastapi_module",
+        lambda: fastapi_module,
+    )
+
+    app = cast(FakeFastAPIApp, create_server_app(build_application_service()))
+    models_list = cast(
+        Callable[[], OpenAIModelsListResponseModel],
+        app.routes[("GET", "/v1/models")],
+    )
+    payload = models_list()
+
+    assert payload.object == "list"
+    assert payload.data
+    assert payload.data[0].object == "model"
+
+
+def test_openai_model_info_route_returns_compatible_shape(monkeypatch) -> None:
+    fastapi_module = FakeFastAPIModule()
+    monkeypatch.setattr(
+        "ollm.server.runtime._load_fastapi_module",
+        lambda: fastapi_module,
+    )
+
+    app = cast(FakeFastAPIApp, create_server_app(build_application_service()))
+    model_info = cast(
+        Callable[[str], OpenAIModelResponseModel],
+        app.routes[("GET", "/v1/models/{model_id:path}")],
+    )
+    payload = model_info("llama3-1B-chat")
+
+    assert payload.id == "llama3-1B-chat"
+    assert payload.object == "model"
+
+
+def test_native_models_routes_return_entries(monkeypatch) -> None:
+    fastapi_module = FakeFastAPIModule()
+    monkeypatch.setattr(
+        "ollm.server.runtime._load_fastapi_module",
+        lambda: fastapi_module,
+    )
+
+    app = cast(FakeFastAPIApp, create_server_app(build_application_service()))
+    models_list = cast(
+        Callable[[], ModelsListResponseModel],
+        app.routes[("GET", "/v1/ollm/models")],
+    )
+    model_info = cast(
+        Callable[[str], ModelInfoResponseModel],
+        app.routes[("GET", "/v1/ollm/models/{model_reference:path}")],
+    )
+
+    list_payload = models_list()
+    info_payload = model_info("llama3-1B-chat")
+
+    assert list_payload.models
+    assert info_payload.model_reference == "llama3-1B-chat"
+    assert info_payload.runtime_plan.backend_id == "optimized-native"
 
 
 def test_plan_route_uses_application_service_for_runtime_planning(
@@ -68,6 +135,86 @@ def test_plan_route_uses_application_service_for_runtime_planning(
 
     assert payload.runtime_config.model_reference == "llama3-1B-chat"
     assert payload.runtime_plan.backend_id == "transformers-generic"
+
+
+def test_openai_chat_completions_route_executes_through_application_service(
+    monkeypatch,
+) -> None:
+    fastapi_module = FakeFastAPIModule()
+    application_service = build_application_service()
+    monkeypatch.setattr(
+        "ollm.server.runtime._load_fastapi_module",
+        lambda: fastapi_module,
+    )
+
+    app = cast(FakeFastAPIApp, create_server_app(application_service))
+    handler = cast(
+        Callable[[OpenAIChatCompletionRequestModel], OpenAIChatCompletionResponseModel],
+        app.routes[("POST", "/v1/chat/completions")],
+    )
+    payload = handler(
+        OpenAIChatCompletionRequestModel.model_validate(
+            {
+                "model": "llama3-1B-chat",
+                "messages": [
+                    {"role": "system", "content": "be brief"},
+                    {"role": "user", "content": "hello server"},
+                ],
+            }
+        )
+    )
+
+    runtime_executor = cast(
+        FakeRuntimeExecutor,
+        application_service.runtime_client.runtime_executor,
+    )
+    assert payload.object == "chat.completion"
+    assert payload.model == "llama3-1B-chat"
+    assert payload.choices[0].message.content == "echo:hello server"
+    assert len(runtime_executor.message_batches[0]) == 2
+    assert runtime_executor.message_batches[0][0].role.value == "system"
+    assert runtime_executor.message_batches[0][1].role.value == "user"
+
+
+def test_openai_chat_completions_stream_route_uses_compat_sse_builder(
+    monkeypatch,
+) -> None:
+    fastapi_module = FakeFastAPIModule()
+    captured: dict[str, object] = {}
+    monkeypatch.setattr(
+        "ollm.server.runtime._load_fastapi_module",
+        lambda: fastapi_module,
+    )
+
+    def fake_build_openai_chat_sse_response(execute, *, model) -> object:
+        captured["response"] = "openai-stream"
+        captured["execute"] = execute
+        captured["model"] = model
+        return "openai-stream"
+
+    monkeypatch.setattr(
+        "ollm.server.openai_routes.build_openai_chat_sse_response",
+        fake_build_openai_chat_sse_response,
+    )
+
+    app = cast(FakeFastAPIApp, create_server_app(build_application_service()))
+    handler = cast(
+        Callable[[OpenAIChatCompletionRequestModel], object],
+        app.routes[("POST", "/v1/chat/completions")],
+    )
+    payload = handler(
+        OpenAIChatCompletionRequestModel.model_validate(
+            {
+                "model": "llama3-1B-chat",
+                "stream": True,
+                "messages": [{"role": "user", "content": "stream this"}],
+            }
+        )
+    )
+
+    assert payload == "openai-stream"
+    assert captured["response"] == "openai-stream"
+    assert captured["model"] == "llama3-1B-chat"
 
 
 def test_prompt_route_executes_through_application_service(monkeypatch) -> None:
@@ -124,41 +271,6 @@ def test_prompt_stream_route_uses_sse_builder(monkeypatch) -> None:
     assert captured["response"] == "stream"
 
 
-def test_model_info_route_uses_application_service(monkeypatch) -> None:
-    fastapi_module = FakeFastAPIModule()
-    monkeypatch.setattr(
-        "ollm.server.runtime._load_fastapi_module",
-        lambda: fastapi_module,
-    )
-
-    app = cast(FakeFastAPIApp, create_server_app(build_application_service()))
-    model_info = cast(
-        Callable[[str], ModelInfoResponseModel],
-        app.routes[("GET", "/v1/models/{model_reference:path}")],
-    )
-    payload = model_info("llama3-1B-chat")
-
-    assert payload.model_reference == "llama3-1B-chat"
-    assert payload.runtime_plan.backend_id == "optimized-native"
-
-
-def test_models_list_route_returns_entries(monkeypatch) -> None:
-    fastapi_module = FakeFastAPIModule()
-    monkeypatch.setattr(
-        "ollm.server.runtime._load_fastapi_module",
-        lambda: fastapi_module,
-    )
-
-    app = cast(FakeFastAPIApp, create_server_app(build_application_service()))
-    models_list = cast(
-        Callable[[], ModelsListResponseModel],
-        app.routes[("GET", "/v1/models")],
-    )
-    payload = models_list()
-
-    assert payload.models
-
-
 def test_plan_route_reports_bad_request_for_invalid_backend(monkeypatch) -> None:
     fastapi_module = FakeFastAPIModule()
     monkeypatch.setattr(
@@ -178,7 +290,7 @@ def test_plan_route_reports_bad_request_for_invalid_backend(monkeypatch) -> None
         )
     except FakeHTTPException as exc:
         assert exc.status_code == 400
-        assert "--backend must be one of" in exc.detail
+        assert "--backend must be one of" in cast(str, exc.detail)
     else:
         raise AssertionError("plan route should return a 400-style HTTP exception")
 
@@ -279,6 +391,6 @@ def test_session_routes_report_missing_session_as_bad_request(monkeypatch) -> No
         get_session("missing-session")
     except FakeHTTPException as exc:
         assert exc.status_code == 400
-        assert "does not exist" in exc.detail
+        assert cast(str, exc.detail) == "Session 'missing-session' does not exist"
     else:
-        raise AssertionError("missing session should return a 400-style HTTP exception")
+        raise AssertionError("missing session should raise a 400-style HTTP exception")
