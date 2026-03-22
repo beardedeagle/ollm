@@ -237,3 +237,160 @@ def test_openai_models_routes_use_openai_shapes() -> None:
     assert detail_response.status_code == 200
     assert detail_payload["object"] == "model"
     assert detail_payload["id"] == "llama3-1B-chat"
+
+
+def test_openai_responses_create_and_retrieve_use_response_objects() -> None:
+    application_service = build_application_service()
+    app = create_server_app(application_service)
+    client = _test_client(app)
+
+    create_response = cast(
+        JsonResponseProtocol,
+        client.post(
+            "/v1/responses",
+            json={
+                "model": "llama3-1B-chat",
+                "instructions": "be brief",
+                "input": "hello",
+            },
+        ),
+    )
+
+    create_payload = _json_object(create_response)
+    output = _payload_list(create_payload["output"])
+    output_message = _payload_dict(output[0])
+    output_content = _payload_list(output_message["content"])
+    output_text = _payload_dict(output_content[0])
+    response_id = cast(str, create_payload["id"])
+    fetch_response = cast(
+        JsonResponseProtocol,
+        client.get(f"/v1/responses/{response_id}"),
+    )
+    fetch_payload = _json_object(fetch_response)
+
+    runtime_executor = cast(
+        FakeRuntimeExecutor,
+        application_service.runtime_client.runtime_executor,
+    )
+    assert create_response.status_code == 200
+    assert create_payload["object"] == "response"
+    assert create_payload["status"] == "completed"
+    assert output_message["role"] == "assistant"
+    assert output_text["type"] == "output_text"
+    assert output_text["text"] == "echo:hello"
+    assert [message.role.value for message in runtime_executor.message_batches[0]] == [
+        "system",
+        "user",
+    ]
+    assert fetch_response.status_code == 200
+    assert fetch_payload["id"] == response_id
+
+
+def test_openai_responses_support_previous_response_id_history() -> None:
+    application_service = build_application_service()
+    app = create_server_app(application_service)
+    client = _test_client(app)
+
+    first_response = cast(
+        JsonResponseProtocol,
+        client.post(
+            "/v1/responses",
+            json={"model": "llama3-1B-chat", "input": "hello"},
+        ),
+    )
+    first_payload = _json_object(first_response)
+    response_id = cast(str, first_payload["id"])
+    second_response = cast(
+        JsonResponseProtocol,
+        client.post(
+            "/v1/responses",
+            json={
+                "model": "llama3-1B-chat",
+                "previous_response_id": response_id,
+                "input": "again",
+            },
+        ),
+    )
+
+    runtime_executor = cast(
+        FakeRuntimeExecutor,
+        application_service.runtime_client.runtime_executor,
+    )
+    second_messages = runtime_executor.message_batches[-1]
+    assert second_response.status_code == 200
+    assert [message.role.value for message in second_messages] == [
+        "user",
+        "assistant",
+        "user",
+    ]
+    assert second_messages[0].text_content() == "hello"
+    assert second_messages[1].text_content() == "echo:hello"
+    assert second_messages[2].text_content() == "again"
+
+
+def test_openai_responses_stream_response_events() -> None:
+    app = create_server_app(build_application_service())
+    client = _test_client(app)
+
+    with cast(
+        StreamResponseProtocol,
+        client.stream(
+            "POST",
+            "/v1/responses",
+            json={
+                "model": "llama3-1B-chat",
+                "stream": True,
+                "input": "hello",
+            },
+        ),
+    ) as response:
+        lines = [line for line in response.iter_lines() if line]
+
+    events: list[str] = []
+    payloads: list[dict[str, object]] = []
+    for index in range(0, len(lines), 2):
+        events.append(lines[index].removeprefix("event: "))
+        payloads.append(
+            _payload_dict(json.loads(lines[index + 1].removeprefix("data: ")))
+        )
+
+    created_payload = payloads[0]
+    delta_payload = payloads[1]
+    done_payload = payloads[2]
+    completed_payload = payloads[3]
+
+    assert response.status_code == 200
+    assert events == [
+        "response.created",
+        "response.output_text.delta",
+        "response.output_text.done",
+        "response.completed",
+    ]
+    assert created_payload["type"] == "response.created"
+    assert delta_payload["type"] == "response.output_text.delta"
+    assert delta_payload["delta"] == "echo:hello"
+    assert done_payload["text"] == "echo:hello"
+    assert completed_payload["type"] == "response.completed"
+
+
+def test_openai_responses_report_missing_previous_response_cleanly() -> None:
+    app = create_server_app(build_application_service())
+    client = _test_client(app)
+
+    response = cast(
+        JsonResponseProtocol,
+        client.post(
+            "/v1/responses",
+            json={
+                "model": "llama3-1B-chat",
+                "previous_response_id": "resp_missing",
+                "input": "hello",
+            },
+        ),
+    )
+
+    payload = _json_object(response)
+    error = _payload_dict(payload["error"])
+    assert response.status_code == 400
+    assert error["type"] == "invalid_request_error"
+    assert "does not exist" in cast(str, error["message"])

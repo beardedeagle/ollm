@@ -25,6 +25,8 @@ The local server publishes:
 - `GET /v1/models`
 - `GET /v1/models/{model_id}`
 - `POST /v1/chat/completions`
+- `POST /v1/responses`
+- `GET /v1/responses/{response_id}`
 
 ## Native oLLM routes
 
@@ -42,18 +44,23 @@ The local server publishes:
 ## Behavior notes
 
 - The bind is local-only by default.
-- The OpenAI-compatible surface currently covers model discovery and text chat
-  completions only.
+- The OpenAI-compatible surface currently covers model discovery, text chat
+  completions, and text responses.
 - Chat-completions requests currently support plain string content and structured
   text-part arrays only.
+- Responses requests currently support plain string input or message arrays with
+  text content only.
 - OpenAI-compatible chat streaming uses `text/event-stream` with chat-completion
   chunks and a final `data: [DONE]` marker.
+- Responses streaming uses typed SSE events such as `response.created`,
+  `response.output_text.delta`, `response.output_text.done`, and
+  `response.completed`.
 - Native prompt streaming continues to use the oLLM-specific SSE event shape.
 - Server-side sessions are in-memory only in the current slice.
+- Retrieved response objects are also in-memory only in the current server
+  process.
 - Runtime and generation defaults still follow the standard config layering
   contract for native endpoints.
-- `/v1/responses` is not implemented in this slice; add it as a follow-up only
-  after the chat-completions surface is stable.
 
 ## Example requests
 
@@ -75,6 +82,22 @@ curl -N -X POST http://127.0.0.1:8000/v1/chat/completions \
     "model": "llama3-1B-chat",
     "stream": true,
     "messages": [{"role": "user", "content": "List three planets"}]
+  }'
+
+curl -X POST http://127.0.0.1:8000/v1/responses \
+  -H "content-type: application/json" \
+  -d '{
+    "model": "llama3-1B-chat",
+    "instructions": "Be brief.",
+    "input": "List three planets"
+  }'
+
+curl -N -X POST http://127.0.0.1:8000/v1/responses \
+  -H "content-type: application/json" \
+  -d '{
+    "model": "llama3-1B-chat",
+    "stream": true,
+    "input": "List three planets"
   }'
 
 curl -X POST http://127.0.0.1:8000/v1/plan \

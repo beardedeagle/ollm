@@ -14,6 +14,8 @@ with `ollm serve`.
 - `GET /v1/models`
 - `GET /v1/models/{model_id}`
 - `POST /v1/chat/completions`
+- `POST /v1/responses`
+- `GET /v1/responses/{response_id}`
 
 ## Native oLLM routes
 
@@ -30,22 +32,31 @@ with `ollm serve`.
 
 ## Compatibility scope
 
-- The OpenAI-compatible surface currently targets text chat and model discovery.
+- The OpenAI-compatible surface currently targets text chat, text responses, and
+  model discovery.
 - Chat-completions requests currently support plain string content and structured
   text-part arrays only.
+- Responses requests currently support plain string input or message arrays with
+  text content only.
 - `POST /v1/chat/completions` supports both standard JSON responses and SSE
   streaming responses.
+- `POST /v1/responses` supports both standard JSON responses and typed SSE
+  response events.
+- `GET /v1/responses/{response_id}` retrieves in-memory response objects created
+  through this local server process.
 - The server continues to expose native oLLM-only runtime planning, prompt, and
   session endpoints beside the compatibility layer.
-- `POST /v1/responses` is intentionally not implemented in this slice. Treat it
-  as a follow-up once the chat-completions compatibility contract is stable.
 
 ## Semantics
 
 - The server bind is local-only by default.
 - OpenAI-compatible streaming responses use `text/event-stream` chat-completion
   chunks plus a final `data: [DONE]` line.
+- Responses streaming uses typed SSE events such as `response.created`,
+  `response.output_text.delta`, `response.output_text.done`, and
+  `response.completed`.
 - Native streaming responses still use oLLM's SSE event family.
 - Server-side sessions are in-memory only.
+- Retrieved response objects are also in-memory only.
 - The HTTP transport reuses the same `ApplicationService` runtime planning and
   prompt execution logic as the CLI.

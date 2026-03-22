@@ -30,6 +30,8 @@ from ollm.server.models import (
     SessionPromptRequestModel,
     SessionResponseModel,
 )
+from ollm.server.openai_response_store import OpenAIResponseStore
+from ollm.server.openai_responses import register_openai_responses_routes
 from ollm.server.openai_routes import register_openai_compat_routes
 from ollm.server.session_store import ServerSessionStore
 from ollm.server.streaming import build_sse_response
@@ -247,6 +249,10 @@ def register_rest_routes(
         ServerSessionStore,
         getattr(app.state, "session_store"),
     )
+    response_store = cast(
+        OpenAIResponseStore,
+        getattr(app.state, "openai_response_store"),
+    )
 
     @app.get(
         "/v1/health",
@@ -281,6 +287,11 @@ def register_rest_routes(
             use_specialization=None,
             discovery_source=None,
         ),
+    )
+    register_openai_responses_routes(
+        app,
+        application_service=application_service,
+        response_store=response_store,
     )
 
     @app.get(

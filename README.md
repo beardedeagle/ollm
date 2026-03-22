@@ -227,7 +227,12 @@ The current local REST surface is:
 
 - `GET /v1/health`
 - `GET /v1/models`
-- `GET /v1/models/{model_reference}`
+- `GET /v1/models/{model_id}`
+- `POST /v1/chat/completions`
+- `POST /v1/responses`
+- `GET /v1/responses/{response_id}`
+- `GET /v1/ollm/models`
+- `GET /v1/ollm/models/{model_reference}`
 - `POST /v1/plan`
 - `POST /v1/prompt`
 - `POST /v1/prompt/stream`
@@ -240,6 +245,13 @@ Example:
 
 ```bash
 curl http://127.0.0.1:8000/v1/health
+curl http://127.0.0.1:8000/v1/models
+curl -X POST http://127.0.0.1:8000/v1/chat/completions \
+  -H "content-type: application/json" \
+  -d '{"model":"llama3-1B-chat","messages":[{"role":"user","content":"List planets"}]}'
+curl -X POST http://127.0.0.1:8000/v1/responses \
+  -H "content-type: application/json" \
+  -d '{"model":"llama3-1B-chat","input":"List planets"}'
 curl -X POST http://127.0.0.1:8000/v1/plan \
   -H "content-type: application/json" \
   -d '{"runtime":{"model_reference":"llama3-1B-chat"}}'

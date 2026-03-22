@@ -11,6 +11,7 @@ from ollm.server.dependencies import (
     SERVER_EXTRA_INSTALL_HINT,
     ServerDependenciesError,
 )
+from ollm.server.openai_response_store import OpenAIResponseStore
 from ollm.server.routes import HTTPExceptionFactory, register_rest_routes
 from ollm.server.session_store import ServerSessionStore
 
@@ -152,6 +153,7 @@ def create_server_app(
     setattr(app.state, "application_service", resolved_application_service)
     setattr(app.state, "server_mode", LOCAL_SERVER_MODE)
     setattr(app.state, "session_store", ServerSessionStore())
+    setattr(app.state, "openai_response_store", OpenAIResponseStore())
     register_rest_routes(
         app,
         cast(HTTPExceptionFactory, fastapi.HTTPException),
