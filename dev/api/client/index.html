@@ -2648,7 +2648,7 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
             <span class="n">request_messages</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">history</span><span class="p">)</span>
         <span class="n">request_messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Message</span><span class="p">(</span><span class="n">role</span><span class="o">=</span><span class="n">MessageRole</span><span class="o">.</span><span class="n">USER</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">parts</span><span class="p">)))</span>
         <span class="n">request</span> <span class="o">=</span> <span class="n">PromptRequest</span><span class="p">(</span>
-            <span class="n">runtime_config</span><span class="o">=</span><span class="n">effective_runtime_config</span><span class="p">,</span>
+            <span class="n">runtime_config</span><span class="o">=</span><span class="n">runtime</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
             <span class="n">generation_config</span><span class="o">=</span><span class="n">effective_generation_config</span><span class="p">,</span>
             <span class="n">messages</span><span class="o">=</span><span class="n">request_messages</span><span class="p">,</span>
         <span class="p">)</span>
@@ -3035,7 +3035,7 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
         <span class="n">request_messages</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">history</span><span class="p">)</span>
     <span class="n">request_messages</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">Message</span><span class="p">(</span><span class="n">role</span><span class="o">=</span><span class="n">MessageRole</span><span class="o">.</span><span class="n">USER</span><span class="p">,</span> <span class="n">content</span><span class="o">=</span><span class="nb">list</span><span class="p">(</span><span class="n">parts</span><span class="p">)))</span>
     <span class="n">request</span> <span class="o">=</span> <span class="n">PromptRequest</span><span class="p">(</span>
-        <span class="n">runtime_config</span><span class="o">=</span><span class="n">effective_runtime_config</span><span class="p">,</span>
+        <span class="n">runtime_config</span><span class="o">=</span><span class="n">runtime</span><span class="o">.</span><span class="n">config</span><span class="p">,</span>
         <span class="n">generation_config</span><span class="o">=</span><span class="n">effective_generation_config</span><span class="p">,</span>
         <span class="n">messages</span><span class="o">=</span><span class="n">request_messages</span><span class="p">,</span>
     <span class="p">)</span>

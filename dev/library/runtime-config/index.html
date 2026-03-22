@@ -2272,7 +2272,8 @@
 </ul>
 <p>The current KV scaffolding now distinguishes:</p>
 <ul>
-<li><code>kv_cache_strategy</code> — the current preset such as <code>resident</code>, <code>chunked</code>, <code>paged</code>, <code>streamed-segmented</code>, <code>log-structured-journal</code>, <code>sliding-window-ring-buffer</code>, <code>quantized-cold-tier</code>, or <code>tiered-write-back</code></li>
+<li><code>strategy_selector_profile</code> — the deterministic selector profile (<code>balanced</code>, <code>latency</code>, <code>capacity</code>, or <code>bounded-window</code>)</li>
+<li><code>kv_cache_strategy</code> — optional explicit strategy override; when omitted, the selector chooses a concrete preset</li>
 <li><code>kv_cache_window_tokens</code> — bounded recent-context token budget for <code>sliding-window-ring-buffer</code>; omitted for full-history strategies</li>
 <li><code>kv_cache_lifecycle</code> — <code>runtime-scoped</code> or explicit <code>persistent</code> reuse semantics; <code>resident</code> requires <code>runtime-scoped</code></li>
 <li><code>kv_cache_adaptation_mode</code> — <code>disabled</code>, <code>observe-only</code>, or <code>automatic</code>; observe-only recommendation rules exist, but live switching is still disabled</li>
@@ -2284,6 +2285,12 @@
 <ul>
 <li><code>offload_cpu_layers</code> requires an accelerator runtime device</li>
 <li><code>offload_cpu_layers</code> and <code>offload_gpu_layers</code> cannot be combined in the current implementation</li>
+</ul>
+<p>Current selector truth:</p>
+<ul>
+<li>selector-default candidates are <code>paged</code>, <code>resident</code>, and <code>quantized-cold-tier</code></li>
+<li><code>sliding-window-ring-buffer</code> remains explicit bounded-history opt-in only</li>
+<li><code>streamed-segmented</code>, <code>log-structured-journal</code>, and <code>tiered-write-back</code> remain explicit override choices, not selector defaults</li>
 </ul>
 <h2 id="generationconfig"><code>GenerationConfig</code><a class="headerlink" href="#generationconfig" title="Permanent link">&para;</a></h2>
 <p>Use <code>GenerationConfig</code> to describe:</p>

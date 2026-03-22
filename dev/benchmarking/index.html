@@ -2330,13 +2330,22 @@ different stable grouping:</p>
 </code></pre></div>
 <p>Use <code>--no-record-history</code> only when you explicitly want to skip that ledger.
 The comparison key is based on the actual run shape, including model, device,
-backend, strategy, codebase label, and prompt/profile controls, so
+backend, requested strategy override, selector profile, codebase label, and prompt/profile controls, so
 incomparable runs do not get mashed together.</p>
-<p>For KV strategy A/B work, select the preset explicitly:</p>
+<p>By default, the benchmark harness now uses the runtime strategy selector with
+<code>--strategy-selector-profile balanced</code>.</p>
+<p>For KV strategy A/B work, pin the preset explicitly:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--device<span class="w"> </span>cpu<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--kv-cache-strategy<span class="w"> </span>streamed-segmented<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output<span class="w"> </span>.omx/runtime-benchmark-streamed.json
+</code></pre></div>
+<p>To benchmark the selector path itself, leave <code>--kv-cache-strategy</code> unset and
+change only the selector profile:</p>
+<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--device<span class="w"> </span>cpu<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--strategy-selector-profile<span class="w"> </span>capacity<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>.omx/runtime-benchmark-selector-capacity.json
 </code></pre></div>
 <p>The paged strategy uses the same switch:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>

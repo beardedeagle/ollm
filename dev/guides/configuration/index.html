@@ -2347,7 +2347,8 @@ lives at <code>examples/ollm.toml</code> in the repository root.</p>
 <li><code>multimodal</code> — enable multimodal planning when non-text inputs are expected</li>
 <li><code>use_specialization</code> — whether optimized-native specialization is allowed</li>
 <li><code>cache_dir</code> / <code>use_cache</code> — KV cache controls</li>
-<li><code>kv_cache_strategy</code> — explicit KV cache strategy selection (<code>resident</code>, <code>chunked</code>, <code>paged</code>, <code>streamed-segmented</code>, <code>log-structured-journal</code>, <code>sliding-window-ring-buffer</code>, <code>quantized-cold-tier</code>, or <code>tiered-write-back</code>)</li>
+<li><code>strategy_selector_profile</code> — selector profile (<code>balanced</code>, <code>latency</code>, <code>capacity</code>, or <code>bounded-window</code>)</li>
+<li><code>kv_cache_strategy</code> — optional explicit KV cache strategy override (<code>resident</code>, <code>chunked</code>, <code>paged</code>, <code>streamed-segmented</code>, <code>log-structured-journal</code>, <code>sliding-window-ring-buffer</code>, <code>quantized-cold-tier</code>, or <code>tiered-write-back</code>)</li>
 <li><code>kv_cache_window_tokens</code> — bounded recent-context token budget for <code>sliding-window-ring-buffer</code>; the field is invalid for full-history strategies</li>
 <li><code>kv_cache_lifecycle</code> — whether KV artifacts are <code>runtime-scoped</code> or explicitly <code>persistent</code>; <code>resident</code> requires <code>runtime-scoped</code></li>
 <li><code>kv_cache_adaptation_mode</code> — whether adaptation telemetry is <code>disabled</code>, <code>observe-only</code>, or <code>automatic</code> (live switching is still not enabled)</li>
@@ -2359,6 +2360,13 @@ lives at <code>examples/ollm.toml</code> in the repository root.</p>
 <ul>
 <li><code>offload_cpu_layers</code> requires an accelerator runtime device</li>
 <li><code>offload_cpu_layers</code> cannot be combined with <code>offload_gpu_layers</code> in the current implementation</li>
+</ul>
+<p>Current selector truth:</p>
+<ul>
+<li>the selector default path is deterministic and table-driven</li>
+<li><code>paged</code>, <code>resident</code>, and <code>quantized-cold-tier</code> are the current selector-default candidates</li>
+<li><code>sliding-window-ring-buffer</code> stays explicit bounded-history opt-in only</li>
+<li><code>streamed-segmented</code>, <code>log-structured-journal</code>, and <code>tiered-write-back</code> stay explicit overrides for now</li>
 </ul>
 <p>Generation configuration fields:</p>
 <ul>
@@ -2383,6 +2391,7 @@ lives at <code>examples/ollm.toml</code> in the repository root.</p>
 <li><code>OLLM_RUNTIME__MODEL_REFERENCE</code></li>
 <li><code>OLLM_RUNTIME__MODELS_DIR</code></li>
 <li><code>OLLM_RUNTIME__DEVICE</code></li>
+<li><code>OLLM_RUNTIME__STRATEGY_SELECTOR_PROFILE</code></li>
 <li><code>OLLM_RUNTIME__KV_CACHE_STRATEGY</code></li>
 <li><code>OLLM_RUNTIME__KV_CACHE_WINDOW_TOKENS</code></li>
 <li><code>OLLM_RUNTIME__KV_CACHE_LIFECYCLE</code></li>

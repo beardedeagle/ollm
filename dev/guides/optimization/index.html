@@ -984,6 +984,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#runtime-strategy-selector" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime strategy selector
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#gpt-oss-gds_export-requirement" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2353,6 +2364,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#runtime-strategy-selector" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Runtime strategy selector
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#gpt-oss-gds_export-requirement" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2497,6 +2519,33 @@ That preset is still not the full future GPU/CPU/SSD tiered architecture.
 KV entirely in memory and exists as the explicit low-overhead baseline when the
 active runtime can afford that footprint. It is intentionally not aligned with
 oLLM's large-model spill/offload goal.</p>
+<h2 id="runtime-strategy-selector">Runtime strategy selector<a class="headerlink" href="#runtime-strategy-selector" title="Permanent link">&para;</a></h2>
+<p>The runtime now has a deterministic pre-run selector above the explicit KV
+presets.</p>
+<p>Current selector profiles are:</p>
+<ul>
+<li><code>balanced</code></li>
+<li><code>latency</code></li>
+<li><code>capacity</code></li>
+<li><code>bounded-window</code></li>
+</ul>
+<p>Current selector-default candidates are intentionally narrow:</p>
+<ul>
+<li><code>paged</code></li>
+<li><code>resident</code></li>
+<li><code>quantized-cold-tier</code></li>
+</ul>
+<p>The other presets stay explicit opt-in or pinned overrides for now:</p>
+<ul>
+<li><code>sliding-window-ring-buffer</code></li>
+<li><code>streamed-segmented</code></li>
+<li><code>log-structured-journal</code></li>
+<li><code>tiered-write-back</code></li>
+</ul>
+<p>The selector is not the same thing as the live KV adaptation surface.
+<code>kv_cache_adaptation_mode</code> still describes post-start observe-only or automatic
+adaptation behavior, while the selector chooses the initial strategy before the
+runtime starts.</p>
 <p>Within one loaded runtime, the cache layer now also keeps a resident in-process
 snapshot of the reconstructed per-layer KV state so repeated updates do not
 need to reread and rebuild the same on-disk history every token. For the

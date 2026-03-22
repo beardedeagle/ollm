@@ -1561,6 +1561,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#strategy-selector" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strategy selector
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#resident-state-observability" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2297,6 +2308,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#strategy-selector" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Strategy selector
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#resident-state-observability" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2483,6 +2505,35 @@ switch KV strategies live.</p>
 <li>prove the recommendation loop against benchmarks and repeated-session runs</li>
 <li>only then enable real automatic policy changes</li>
 </ol>
+<h2 id="strategy-selector">Strategy selector<a class="headerlink" href="#strategy-selector" title="Permanent link">&para;</a></h2>
+<p>The repo now also has a deterministic pre-run strategy selector above the
+explicit presets.</p>
+<p>Current selector profiles are:</p>
+<ul>
+<li><code>balanced</code></li>
+<li><code>latency</code></li>
+<li><code>capacity</code></li>
+<li><code>bounded-window</code></li>
+</ul>
+<p>Current selector-default candidates are intentionally conservative:</p>
+<ul>
+<li><code>paged</code></li>
+<li><code>resident</code></li>
+<li><code>quantized-cold-tier</code></li>
+</ul>
+<p>The following presets remain explicit opt-in or pinned overrides:</p>
+<ul>
+<li><code>sliding-window-ring-buffer</code></li>
+<li><code>streamed-segmented</code></li>
+<li><code>log-structured-journal</code></li>
+<li><code>tiered-write-back</code></li>
+</ul>
+<p>This selector is separate from <code>kv_cache_adaptation_mode</code>.</p>
+<ul>
+<li>selector: chooses the initial strategy before runtime execution</li>
+<li>adaptation mode: emits observe-only recommendations or future live changes
+  from current KV state</li>
+</ul>
 <h2 id="resident-state-observability">Resident-state observability<a class="headerlink" href="#resident-state-observability" title="Permanent link">&para;</a></h2>
 <p>The in-process resident KV snapshot is now treated as a first-class observable
 part of cache state, not just an implementation detail.</p>
