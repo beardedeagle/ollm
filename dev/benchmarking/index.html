@@ -2435,6 +2435,10 @@ there to keep this probe representative and practical on development machines.</
 <code>native_runtime_profile</code> payload. This captures event timing summaries emitted
 by the runtime itself, rather than numbers inferred from high-level wall clock
 latency.</p>
+<p>On the dense optimized-native families, the loader now submits the next layer's
+weight reads one layer ahead of use. That means a later <code>layer_load</code> step may
+consume already-pending safetensor reads instead of starting from an idle
+storage queue.</p>
 <p>Typical event names include:</p>
 <ul>
 <li><code>layer_load</code></li>
