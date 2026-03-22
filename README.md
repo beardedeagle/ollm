@@ -435,6 +435,18 @@ uv run python -m compileall src tests
 uv run ty check src tests
 ```
 
+For runtime-heavy changes, run a real prompt-plus-chat smoke before push:
+
+```bash
+uv run python scripts/runtime_smoke.py \
+  --model llama3-1B-chat \
+  --output .omx/logs/runtime-smoke.json
+```
+
+If you recommend a specific user-facing command or runtime lane, validate that
+exact lane before push or explicitly say which stricter equivalent you used.
+GitHub CI only proves structural gates; it does not prove live model semantics.
+
 Build the documentation site with:
 
 ```bash

@@ -49,6 +49,7 @@ class ChatSession:
 
         requires_multimodal = any(part.kind is not ContentKind.TEXT for part in parts)
         runtime = self._ensure_runtime(requires_multimodal)
+        runtime.reset_kv_cache_instances()
         user_message = Message(role=MessageRole.USER, content=parts)
         request = PromptRequest(
             runtime_config=runtime.config,

@@ -8,6 +8,7 @@ from transformers.models.llama.configuration_llama import LlamaConfig
 
 import ollm.llama as optimized_llama
 from ollm.device_staging import (
+    attach_parent_lm_head,
     restore_static_modules_after_forward,
     stage_static_modules_on_host,
 )
@@ -117,9 +118,21 @@ def test_optimized_llama_initialization_restores_transformers_llama_classes(
     model = optimized_llama.MyLlamaForCausalLM(config)
 
     assert model.model.parent_lm_head is model.lm_head
+    assert "parent_lm_head" not in model.model._modules
+    assert "model.parent_lm_head.weight" not in model.state_dict()
     assert llama_modeling.LlamaMLP is original_llama_mlp
     assert llama_modeling.LlamaDecoderLayer is original_llama_decoder_layer
     assert llama_modeling.LlamaModel is original_llama_model
+
+
+def test_attach_parent_lm_head_does_not_register_duplicate_module() -> None:
+    parent = torch.nn.Module()
+    lm_head = torch.nn.Linear(4, 4, bias=False)
+
+    attach_parent_lm_head(parent, lm_head)
+
+    assert parent.parent_lm_head is lm_head
+    assert "parent_lm_head" not in parent._modules
 
 
 def test_temporary_llama_patch_uses_current_module_overrides(monkeypatch) -> None:

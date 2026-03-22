@@ -69,3 +69,20 @@ def test_chat_session_loads_and_switches_model(tmp_path: Path) -> None:
     assert restored.runtime_config.model_reference == "llama3-1B-chat"
     restored.set_model("llama3-3B-chat")
     assert restored.runtime_config.model_reference == "llama3-3B-chat"
+
+
+def test_chat_session_resets_cached_kv_instances_before_reused_turn() -> None:
+    loader = FakeRuntimeLoader()
+    executor = FakeRuntimeExecutor()
+    session = ChatSession(
+        runtime_loader=cast(RuntimeLoader, loader),
+        runtime_executor=cast(RuntimeExecutor, executor),
+        runtime_config=RuntimeConfig(),
+        generation_config=GenerationConfig(stream=False),
+    )
+
+    session.prompt_text("hello")
+    session.prompt_text("again")
+
+    assert len(loader.loaded_runtimes) == 1
+    assert loader.loaded_runtimes[0].reset_kv_cache_instances_calls == 2

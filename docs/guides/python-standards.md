@@ -23,6 +23,11 @@ runtime changes, and contributor-facing documentation.
   7. `uv run python -m pip_audit`
   8. `uv run --group docs mkdocs build --strict`
   9. `git diff --check`
+- For runtime-heavy changes, structural gates are not enough. Run a real smoke over
+  the shared generation stack:
+  `uv run python scripts/runtime_smoke.py --model <model-reference> --output .omx/logs/runtime-smoke.json`
+- If you recommend a specific user-facing runtime lane or command, validate that exact lane before push, or call out the stricter equivalent you actually validated.
+- CI proves structural health only. It does not prove live model semantics, response quality, or the correctness of a newly recommended runtime lane.
 
 ## Code rules
 
