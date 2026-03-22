@@ -1717,10 +1717,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#route-reference" class="md-nav__link">
+  <a href="#openai-compatible-routes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Route reference
+        OpenAI-compatible routes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#native-ollm-routes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Native oLLM routes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compatibility-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compatibility scope
       
     </span>
   </a>
@@ -2231,10 +2253,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#route-reference" class="md-nav__link">
+  <a href="#openai-compatible-routes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Route reference
+        OpenAI-compatible routes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#native-ollm-routes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Native oLLM routes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#compatibility-scope" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Compatibility scope
       
     </span>
   </a>
@@ -2287,11 +2331,20 @@ with <code>ollm serve</code>.</p>
 <li><code>/docs</code></li>
 <li><code>/redoc</code></li>
 </ul>
-<h2 id="route-reference">Route reference<a class="headerlink" href="#route-reference" title="Permanent link">&para;</a></h2>
+<h2 id="openai-compatible-routes">OpenAI-compatible routes<a class="headerlink" href="#openai-compatible-routes" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>GET /v1/models</code></li>
+<li><code>GET /v1/models/{model_id}</code></li>
+<li><code>POST /v1/chat/completions</code></li>
+<li><code>POST /v1/responses</code></li>
+<li><code>GET /v1/responses/{response_id}</code></li>
+<li><code>DELETE /v1/responses/{response_id}</code></li>
+</ul>
+<h2 id="native-ollm-routes">Native oLLM routes<a class="headerlink" href="#native-ollm-routes" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>GET /v1/health</code></li>
-<li><code>GET /v1/models</code></li>
-<li><code>GET /v1/models/{model_reference}</code></li>
+<li><code>GET /v1/ollm/models</code></li>
+<li><code>GET /v1/ollm/models/{model_reference}</code></li>
 <li><code>POST /v1/plan</code></li>
 <li><code>POST /v1/prompt</code></li>
 <li><code>POST /v1/prompt/stream</code></li>
@@ -2300,11 +2353,46 @@ with <code>ollm serve</code>.</p>
 <li><code>POST /v1/sessions/{session_id}/prompt</code></li>
 <li><code>POST /v1/sessions/{session_id}/prompt/stream</code></li>
 </ul>
+<h2 id="compatibility-scope">Compatibility scope<a class="headerlink" href="#compatibility-scope" title="Permanent link">&para;</a></h2>
+<ul>
+<li>The OpenAI-compatible surface currently targets text chat, text responses, and
+  model discovery.</li>
+<li>Chat-completions requests currently support plain string content and structured
+  text-part arrays only.</li>
+<li>Responses requests support:</li>
+<li>plain string input</li>
+<li>message arrays with text, image, audio, and file-reference content parts</li>
+<li><code>function_call_output</code> tool-result input items</li>
+<li>custom <code>type=function</code> tool definitions plus <code>tool_choice</code></li>
+<li><code>POST /v1/chat/completions</code> supports both standard JSON responses and SSE
+  streaming responses.</li>
+<li><code>POST /v1/responses</code> supports both standard JSON responses and typed SSE
+  response events.</li>
+<li><code>GET /v1/responses/{response_id}</code> and <code>previous_response_id</code> require a
+  configured response-store backend.</li>
+<li><code>DELETE /v1/responses/{response_id}</code> also requires a configured response-store
+  backend.</li>
+<li>Responses output items include assistant messages and <code>function_call</code> items.</li>
+<li>The server continues to expose native oLLM-only runtime planning, prompt, and
+  session endpoints beside the compatibility layer.</li>
+</ul>
 <h2 id="semantics">Semantics<a class="headerlink" href="#semantics" title="Permanent link">&para;</a></h2>
 <ul>
 <li>The server bind is local-only by default.</li>
-<li>Streaming responses use SSE.</li>
+<li>OpenAI-compatible streaming responses use <code>text/event-stream</code> chat-completion
+  chunks plus a final <code>data: [DONE]</code> line.</li>
+<li>Responses streaming uses typed SSE events such as <code>response.created</code>,
+  <code>response.in_progress</code>,
+  <code>response.output_item.added</code>, <code>response.content_part.added</code>,
+  <code>response.output_text.delta</code>, <code>response.output_text.done</code>,
+  <code>response.content_part.done</code>,
+  <code>response.function_call_arguments.delta</code>,
+  <code>response.function_call_arguments.done</code>,
+  <code>response.output_item.done</code>, <code>response.completed</code>, and <code>response.failed</code>.</li>
+<li>Native streaming responses still use oLLM's SSE event family.</li>
 <li>Server-side sessions are in-memory only.</li>
+<li>Responses storage is disabled by default; enable a response-store backend when
+  you want retrieval or <code>previous_response_id</code> chaining.</li>
 <li>The HTTP transport reuses the same <code>ApplicationService</code> runtime planning and
   prompt execution logic as the CLI.</li>
 </ul>

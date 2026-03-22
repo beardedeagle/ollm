@@ -2461,6 +2461,7 @@ different config file with <code>OLLM_CONFIG_FILE=/path/to/ollm.toml</code>.</p>
 <span class="k">[server]</span>
 <span class="n">host</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;127.0.0.1&quot;</span>
 <span class="n">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8000</span>
+<span class="n">response_store_backend</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;none&quot;</span>
 </code></pre></div>
 <p>The current settings surface covers runtime defaults, generation defaults, and
 future server defaults. Prompt-specific values outside that schema, such as the
@@ -2472,7 +2473,8 @@ system prompt text, still remain explicit CLI options today.</p>
 <p>Then start the local-only server:</p>
 <div class="language-bash highlight"><pre><span></span><code>ollm<span class="w"> </span>serve
 </code></pre></div>
-<p><code>ollm serve</code> resolves <code>host</code>, <code>port</code>, <code>reload</code>, and <code>log_level</code> through the
+<p><code>ollm serve</code> resolves <code>host</code>, <code>port</code>, <code>reload</code>, <code>log_level</code>, and response-store
+settings through the
 same settings-precedence contract as the rest of the CLI. The default bind is
 <code>127.0.0.1</code>, and the server also publishes:</p>
 <ul>
@@ -2484,7 +2486,13 @@ same settings-precedence contract as the rest of the CLI. The default bind is
 <ul>
 <li><code>GET /v1/health</code></li>
 <li><code>GET /v1/models</code></li>
-<li><code>GET /v1/models/{model_reference}</code></li>
+<li><code>GET /v1/models/{model_id}</code></li>
+<li><code>POST /v1/chat/completions</code></li>
+<li><code>POST /v1/responses</code></li>
+<li><code>GET /v1/responses/{response_id}</code></li>
+<li><code>DELETE /v1/responses/{response_id}</code></li>
+<li><code>GET /v1/ollm/models</code></li>
+<li><code>GET /v1/ollm/models/{model_reference}</code></li>
 <li><code>POST /v1/plan</code></li>
 <li><code>POST /v1/prompt</code></li>
 <li><code>POST /v1/prompt/stream</code></li>
@@ -2494,8 +2502,11 @@ same settings-precedence contract as the rest of the CLI. The default bind is
 <li><code>POST /v1/sessions/{session_id}/prompt/stream</code></li>
 </ul>
 <p>The streaming transport is SSE-based and the current server-side sessions are
-in-memory only. See <a href="../guides/local-server/">Local Server API</a> for the complete
-HTTP surface and <a href="../cli/server/">CLI <code>ollm serve</code></a> for command-specific usage.</p>
+in-memory only. The OpenAI-compatible <code>/v1/responses</code> surface supports custom
+function tools, <code>tool_choice</code>, <code>function_call_output</code> chaining, and typed
+function-call SSE events, plus delete/retrieval when a response-store backend is
+enabled. See <a href="../guides/local-server/">Local Server API</a> for the complete HTTP
+surface and <a href="../cli/server/">CLI <code>ollm serve</code></a> for command-specific usage.</p>
 <h2 id="model-references">Model references<a class="headerlink" href="#model-references" title="Permanent link">&para;</a></h2>
 <p><code>--model</code> accepts opaque model references. Supported forms include:</p>
 <ul>

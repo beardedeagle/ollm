@@ -794,10 +794,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#current-routes" class="md-nav__link">
+  <a href="#openai-compatible-routes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Current routes
+        OpenAI-compatible routes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#native-ollm-routes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Native oLLM routes
       
     </span>
   </a>
@@ -2264,10 +2275,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#current-routes" class="md-nav__link">
+  <a href="#openai-compatible-routes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Current routes
+        OpenAI-compatible routes
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#native-ollm-routes" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Native oLLM routes
       
     </span>
   </a>
@@ -2337,11 +2359,20 @@ ollm<span class="w"> </span>serve
 <li><code>/docs</code> for Swagger UI</li>
 <li><code>/redoc</code> for ReDoc</li>
 </ul>
-<h2 id="current-routes">Current routes<a class="headerlink" href="#current-routes" title="Permanent link">&para;</a></h2>
+<h2 id="openai-compatible-routes">OpenAI-compatible routes<a class="headerlink" href="#openai-compatible-routes" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>GET /v1/models</code></li>
+<li><code>GET /v1/models/{model_id}</code></li>
+<li><code>POST /v1/chat/completions</code></li>
+<li><code>POST /v1/responses</code></li>
+<li><code>GET /v1/responses/{response_id}</code></li>
+<li><code>DELETE /v1/responses/{response_id}</code></li>
+</ul>
+<h2 id="native-ollm-routes">Native oLLM routes<a class="headerlink" href="#native-ollm-routes" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>GET /v1/health</code></li>
-<li><code>GET /v1/models</code></li>
-<li><code>GET /v1/models/{model_reference}</code></li>
+<li><code>GET /v1/ollm/models</code></li>
+<li><code>GET /v1/ollm/models/{model_reference}</code></li>
 <li><code>POST /v1/plan</code></li>
 <li><code>POST /v1/prompt</code></li>
 <li><code>POST /v1/prompt/stream</code></li>
@@ -2353,21 +2384,87 @@ ollm<span class="w"> </span>serve
 <h2 id="behavior-notes">Behavior notes<a class="headerlink" href="#behavior-notes" title="Permanent link">&para;</a></h2>
 <ul>
 <li>The bind is local-only by default.</li>
-<li>Streaming prompt responses use SSE.</li>
+<li>The OpenAI-compatible surface currently covers model discovery, text chat
+  completions, and text responses.</li>
+<li>Chat-completions requests currently support plain string content and structured
+  text-part arrays only.</li>
+<li>Responses requests support plain string input, message arrays with text/image/audio
+  and file-reference content parts, <code>function_call_output</code> tool-result items, and custom
+  <code>type=function</code> tools with <code>tool_choice</code>.</li>
+<li>OpenAI-compatible chat streaming uses <code>text/event-stream</code> with chat-completion
+  chunks and a final <code>data: [DONE]</code> marker.</li>
+<li>Responses streaming uses typed SSE events such as <code>response.created</code>,
+  <code>response.in_progress</code>,
+  <code>response.output_item.added</code>, <code>response.content_part.added</code>,
+  <code>response.output_text.delta</code>, <code>response.output_text.done</code>,
+  <code>response.content_part.done</code>,
+  <code>response.function_call_arguments.delta</code>,
+  <code>response.function_call_arguments.done</code>,
+  <code>response.output_item.done</code>, <code>response.completed</code>, and <code>response.failed</code>.</li>
+<li>Native prompt streaming continues to use the oLLM-specific SSE event shape.</li>
 <li>Server-side sessions are in-memory only in the current slice.</li>
+<li>Responses storage is disabled by default. Configure a response-store backend
+  if you want <code>GET /v1/responses/{response_id}</code>,
+  <code>DELETE /v1/responses/{response_id}</code>, or <code>previous_response_id</code> chaining.</li>
 <li>Runtime and generation defaults still follow the standard config layering
-  contract.</li>
+  contract for native endpoints.</li>
 </ul>
 <h2 id="example-requests">Example requests<a class="headerlink" href="#example-requests" title="Permanent link">&para;</a></h2>
 <div class="language-bash highlight"><pre><span></span><code>curl<span class="w"> </span>http://127.0.0.1:8000/v1/health
 
+curl<span class="w"> </span>http://127.0.0.1:8000/v1/models
+
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/v1/chat/completions<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;content-type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;model&quot;: &quot;llama3-1B-chat&quot;,</span>
+<span class="s1">    &quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;List three planets&quot;}]</span>
+<span class="s1">  }&#39;</span>
+
+curl<span class="w"> </span>-N<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/v1/chat/completions<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;content-type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;model&quot;: &quot;llama3-1B-chat&quot;,</span>
+<span class="s1">    &quot;stream&quot;: true,</span>
+<span class="s1">    &quot;messages&quot;: [{&quot;role&quot;: &quot;user&quot;, &quot;content&quot;: &quot;List three planets&quot;}]</span>
+<span class="s1">  }&#39;</span>
+
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/v1/responses<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;content-type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;model&quot;: &quot;llama3-1B-chat&quot;,</span>
+<span class="s1">    &quot;instructions&quot;: &quot;Be brief.&quot;,</span>
+<span class="s1">    &quot;input&quot;: &quot;List three planets&quot;</span>
+<span class="s1">  }&#39;</span>
+
+curl<span class="w"> </span>-N<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/v1/responses<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;content-type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;model&quot;: &quot;llama3-1B-chat&quot;,</span>
+<span class="s1">    &quot;stream&quot;: true,</span>
+<span class="s1">    &quot;input&quot;: &quot;List three planets&quot;</span>
+<span class="s1">  }&#39;</span>
+
+curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/v1/responses<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;content-type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{</span>
+<span class="s1">    &quot;model&quot;: &quot;llama3-1B-chat&quot;,</span>
+<span class="s1">    &quot;input&quot;: &quot;What is the weather in Paris?&quot;,</span>
+<span class="s1">    &quot;tools&quot;: [{</span>
+<span class="s1">      &quot;type&quot;: &quot;function&quot;,</span>
+<span class="s1">      &quot;name&quot;: &quot;get_weather&quot;,</span>
+<span class="s1">      &quot;description&quot;: &quot;Look up current weather&quot;,</span>
+<span class="s1">      &quot;parameters&quot;: {</span>
+<span class="s1">        &quot;type&quot;: &quot;object&quot;,</span>
+<span class="s1">        &quot;properties&quot;: {&quot;city&quot;: {&quot;type&quot;: &quot;string&quot;}},</span>
+<span class="s1">        &quot;required&quot;: [&quot;city&quot;]</span>
+<span class="s1">      }</span>
+<span class="s1">    }]</span>
+<span class="s1">  }&#39;</span>
+
 curl<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/v1/plan<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;content-type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;runtime&quot;:{&quot;model_reference&quot;:&quot;llama3-1B-chat&quot;}}&#39;</span>
-
-curl<span class="w"> </span>-N<span class="w"> </span>-X<span class="w"> </span>POST<span class="w"> </span>http://127.0.0.1:8000/v1/prompt/stream<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-H<span class="w"> </span><span class="s2">&quot;content-type: application/json&quot;</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>-d<span class="w"> </span><span class="s1">&#39;{&quot;prompt&quot;:&quot;List planets&quot;,&quot;runtime&quot;:{&quot;model_reference&quot;:&quot;llama3-1B-chat&quot;}}&#39;</span>
 </code></pre></div>
 <p>Use <code>examples/ollm.toml</code> from the repository root as a starting point when you
 want shared CLI and server defaults.</p>

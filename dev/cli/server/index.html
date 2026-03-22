@@ -2308,6 +2308,8 @@
 <li><code>--port</code></li>
 <li><code>--reload / --no-reload</code></li>
 <li><code>--log-level</code></li>
+<li><code>--response-store-backend</code></li>
+<li><code>--response-store-factory</code></li>
 </ul>
 <h2 id="settings-precedence">Settings precedence<a class="headerlink" href="#settings-precedence" title="Permanent link">&para;</a></h2>
 <p><code>ollm serve</code> uses the same precedence contract as the rest of oLLM:</p>
@@ -2318,6 +2320,12 @@
 <li>built-in defaults</li>
 </ol>
 <p>The default bind is <code>127.0.0.1:8000</code>.</p>
+<p>Responses storage is disabled by default. Use:</p>
+<ul>
+<li><code>--response-store-backend memory</code> for process-scoped dev/test retrieval</li>
+<li><code>--response-store-backend plugin --response-store-factory package.module:factory</code>
+  for a custom backend</li>
+</ul>
 <h2 id="openapi-and-docs-endpoints">OpenAPI and docs endpoints<a class="headerlink" href="#openapi-and-docs-endpoints" title="Permanent link">&para;</a></h2>
 <p>When the server is running locally, FastAPI publishes:</p>
 <ul>
@@ -2329,6 +2337,9 @@
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>server
 ollm<span class="w"> </span>serve
 ollm<span class="w"> </span>serve<span class="w"> </span>--port<span class="w"> </span><span class="m">9001</span><span class="w"> </span>--log-level<span class="w"> </span>debug
+ollm<span class="w"> </span>serve<span class="w"> </span>--response-store-backend<span class="w"> </span>memory
+ollm<span class="w"> </span>serve<span class="w"> </span>--response-store-backend<span class="w"> </span>plugin<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--response-store-factory<span class="w"> </span>custom.module:build_store
 <span class="nv">OLLM_SERVER__PORT</span><span class="o">=</span><span class="m">8123</span><span class="w"> </span>ollm<span class="w"> </span>serve
 </code></pre></div>
 <p>See <a href="../../guides/local-server/">Local Server API</a> for the current HTTP route
