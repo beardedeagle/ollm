@@ -2424,7 +2424,45 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
 
 
 
-        <p>High-level API for resolving, inspecting, loading, and prompting model references.</p>
+        <p>High-level runtime API shared by the CLI and the Python library.</p>
+
+
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.client.RuntimeClient.runtime_loader">runtime_loader</span></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.loader.RuntimeLoader" href="../loader/#ollm.runtime.loader.RuntimeLoader">RuntimeLoader</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Resolver, planner, materialization, and
+backend-loading boundary.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.client.RuntimeClient.runtime_executor">runtime_executor</span></code></td>
+            <td>
+                  <code><span title="ollm.runtime.generation.RuntimeExecutor">RuntimeExecutor</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Prompt execution boundary used once
+a runtime has been loaded.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
 
@@ -2563,9 +2601,135 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
 <span class="normal">149</span>
 <span class="normal">150</span>
 <span class="normal">151</span>
-<span class="normal">152</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">RuntimeClient</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;High-level API for resolving, inspecting, loading, and prompting model references.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;High-level runtime API shared by the CLI and the Python library.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        runtime_loader (RuntimeLoader): Resolver, planner, materialization, and</span>
+<span class="sd">            backend-loading boundary.</span>
+<span class="sd">        runtime_executor (RuntimeExecutor): Prompt execution boundary used once</span>
+<span class="sd">            a runtime has been loaded.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">runtime_loader</span><span class="p">:</span> <span class="n">RuntimeLoader</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">RuntimeLoader</span><span class="p">)</span>
     <span class="n">runtime_executor</span><span class="p">:</span> <span class="n">RuntimeExecutor</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="n">RuntimeExecutor</span><span class="p">)</span>
@@ -2573,7 +2737,17 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
     <span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">model_reference</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;models&quot;</span><span class="p">)</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedModel</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve a model reference without loading a runtime.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve a model reference without loading a runtime.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            model_reference (str): User-facing model reference such as a built-in</span>
+<span class="sd">                alias, Hugging Face repository, or local model path.</span>
+<span class="sd">            models_dir (Path): Local models root used for implicit path</span>
+<span class="sd">                resolution.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ResolvedModel: Normalized model metadata for planning or inspection.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">runtime_loader</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span>
             <span class="n">model_reference</span><span class="p">,</span> <span class="n">models_dir</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
         <span class="p">)</span>
@@ -2581,21 +2755,62 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
     <span class="k">def</span><span class="w"> </span><span class="nf">discover_local_models</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;models&quot;</span><span class="p">)</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ResolvedModel</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Discover local materialized models under a models directory.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Discover local materialized models under a models directory.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            models_dir (Path): Local models root to inspect.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple[ResolvedModel, ...]: Materialized model directories discovered</span>
+<span class="sd">            under the given root.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">runtime_loader</span><span class="o">.</span><span class="n">discover_local_models</span><span class="p">(</span>
             <span class="n">models_dir</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">plan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runtime_config</span><span class="p">:</span> <span class="n">RuntimeConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RuntimePlan</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build a runtime plan without loading a backend.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build a runtime plan without loading a backend.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            runtime_config (RuntimeConfig): Execution configuration to inspect.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            RuntimePlan: Planned backend, specialization, and capability result.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: Raised when the runtime configuration is invalid or no</span>
+<span class="sd">                executable plan can be produced.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">runtime_loader</span><span class="o">.</span><span class="n">plan</span><span class="p">(</span><span class="n">runtime_config</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">describe_plan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runtime_config</span><span class="p">:</span> <span class="n">RuntimeConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PlanJsonPayload</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a JSON-serializable inspection payload for a runtime plan.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a JSON-serializable inspection payload for a runtime plan.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            runtime_config (RuntimeConfig): Execution configuration to inspect.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            PlanJsonPayload: Serialized inspection payload for CLI or HTTP use.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: Raised when the runtime configuration is invalid or no</span>
+<span class="sd">                executable plan can be produced.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="n">plan_json_payload</span><span class="p">(</span><span class="n">runtime_config</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">plan</span><span class="p">(</span><span class="n">runtime_config</span><span class="p">))</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runtime_config</span><span class="p">:</span> <span class="n">RuntimeConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LoadedRuntime</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve and load a runtime backend for the given configuration.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve and load a runtime backend for the given configuration.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            runtime_config (RuntimeConfig): Execution configuration to load.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            LoadedRuntime: Loaded backend runtime bundle ready for execution.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: Raised when the model cannot be resolved, materialized,</span>
+<span class="sd">                planned, or loaded.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">runtime_loader</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">runtime_config</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">prompt</span><span class="p">(</span>
@@ -2609,7 +2824,27 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
         <span class="n">audio</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
         <span class="n">sink</span><span class="p">:</span> <span class="n">StreamSink</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PromptResponse</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute a single prompt using plain text plus optional image or audio inputs.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute one prompt using text plus optional image or audio inputs.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            prompt (str): Primary text prompt.</span>
+<span class="sd">            runtime_config (RuntimeConfig): Runtime configuration to execute.</span>
+<span class="sd">            generation_config (GenerationConfig | None): Optional generation</span>
+<span class="sd">                overrides. Defaults to ``GenerationConfig()`` when omitted.</span>
+<span class="sd">            system_prompt (str): System instruction prepended to the request</span>
+<span class="sd">                when non-empty.</span>
+<span class="sd">            images (tuple[str, ...]): Optional image input paths or URIs.</span>
+<span class="sd">            audio (tuple[str, ...]): Optional audio input paths or URIs.</span>
+<span class="sd">            sink (StreamSink | None): Optional streaming sink for incremental</span>
+<span class="sd">                text callbacks.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            PromptResponse: Final prompt response and assistant message payload.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: Raised when the runtime or generation configuration is</span>
+<span class="sd">                invalid or when no executable backend exists.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="n">ContentPart</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">prompt</span><span class="p">)]</span>
         <span class="n">parts</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">ContentPart</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">images</span><span class="p">)</span>
         <span class="n">parts</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">ContentPart</span><span class="o">.</span><span class="n">audio</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">audio</span><span class="p">)</span>
@@ -2631,7 +2866,28 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
         <span class="n">history</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Message</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">sink</span><span class="p">:</span> <span class="n">StreamSink</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PromptResponse</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute a prompt composed from explicit content parts.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Execute a prompt composed from explicit content parts.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            parts (list[ContentPart]): Prompt payload parts in final user-message</span>
+<span class="sd">                order.</span>
+<span class="sd">            runtime_config (RuntimeConfig): Runtime configuration to execute.</span>
+<span class="sd">            generation_config (GenerationConfig | None): Optional generation</span>
+<span class="sd">                overrides. Defaults to ``GenerationConfig()`` when omitted.</span>
+<span class="sd">            system_prompt (str): System instruction prepended to the request</span>
+<span class="sd">                when non-empty.</span>
+<span class="sd">            history (list[Message] | None): Optional prior conversation messages</span>
+<span class="sd">                to prepend before the new user message.</span>
+<span class="sd">            sink (StreamSink | None): Optional streaming sink for incremental</span>
+<span class="sd">                callbacks.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            PromptResponse: Final prompt response and assistant message payload.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: Raised when ``parts`` is empty or when runtime/generation</span>
+<span class="sd">                validation or backend loading fails.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">parts</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;A prompt requires at least one content part&quot;</span><span class="p">)</span>
         <span class="n">effective_runtime_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runtime_config_for_parts</span><span class="p">(</span><span class="n">runtime_config</span><span class="p">,</span> <span class="n">parts</span><span class="p">)</span>
@@ -2664,7 +2920,27 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
         <span class="n">messages</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Message</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">autosave_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ChatSession</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a reusable chat session over the shared runtime stack.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a reusable chat session over the shared runtime stack.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            runtime_config (RuntimeConfig): Runtime configuration for the</span>
+<span class="sd">                session.</span>
+<span class="sd">            generation_config (GenerationConfig | None): Optional generation</span>
+<span class="sd">                overrides. Defaults to ``GenerationConfig()`` when omitted.</span>
+<span class="sd">            session_name (str): Human-readable session label.</span>
+<span class="sd">            system_prompt (str): Session-wide system instruction.</span>
+<span class="sd">            messages (list[Message] | None): Optional initial transcript</span>
+<span class="sd">                messages.</span>
+<span class="sd">            autosave_path (Path | None): Optional transcript autosave path.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ChatSession: Reusable session object bound to the shared runtime</span>
+<span class="sd">            stack.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: Raised when the runtime or generation configuration is</span>
+<span class="sd">                invalid.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">session</span> <span class="o">=</span> <span class="n">ChatSession</span><span class="p">(</span>
             <span class="n">runtime_loader</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">runtime_loader</span><span class="p">,</span>
             <span class="n">runtime_executor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">runtime_executor</span><span class="p">,</span>
@@ -2726,18 +3002,110 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
         <p>Resolve a model reference without loading a runtime.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>model_reference</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>User-facing model reference such as a built-in
+alias, Hugging Face repository, or local model path.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>models_dir</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local models root used for implicit path
+resolution.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span>(&#39;models&#39;)</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>ResolvedModel</code></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.resolver.ResolvedModel" href="../resolver/#ollm.runtime.resolver.ResolvedModel">ResolvedModel</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Normalized model metadata for planning or inspection.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/client.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">31</span>
-<span class="normal">32</span>
-<span class="normal">33</span>
-<span class="normal">34</span>
-<span class="normal">35</span>
-<span class="normal">36</span>
-<span class="normal">37</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">38</span>
+<span class="normal">39</span>
+<span class="normal">40</span>
+<span class="normal">41</span>
+<span class="normal">42</span>
+<span class="normal">43</span>
+<span class="normal">44</span>
+<span class="normal">45</span>
+<span class="normal">46</span>
+<span class="normal">47</span>
+<span class="normal">48</span>
+<span class="normal">49</span>
+<span class="normal">50</span>
+<span class="normal">51</span>
+<span class="normal">52</span>
+<span class="normal">53</span>
+<span class="normal">54</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">model_reference</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;models&quot;</span><span class="p">)</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedModel</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a model reference without loading a runtime.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a model reference without loading a runtime.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        model_reference (str): User-facing model reference such as a built-in</span>
+<span class="sd">            alias, Hugging Face repository, or local model path.</span>
+<span class="sd">        models_dir (Path): Local models root used for implicit path</span>
+<span class="sd">            resolution.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ResolvedModel: Normalized model metadata for planning or inspection.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">runtime_loader</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span>
         <span class="n">model_reference</span><span class="p">,</span> <span class="n">models_dir</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
     <span class="p">)</span>
@@ -2765,18 +3133,98 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
         <p>Discover local materialized models under a models directory.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>models_dir</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local models root to inspect.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span>(&#39;models&#39;)</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.resolver.ResolvedModel" href="../resolver/#ollm.runtime.resolver.ResolvedModel">ResolvedModel</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>tuple[ResolvedModel, ...]: Materialized model directories discovered</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code>...</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>under the given root.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/client.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">39</span>
-<span class="normal">40</span>
-<span class="normal">41</span>
-<span class="normal">42</span>
-<span class="normal">43</span>
-<span class="normal">44</span>
-<span class="normal">45</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">discover_local_models</span><span class="p">(</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">56</span>
+<span class="normal">57</span>
+<span class="normal">58</span>
+<span class="normal">59</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">discover_local_models</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;models&quot;</span><span class="p">)</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ResolvedModel</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Discover local materialized models under a models directory.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Discover local materialized models under a models directory.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        models_dir (Path): Local models root to inspect.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple[ResolvedModel, ...]: Materialized model directories discovered</span>
+<span class="sd">        under the given root.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">runtime_loader</span><span class="o">.</span><span class="n">discover_local_models</span><span class="p">(</span>
         <span class="n">models_dir</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
     <span class="p">)</span>
@@ -2802,12 +3250,112 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
         <p>Build a runtime plan without loading a backend.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>runtime_config</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.config.RuntimeConfig" href="../config/#ollm.runtime.config.RuntimeConfig">RuntimeConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Execution configuration to inspect.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>RuntimePlan</code></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.plan.RuntimePlan" href="../plan/#ollm.runtime.plan.RuntimePlan">RuntimePlan</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Planned backend, specialization, and capability result.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Raised when the runtime configuration is invalid or no
+executable plan can be produced.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/client.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">47</span>
-<span class="normal">48</span>
-<span class="normal">49</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">plan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runtime_config</span><span class="p">:</span> <span class="n">RuntimeConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RuntimePlan</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a runtime plan without loading a backend.&quot;&quot;&quot;</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">plan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runtime_config</span><span class="p">:</span> <span class="n">RuntimeConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RuntimePlan</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a runtime plan without loading a backend.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        runtime_config (RuntimeConfig): Execution configuration to inspect.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        RuntimePlan: Planned backend, specialization, and capability result.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: Raised when the runtime configuration is invalid or no</span>
+<span class="sd">            executable plan can be produced.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">runtime_loader</span><span class="o">.</span><span class="n">plan</span><span class="p">(</span><span class="n">runtime_config</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -2833,12 +3381,112 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
         <p>Return a JSON-serializable inspection payload for a runtime plan.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>runtime_config</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.config.RuntimeConfig" href="../config/#ollm.runtime.config.RuntimeConfig">RuntimeConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Execution configuration to inspect.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>PlanJsonPayload</code></td>            <td>
+                  <code><span title="ollm.runtime.inspection.PlanJsonPayload">PlanJsonPayload</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Serialized inspection payload for CLI or HTTP use.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Raised when the runtime configuration is invalid or no
+executable plan can be produced.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/client.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">51</span>
-<span class="normal">52</span>
-<span class="normal">53</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">describe_plan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runtime_config</span><span class="p">:</span> <span class="n">RuntimeConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PlanJsonPayload</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a JSON-serializable inspection payload for a runtime plan.&quot;&quot;&quot;</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 87</span>
+<span class="normal"> 88</span>
+<span class="normal"> 89</span>
+<span class="normal"> 90</span>
+<span class="normal"> 91</span>
+<span class="normal"> 92</span>
+<span class="normal"> 93</span>
+<span class="normal"> 94</span>
+<span class="normal"> 95</span>
+<span class="normal"> 96</span>
+<span class="normal"> 97</span>
+<span class="normal"> 98</span>
+<span class="normal"> 99</span>
+<span class="normal">100</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">describe_plan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runtime_config</span><span class="p">:</span> <span class="n">RuntimeConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PlanJsonPayload</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return a JSON-serializable inspection payload for a runtime plan.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        runtime_config (RuntimeConfig): Execution configuration to inspect.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        PlanJsonPayload: Serialized inspection payload for CLI or HTTP use.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: Raised when the runtime configuration is invalid or no</span>
+<span class="sd">            executable plan can be produced.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="n">plan_json_payload</span><span class="p">(</span><span class="n">runtime_config</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">plan</span><span class="p">(</span><span class="n">runtime_config</span><span class="p">))</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -2862,12 +3510,112 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
         <p>Resolve and load a runtime backend for the given configuration.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>runtime_config</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.config.RuntimeConfig" href="../config/#ollm.runtime.config.RuntimeConfig">RuntimeConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Execution configuration to load.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>LoadedRuntime</code></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.loader.LoadedRuntime" href="../loader/#ollm.runtime.loader.LoadedRuntime">LoadedRuntime</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Loaded backend runtime bundle ready for execution.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Raised when the model cannot be resolved, materialized,
+planned, or loaded.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/client.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">55</span>
-<span class="normal">56</span>
-<span class="normal">57</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runtime_config</span><span class="p">:</span> <span class="n">RuntimeConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LoadedRuntime</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve and load a runtime backend for the given configuration.&quot;&quot;&quot;</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">102</span>
+<span class="normal">103</span>
+<span class="normal">104</span>
+<span class="normal">105</span>
+<span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">runtime_config</span><span class="p">:</span> <span class="n">RuntimeConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LoadedRuntime</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve and load a runtime backend for the given configuration.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        runtime_config (RuntimeConfig): Execution configuration to load.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        LoadedRuntime: Loaded backend runtime bundle ready for execution.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: Raised when the model cannot be resolved, materialized,</span>
+<span class="sd">            planned, or loaded.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">runtime_loader</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">runtime_config</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -2897,33 +3645,230 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Execute a single prompt using plain text plus optional image or audio inputs.</p>
+        <p>Execute one prompt using text plus optional image or audio inputs.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>prompt</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Primary text prompt.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>runtime_config</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.config.RuntimeConfig" href="../config/#ollm.runtime.config.RuntimeConfig">RuntimeConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Runtime configuration to execute.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>generation_config</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.config.GenerationConfig" href="../config/#ollm.runtime.config.GenerationConfig">GenerationConfig</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional generation
+overrides. Defaults to <code>GenerationConfig()</code> when omitted.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>system_prompt</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>System instruction prepended to the request
+when non-empty.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="ollm.runtime.config.DEFAULT_SYSTEM_PROMPT">DEFAULT_SYSTEM_PROMPT</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>images</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span>[<span title="str">str</span>, ...]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional image input paths or URIs.</p>
+              </div>
+            </td>
+            <td>
+                  <code>()</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>audio</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span>[<span title="str">str</span>, ...]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional audio input paths or URIs.</p>
+              </div>
+            </td>
+            <td>
+                  <code>()</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>sink</code>
+            </td>
+            <td>
+                  <code><span title="ollm.runtime.streaming.StreamSink">StreamSink</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional streaming sink for incremental
+text callbacks.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>PromptResponse</code></td>            <td>
+                  <code><span title="ollm.app.types.PromptResponse">PromptResponse</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Final prompt response and assistant message payload.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Raised when the runtime or generation configuration is
+invalid or when no executable backend exists.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/client.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">59</span>
-<span class="normal">60</span>
-<span class="normal">61</span>
-<span class="normal">62</span>
-<span class="normal">63</span>
-<span class="normal">64</span>
-<span class="normal">65</span>
-<span class="normal">66</span>
-<span class="normal">67</span>
-<span class="normal">68</span>
-<span class="normal">69</span>
-<span class="normal">70</span>
-<span class="normal">71</span>
-<span class="normal">72</span>
-<span class="normal">73</span>
-<span class="normal">74</span>
-<span class="normal">75</span>
-<span class="normal">76</span>
-<span class="normal">77</span>
-<span class="normal">78</span>
-<span class="normal">79</span>
-<span class="normal">80</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">prompt</span><span class="p">(</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">prompt</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">prompt</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
@@ -2934,7 +3879,27 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
     <span class="n">audio</span><span class="p">:</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="o">=</span> <span class="p">(),</span>
     <span class="n">sink</span><span class="p">:</span> <span class="n">StreamSink</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PromptResponse</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute a single prompt using plain text plus optional image or audio inputs.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute one prompt using text plus optional image or audio inputs.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        prompt (str): Primary text prompt.</span>
+<span class="sd">        runtime_config (RuntimeConfig): Runtime configuration to execute.</span>
+<span class="sd">        generation_config (GenerationConfig | None): Optional generation</span>
+<span class="sd">            overrides. Defaults to ``GenerationConfig()`` when omitted.</span>
+<span class="sd">        system_prompt (str): System instruction prepended to the request</span>
+<span class="sd">            when non-empty.</span>
+<span class="sd">        images (tuple[str, ...]): Optional image input paths or URIs.</span>
+<span class="sd">        audio (tuple[str, ...]): Optional audio input paths or URIs.</span>
+<span class="sd">        sink (StreamSink | None): Optional streaming sink for incremental</span>
+<span class="sd">            text callbacks.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        PromptResponse: Final prompt response and assistant message payload.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: Raised when the runtime or generation configuration is</span>
+<span class="sd">            invalid or when no executable backend exists.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">parts</span> <span class="o">=</span> <span class="p">[</span><span class="n">ContentPart</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">prompt</span><span class="p">)]</span>
     <span class="n">parts</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">ContentPart</span><span class="o">.</span><span class="n">image</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">images</span><span class="p">)</span>
     <span class="n">parts</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">ContentPart</span><span class="o">.</span><span class="n">audio</span><span class="p">(</span><span class="n">item</span><span class="p">)</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">audio</span><span class="p">)</span>
@@ -2975,40 +3940,224 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
         <p>Execute a prompt composed from explicit content parts.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>parts</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" href="../../cli/models/#list">list</a>[<span title="ollm.app.types.ContentPart">ContentPart</span>]</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Prompt payload parts in final user-message
+order.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>runtime_config</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.config.RuntimeConfig" href="../config/#ollm.runtime.config.RuntimeConfig">RuntimeConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Runtime configuration to execute.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>generation_config</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.config.GenerationConfig" href="../config/#ollm.runtime.config.GenerationConfig">GenerationConfig</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional generation
+overrides. Defaults to <code>GenerationConfig()</code> when omitted.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>system_prompt</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>System instruction prepended to the request
+when non-empty.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="ollm.runtime.config.DEFAULT_SYSTEM_PROMPT">DEFAULT_SYSTEM_PROMPT</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>history</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" href="../../cli/models/#list">list</a>[<span title="ollm.app.types.Message">Message</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional prior conversation messages
+to prepend before the new user message.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>sink</code>
+            </td>
+            <td>
+                  <code><span title="ollm.runtime.streaming.StreamSink">StreamSink</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional streaming sink for incremental
+callbacks.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>PromptResponse</code></td>            <td>
+                  <code><span title="ollm.app.types.PromptResponse">PromptResponse</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Final prompt response and assistant message payload.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Raised when <code>parts</code> is empty or when runtime/generation
+validation or backend loading fails.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/client.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 82</span>
-<span class="normal"> 83</span>
-<span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
-<span class="normal"> 89</span>
-<span class="normal"> 90</span>
-<span class="normal"> 91</span>
-<span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span>
-<span class="normal">101</span>
-<span class="normal">102</span>
-<span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span>
-<span class="normal">107</span>
-<span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span>
-<span class="normal">112</span>
-<span class="normal">113</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">prompt_parts</span><span class="p">(</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span>
+<span class="normal">168</span>
+<span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">prompt_parts</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">parts</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">ContentPart</span><span class="p">],</span>
     <span class="o">*</span><span class="p">,</span>
@@ -3018,7 +4167,28 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
     <span class="n">history</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Message</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">sink</span><span class="p">:</span> <span class="n">StreamSink</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">PromptResponse</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute a prompt composed from explicit content parts.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Execute a prompt composed from explicit content parts.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        parts (list[ContentPart]): Prompt payload parts in final user-message</span>
+<span class="sd">            order.</span>
+<span class="sd">        runtime_config (RuntimeConfig): Runtime configuration to execute.</span>
+<span class="sd">        generation_config (GenerationConfig | None): Optional generation</span>
+<span class="sd">            overrides. Defaults to ``GenerationConfig()`` when omitted.</span>
+<span class="sd">        system_prompt (str): System instruction prepended to the request</span>
+<span class="sd">            when non-empty.</span>
+<span class="sd">        history (list[Message] | None): Optional prior conversation messages</span>
+<span class="sd">            to prepend before the new user message.</span>
+<span class="sd">        sink (StreamSink | None): Optional streaming sink for incremental</span>
+<span class="sd">            callbacks.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        PromptResponse: Final prompt response and assistant message payload.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: Raised when ``parts`` is empty or when runtime/generation</span>
+<span class="sd">            validation or backend loading fails.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">parts</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;A prompt requires at least one content part&quot;</span><span class="p">)</span>
     <span class="n">effective_runtime_config</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_runtime_config_for_parts</span><span class="p">(</span><span class="n">runtime_config</span><span class="p">,</span> <span class="n">parts</span><span class="p">)</span>
@@ -3070,35 +4240,226 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
         <p>Create a reusable chat session over the shared runtime stack.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>runtime_config</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.config.RuntimeConfig" href="../config/#ollm.runtime.config.RuntimeConfig">RuntimeConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Runtime configuration for the
+session.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>generation_config</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.config.GenerationConfig" href="../config/#ollm.runtime.config.GenerationConfig">GenerationConfig</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional generation
+overrides. Defaults to <code>GenerationConfig()</code> when omitted.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>session_name</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Human-readable session label.</p>
+              </div>
+            </td>
+            <td>
+                  <code>&#39;default&#39;</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>system_prompt</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Session-wide system instruction.</p>
+              </div>
+            </td>
+            <td>
+                  <code><span title="ollm.runtime.config.DEFAULT_SYSTEM_PROMPT">DEFAULT_SYSTEM_PROMPT</span></code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>messages</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" href="../../cli/models/#list">list</a>[<span title="ollm.app.types.Message">Message</span>] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional initial transcript
+messages.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>autosave_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional transcript autosave path.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>ChatSession</code></td>            <td>
+                  <code><span title="ollm.app.session.ChatSession">ChatSession</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Reusable session object bound to the shared runtime</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td></td>            <td>
+                  <code><span title="ollm.app.session.ChatSession">ChatSession</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>stack.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Raised when the runtime or generation configuration is
+invalid.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/client.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">session</span><span class="p">(</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">session</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="o">*</span><span class="p">,</span>
     <span class="n">runtime_config</span><span class="p">:</span> <span class="n">RuntimeConfig</span><span class="p">,</span>
@@ -3108,7 +4469,27 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
     <span class="n">messages</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Message</span><span class="p">]</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">autosave_path</span><span class="p">:</span> <span class="n">Path</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ChatSession</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a reusable chat session over the shared runtime stack.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Create a reusable chat session over the shared runtime stack.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        runtime_config (RuntimeConfig): Runtime configuration for the</span>
+<span class="sd">            session.</span>
+<span class="sd">        generation_config (GenerationConfig | None): Optional generation</span>
+<span class="sd">            overrides. Defaults to ``GenerationConfig()`` when omitted.</span>
+<span class="sd">        session_name (str): Human-readable session label.</span>
+<span class="sd">        system_prompt (str): Session-wide system instruction.</span>
+<span class="sd">        messages (list[Message] | None): Optional initial transcript</span>
+<span class="sd">            messages.</span>
+<span class="sd">        autosave_path (Path | None): Optional transcript autosave path.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ChatSession: Reusable session object bound to the shared runtime</span>
+<span class="sd">        stack.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: Raised when the runtime or generation configuration is</span>
+<span class="sd">            invalid.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">session</span> <span class="o">=</span> <span class="n">ChatSession</span><span class="p">(</span>
         <span class="n">runtime_loader</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">runtime_loader</span><span class="p">,</span>
         <span class="n">runtime_executor</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">runtime_executor</span><span class="p">,</span>
@@ -3194,6 +4575,10 @@ resolver, planner, loader, and executor behavior that powers the CLI.</p>
     
     
       <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
+      
+        <script src="../../javascripts/mermaid-init.js"></script>
       
     
   </body>

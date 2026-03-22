@@ -1510,6 +1510,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#why-this-shape-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this shape exists
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2230,6 +2241,17 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#why-this-shape-exists" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Why this shape exists
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -2257,33 +2279,92 @@
 
 
 <h1 id="architecture-overview">Architecture Overview<a class="headerlink" href="#architecture-overview" title="Permanent link">&para;</a></h1>
-<p>oLLM is organized around a resolver-and-plan model instead of a fixed allowlist gate.</p>
+<p>oLLM is organized around a resolver-and-plan model instead of a fixed allowlist
+gate. The same internal flow powers the CLI, the Python library, and the local
+server surface.</p>
 <h2 id="high-level-flow">High-level flow<a class="headerlink" href="#high-level-flow" title="Permanent link">&para;</a></h2>
+<div class="mermaid">
+flowchart LR
+    A[User input<br/>CLI / Python / Server] --> B[ModelReference.parse]
+    B --> C[ModelResolver]
+    C --> D[Capability discovery]
+    D --> E[BackendSelector]
+    E --> F[RuntimeLoader.plan]
+    F --> G[Strategy selector]
+    G --> H{Inspect only?}
+    H -->|Yes| I[RuntimePlan / JSON inspection]
+    H -->|No| J[RuntimeLoader.load]
+    J --> K[ApplicationService / RuntimeClient]
+    K --> L[RuntimeExecutor]
+</div>
+
 <ol>
-<li>parse a model reference</li>
-<li>resolve it into a normalized <code>ResolvedModel</code></li>
-<li>discover capabilities</li>
-<li>select a backend and support level</li>
-<li>refine the runtime plan through backend-specific probes</li>
-<li>route CLI and future server transports through the internal <code>ApplicationService</code></li>
-<li>load the runtime or expose the plan as inspection output</li>
-<li>execute through a local runtime</li>
+<li>Parse a user-facing model reference.</li>
+<li>Resolve it into a normalized <code>ResolvedModel</code>.</li>
+<li>Discover capability and support metadata.</li>
+<li>Select a backend and support level.</li>
+<li>Refine the runtime plan through backend-specific probes.</li>
+<li>Apply deterministic pre-run strategy selection for KV behavior.</li>
+<li>Either expose the plan as inspection output or load the runtime.</li>
+<li>Execute through the shared application/runtime stack.</li>
 </ol>
 <h2 id="main-subsystems">Main subsystems<a class="headerlink" href="#main-subsystems" title="Permanent link">&para;</a></h2>
-<ul>
-<li><code>ModelReference</code> parsing</li>
-<li><code>ModelResolver</code></li>
-<li>capability discovery</li>
-<li><code>BackendSelector</code></li>
-<li><code>RuntimePlan</code></li>
-<li><code>ApplicationService</code></li>
-<li><code>RuntimeLoader</code></li>
-<li><code>RuntimeExecutor</code></li>
-<li>specialization registry / matching / application</li>
-</ul>
+<table>
+<thead>
+<tr>
+<th>Subsystem</th>
+<th>Responsibility</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ModelReference</code></td>
+<td>Parses opaque model input such as aliases, Hugging Face IDs, and local paths.</td>
+</tr>
+<tr>
+<td><code>ModelResolver</code></td>
+<td>Normalizes a reference into a <code>ResolvedModel</code> with capability and source metadata.</td>
+</tr>
+<tr>
+<td>Capability discovery</td>
+<td>Inspects local model artifacts when built-in metadata is not enough.</td>
+</tr>
+<tr>
+<td><code>BackendSelector</code></td>
+<td>Chooses the most truthful backend and support level for the current runtime config.</td>
+</tr>
+<tr>
+<td><code>RuntimePlan</code></td>
+<td>Carries the resolved backend choice, specialization state, and inspection details.</td>
+</tr>
+<tr>
+<td><code>RuntimeLoader</code></td>
+<td>Materializes models when needed, plans execution, and loads the backend runtime.</td>
+</tr>
+<tr>
+<td><code>ApplicationService</code></td>
+<td>Provides the shared control-plane surface used by CLI and server transports.</td>
+</tr>
+<tr>
+<td><code>RuntimeExecutor</code></td>
+<td>Executes prompt requests once a runtime has been loaded.</td>
+</tr>
+<tr>
+<td>Specialization registry</td>
+<td>Matches and applies optimized-native providers and passes.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="why-this-shape-exists">Why this shape exists<a class="headerlink" href="#why-this-shape-exists" title="Permanent link">&para;</a></h2>
+<p>This layering keeps model resolution, planning, loading, and execution separate.
+That lets oLLM answer "what would run and why?" before it loads weights, which
+is why <code>ollm prompt --plan-json</code>, <code>ollm models info</code>, and the server planning
+surfaces can stay truthful without forcing a full runtime load.</p>
 <p>See also:</p>
 <ul>
 <li><a href="../kv-strategy-matrix/">KV Strategy Matrix</a></li>
+<li><a href="../backend-selection/">Backend Selection</a></li>
+<li><a href="../specialization/">Specialization</a></li>
 </ul>
 
 
@@ -2341,6 +2422,10 @@
     
     
       <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
+      
+        <script src="../../javascripts/mermaid-init.js"></script>
       
     
   </body>

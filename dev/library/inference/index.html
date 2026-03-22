@@ -2328,30 +2328,30 @@ full-history KV entirely in memory and does not initialize any disk-KV path.
 When disk-backed strategies are selected, the default path uses an explicit
 disk-KV store under <code>cache_dir/kv_cache_chunked</code>, with explicit
 dtype/shape/sequence metadata and raw payloads instead of pickle-backed torch
-artifacts. When the selected runtime uses
-<code>kv_cache_strategy="paged"</code>, it writes to
-<code>cache_dir/kv_cache_paged</code> and persists fixed-capacity pages through an
-explicit page table. When it uses
-<code>kv_cache_strategy="streamed-segmented"</code>, it writes to
-<code>cache_dir/kv_cache_streamed_segmented</code> instead. When it uses
-<code>kv_cache_strategy="log-structured-journal"</code>, it writes to
-<code>cache_dir/kv_cache_log_structured_journal</code> and compacts journal metadata
-deterministically once the configured entry threshold is reached. When it uses
-<code>kv_cache_strategy="sliding-window-ring-buffer"</code>, it writes to
-<code>cache_dir/kv_cache_sliding_window_ring_buffer</code> and retains only the most
-recent <code>cache_window_tokens</code> cached tokens; older history is evicted under a
-<code>drop-oldest</code> policy, so this mode deliberately changes runtime semantics. When
-it uses
-<code>kv_cache_strategy="quantized-cold-tier"</code>, it writes to
-<code>cache_dir/kv_cache_quantized_cold_tier</code> and persists colder KV entries in the
-explicit <code>int8-symmetric-per-tensor</code> representation while dequantizing back to
-the runtime dtype on load. When it uses
-<code>kv_cache_strategy="tiered-write-back"</code>, it writes the cold tier to
-<code>cache_dir/kv_cache_tiered_write_back</code> through a journal-backed append store
-while keeping a bounded hot tail in memory. The active runtime then applies a
-platform/resource-aware buffering or spill policy on top of the selected
-store. <code>Inference.DiskCache()</code> accepts the same switch through
-<code>cache_strategy=...</code>.</p>
+artifacts.</p>
+<ul>
+<li><code>kv_cache_strategy="paged"</code> writes to <code>cache_dir/kv_cache_paged</code> and uses an
+  explicit page table.</li>
+<li><code>kv_cache_strategy="streamed-segmented"</code> writes to
+  <code>cache_dir/kv_cache_streamed_segmented</code>.</li>
+<li><code>kv_cache_strategy="log-structured-journal"</code> writes to
+  <code>cache_dir/kv_cache_log_structured_journal</code> and compacts journal metadata
+  deterministically once the configured entry threshold is reached.</li>
+<li><code>kv_cache_strategy="sliding-window-ring-buffer"</code> writes to
+  <code>cache_dir/kv_cache_sliding_window_ring_buffer</code> and retains only the most
+  recent <code>cache_window_tokens</code> cached tokens; older history is evicted under a
+  <code>drop-oldest</code> policy, so this mode deliberately changes runtime semantics.</li>
+<li><code>kv_cache_strategy="quantized-cold-tier"</code> writes to
+  <code>cache_dir/kv_cache_quantized_cold_tier</code> and persists colder KV entries in the
+  explicit <code>int8-symmetric-per-tensor</code> representation while dequantizing back to
+  the runtime dtype on load.</li>
+<li><code>kv_cache_strategy="tiered-write-back"</code> writes the cold tier to
+  <code>cache_dir/kv_cache_tiered_write_back</code> through a journal-backed append store
+  while keeping a bounded hot tail in memory.</li>
+</ul>
+<p>The active runtime then applies a platform/resource-aware buffering or spill
+policy on top of the selected store. <code>Inference.DiskCache()</code> accepts the same
+switch through <code>cache_strategy=...</code>.</p>
 <p><code>Inference.offload_layers_to_cpu()</code> now also accepts an explicit
 <code>policy=...</code> argument. The current supported CPU placement policies are
 <code>auto</code>, <code>prefix</code>, <code>suffix</code>, and <code>middle-band</code>, where <code>auto</code> resolves to
@@ -2424,6 +2424,10 @@ requests instead of pretending mixed policy placement is supported.</p>
     
     
       <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
+      
+        <script src="../../javascripts/mermaid-init.js"></script>
       
     
   </body>

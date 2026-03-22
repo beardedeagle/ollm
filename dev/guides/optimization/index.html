@@ -2483,42 +2483,52 @@ prefix-shaped and would be misleading if reported as policy-driven.</p>
 <li><code>tiered-write-back</code></li>
 <li><code>resident</code></li>
 </ul>
-<p><code>chunked</code> persists a manifest-backed chunk store under
-<code>cache_dir/kv_cache_chunked</code>. <code>paged</code> persists a fixed-capacity page table
-under <code>cache_dir/kv_cache_paged</code>, so movement and reconstruction stay aligned
-to deterministic page boundaries instead of variable chunk sizes.
-<code>streamed-segmented</code> persists a sequential
-segment-backed store under <code>cache_dir/kv_cache_streamed_segmented</code>.
-<code>log-structured-journal</code> persists a single append-oriented journal per layer
-under <code>cache_dir/kv_cache_log_structured_journal</code> and compacts entry metadata
-deterministically once the journal crosses its configured entry threshold.
-<code>sliding-window-ring-buffer</code> persists only the bounded recent tail under
-<code>cache_dir/kv_cache_sliding_window_ring_buffer</code>; once the configured
-<code>kv_cache_window_tokens</code> limit is exceeded, the oldest cached tokens are
-evicted under a <code>drop-oldest</code> policy. This mode changes runtime semantics and
-should be used only when a bounded recent context is the intended contract.
-Current local proof keeps it as an explicit opt-in mode rather than a general
-default strategy.
-<code>quantized-cold-tier</code> persists the same full-history journal shape under
-<code>cache_dir/kv_cache_quantized_cold_tier</code>, but stores colder entries in the
-explicit <code>int8-symmetric-per-tensor</code> representation and dequantizes back to
-the runtime dtype on load.
-<code>resident</code> keeps full-history KV entirely in memory and does not initialize any
-disk root. It is the truthful no-spill baseline, not a persistence strategy.
-<code>tiered-write-back</code> persists only the colder KV prefix under
-<code>cache_dir/kv_cache_tiered_write_back</code> while keeping a bounded hot region in
-memory; its cold tier now uses a journal-backed append store. All seven
-disk-backed presets use typed raw tensor payloads plus explicit metadata, and
-none uses opaque
-pickle-backed <code>.pt</code> cache blobs. The runtime also applies a
-platform/resource-aware buffering or spill policy on top of the selected
-strategy so the cache can trade write amplification against memory headroom
-instead of flushing every delta identically on every machine.
-That preset is still not the full future GPU/CPU/SSD tiered architecture.
-<code>resident</code> does not initialize any disk-KV root at all; it keeps full-history
-KV entirely in memory and exists as the explicit low-overhead baseline when the
-active runtime can afford that footprint. It is intentionally not aligned with
-oLLM's large-model spill/offload goal.</p>
+<div class="mermaid">
+flowchart LR
+    A[Explicit KV preset] --> B{Full history?}
+    B -->|Yes| C[resident / chunked / paged / streamed-segmented / log-structured-journal / quantized-cold-tier / tiered-write-back]
+    B -->|No| D[sliding-window-ring-buffer]
+    C --> E{Disk-backed?}
+    E -->|No| F[resident]
+    E -->|Yes| G[Strategy-specific on-disk root]
+</div>
+
+<ul>
+<li><code>chunked</code> persists a manifest-backed chunk store under
+  <code>cache_dir/kv_cache_chunked</code>.</li>
+<li><code>paged</code> persists a fixed-capacity page table under <code>cache_dir/kv_cache_paged</code>,
+  so movement and reconstruction stay aligned to deterministic page boundaries
+  instead of variable chunk sizes.</li>
+<li><code>streamed-segmented</code> persists a sequential segment-backed store under
+  <code>cache_dir/kv_cache_streamed_segmented</code>.</li>
+<li><code>log-structured-journal</code> persists a single append-oriented journal per layer
+  under <code>cache_dir/kv_cache_log_structured_journal</code> and compacts entry metadata
+  deterministically once the journal crosses its configured entry threshold.</li>
+<li><code>sliding-window-ring-buffer</code> persists only the bounded recent tail under
+  <code>cache_dir/kv_cache_sliding_window_ring_buffer</code>; once the configured
+  <code>kv_cache_window_tokens</code> limit is exceeded, the oldest cached tokens are
+  evicted under a <code>drop-oldest</code> policy. This mode changes runtime semantics and
+  should be used only when a bounded recent context is the intended contract.
+  Current local proof keeps it as an explicit opt-in mode rather than a general
+  default strategy.</li>
+<li><code>quantized-cold-tier</code> persists the same full-history journal shape under
+  <code>cache_dir/kv_cache_quantized_cold_tier</code>, but stores colder entries in the
+  explicit <code>int8-symmetric-per-tensor</code> representation and dequantizes back to
+  the runtime dtype on load.</li>
+<li><code>tiered-write-back</code> persists only the colder KV prefix under
+  <code>cache_dir/kv_cache_tiered_write_back</code> while keeping a bounded hot region in
+  memory; its cold tier now uses a journal-backed append store. That preset is
+  still not the full future GPU/CPU/SSD tiered architecture.</li>
+<li><code>resident</code> does not initialize any disk-KV root at all; it keeps full-history
+  KV entirely in memory and exists as the explicit low-overhead baseline when
+  the active runtime can afford that footprint. It is intentionally not aligned
+  with oLLM's large-model spill/offload goal.</li>
+</ul>
+<p>All seven disk-backed presets use typed raw tensor payloads plus explicit
+metadata, and none uses opaque pickle-backed <code>.pt</code> cache blobs.</p>
+<p>The runtime also applies a platform/resource-aware buffering or spill policy on
+top of the selected strategy so the cache can trade write amplification against
+memory headroom instead of flushing every delta identically on every machine.</p>
 <h2 id="runtime-strategy-selector">Runtime strategy selector<a class="headerlink" href="#runtime-strategy-selector" title="Permanent link">&para;</a></h2>
 <p>The runtime now has a deterministic pre-run selector above the explicit KV
 presets.</p>
@@ -2643,6 +2653,10 @@ can overlap.</p>
     
     
       <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
+      
+        <script src="../../javascripts/mermaid-init.js"></script>
       
     
   </body>

@@ -2536,6 +2536,77 @@
         <p>Loaded runtime bundle containing the finalized backend and plan metadata.</p>
 
 
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.runtime.loader.LoadedRuntime.resolved_model">resolved_model</span></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.resolver.ResolvedModel" href="../resolver/#ollm.runtime.resolver.ResolvedModel">ResolvedModel</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Final resolved model metadata for the
+loaded runtime.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.runtime.loader.LoadedRuntime.config">config</span></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.config.RuntimeConfig" href="../config/#ollm.runtime.config.RuntimeConfig">RuntimeConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Effective runtime configuration after selector
+application.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.runtime.loader.LoadedRuntime.backend">backend</span></code></td>
+            <td>
+                  <code><span title="ollm.runtime.backends.base.BackendRuntime">BackendRuntime</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Loaded backend runtime implementation.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.runtime.loader.LoadedRuntime.model_path">model_path</span></code></td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local materialized model path when one exists.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.runtime.loader.LoadedRuntime.plan">plan</span></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.plan.RuntimePlan" href="../plan/#ollm.runtime.plan.RuntimePlan">RuntimePlan</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Final runtime plan used to load the backend.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
 
 
 
@@ -2544,9 +2615,7 @@
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/ollm/runtime/loader.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 34</span>
-<span class="normal"> 35</span>
-<span class="normal"> 36</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 36</span>
 <span class="normal"> 37</span>
 <span class="normal"> 38</span>
 <span class="normal"> 39</span>
@@ -2621,9 +2690,48 @@
 <span class="normal">108</span>
 <span class="normal">109</span>
 <span class="normal">110</span>
-<span class="normal">111</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">LoadedRuntime</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Loaded runtime bundle containing the finalized backend and plan metadata.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Loaded runtime bundle containing the finalized backend and plan metadata.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        resolved_model (ResolvedModel): Final resolved model metadata for the</span>
+<span class="sd">            loaded runtime.</span>
+<span class="sd">        config (RuntimeConfig): Effective runtime configuration after selector</span>
+<span class="sd">            application.</span>
+<span class="sd">        backend (BackendRuntime): Loaded backend runtime implementation.</span>
+<span class="sd">        model_path (Path | None): Local materialized model path when one exists.</span>
+<span class="sd">        plan (RuntimePlan): Final runtime plan used to load the backend.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">resolved_model</span><span class="p">:</span> <span class="n">ResolvedModel</span>
     <span class="n">config</span><span class="p">:</span> <span class="n">RuntimeConfig</span>
@@ -2636,7 +2744,12 @@
 
     <span class="nd">@property</span>
     <span class="k">def</span><span class="w"> </span><span class="nf">capabilities</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">CapabilityProfile</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return capability information aligned with the finalized runtime plan.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return capability information aligned with the finalized runtime plan.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            CapabilityProfile: Capability metadata adjusted to reflect the final</span>
+<span class="sd">            support level and disk-cache behavior of the loaded runtime.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">resolved_capabilities</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolved_model</span><span class="o">.</span><span class="n">capabilities</span>
         <span class="k">if</span> <span class="p">(</span>
             <span class="n">resolved_capabilities</span><span class="o">.</span><span class="n">support_level</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">plan</span><span class="o">.</span><span class="n">support_level</span>
@@ -2672,7 +2785,7 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">processor</span>
 
     <span class="nd">@property</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">device</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">device</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">torch</span><span class="o">.</span><span class="n">device</span><span class="p">:</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Expose the backend runtime device.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">backend</span><span class="o">.</span><span class="n">device</span>
 
@@ -2683,7 +2796,19 @@
         <span class="n">lifecycle</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
         <span class="n">window_tokens</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">object</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reuse one KV-cache instance per resolved cache key.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Reuse one KV-cache instance per resolved cache key.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            cache_dir (Path): Cache root for the KV cache instance.</span>
+<span class="sd">            strategy (str): Resolved KV cache strategy ID.</span>
+<span class="sd">            lifecycle (str): Resolved cache lifecycle ID.</span>
+<span class="sd">            window_tokens (int | None): Sliding-window token budget when the</span>
+<span class="sd">                strategy requires one.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            object | None: Existing or newly created cache object, or ``None``</span>
+<span class="sd">            when the backend does not expose a cache.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">cache_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">cache_dir</span><span class="o">.</span><span class="n">resolve</span><span class="p">(),</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">lifecycle</span><span class="p">,</span> <span class="n">window_tokens</span><span class="p">)</span>
         <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kv_cache_instances</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -2731,6 +2856,39 @@
     <div class="doc doc-contents ">
 
         <p>Return capability information aligned with the finalized runtime plan.</p>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>CapabilityProfile</code></td>            <td>
+                  <code><span title="ollm.runtime.capabilities.CapabilityProfile">CapabilityProfile</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Capability metadata adjusted to reflect the final</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td></td>            <td>
+                  <code><span title="ollm.runtime.capabilities.CapabilityProfile">CapabilityProfile</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>support level and disk-cache behavior of the loaded runtime.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
     </div>
 
@@ -2821,7 +2979,7 @@
   </span>
 
 <a href="#ollm.runtime.loader.LoadedRuntime.device" class="headerlink" title="Permanent link">&para;</a></h2>
-<div class="language-python doc-signature highlight"><pre><span></span><code><span class="n">device</span>
+<div class="language-python doc-signature highlight"><pre><span></span><code><span class="n">device</span><span class="p">:</span> <span class="n"><span title="torch.device">device</span></span>
 </code></pre></div>
 
     <div class="doc doc-contents ">
@@ -2856,33 +3014,170 @@
         <p>Reuse one KV-cache instance per resolved cache key.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>cache_dir</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Cache root for the KV cache instance.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>strategy</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Resolved KV cache strategy ID.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>lifecycle</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Resolved cache lifecycle ID.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>window_tokens</code>
+            </td>
+            <td>
+                  <code><span title="int">int</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Sliding-window token budget when the
+strategy requires one.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="object">object</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>object | None: Existing or newly created cache object, or <code>None</code></p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="object">object</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>when the backend does not expose a cache.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/runtime/loader.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 89</span>
-<span class="normal"> 90</span>
-<span class="normal"> 91</span>
-<span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
-<span class="normal">100</span>
-<span class="normal">101</span>
-<span class="normal">102</span>
-<span class="normal">103</span>
-<span class="normal">104</span>
-<span class="normal">105</span>
-<span class="normal">106</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_or_create_kv_cache</span><span class="p">(</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">106</span>
+<span class="normal">107</span>
+<span class="normal">108</span>
+<span class="normal">109</span>
+<span class="normal">110</span>
+<span class="normal">111</span>
+<span class="normal">112</span>
+<span class="normal">113</span>
+<span class="normal">114</span>
+<span class="normal">115</span>
+<span class="normal">116</span>
+<span class="normal">117</span>
+<span class="normal">118</span>
+<span class="normal">119</span>
+<span class="normal">120</span>
+<span class="normal">121</span>
+<span class="normal">122</span>
+<span class="normal">123</span>
+<span class="normal">124</span>
+<span class="normal">125</span>
+<span class="normal">126</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">get_or_create_kv_cache</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">cache_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
     <span class="n">strategy</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">lifecycle</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
     <span class="n">window_tokens</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">object</span> <span class="o">|</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reuse one KV-cache instance per resolved cache key.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reuse one KV-cache instance per resolved cache key.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        cache_dir (Path): Cache root for the KV cache instance.</span>
+<span class="sd">        strategy (str): Resolved KV cache strategy ID.</span>
+<span class="sd">        lifecycle (str): Resolved cache lifecycle ID.</span>
+<span class="sd">        window_tokens (int | None): Sliding-window token budget when the</span>
+<span class="sd">            strategy requires one.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        object | None: Existing or newly created cache object, or ``None``</span>
+<span class="sd">        when the backend does not expose a cache.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">cache_key</span> <span class="o">=</span> <span class="p">(</span><span class="n">cache_dir</span><span class="o">.</span><span class="n">resolve</span><span class="p">(),</span> <span class="n">strategy</span><span class="p">,</span> <span class="n">lifecycle</span><span class="p">,</span> <span class="n">window_tokens</span><span class="p">)</span>
     <span class="n">cache</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_kv_cache_instances</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cache_key</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">cache</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
@@ -2917,10 +3212,10 @@
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/runtime/loader.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">108</span>
-<span class="normal">109</span>
-<span class="normal">110</span>
-<span class="normal">111</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">reset_kv_cache_instances</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">reset_kv_cache_instances</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">&quot;&quot;&quot;Drop any cached KV objects before a full-history re-execution.&quot;&quot;&quot;</span>
 
     <span class="bp">self</span><span class="o">.</span><span class="n">_kv_cache_instances</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
@@ -2950,6 +3245,103 @@
         <p>Resolve, plan, materialize, and load runtimes for model references.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>resolver</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.resolver.ModelResolver" href="../resolver/#ollm.runtime.resolver.ModelResolver">ModelResolver</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional resolver override.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>selector</code>
+            </td>
+            <td>
+                  <code><span title="ollm.runtime.backend_selector.BackendSelector">BackendSelector</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional backend selector override.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>backends</code>
+            </td>
+            <td>
+                  <code><span title="tuple">tuple</span>[<span title="ollm.runtime.backends.base.ExecutionBackend">ExecutionBackend</span>, ...] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional registered
+backend implementations.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>snapshot_downloader</code>
+            </td>
+            <td>
+                  <code><span title="collections.abc.Callable">Callable</span>[[<span title="str">str</span>, <span title="str">str</span>, <span title="bool">bool</span>, <span title="str">str</span> | None], None] | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional Hugging Face snapshot downloader override.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>specialization_registry</code>
+            </td>
+            <td>
+                  <code><span title="ollm.runtime.specialization.SpecializationRegistry">SpecializationRegistry</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional
+specialization registry override.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
 
 
 
@@ -2958,36 +3350,7 @@
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/ollm/runtime/loader.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">114</span>
-<span class="normal">115</span>
-<span class="normal">116</span>
-<span class="normal">117</span>
-<span class="normal">118</span>
-<span class="normal">119</span>
-<span class="normal">120</span>
-<span class="normal">121</span>
-<span class="normal">122</span>
-<span class="normal">123</span>
-<span class="normal">124</span>
-<span class="normal">125</span>
-<span class="normal">126</span>
-<span class="normal">127</span>
-<span class="normal">128</span>
-<span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span>
-<span class="normal">141</span>
-<span class="normal">142</span>
-<span class="normal">143</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">143</span>
 <span class="normal">144</span>
 <span class="normal">145</span>
 <span class="normal">146</span>
@@ -3327,8 +3690,112 @@
 <span class="normal">480</span>
 <span class="normal">481</span>
 <span class="normal">482</span>
-<span class="normal">483</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">RuntimeLoader</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve, plan, materialize, and load runtimes for model references.&quot;&quot;&quot;</span>
+<span class="normal">483</span>
+<span class="normal">484</span>
+<span class="normal">485</span>
+<span class="normal">486</span>
+<span class="normal">487</span>
+<span class="normal">488</span>
+<span class="normal">489</span>
+<span class="normal">490</span>
+<span class="normal">491</span>
+<span class="normal">492</span>
+<span class="normal">493</span>
+<span class="normal">494</span>
+<span class="normal">495</span>
+<span class="normal">496</span>
+<span class="normal">497</span>
+<span class="normal">498</span>
+<span class="normal">499</span>
+<span class="normal">500</span>
+<span class="normal">501</span>
+<span class="normal">502</span>
+<span class="normal">503</span>
+<span class="normal">504</span>
+<span class="normal">505</span>
+<span class="normal">506</span>
+<span class="normal">507</span>
+<span class="normal">508</span>
+<span class="normal">509</span>
+<span class="normal">510</span>
+<span class="normal">511</span>
+<span class="normal">512</span>
+<span class="normal">513</span>
+<span class="normal">514</span>
+<span class="normal">515</span>
+<span class="normal">516</span>
+<span class="normal">517</span>
+<span class="normal">518</span>
+<span class="normal">519</span>
+<span class="normal">520</span>
+<span class="normal">521</span>
+<span class="normal">522</span>
+<span class="normal">523</span>
+<span class="normal">524</span>
+<span class="normal">525</span>
+<span class="normal">526</span>
+<span class="normal">527</span>
+<span class="normal">528</span>
+<span class="normal">529</span>
+<span class="normal">530</span>
+<span class="normal">531</span>
+<span class="normal">532</span>
+<span class="normal">533</span>
+<span class="normal">534</span>
+<span class="normal">535</span>
+<span class="normal">536</span>
+<span class="normal">537</span>
+<span class="normal">538</span>
+<span class="normal">539</span>
+<span class="normal">540</span>
+<span class="normal">541</span>
+<span class="normal">542</span>
+<span class="normal">543</span>
+<span class="normal">544</span>
+<span class="normal">545</span>
+<span class="normal">546</span>
+<span class="normal">547</span>
+<span class="normal">548</span>
+<span class="normal">549</span>
+<span class="normal">550</span>
+<span class="normal">551</span>
+<span class="normal">552</span>
+<span class="normal">553</span>
+<span class="normal">554</span>
+<span class="normal">555</span>
+<span class="normal">556</span>
+<span class="normal">557</span>
+<span class="normal">558</span>
+<span class="normal">559</span>
+<span class="normal">560</span>
+<span class="normal">561</span>
+<span class="normal">562</span>
+<span class="normal">563</span>
+<span class="normal">564</span>
+<span class="normal">565</span>
+<span class="normal">566</span>
+<span class="normal">567</span>
+<span class="normal">568</span>
+<span class="normal">569</span>
+<span class="normal">570</span>
+<span class="normal">571</span>
+<span class="normal">572</span>
+<span class="normal">573</span>
+<span class="normal">574</span>
+<span class="normal">575</span>
+<span class="normal">576</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">RuntimeLoader</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve, plan, materialize, and load runtimes for model references.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        resolver (ModelResolver | None): Optional resolver override.</span>
+<span class="sd">        selector (BackendSelector | None): Optional backend selector override.</span>
+<span class="sd">        backends (tuple[ExecutionBackend, ...] | None): Optional registered</span>
+<span class="sd">            backend implementations.</span>
+<span class="sd">        snapshot_downloader (Callable[[str, str, bool, str | None], None] | None):</span>
+<span class="sd">            Optional Hugging Face snapshot downloader override.</span>
+<span class="sd">        specialization_registry (SpecializationRegistry | None): Optional</span>
+<span class="sd">            specialization registry override.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span>
@@ -3359,17 +3826,48 @@
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_reference</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedModel</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve a model reference without planning or loading.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve a model reference without planning or loading.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            model_reference (str): User-facing model reference.</span>
+<span class="sd">            models_dir (Path): Local models root used for implicit path</span>
+<span class="sd">                resolution.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ResolvedModel: Normalized model metadata.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolver</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">model_reference</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">discover_local_models</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ResolvedModel</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Discover local materialized models under a models directory.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Discover local materialized models under a models directory.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            models_dir (Path): Local models root to inspect.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple[ResolvedModel, ...]: Resolved local model directories found</span>
+<span class="sd">            under the given root.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolver</span><span class="o">.</span><span class="n">discover_local_models</span><span class="p">(</span><span class="n">models_dir</span><span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">download</span><span class="p">(</span>
         <span class="bp">self</span><span class="p">,</span> <span class="n">model_reference</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">force_download</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Materialize a downloadable model reference locally and return its path.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Materialize a downloadable model reference locally.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            model_reference (str): User-facing model reference to materialize.</span>
+<span class="sd">            models_dir (Path): Local models root used for materialization.</span>
+<span class="sd">            force_download (bool): Whether to re-download even when a managed</span>
+<span class="sd">                directory already exists.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            Path: Local materialized model directory.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: Raised when the reference cannot be materialized or the</span>
+<span class="sd">                resulting managed directory is incomplete.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">resolved_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">model_reference</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">resolved_model</span><span class="o">.</span><span class="n">source_kind</span> <span class="ow">is</span> <span class="n">ModelSourceKind</span><span class="o">.</span><span class="n">LOCAL_PATH</span><span class="p">:</span>
             <span class="k">if</span> <span class="p">(</span>
@@ -3402,7 +3900,18 @@
         <span class="k">return</span> <span class="n">resolved_model</span><span class="o">.</span><span class="n">model_path</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">RuntimeConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LoadedRuntime</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate, plan, and load a runtime backend for execution.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Validate, plan, and load a runtime backend for execution.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            config (RuntimeConfig): Runtime configuration to execute.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            LoadedRuntime: Loaded backend runtime bundle ready for execution.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: Raised when planning, materialization, specialization, or</span>
+<span class="sd">                backend loading fails without a truthful fallback path.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">config</span><span class="o">.</span><span class="n">validate</span><span class="p">()</span>
         <span class="n">resolved_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span>
             <span class="n">config</span><span class="o">.</span><span class="n">model_reference</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">resolved_models_dir</span><span class="p">()</span>
@@ -3478,7 +3987,18 @@
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">plan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">RuntimeConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RuntimePlan</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build a runtime plan without loading a backend.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Build a runtime plan without loading a backend.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            config (RuntimeConfig): Runtime configuration to inspect.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            RuntimePlan: Planned backend, specialization, and strategy state.</span>
+
+<span class="sd">        Raises:</span>
+<span class="sd">            ValueError: Raised when the runtime configuration is invalid or no</span>
+<span class="sd">                truthful plan can be produced.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">config</span><span class="o">.</span><span class="n">validate</span><span class="p">()</span>
         <span class="n">resolved_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span>
             <span class="n">config</span><span class="o">.</span><span class="n">model_reference</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">resolved_models_dir</span><span class="p">()</span>
@@ -3731,12 +4251,101 @@
         <p>Resolve a model reference without planning or loading.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>model_reference</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>User-facing model reference.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>models_dir</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local models root used for implicit path
+resolution.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>ResolvedModel</code></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.resolver.ResolvedModel" href="../resolver/#ollm.runtime.resolver.ResolvedModel">ResolvedModel</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Normalized model metadata.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/runtime/loader.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_reference</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedModel</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a model reference without planning or loading.&quot;&quot;&quot;</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span>
+<span class="normal">189</span>
+<span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model_reference</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedModel</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a model reference without planning or loading.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        model_reference (str): User-facing model reference.</span>
+<span class="sd">        models_dir (Path): Local models root used for implicit path</span>
+<span class="sd">            resolution.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ResolvedModel: Normalized model metadata.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolver</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">model_reference</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -3762,12 +4371,92 @@
         <p>Discover local materialized models under a models directory.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>models_dir</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local models root to inspect.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.resolver.ResolvedModel" href="../resolver/#ollm.runtime.resolver.ResolvedModel">ResolvedModel</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>tuple[ResolvedModel, ...]: Resolved local model directories found</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code>...</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>under the given root.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/runtime/loader.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">discover_local_models</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ResolvedModel</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Discover local materialized models under a models directory.&quot;&quot;&quot;</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">discover_local_models</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ResolvedModel</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Discover local materialized models under a models directory.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        models_dir (Path): Local models root to inspect.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple[ResolvedModel, ...]: Resolved local model directories found</span>
+<span class="sd">        under the given root.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_resolver</span><span class="o">.</span><span class="n">discover_local_models</span><span class="p">(</span><span class="n">models_dir</span><span class="p">)</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -3792,48 +4481,187 @@
 
     <div class="doc doc-contents ">
 
-        <p>Materialize a downloadable model reference locally and return its path.</p>
+        <p>Materialize a downloadable model reference locally.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>model_reference</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>User-facing model reference to materialize.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>models_dir</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local models root used for materialization.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>force_download</code>
+            </td>
+            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Whether to re-download even when a managed
+directory already exists.</p>
+              </div>
+            </td>
+            <td>
+                  <code>False</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>Path</code></td>            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local materialized model directory.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Raised when the reference cannot be materialized or the
+resulting managed directory is incomplete.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/runtime/loader.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span>
-<span class="normal">164</span>
-<span class="normal">165</span>
-<span class="normal">166</span>
-<span class="normal">167</span>
-<span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span>
-<span class="normal">175</span>
-<span class="normal">176</span>
-<span class="normal">177</span>
-<span class="normal">178</span>
-<span class="normal">179</span>
-<span class="normal">180</span>
-<span class="normal">181</span>
-<span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span>
-<span class="normal">186</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">download</span><span class="p">(</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span>
+<span class="normal">251</span>
+<span class="normal">252</span>
+<span class="normal">253</span>
+<span class="normal">254</span>
+<span class="normal">255</span>
+<span class="normal">256</span>
+<span class="normal">257</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">download</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span> <span class="n">model_reference</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span> <span class="n">force_download</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Path</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Materialize a downloadable model reference locally and return its path.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Materialize a downloadable model reference locally.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        model_reference (str): User-facing model reference to materialize.</span>
+<span class="sd">        models_dir (Path): Local models root used for materialization.</span>
+<span class="sd">        force_download (bool): Whether to re-download even when a managed</span>
+<span class="sd">            directory already exists.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        Path: Local materialized model directory.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: Raised when the reference cannot be materialized or the</span>
+<span class="sd">            resulting managed directory is incomplete.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">resolved_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span><span class="n">model_reference</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">resolved_model</span><span class="o">.</span><span class="n">source_kind</span> <span class="ow">is</span> <span class="n">ModelSourceKind</span><span class="o">.</span><span class="n">LOCAL_PATH</span><span class="p">:</span>
         <span class="k">if</span> <span class="p">(</span>
@@ -3886,84 +4714,184 @@
         <p>Validate, plan, and load a runtime backend for execution.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>config</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.config.RuntimeConfig" href="../config/#ollm.runtime.config.RuntimeConfig">RuntimeConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Runtime configuration to execute.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>LoadedRuntime</code></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.loader.LoadedRuntime" href="#ollm.runtime.loader.LoadedRuntime">LoadedRuntime</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Loaded backend runtime bundle ready for execution.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Raised when planning, materialization, specialization, or
+backend loading fails without a truthful fallback path.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/runtime/loader.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">188</span>
-<span class="normal">189</span>
-<span class="normal">190</span>
-<span class="normal">191</span>
-<span class="normal">192</span>
-<span class="normal">193</span>
-<span class="normal">194</span>
-<span class="normal">195</span>
-<span class="normal">196</span>
-<span class="normal">197</span>
-<span class="normal">198</span>
-<span class="normal">199</span>
-<span class="normal">200</span>
-<span class="normal">201</span>
-<span class="normal">202</span>
-<span class="normal">203</span>
-<span class="normal">204</span>
-<span class="normal">205</span>
-<span class="normal">206</span>
-<span class="normal">207</span>
-<span class="normal">208</span>
-<span class="normal">209</span>
-<span class="normal">210</span>
-<span class="normal">211</span>
-<span class="normal">212</span>
-<span class="normal">213</span>
-<span class="normal">214</span>
-<span class="normal">215</span>
-<span class="normal">216</span>
-<span class="normal">217</span>
-<span class="normal">218</span>
-<span class="normal">219</span>
-<span class="normal">220</span>
-<span class="normal">221</span>
-<span class="normal">222</span>
-<span class="normal">223</span>
-<span class="normal">224</span>
-<span class="normal">225</span>
-<span class="normal">226</span>
-<span class="normal">227</span>
-<span class="normal">228</span>
-<span class="normal">229</span>
-<span class="normal">230</span>
-<span class="normal">231</span>
-<span class="normal">232</span>
-<span class="normal">233</span>
-<span class="normal">234</span>
-<span class="normal">235</span>
-<span class="normal">236</span>
-<span class="normal">237</span>
-<span class="normal">238</span>
-<span class="normal">239</span>
-<span class="normal">240</span>
-<span class="normal">241</span>
-<span class="normal">242</span>
-<span class="normal">243</span>
-<span class="normal">244</span>
-<span class="normal">245</span>
-<span class="normal">246</span>
-<span class="normal">247</span>
-<span class="normal">248</span>
-<span class="normal">249</span>
-<span class="normal">250</span>
-<span class="normal">251</span>
-<span class="normal">252</span>
-<span class="normal">253</span>
-<span class="normal">254</span>
-<span class="normal">255</span>
-<span class="normal">256</span>
-<span class="normal">257</span>
-<span class="normal">258</span>
-<span class="normal">259</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">259</span>
 <span class="normal">260</span>
 <span class="normal">261</span>
-<span class="normal">262</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">RuntimeConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LoadedRuntime</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate, plan, and load a runtime backend for execution.&quot;&quot;&quot;</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span>
+<span class="normal">322</span>
+<span class="normal">323</span>
+<span class="normal">324</span>
+<span class="normal">325</span>
+<span class="normal">326</span>
+<span class="normal">327</span>
+<span class="normal">328</span>
+<span class="normal">329</span>
+<span class="normal">330</span>
+<span class="normal">331</span>
+<span class="normal">332</span>
+<span class="normal">333</span>
+<span class="normal">334</span>
+<span class="normal">335</span>
+<span class="normal">336</span>
+<span class="normal">337</span>
+<span class="normal">338</span>
+<span class="normal">339</span>
+<span class="normal">340</span>
+<span class="normal">341</span>
+<span class="normal">342</span>
+<span class="normal">343</span>
+<span class="normal">344</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">load</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">RuntimeConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">LoadedRuntime</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Validate, plan, and load a runtime backend for execution.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config (RuntimeConfig): Runtime configuration to execute.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        LoadedRuntime: Loaded backend runtime bundle ready for execution.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: Raised when planning, materialization, specialization, or</span>
+<span class="sd">            backend loading fails without a truthful fallback path.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">config</span><span class="o">.</span><span class="n">validate</span><span class="p">()</span>
     <span class="n">resolved_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span>
         <span class="n">config</span><span class="o">.</span><span class="n">model_reference</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">resolved_models_dir</span><span class="p">()</span>
@@ -4059,57 +4987,157 @@
         <p>Build a runtime plan without loading a backend.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>config</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.config.RuntimeConfig" href="../config/#ollm.runtime.config.RuntimeConfig">RuntimeConfig</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Runtime configuration to inspect.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>RuntimePlan</code></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.plan.RuntimePlan" href="../plan/#ollm.runtime.plan.RuntimePlan">RuntimePlan</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Planned backend, specialization, and strategy state.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+<p><span class="doc-section-title">Raises:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><span title="ValueError">ValueError</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Raised when the runtime configuration is invalid or no
+truthful plan can be produced.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/runtime/loader.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">264</span>
-<span class="normal">265</span>
-<span class="normal">266</span>
-<span class="normal">267</span>
-<span class="normal">268</span>
-<span class="normal">269</span>
-<span class="normal">270</span>
-<span class="normal">271</span>
-<span class="normal">272</span>
-<span class="normal">273</span>
-<span class="normal">274</span>
-<span class="normal">275</span>
-<span class="normal">276</span>
-<span class="normal">277</span>
-<span class="normal">278</span>
-<span class="normal">279</span>
-<span class="normal">280</span>
-<span class="normal">281</span>
-<span class="normal">282</span>
-<span class="normal">283</span>
-<span class="normal">284</span>
-<span class="normal">285</span>
-<span class="normal">286</span>
-<span class="normal">287</span>
-<span class="normal">288</span>
-<span class="normal">289</span>
-<span class="normal">290</span>
-<span class="normal">291</span>
-<span class="normal">292</span>
-<span class="normal">293</span>
-<span class="normal">294</span>
-<span class="normal">295</span>
-<span class="normal">296</span>
-<span class="normal">297</span>
-<span class="normal">298</span>
-<span class="normal">299</span>
-<span class="normal">300</span>
-<span class="normal">301</span>
-<span class="normal">302</span>
-<span class="normal">303</span>
-<span class="normal">304</span>
-<span class="normal">305</span>
-<span class="normal">306</span>
-<span class="normal">307</span>
-<span class="normal">308</span>
-<span class="normal">309</span>
-<span class="normal">310</span>
-<span class="normal">311</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">plan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">RuntimeConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RuntimePlan</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a runtime plan without loading a backend.&quot;&quot;&quot;</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">346</span>
+<span class="normal">347</span>
+<span class="normal">348</span>
+<span class="normal">349</span>
+<span class="normal">350</span>
+<span class="normal">351</span>
+<span class="normal">352</span>
+<span class="normal">353</span>
+<span class="normal">354</span>
+<span class="normal">355</span>
+<span class="normal">356</span>
+<span class="normal">357</span>
+<span class="normal">358</span>
+<span class="normal">359</span>
+<span class="normal">360</span>
+<span class="normal">361</span>
+<span class="normal">362</span>
+<span class="normal">363</span>
+<span class="normal">364</span>
+<span class="normal">365</span>
+<span class="normal">366</span>
+<span class="normal">367</span>
+<span class="normal">368</span>
+<span class="normal">369</span>
+<span class="normal">370</span>
+<span class="normal">371</span>
+<span class="normal">372</span>
+<span class="normal">373</span>
+<span class="normal">374</span>
+<span class="normal">375</span>
+<span class="normal">376</span>
+<span class="normal">377</span>
+<span class="normal">378</span>
+<span class="normal">379</span>
+<span class="normal">380</span>
+<span class="normal">381</span>
+<span class="normal">382</span>
+<span class="normal">383</span>
+<span class="normal">384</span>
+<span class="normal">385</span>
+<span class="normal">386</span>
+<span class="normal">387</span>
+<span class="normal">388</span>
+<span class="normal">389</span>
+<span class="normal">390</span>
+<span class="normal">391</span>
+<span class="normal">392</span>
+<span class="normal">393</span>
+<span class="normal">394</span>
+<span class="normal">395</span>
+<span class="normal">396</span>
+<span class="normal">397</span>
+<span class="normal">398</span>
+<span class="normal">399</span>
+<span class="normal">400</span>
+<span class="normal">401</span>
+<span class="normal">402</span>
+<span class="normal">403</span>
+<span class="normal">404</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">plan</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">RuntimeConfig</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">RuntimePlan</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Build a runtime plan without loading a backend.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        config (RuntimeConfig): Runtime configuration to inspect.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        RuntimePlan: Planned backend, specialization, and strategy state.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: Raised when the runtime configuration is invalid or no</span>
+<span class="sd">            truthful plan can be produced.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">config</span><span class="o">.</span><span class="n">validate</span><span class="p">()</span>
     <span class="n">resolved_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">resolve</span><span class="p">(</span>
         <span class="n">config</span><span class="o">.</span><span class="n">model_reference</span><span class="p">,</span> <span class="n">config</span><span class="o">.</span><span class="n">resolved_models_dir</span><span class="p">()</span>
@@ -4225,6 +5253,10 @@
     
     
       <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
+      
+        <script src="../../javascripts/mermaid-init.js"></script>
       
     
   </body>

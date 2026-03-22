@@ -2137,6 +2137,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#docstring-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docstring format
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#forbidden-patterns" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2264,6 +2275,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#docstring-format" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Docstring format
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#forbidden-patterns" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2366,6 +2388,31 @@ runtime changes, and contributor-facing documentation.</p>
 <li>Keep imports at the top of the module.</li>
 <li>Use <code>|</code> unions instead of <code>Optional[...]</code> or <code>Union[...]</code>.</li>
 </ul>
+<h2 id="docstring-format">Docstring format<a class="headerlink" href="#docstring-format" title="Permanent link">&para;</a></h2>
+<p>Public modules, classes, and user-facing functions should use Google-style
+docstrings with explicit types inside the sections that MkDocs renders:</p>
+<div class="language-python highlight"><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span><span class="n">raw_reference</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedModel</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a user-facing model reference.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        raw_reference (str): User-supplied model reference such as an alias,</span>
+<span class="sd">            Hugging Face ID, or local path.</span>
+<span class="sd">        models_dir (Path): Local models root used for implicit path resolution.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ResolvedModel: Normalized model metadata used by planning and loading.</span>
+
+<span class="sd">    Raises:</span>
+<span class="sd">        ValueError: Raised when the input is structurally invalid for this API.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+</code></pre></div>
+<p>Keep docstrings concise, but do include:</p>
+<ul>
+<li><code>Args:</code> with names, types, and purpose.</li>
+<li><code>Returns:</code> with the concrete return type and meaning.</li>
+<li><code>Raises:</code> for user-visible validation or loading failures.</li>
+<li>Omit empty sections rather than adding placeholders.</li>
+</ul>
 <h2 id="forbidden-patterns">Forbidden patterns<a class="headerlink" href="#forbidden-patterns" title="Permanent link">&para;</a></h2>
 <ul>
 <li>No <code>Any</code>.</li>
@@ -2449,6 +2496,10 @@ just because it already exists.</p>
     
     
       <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
+      
+        <script src="../../javascripts/mermaid-init.js"></script>
       
     
   </body>

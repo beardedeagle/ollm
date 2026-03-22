@@ -2313,6 +2313,16 @@ summary under <code>.omx/logs/benchmark-history/</code>. If a prior run with the
 comparison key exists, the CLI appends a comparison summary and emits any
 obvious potential regressions on <code>stderr</code> without changing the JSON written to
 <code>stdout</code>.</p>
+<div class="mermaid">
+flowchart LR
+    A[benchmark_runtime.py] --> B[Runtime planning probes]
+    A --> C[Runtime execution probes]
+    B --> D[Raw JSON report]
+    C --> D
+    D --> E[History record]
+    E --> F[Comparison summary]
+</div>
+
 <p>History matching now includes an explicit <code>codebase_label</code> so fork and upstream
 baseline runs do not collide accidentally. By default, that label is derived
 from the normalized <code>origin</code> remote URL. Override it only when you need a
@@ -2447,53 +2457,57 @@ latency.</p>
 <p>These fields are only present when the selected runtime actually emits native
 stats. Generic Transformers-backed runs may report <code>null</code> here.</p>
 <p>For disk KV requests, <code>disk-kv-cache</code> now refers to the explicit strategy root
-under <code>cache_dir/kv_cache_chunked</code>,
-<code>cache_dir/kv_cache_paged</code>,
-<code>cache_dir/kv_cache_streamed_segmented</code>, or
-<code>cache_dir/kv_cache_tiered_write_back</code>, or
-<code>cache_dir/kv_cache_sliding_window_ring_buffer</code>, not to pickle-backed <code>.pt</code>
-layer artifacts. The request metrics report both <code>kv_cache_strategy</code> and
-<code>cache_state</code>, so benchmark comparisons can distinguish the selected backend
-and, for tier-aware strategies, the current hot/cold split. <code>cache_dir_size_mb</code>
-describes only the persisted on-disk portion of the cache, while <code>cache_state</code>
-surfaces persisted artifact counts, compaction counts, cold-store format,
-cold-tier representation, hot in-memory tokens, spill counts, and, for bounded
-window strategies, the active window size plus eviction totals.
-Within one loaded runtime, the cache layer can satisfy repeated requests from
+under these strategy-specific roots:</p>
+<ul>
+<li><code>cache_dir/kv_cache_chunked</code></li>
+<li><code>cache_dir/kv_cache_paged</code></li>
+<li><code>cache_dir/kv_cache_streamed_segmented</code></li>
+<li><code>cache_dir/kv_cache_tiered_write_back</code></li>
+<li><code>cache_dir/kv_cache_sliding_window_ring_buffer</code></li>
+</ul>
+<p>Those paths refer to explicit strategy roots, not to pickle-backed <code>.pt</code> layer
+artifacts.</p>
+<p>The request metrics report both <code>kv_cache_strategy</code> and <code>cache_state</code>, so
+benchmark comparisons can distinguish the selected backend and, for tier-aware
+strategies, the current hot/cold split. <code>cache_dir_size_mb</code> describes only the
+persisted on-disk portion of the cache, while <code>cache_state</code> surfaces persisted
+artifact counts, compaction counts, cold-store format, cold-tier
+representation, hot in-memory tokens, spill counts, and, for bounded-window
+strategies, the active window size plus eviction totals.</p>
+<p>Within one loaded runtime, the cache layer can satisfy repeated requests from
 an in-process resident KV snapshot instead of rereading the same persisted
 history from disk. In those cases, <code>kvload</code> may legitimately disappear even
-though disk KV is still the active strategy. The <code>streamed-segmented</code> store now
-also coalesces extents by segment file on readback, so fewer file-range reads
-can show up under the same <code>disk-kv-cache</code> storage path label.
-For <code>tiered-write-back</code>, the persisted cold tier now uses a journal-backed
-append store under <code>cache_dir/kv_cache_tiered_write_back/cold</code>, so the tiered
-spill path no longer depends on the chunked cold-store substrate.
-That current preset is still a bounded hot-tail plus cold journal strategy, not
-the future GPU/CPU/SSD multi-tier architecture.
-For <code>log-structured-journal</code>, compaction is visible both through
-<code>cache_state.compaction_count</code> and, when it occurs during a request, native
-runtime profile timing under <code>kvcompact</code>. <code>kvsave</code> now measures append-path
-write cost without double-counting compaction rewrite time; when compaction
-occurs, <code>kvcompact</code> reports that rewrite separately.
-For <code>paged</code>, benchmark output surfaces the explicit <code>paged-manifest</code>
-persistence format and <code>ollm-kv-paged</code> cold-store format. The persisted
-artifact count for this strategy means page-table entries, not raw blob files,
-so comparisons stay aligned to logical fixed-size movement units.
-For <code>quantized-cold-tier</code>, the persisted cold journal uses the explicit
-<code>int8-symmetric-per-tensor</code> representation and benchmark output surfaces that
-representation through <code>cache_state.cold_tier_representation</code>.
-For <code>sliding-window-ring-buffer</code>, benchmark output also surfaces
-<code>cache_state.window_max_tokens</code>, <code>cache_state.eviction_policy</code>,
-<code>cache_state.eviction_count</code>, and <code>cache_state.evicted_tokens</code> so bounded
-history runs are never confused with full-history runs. When you benchmark this
-mode, pass an explicit <code>--kv-cache-window-tokens</code> value so benchmark history
-does not compare unlike window sizes. Current local CPU and MPS proof keeps
-this mode in the explicit opt-in bucket rather than the selector-default
-bucket; it materially bounds persisted KV, but it is not a general perf win.
-For <code>resident</code>, benchmark output surfaces <code>cache_mode="resident-kv"</code> plus the
-resident layer/token/byte counters while leaving <code>cache_dir_size_mb</code> empty
-because there is no persisted KV root.
-CPU offload policy work can now be probed with:</p>
+though disk KV is still the active strategy. The <code>streamed-segmented</code> store also
+coalesces extents by segment file on readback, so fewer file-range reads can
+show up under the same <code>disk-kv-cache</code> storage path label.</p>
+<p>Strategy-specific interpretation notes:</p>
+<ul>
+<li><code>tiered-write-back</code> stores its persisted cold tier under
+  <code>cache_dir/kv_cache_tiered_write_back/cold</code> through a journal-backed append
+  store. This is still a bounded hot-tail plus cold-journal preset, not the
+  future GPU/CPU/SSD multi-tier architecture.</li>
+<li><code>log-structured-journal</code> exposes compaction through both
+  <code>cache_state.compaction_count</code> and runtime timing under <code>kvcompact</code>. <code>kvsave</code>
+  measures append-path write cost without double-counting compaction rewrite
+  time.</li>
+<li><code>paged</code> surfaces the explicit <code>paged-manifest</code> persistence format and
+  <code>ollm-kv-paged</code> cold-store format. Persisted artifact counts mean page-table
+  entries, not raw blob files.</li>
+<li><code>quantized-cold-tier</code> surfaces the explicit
+  <code>int8-symmetric-per-tensor</code> cold-tier representation through
+  <code>cache_state.cold_tier_representation</code>.</li>
+<li><code>sliding-window-ring-buffer</code> reports
+  <code>cache_state.window_max_tokens</code>, <code>cache_state.eviction_policy</code>,
+  <code>cache_state.eviction_count</code>, and <code>cache_state.evicted_tokens</code> so bounded
+  history runs are never confused with full-history runs. Pass an explicit
+  <code>--kv-cache-window-tokens</code> value so history comparisons do not mix unlike
+  window sizes. Current local CPU and MPS proof still keeps this mode in the
+  explicit opt-in bucket rather than the selector-default bucket.</li>
+<li><code>resident</code> reports <code>cache_mode="resident-kv"</code> plus resident
+  layer/token/byte counters while leaving <code>cache_dir_size_mb</code> empty because
+  there is no persisted KV root.</li>
+</ul>
+<p>CPU offload policy work can now be probed with:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--probe-runtime<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--probe-mode<span class="w"> </span>warm<span class="w"> </span><span class="se">\</span>
@@ -2608,6 +2622,10 @@ baseline attributable and reproducible.</p>
     
     
       <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
+      
+        <script src="../javascripts/mermaid-init.js"></script>
       
     
   </body>

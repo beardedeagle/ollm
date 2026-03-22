@@ -2307,31 +2307,31 @@
 <span class="p">)</span>
 <span class="n">text_streamer</span> <span class="o">=</span> <span class="n">TextStreamer</span><span class="p">(</span><span class="n">o</span><span class="o">.</span><span class="n">tokenizer</span><span class="p">,</span> <span class="n">skip_prompt</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">skip_special_tokens</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 </code></pre></div>
-<p><code>RuntimeConfig.kv_cache_strategy</code> now selects the KV cache baseline explicitly.
-<code>resident</code> keeps full-history KV in memory with no disk root, while <code>chunked</code>
-uses <code>cache_dir/kv_cache_chunked</code>,
-<code>paged</code> uses <code>cache_dir/kv_cache_paged</code>,
-<code>streamed-segmented</code> uses <code>cache_dir/kv_cache_streamed_segmented</code>,
-<code>log-structured-journal</code> uses <code>cache_dir/kv_cache_log_structured_journal</code>,
-<code>quantized-cold-tier</code> uses <code>cache_dir/kv_cache_quantized_cold_tier</code>,
-<code>sliding-window-ring-buffer</code> uses
-<code>cache_dir/kv_cache_sliding_window_ring_buffer</code>, and <code>tiered-write-back</code> uses
-<code>cache_dir/kv_cache_tiered_write_back</code> while keeping a bounded hot region in
-memory and a journal-backed cold tier on disk. The bounded
-<code>sliding-window-ring-buffer</code> mode keeps only the most recent
-<code>kv_cache_window_tokens</code> cached tokens and evicts older history, so it is a
-semantic recent-context mode rather than a transparent replacement for the
-full-history strategies. The <code>paged</code> preset uses fixed-capacity pages with an
-explicit page table while still preserving full history. All seven disk-backed presets use typed raw payloads plus explicit
-metadata instead of opaque torch cache blobs. The active runtime then applies a
-platform/resource-aware buffering or spill policy on top of the selected
-store.
-The low-level helper accepts the same switch directly through
-<code>offload_layers_to_cpu(layers_num=..., policy=...)</code>.</p>
+<p><code>RuntimeConfig.kv_cache_strategy</code> selects the KV cache baseline explicitly.</p>
+<ul>
+<li><code>resident</code> keeps full-history KV in memory with no disk root.</li>
+<li><code>chunked</code> uses <code>cache_dir/kv_cache_chunked</code>.</li>
+<li><code>paged</code> uses <code>cache_dir/kv_cache_paged</code> and preserves full history through an
+  explicit page table.</li>
+<li><code>streamed-segmented</code> uses <code>cache_dir/kv_cache_streamed_segmented</code>.</li>
+<li><code>log-structured-journal</code> uses <code>cache_dir/kv_cache_log_structured_journal</code>.</li>
+<li><code>quantized-cold-tier</code> uses <code>cache_dir/kv_cache_quantized_cold_tier</code>.</li>
+<li><code>sliding-window-ring-buffer</code> uses
+  <code>cache_dir/kv_cache_sliding_window_ring_buffer</code> and retains only the most
+  recent <code>kv_cache_window_tokens</code> cached tokens.</li>
+<li><code>tiered-write-back</code> uses <code>cache_dir/kv_cache_tiered_write_back</code> while keeping
+  a bounded hot region in memory and a journal-backed cold tier on disk.</li>
+</ul>
+<p>The bounded <code>sliding-window-ring-buffer</code> mode is a semantic recent-context mode,
+not a transparent replacement for the full-history strategies. All seven
+disk-backed presets use typed raw payloads plus explicit metadata instead of
+opaque torch cache blobs. The active runtime then applies a
+platform/resource-aware buffering or spill policy on top of the selected store.</p>
+<p>The low-level optimized-native helper exposes the same cache switch directly
+through <code>Inference.DiskCache(cache_strategy=...)</code>.</p>
 <p>Current supported CPU offload policies are <code>auto</code>, <code>prefix</code>, <code>suffix</code>, and
 <code>middle-band</code>. <code>auto</code> currently resolves to <code>middle-band</code>, and combined
-CPU+GPU offload is intentionally unsupported in this slice.
-<code>Inference.DiskCache(cache_strategy=...)</code>.</p>
+CPU+GPU offload is intentionally unsupported in this slice.</p>
 <p>For compatible local Llama or Gemma3 directories, <code>AutoInference</code> remains the direct optimized-native helper:</p>
 <div class="language-python highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">ollm</span><span class="w"> </span><span class="kn">import</span> <span class="n">AutoInference</span>
 
@@ -2400,6 +2400,10 @@ CPU+GPU offload is intentionally unsupported in this slice.
     
     
       <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
+      
+        <script src="../javascripts/mermaid-init.js"></script>
       
     
   </body>

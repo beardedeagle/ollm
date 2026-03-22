@@ -783,6 +783,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#request-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#openapi-surfaces" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -794,6 +805,18 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#route-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Route groups
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Route groups">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#openai-compatible-routes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -803,8 +826,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#native-ollm-routes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -812,6 +835,11 @@
       
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2264,6 +2292,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#request-flow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Request flow
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#openapi-surfaces" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2275,6 +2314,18 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#route-groups" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Route groups
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Route groups">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
   <a href="#openai-compatible-routes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2284,8 +2335,8 @@
   </a>
   
 </li>
-      
-        <li class="md-nav__item">
+        
+          <li class="md-nav__item">
   <a href="#native-ollm-routes" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -2293,6 +2344,11 @@
       
     </span>
   </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -2352,6 +2408,20 @@ same planning and execution stack used by the CLI.</p>
 ollm<span class="w"> </span>serve
 </code></pre></div>
 <p>The default bind is <code>127.0.0.1:8000</code>.</p>
+<h2 id="request-flow">Request flow<a class="headerlink" href="#request-flow" title="Permanent link">&para;</a></h2>
+<div class="mermaid">
+flowchart LR
+    A[HTTP client] --> B[FastAPI route]
+    B --> C[ApplicationService]
+    C --> D[RuntimeLoader plan/load]
+    D --> E[RuntimeExecutor]
+    B --> F[Session store]
+    B --> G[OpenAI response store]
+</div>
+
+<p>The server is deliberately thin. It reuses the same planning and execution
+stack as the CLI, then layers HTTP transport, session state, and optional
+Responses storage on top.</p>
 <h2 id="openapi-surfaces">OpenAPI surfaces<a class="headerlink" href="#openapi-surfaces" title="Permanent link">&para;</a></h2>
 <p>The local server publishes:</p>
 <ul>
@@ -2359,28 +2429,93 @@ ollm<span class="w"> </span>serve
 <li><code>/docs</code> for Swagger UI</li>
 <li><code>/redoc</code> for ReDoc</li>
 </ul>
-<h2 id="openai-compatible-routes">OpenAI-compatible routes<a class="headerlink" href="#openai-compatible-routes" title="Permanent link">&para;</a></h2>
-<ul>
-<li><code>GET /v1/models</code></li>
-<li><code>GET /v1/models/{model_id}</code></li>
-<li><code>POST /v1/chat/completions</code></li>
-<li><code>POST /v1/responses</code></li>
-<li><code>GET /v1/responses/{response_id}</code></li>
-<li><code>DELETE /v1/responses/{response_id}</code></li>
-</ul>
-<h2 id="native-ollm-routes">Native oLLM routes<a class="headerlink" href="#native-ollm-routes" title="Permanent link">&para;</a></h2>
-<ul>
-<li><code>GET /v1/health</code></li>
-<li><code>GET /v1/ollm/models</code></li>
-<li><code>GET /v1/ollm/models/{model_reference}</code></li>
-<li><code>POST /v1/plan</code></li>
-<li><code>POST /v1/prompt</code></li>
-<li><code>POST /v1/prompt/stream</code></li>
-<li><code>POST /v1/sessions</code></li>
-<li><code>GET /v1/sessions/{session_id}</code></li>
-<li><code>POST /v1/sessions/{session_id}/prompt</code></li>
-<li><code>POST /v1/sessions/{session_id}/prompt/stream</code></li>
-</ul>
+<h2 id="route-groups">Route groups<a class="headerlink" href="#route-groups" title="Permanent link">&para;</a></h2>
+<h3 id="openai-compatible-routes">OpenAI-compatible routes<a class="headerlink" href="#openai-compatible-routes" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /v1/models</code></td>
+<td>List model IDs in OpenAI-compatible shape.</td>
+</tr>
+<tr>
+<td><code>GET /v1/models/{model_id}</code></td>
+<td>Inspect one model in OpenAI-compatible shape.</td>
+</tr>
+<tr>
+<td><code>POST /v1/chat/completions</code></td>
+<td>Run text chat completions.</td>
+</tr>
+<tr>
+<td><code>POST /v1/responses</code></td>
+<td>Run the OpenAI-compatible Responses surface.</td>
+</tr>
+<tr>
+<td><code>GET /v1/responses/{response_id}</code></td>
+<td>Retrieve a stored response when response storage is enabled.</td>
+</tr>
+<tr>
+<td><code>DELETE /v1/responses/{response_id}</code></td>
+<td>Delete a stored response when response storage is enabled.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="native-ollm-routes">Native oLLM routes<a class="headerlink" href="#native-ollm-routes" title="Permanent link">&para;</a></h3>
+<table>
+<thead>
+<tr>
+<th>Route</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>GET /v1/health</code></td>
+<td>Basic service metadata and mode health.</td>
+</tr>
+<tr>
+<td><code>GET /v1/ollm/models</code></td>
+<td>Native model discovery and filtering.</td>
+</tr>
+<tr>
+<td><code>GET /v1/ollm/models/{model_reference}</code></td>
+<td>Native model inspection with runtime details.</td>
+</tr>
+<tr>
+<td><code>POST /v1/plan</code></td>
+<td>Runtime planning without prompt execution.</td>
+</tr>
+<tr>
+<td><code>POST /v1/prompt</code></td>
+<td>One-shot native prompt execution.</td>
+</tr>
+<tr>
+<td><code>POST /v1/prompt/stream</code></td>
+<td>Native SSE prompt streaming.</td>
+</tr>
+<tr>
+<td><code>POST /v1/sessions</code></td>
+<td>Create an in-memory session.</td>
+</tr>
+<tr>
+<td><code>GET /v1/sessions/{session_id}</code></td>
+<td>Inspect a session transcript.</td>
+</tr>
+<tr>
+<td><code>POST /v1/sessions/{session_id}/prompt</code></td>
+<td>Prompt within a session.</td>
+</tr>
+<tr>
+<td><code>POST /v1/sessions/{session_id}/prompt/stream</code></td>
+<td>Stream a session prompt.</td>
+</tr>
+</tbody>
+</table>
 <h2 id="behavior-notes">Behavior notes<a class="headerlink" href="#behavior-notes" title="Permanent link">&para;</a></h2>
 <ul>
 <li>The bind is local-only by default.</li>
@@ -2524,6 +2659,10 @@ want shared CLI and server defaults.</p>
     
     
       <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
+      
+        <script src="../../javascripts/mermaid-init.js"></script>
       
     
   </body>

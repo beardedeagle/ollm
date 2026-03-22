@@ -2525,6 +2525,167 @@ without loading model weights.</p>
         <p>Resolved model metadata used by planning, inspection, and loading.</p>
 
 
+<p><span class="doc-section-title">Attributes:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.runtime.resolver.ResolvedModel.reference">reference</span></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.reference.ModelReference" href="../reference/#ollm.runtime.reference.ModelReference">ModelReference</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Parsed user-facing model reference.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.runtime.resolver.ResolvedModel.source_kind">source_kind</span></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.resolver.ModelSourceKind" href="#ollm.runtime.resolver.ModelSourceKind">ModelSourceKind</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Where the model was resolved from.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.runtime.resolver.ResolvedModel.normalized_name">normalized_name</span></code></td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Stable display name used by planning and docs.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.runtime.resolver.ResolvedModel.model_path">model_path</span></code></td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local materialization path when one exists.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.runtime.resolver.ResolvedModel.repo_id">repo_id</span></code></td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Hugging Face repository identifier when
+materialization is supported.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.runtime.resolver.ResolvedModel.revision">revision</span></code></td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional requested revision.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.runtime.resolver.ResolvedModel.catalog_entry">catalog_entry</span></code></td>
+            <td>
+                  <code><span title="ollm.runtime.catalog.ModelCatalogEntry">ModelCatalogEntry</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Built-in catalog entry when
+one matched.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.runtime.resolver.ResolvedModel.capabilities">capabilities</span></code></td>
+            <td>
+                  <code><span title="ollm.runtime.capabilities.CapabilityProfile">CapabilityProfile</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Capability and support metadata.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.runtime.resolver.ResolvedModel.native_family">native_family</span></code></td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.resolver.NativeFamily" href="#ollm.runtime.resolver.NativeFamily">NativeFamily</a> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Matching optimized-native family
+when one exists.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.runtime.resolver.ResolvedModel.resolution_message">resolution_message</span></code></td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Human-readable resolution summary.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.runtime.resolver.ResolvedModel.architecture">architecture</span></code></td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Inspected architecture for local models.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.runtime.resolver.ResolvedModel.model_type">model_type</span></code></td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Inspected model type for local models.</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td><code><span title="ollm.runtime.resolver.ResolvedModel.generic_model_kind">generic_model_kind</span></code></td>
+            <td>
+                  <code><span title="ollm.runtime.capability_discovery.GenericModelKind">GenericModelKind</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Generic execution kind
+when one can be inferred.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
 
 
 
@@ -2553,9 +2714,54 @@ without loading model weights.</p>
 <span class="normal">57</span>
 <span class="normal">58</span>
 <span class="normal">59</span>
-<span class="normal">60</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="normal">60</span>
+<span class="normal">61</span>
+<span class="normal">62</span>
+<span class="normal">63</span>
+<span class="normal">64</span>
+<span class="normal">65</span>
+<span class="normal">66</span>
+<span class="normal">67</span>
+<span class="normal">68</span>
+<span class="normal">69</span>
+<span class="normal">70</span>
+<span class="normal">71</span>
+<span class="normal">72</span>
+<span class="normal">73</span>
+<span class="normal">74</span>
+<span class="normal">75</span>
+<span class="normal">76</span>
+<span class="normal">77</span>
+<span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">slots</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
 <span class="k">class</span><span class="w"> </span><span class="nc">ResolvedModel</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolved model metadata used by planning, inspection, and loading.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolved model metadata used by planning, inspection, and loading.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        reference (ModelReference): Parsed user-facing model reference.</span>
+<span class="sd">        source_kind (ModelSourceKind): Where the model was resolved from.</span>
+<span class="sd">        normalized_name (str): Stable display name used by planning and docs.</span>
+<span class="sd">        model_path (Path | None): Local materialization path when one exists.</span>
+<span class="sd">        repo_id (str | None): Hugging Face repository identifier when</span>
+<span class="sd">            materialization is supported.</span>
+<span class="sd">        revision (str | None): Optional requested revision.</span>
+<span class="sd">        catalog_entry (ModelCatalogEntry | None): Built-in catalog entry when</span>
+<span class="sd">            one matched.</span>
+<span class="sd">        capabilities (CapabilityProfile): Capability and support metadata.</span>
+<span class="sd">        native_family (NativeFamily | None): Matching optimized-native family</span>
+<span class="sd">            when one exists.</span>
+<span class="sd">        resolution_message (str): Human-readable resolution summary.</span>
+<span class="sd">        architecture (str | None): Inspected architecture for local models.</span>
+<span class="sd">        model_type (str | None): Inspected model type for local models.</span>
+<span class="sd">        generic_model_kind (GenericModelKind | None): Generic execution kind</span>
+<span class="sd">            when one can be inferred.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="n">reference</span><span class="p">:</span> <span class="n">ModelReference</span>
     <span class="n">source_kind</span><span class="p">:</span> <span class="n">ModelSourceKind</span>
@@ -2572,7 +2778,12 @@ without loading model weights.</p>
     <span class="n">generic_model_kind</span><span class="p">:</span> <span class="n">GenericModelKind</span> <span class="o">|</span> <span class="kc">None</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">is_downloadable</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return whether the resolved model can be materialized locally.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return whether the resolved model can be materialized locally.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            bool: ``True`` when both a repository ID and a local model path are</span>
+<span class="sd">            available.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">repo_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 </code></pre></div></td></tr></table></div>
               </details>
@@ -2606,12 +2817,55 @@ without loading model weights.</p>
         <p>Return whether the resolved model can be materialized locally.</p>
 
 
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>bool</code></td>            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p><code>True</code> when both a repository ID and a local model path are</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td></td>            <td>
+                  <code><span title="bool">bool</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>available.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/runtime/resolver.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">58</span>
-<span class="normal">59</span>
-<span class="normal">60</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">is_downloadable</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether the resolved model can be materialized locally.&quot;&quot;&quot;</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">78</span>
+<span class="normal">79</span>
+<span class="normal">80</span>
+<span class="normal">81</span>
+<span class="normal">82</span>
+<span class="normal">83</span>
+<span class="normal">84</span>
+<span class="normal">85</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">is_downloadable</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether the resolved model can be materialized locally.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        bool: ``True`` when both a repository ID and a local model path are</span>
+<span class="sd">        available.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">repo_id</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span>
 </code></pre></div></td></tr></table></div>
             </details>
@@ -2639,6 +2893,38 @@ without loading model weights.</p>
         <p>Resolve model references into built-in, local, or Hugging Face forms.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>capability_discovery</code>
+            </td>
+            <td>
+                  <code><span title="ollm.runtime.capability_discovery.CapabilityDiscovery">CapabilityDiscovery</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional capability
+discovery helper for inspecting local model directories.</p>
+              </div>
+            </td>
+            <td>
+                  <code>None</code>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
 
 
 
@@ -2647,32 +2933,7 @@ without loading model weights.</p>
 
               <details class="mkdocstrings-source">
                 <summary>Source code in <code>src/ollm/runtime/resolver.py</code></summary>
-                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 63</span>
-<span class="normal"> 64</span>
-<span class="normal"> 65</span>
-<span class="normal"> 66</span>
-<span class="normal"> 67</span>
-<span class="normal"> 68</span>
-<span class="normal"> 69</span>
-<span class="normal"> 70</span>
-<span class="normal"> 71</span>
-<span class="normal"> 72</span>
-<span class="normal"> 73</span>
-<span class="normal"> 74</span>
-<span class="normal"> 75</span>
-<span class="normal"> 76</span>
-<span class="normal"> 77</span>
-<span class="normal"> 78</span>
-<span class="normal"> 79</span>
-<span class="normal"> 80</span>
-<span class="normal"> 81</span>
-<span class="normal"> 82</span>
-<span class="normal"> 83</span>
-<span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
+                <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 88</span>
 <span class="normal"> 89</span>
 <span class="normal"> 90</span>
 <span class="normal"> 91</span>
@@ -2840,14 +3101,94 @@ without loading model weights.</p>
 <span class="normal">253</span>
 <span class="normal">254</span>
 <span class="normal">255</span>
-<span class="normal">256</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ModelResolver</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve model references into built-in, local, or Hugging Face forms.&quot;&quot;&quot;</span>
+<span class="normal">256</span>
+<span class="normal">257</span>
+<span class="normal">258</span>
+<span class="normal">259</span>
+<span class="normal">260</span>
+<span class="normal">261</span>
+<span class="normal">262</span>
+<span class="normal">263</span>
+<span class="normal">264</span>
+<span class="normal">265</span>
+<span class="normal">266</span>
+<span class="normal">267</span>
+<span class="normal">268</span>
+<span class="normal">269</span>
+<span class="normal">270</span>
+<span class="normal">271</span>
+<span class="normal">272</span>
+<span class="normal">273</span>
+<span class="normal">274</span>
+<span class="normal">275</span>
+<span class="normal">276</span>
+<span class="normal">277</span>
+<span class="normal">278</span>
+<span class="normal">279</span>
+<span class="normal">280</span>
+<span class="normal">281</span>
+<span class="normal">282</span>
+<span class="normal">283</span>
+<span class="normal">284</span>
+<span class="normal">285</span>
+<span class="normal">286</span>
+<span class="normal">287</span>
+<span class="normal">288</span>
+<span class="normal">289</span>
+<span class="normal">290</span>
+<span class="normal">291</span>
+<span class="normal">292</span>
+<span class="normal">293</span>
+<span class="normal">294</span>
+<span class="normal">295</span>
+<span class="normal">296</span>
+<span class="normal">297</span>
+<span class="normal">298</span>
+<span class="normal">299</span>
+<span class="normal">300</span>
+<span class="normal">301</span>
+<span class="normal">302</span>
+<span class="normal">303</span>
+<span class="normal">304</span>
+<span class="normal">305</span>
+<span class="normal">306</span>
+<span class="normal">307</span>
+<span class="normal">308</span>
+<span class="normal">309</span>
+<span class="normal">310</span>
+<span class="normal">311</span>
+<span class="normal">312</span>
+<span class="normal">313</span>
+<span class="normal">314</span>
+<span class="normal">315</span>
+<span class="normal">316</span>
+<span class="normal">317</span>
+<span class="normal">318</span>
+<span class="normal">319</span>
+<span class="normal">320</span>
+<span class="normal">321</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">ModelResolver</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve model references into built-in, local, or Hugging Face forms.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        capability_discovery (CapabilityDiscovery | None): Optional capability</span>
+<span class="sd">            discovery helper for inspecting local model directories.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
 
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">capability_discovery</span><span class="p">:</span> <span class="n">CapabilityDiscovery</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_capability_discovery</span> <span class="o">=</span> <span class="n">capability_discovery</span> <span class="ow">or</span> <span class="n">CapabilityDiscovery</span><span class="p">()</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_reference</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedModel</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve a raw model reference without loading model weights.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Resolve a raw model reference without loading model weights.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            raw_reference (str): User-facing model reference string.</span>
+<span class="sd">            models_dir (Path): Local models root used for implicit path</span>
+<span class="sd">                resolution.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ResolvedModel: Normalized model metadata used by planning and</span>
+<span class="sd">            loading.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">reference</span> <span class="o">=</span> <span class="n">ModelReference</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">raw_reference</span><span class="p">)</span>
         <span class="n">model_root</span> <span class="o">=</span> <span class="n">models_dir</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
 
@@ -2907,7 +3248,15 @@ without loading model weights.</p>
         <span class="p">)</span>
 
     <span class="k">def</span><span class="w"> </span><span class="nf">discover_local_models</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ResolvedModel</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Inspect local materialized model directories under a models root.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Inspect local materialized model directories under a models root.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            models_dir (Path): Local models root to scan.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            tuple[ResolvedModel, ...]: Resolved local model directories found</span>
+<span class="sd">            under the given root.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">model_root</span> <span class="o">=</span> <span class="n">models_dir</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
         <span class="k">if</span> <span class="ow">not</span> <span class="n">model_root</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">model_root</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
             <span class="k">return</span> <span class="p">()</span>
@@ -2929,7 +3278,24 @@ without loading model weights.</p>
         <span class="n">revision</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
         <span class="n">catalog_entry</span><span class="p">:</span> <span class="n">ModelCatalogEntry</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedModel</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Inspect a materialized local model directory and derive runtime capabilities.&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Inspect a materialized local model directory and derive capabilities.</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            reference (ModelReference): Parsed reference associated with the</span>
+<span class="sd">                local model path.</span>
+<span class="sd">            model_path (Path): Materialized model directory to inspect.</span>
+<span class="sd">            source_kind (ModelSourceKind): Source bucket for the materialized</span>
+<span class="sd">                model.</span>
+<span class="sd">            repo_id (str | None): Optional repository ID for materialized</span>
+<span class="sd">                managed models.</span>
+<span class="sd">            revision (str | None): Optional requested revision.</span>
+<span class="sd">            catalog_entry (ModelCatalogEntry | None): Matching built-in catalog</span>
+<span class="sd">                entry when one exists.</span>
+
+<span class="sd">        Returns:</span>
+<span class="sd">            ResolvedModel: Inspected model metadata with derived capabilities and</span>
+<span class="sd">            native-family information.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">inspection</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_capability_discovery</span><span class="o">.</span><span class="n">inspect_model_path</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
         <span class="n">capabilities</span> <span class="o">=</span> <span class="n">inspection</span><span class="o">.</span><span class="n">capabilities</span>
         <span class="k">if</span> <span class="n">catalog_entry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">source_kind</span> <span class="ow">in</span> <span class="p">{</span>
@@ -3068,39 +3434,90 @@ without loading model weights.</p>
         <p>Resolve a raw model reference without loading model weights.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>raw_reference</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>User-facing model reference string.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>models_dir</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local models root used for implicit path
+resolution.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>ResolvedModel</code></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.resolver.ResolvedModel" href="#ollm.runtime.resolver.ResolvedModel">ResolvedModel</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Normalized model metadata used by planning and</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.resolver.ResolvedModel" href="#ollm.runtime.resolver.ResolvedModel">ResolvedModel</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>loading.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/runtime/resolver.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 69</span>
-<span class="normal"> 70</span>
-<span class="normal"> 71</span>
-<span class="normal"> 72</span>
-<span class="normal"> 73</span>
-<span class="normal"> 74</span>
-<span class="normal"> 75</span>
-<span class="normal"> 76</span>
-<span class="normal"> 77</span>
-<span class="normal"> 78</span>
-<span class="normal"> 79</span>
-<span class="normal"> 80</span>
-<span class="normal"> 81</span>
-<span class="normal"> 82</span>
-<span class="normal"> 83</span>
-<span class="normal"> 84</span>
-<span class="normal"> 85</span>
-<span class="normal"> 86</span>
-<span class="normal"> 87</span>
-<span class="normal"> 88</span>
-<span class="normal"> 89</span>
-<span class="normal"> 90</span>
-<span class="normal"> 91</span>
-<span class="normal"> 92</span>
-<span class="normal"> 93</span>
-<span class="normal"> 94</span>
-<span class="normal"> 95</span>
-<span class="normal"> 96</span>
-<span class="normal"> 97</span>
-<span class="normal"> 98</span>
-<span class="normal"> 99</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal"> 99</span>
 <span class="normal">100</span>
 <span class="normal">101</span>
 <span class="normal">102</span>
@@ -3128,8 +3545,58 @@ without loading model weights.</p>
 <span class="normal">124</span>
 <span class="normal">125</span>
 <span class="normal">126</span>
-<span class="normal">127</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_reference</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedModel</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a raw model reference without loading model weights.&quot;&quot;&quot;</span>
+<span class="normal">127</span>
+<span class="normal">128</span>
+<span class="normal">129</span>
+<span class="normal">130</span>
+<span class="normal">131</span>
+<span class="normal">132</span>
+<span class="normal">133</span>
+<span class="normal">134</span>
+<span class="normal">135</span>
+<span class="normal">136</span>
+<span class="normal">137</span>
+<span class="normal">138</span>
+<span class="normal">139</span>
+<span class="normal">140</span>
+<span class="normal">141</span>
+<span class="normal">142</span>
+<span class="normal">143</span>
+<span class="normal">144</span>
+<span class="normal">145</span>
+<span class="normal">146</span>
+<span class="normal">147</span>
+<span class="normal">148</span>
+<span class="normal">149</span>
+<span class="normal">150</span>
+<span class="normal">151</span>
+<span class="normal">152</span>
+<span class="normal">153</span>
+<span class="normal">154</span>
+<span class="normal">155</span>
+<span class="normal">156</span>
+<span class="normal">157</span>
+<span class="normal">158</span>
+<span class="normal">159</span>
+<span class="normal">160</span>
+<span class="normal">161</span>
+<span class="normal">162</span>
+<span class="normal">163</span>
+<span class="normal">164</span>
+<span class="normal">165</span>
+<span class="normal">166</span>
+<span class="normal">167</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">resolve</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">raw_reference</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedModel</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Resolve a raw model reference without loading model weights.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        raw_reference (str): User-facing model reference string.</span>
+<span class="sd">        models_dir (Path): Local models root used for implicit path</span>
+<span class="sd">            resolution.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ResolvedModel: Normalized model metadata used by planning and</span>
+<span class="sd">        loading.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">reference</span> <span class="o">=</span> <span class="n">ModelReference</span><span class="o">.</span><span class="n">parse</span><span class="p">(</span><span class="n">raw_reference</span><span class="p">)</span>
     <span class="n">model_root</span> <span class="o">=</span> <span class="n">models_dir</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
 
@@ -3211,21 +3678,101 @@ without loading model weights.</p>
         <p>Inspect local materialized model directories under a models root.</p>
 
 
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>models_dir</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Local models root to scan.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.resolver.ResolvedModel" href="#ollm.runtime.resolver.ResolvedModel">ResolvedModel</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>tuple[ResolvedModel, ...]: Resolved local model directories found</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                  <code>...</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>under the given root.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/runtime/resolver.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">129</span>
-<span class="normal">130</span>
-<span class="normal">131</span>
-<span class="normal">132</span>
-<span class="normal">133</span>
-<span class="normal">134</span>
-<span class="normal">135</span>
-<span class="normal">136</span>
-<span class="normal">137</span>
-<span class="normal">138</span>
-<span class="normal">139</span>
-<span class="normal">140</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">discover_local_models</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ResolvedModel</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Inspect local materialized model directories under a models root.&quot;&quot;&quot;</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">169</span>
+<span class="normal">170</span>
+<span class="normal">171</span>
+<span class="normal">172</span>
+<span class="normal">173</span>
+<span class="normal">174</span>
+<span class="normal">175</span>
+<span class="normal">176</span>
+<span class="normal">177</span>
+<span class="normal">178</span>
+<span class="normal">179</span>
+<span class="normal">180</span>
+<span class="normal">181</span>
+<span class="normal">182</span>
+<span class="normal">183</span>
+<span class="normal">184</span>
+<span class="normal">185</span>
+<span class="normal">186</span>
+<span class="normal">187</span>
+<span class="normal">188</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">discover_local_models</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">models_dir</span><span class="p">:</span> <span class="n">Path</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">ResolvedModel</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Inspect local materialized model directories under a models root.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        models_dir (Path): Local models root to scan.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        tuple[ResolvedModel, ...]: Resolved local model directories found</span>
+<span class="sd">        under the given root.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">model_root</span> <span class="o">=</span> <span class="n">models_dir</span><span class="o">.</span><span class="n">expanduser</span><span class="p">()</span><span class="o">.</span><span class="n">resolve</span><span class="p">()</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">model_root</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">or</span> <span class="ow">not</span> <span class="n">model_root</span><span class="o">.</span><span class="n">is_dir</span><span class="p">():</span>
         <span class="k">return</span> <span class="p">()</span>
@@ -3263,55 +3810,220 @@ without loading model weights.</p>
 
     <div class="doc doc-contents ">
 
-        <p>Inspect a materialized local model directory and derive runtime capabilities.</p>
+        <p>Inspect a materialized local model directory and derive capabilities.</p>
+
+
+<p><span class="doc-section-title">Parameters:</span></p>
+    <table>
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Description</th>
+          <th>Default</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+            <td>
+                <code>reference</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.reference.ModelReference" href="../reference/#ollm.runtime.reference.ModelReference">ModelReference</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Parsed reference associated with the
+local model path.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>model_path</code>
+            </td>
+            <td>
+                  <code><span title="pathlib.Path">Path</span></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Materialized model directory to inspect.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>source_kind</code>
+            </td>
+            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.resolver.ModelSourceKind" href="#ollm.runtime.resolver.ModelSourceKind">ModelSourceKind</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Source bucket for the materialized
+model.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>repo_id</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional repository ID for materialized
+managed models.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>revision</code>
+            </td>
+            <td>
+                  <code><span title="str">str</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Optional requested revision.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+            <td>
+                <code>catalog_entry</code>
+            </td>
+            <td>
+                  <code><span title="ollm.runtime.catalog.ModelCatalogEntry">ModelCatalogEntry</span> | None</code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Matching built-in catalog
+entry when one exists.</p>
+              </div>
+            </td>
+            <td>
+                <em>required</em>
+            </td>
+          </tr>
+      </tbody>
+    </table>
+
+
+    <p><span class="doc-section-title">Returns:</span></p>
+    <table>
+      <thead>
+        <tr>
+<th>Name</th>          <th>Type</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+          <tr class="doc-section-item">
+<td><code>ResolvedModel</code></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.resolver.ResolvedModel" href="#ollm.runtime.resolver.ResolvedModel">ResolvedModel</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>Inspected model metadata with derived capabilities and</p>
+              </div>
+            </td>
+          </tr>
+          <tr class="doc-section-item">
+<td></td>            <td>
+                  <code><a class="autorefs autorefs-internal" title="ollm.runtime.resolver.ResolvedModel" href="#ollm.runtime.resolver.ResolvedModel">ResolvedModel</a></code>
+            </td>
+            <td>
+              <div class="doc-md-description">
+                <p>native-family information.</p>
+              </div>
+            </td>
+          </tr>
+      </tbody>
+    </table>
 
 
             <details class="mkdocstrings-source">
               <summary>Source code in <code>src/ollm/runtime/resolver.py</code></summary>
-              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">142</span>
-<span class="normal">143</span>
-<span class="normal">144</span>
-<span class="normal">145</span>
-<span class="normal">146</span>
-<span class="normal">147</span>
-<span class="normal">148</span>
-<span class="normal">149</span>
-<span class="normal">150</span>
-<span class="normal">151</span>
-<span class="normal">152</span>
-<span class="normal">153</span>
-<span class="normal">154</span>
-<span class="normal">155</span>
-<span class="normal">156</span>
-<span class="normal">157</span>
-<span class="normal">158</span>
-<span class="normal">159</span>
-<span class="normal">160</span>
-<span class="normal">161</span>
-<span class="normal">162</span>
-<span class="normal">163</span>
-<span class="normal">164</span>
-<span class="normal">165</span>
-<span class="normal">166</span>
-<span class="normal">167</span>
-<span class="normal">168</span>
-<span class="normal">169</span>
-<span class="normal">170</span>
-<span class="normal">171</span>
-<span class="normal">172</span>
-<span class="normal">173</span>
-<span class="normal">174</span>
-<span class="normal">175</span>
-<span class="normal">176</span>
-<span class="normal">177</span>
-<span class="normal">178</span>
-<span class="normal">179</span>
-<span class="normal">180</span>
-<span class="normal">181</span>
-<span class="normal">182</span>
-<span class="normal">183</span>
-<span class="normal">184</span>
-<span class="normal">185</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">inspect_materialized_model</span><span class="p">(</span>
+              <div class="language-python highlight"><table class="highlighttable"><tr><td class="linenos"><div class="linenodiv"><pre><span></span><span class="normal">190</span>
+<span class="normal">191</span>
+<span class="normal">192</span>
+<span class="normal">193</span>
+<span class="normal">194</span>
+<span class="normal">195</span>
+<span class="normal">196</span>
+<span class="normal">197</span>
+<span class="normal">198</span>
+<span class="normal">199</span>
+<span class="normal">200</span>
+<span class="normal">201</span>
+<span class="normal">202</span>
+<span class="normal">203</span>
+<span class="normal">204</span>
+<span class="normal">205</span>
+<span class="normal">206</span>
+<span class="normal">207</span>
+<span class="normal">208</span>
+<span class="normal">209</span>
+<span class="normal">210</span>
+<span class="normal">211</span>
+<span class="normal">212</span>
+<span class="normal">213</span>
+<span class="normal">214</span>
+<span class="normal">215</span>
+<span class="normal">216</span>
+<span class="normal">217</span>
+<span class="normal">218</span>
+<span class="normal">219</span>
+<span class="normal">220</span>
+<span class="normal">221</span>
+<span class="normal">222</span>
+<span class="normal">223</span>
+<span class="normal">224</span>
+<span class="normal">225</span>
+<span class="normal">226</span>
+<span class="normal">227</span>
+<span class="normal">228</span>
+<span class="normal">229</span>
+<span class="normal">230</span>
+<span class="normal">231</span>
+<span class="normal">232</span>
+<span class="normal">233</span>
+<span class="normal">234</span>
+<span class="normal">235</span>
+<span class="normal">236</span>
+<span class="normal">237</span>
+<span class="normal">238</span>
+<span class="normal">239</span>
+<span class="normal">240</span>
+<span class="normal">241</span>
+<span class="normal">242</span>
+<span class="normal">243</span>
+<span class="normal">244</span>
+<span class="normal">245</span>
+<span class="normal">246</span>
+<span class="normal">247</span>
+<span class="normal">248</span>
+<span class="normal">249</span>
+<span class="normal">250</span></pre></div></td><td class="code"><div><pre><span></span><code><span class="k">def</span><span class="w"> </span><span class="nf">inspect_materialized_model</span><span class="p">(</span>
     <span class="bp">self</span><span class="p">,</span>
     <span class="n">reference</span><span class="p">:</span> <span class="n">ModelReference</span><span class="p">,</span>
     <span class="n">model_path</span><span class="p">:</span> <span class="n">Path</span><span class="p">,</span>
@@ -3321,7 +4033,24 @@ without loading model weights.</p>
     <span class="n">revision</span><span class="p">:</span> <span class="nb">str</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
     <span class="n">catalog_entry</span><span class="p">:</span> <span class="n">ModelCatalogEntry</span> <span class="o">|</span> <span class="kc">None</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResolvedModel</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;Inspect a materialized local model directory and derive runtime capabilities.&quot;&quot;&quot;</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Inspect a materialized local model directory and derive capabilities.</span>
+
+<span class="sd">    Args:</span>
+<span class="sd">        reference (ModelReference): Parsed reference associated with the</span>
+<span class="sd">            local model path.</span>
+<span class="sd">        model_path (Path): Materialized model directory to inspect.</span>
+<span class="sd">        source_kind (ModelSourceKind): Source bucket for the materialized</span>
+<span class="sd">            model.</span>
+<span class="sd">        repo_id (str | None): Optional repository ID for materialized</span>
+<span class="sd">            managed models.</span>
+<span class="sd">        revision (str | None): Optional requested revision.</span>
+<span class="sd">        catalog_entry (ModelCatalogEntry | None): Matching built-in catalog</span>
+<span class="sd">            entry when one exists.</span>
+
+<span class="sd">    Returns:</span>
+<span class="sd">        ResolvedModel: Inspected model metadata with derived capabilities and</span>
+<span class="sd">        native-family information.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">inspection</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_capability_discovery</span><span class="o">.</span><span class="n">inspect_model_path</span><span class="p">(</span><span class="n">model_path</span><span class="p">)</span>
     <span class="n">capabilities</span> <span class="o">=</span> <span class="n">inspection</span><span class="o">.</span><span class="n">capabilities</span>
     <span class="k">if</span> <span class="n">catalog_entry</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">source_kind</span> <span class="ow">in</span> <span class="p">{</span>
@@ -3424,6 +4153,10 @@ without loading model weights.</p>
     
     
       <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+        <script src="https://unpkg.com/mermaid@10/dist/mermaid.min.js"></script>
+      
+        <script src="../../javascripts/mermaid-init.js"></script>
       
     
   </body>
