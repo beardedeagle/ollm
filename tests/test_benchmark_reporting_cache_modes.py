@@ -2,9 +2,9 @@ import json
 from dataclasses import replace
 from typing import cast
 
-from ollm.runtime.benchmark_details import summarize_request_metrics
-from ollm.runtime.benchmark_probes import RuntimeProbeResult
-from ollm.runtime.benchmarks import render_runtime_probe_json
+from ollm.runtime.benchmark import render_runtime_probe_json
+from ollm.runtime.benchmark.details import summarize_request_metrics
+from ollm.runtime.benchmark.probes import RuntimeProbeResult
 from tests.benchmark_support import (
     build_request_probe_metrics,
     build_stage_resources,

@@ -5,14 +5,14 @@ from typing import cast
 
 from ollm.app.types import ContentPart, Message, MessageRole
 from ollm.client import RuntimeClient
-from ollm.runtime.benchmark_probe_execution import (
+from ollm.runtime.benchmark.probe_execution import (
     _clear_backend_stats,
     build_prompt_request,
     build_scaling_prompt,
     execute_request_probe,
 )
-from ollm.runtime.benchmark_probe_reopen import run_reopen_session_growth_probe
-from ollm.runtime.benchmark_probe_serialization import (
+from ollm.runtime.benchmark.probe_reopen import run_reopen_session_growth_probe
+from ollm.runtime.benchmark.probe_serialization import (
     parse_output_scaling_probe_result,
     parse_prompt_scaling_probe_result,
     parse_reopen_session_growth_probe_result,
@@ -26,7 +26,7 @@ from ollm.runtime.benchmark_probe_serialization import (
     render_session_growth_probe_json,
     render_warm_runtime_probe_json,
 )
-from ollm.runtime.benchmark_probe_types import (
+from ollm.runtime.benchmark.probe_types import (
     EventTimingSummary,
     NativeRuntimeProfile,
     OutputScalingCase,
@@ -42,7 +42,7 @@ from ollm.runtime.benchmark_probe_types import (
     SessionGrowthTurn,
     WarmRuntimeProbeResult,
 )
-from ollm.runtime.benchmark_resources import measure_stage
+from ollm.runtime.benchmark.resources import measure_stage
 from ollm.runtime.config import DEFAULT_SYSTEM_PROMPT, GenerationConfig, RuntimeConfig
 from ollm.runtime.loader import LoadedRuntime
 from ollm.runtime.strategy_selector import DEFAULT_STRATEGY_SELECTOR_PROFILE

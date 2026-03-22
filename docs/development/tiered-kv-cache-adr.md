@@ -71,13 +71,13 @@ KV across GPU, CPU, and SSD.
 
 The current code makes that limitation concrete:
 
-- `src/ollm/kvcache.py`
+- `src/ollm/kv_cache/__init__.py`
   still exposes one active cache object per request path and treats the current
   persisted store as a single selected backend.
-- `src/ollm/kv_cache_policy.py`
+- `src/ollm/kv_cache/policy.py`
   selects flush and spill thresholds, but not a general promotion pipeline
   across multiple authoritative residency tiers.
-- `src/ollm/kv_cache_state.py`
+- `src/ollm/kv_cache/state.py`
   can report resident, hot, and persisted state, but it does not yet distinguish
   accelerator-tier pages from CPU-tier pages.
 
@@ -323,8 +323,8 @@ The current benchmark/reporting surfaces already understand:
 
 Relevant current surfaces:
 
-- `src/ollm/runtime/benchmark_details.py`
-- `src/ollm/runtime/benchmark_history_summary_support.py`
+- `src/ollm/runtime/benchmark/details.py`
+- `src/ollm/runtime/benchmark/history_summary_support.py`
 - `docs/benchmarking.md`
 
 The future tiered architecture should add explicit tier-aware observability:

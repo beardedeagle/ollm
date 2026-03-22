@@ -2,8 +2,8 @@ from pathlib import Path
 
 import torch
 
-from ollm.kv_cache_policy import KVCachePolicy
-from ollm.kvcache import KVCache
+from ollm.kv_cache import KVCache
+from ollm.kv_cache.policy import KVCachePolicy
 
 
 def _immediate_flush_policy() -> KVCachePolicy:

@@ -6,7 +6,7 @@ from dataclasses import asdict, dataclass
 from enum import StrEnum
 from pathlib import Path
 
-from ollm.kv_cache_strategy import (
+from ollm.kv_cache.strategy import (
     DEFAULT_KV_CACHE_STRATEGY,
     normalize_kv_cache_strategy,
 )

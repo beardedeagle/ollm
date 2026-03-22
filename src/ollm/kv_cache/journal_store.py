@@ -12,14 +12,14 @@ from ollm.async_io import (
     path_mkdir,
     path_read_bytes_range,
 )
-from ollm.kv_cache_journal_manifest import (
+from ollm.kv_cache.journal_manifest import (
     DEFAULT_JOURNAL_COMPACTION_ENTRY_THRESHOLD,
     JOURNAL_FILE_NAME,
     KVJournalEntryMetadata,
     KVJournalLayerManifest,
     validate_journal_layer_manifest,
 )
-from ollm.kv_cache_store_common import (
+from ollm.kv_cache.store_common import (
     CACHE_SCHEMA_VERSION,
     PERSISTED_DEVICE,
     SEQUENCE_AXIS,

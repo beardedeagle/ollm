@@ -2,13 +2,13 @@
 
 import statistics
 
-from ollm.runtime.benchmark_probe_types import NativeRuntimeProfile
-from ollm.runtime.benchmark_probes import RequestProbeMetrics, RuntimeProbeResult
-from ollm.runtime.benchmark_resources import (
+from ollm.runtime.benchmark.probe_types import NativeRuntimeProfile
+from ollm.runtime.benchmark.probes import RequestProbeMetrics, RuntimeProbeResult
+from ollm.runtime.benchmark.resources import (
     StageResourceSnapshot,
     summarize_optional_numeric_values,
 )
-from ollm.runtime.benchmark_types import (
+from ollm.runtime.benchmark.types import (
     BenchmarkMeasurement,
     CommandBenchmarkSpec,
 )
@@ -37,7 +37,7 @@ def build_cold_probe_details(
 def summarize_request_metrics(samples: list[RequestProbeMetrics]) -> dict[str, object]:
     """Summarize request-level runtime probe metrics."""
 
-    from ollm.runtime.benchmark_offload_summary import summarize_request_offload
+    from ollm.runtime.benchmark.offload_summary import summarize_request_offload
 
     return {
         "latency_ms": {

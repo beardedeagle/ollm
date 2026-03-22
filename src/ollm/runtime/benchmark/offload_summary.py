@@ -1,10 +1,10 @@
 """Offload-specific benchmark summary helpers."""
 
-from ollm.runtime.benchmark_probe_types import RequestProbeMetrics
+from ollm.runtime.benchmark.probe_types import RequestProbeMetrics
 
 
 def summarize_request_offload(samples: list[RequestProbeMetrics]) -> dict[str, object]:
-    from ollm.runtime.benchmark_details import (
+    from ollm.runtime.benchmark.details import (
         optional_summary_dict,
         single_optional_string,
     )

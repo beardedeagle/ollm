@@ -1,6 +1,8 @@
 .DS_Store
 temp
 kv_cache
+!src/ollm/kv_cache/
+!src/ollm/kv_cache/**
 gds_export
 gds_export*
 models

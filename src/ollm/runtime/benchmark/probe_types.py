@@ -2,9 +2,9 @@
 
 from dataclasses import asdict, dataclass
 
-from ollm.kv_cache_matrix import KVCacheAdaptationSurface
-from ollm.kv_cache_state import KVCacheStateSnapshot
-from ollm.runtime.benchmark_resources import StageResourceSnapshot
+from ollm.kv_cache.matrix import KVCacheAdaptationSurface
+from ollm.kv_cache.state import KVCacheStateSnapshot
+from ollm.runtime.benchmark.resources import StageResourceSnapshot
 
 
 @dataclass(frozen=True, slots=True)

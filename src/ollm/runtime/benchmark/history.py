@@ -5,12 +5,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from ollm.async_io import path_append_text, path_mkdir, path_write_text
-from ollm.runtime.benchmark_history_summary import (
+from ollm.runtime.benchmark.history_summary import (
     compare_metric_summaries,
     require_object,
     summarize_benchmark_payload,
 )
-from ollm.runtime.benchmark_metadata import (
+from ollm.runtime.benchmark.metadata import (
     build_git_summary,
     build_history_codebase_summary,
     build_history_host_summary,

@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 import torch
 
-from ollm.kv_cache_quantized_store import QuantizedJournaledKVStore
+from ollm.kv_cache.quantized_store import QuantizedJournaledKVStore
 
 
 def _chunk_tensor(token_count: int, offset: float = 0.0) -> torch.Tensor:

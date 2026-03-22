@@ -3,15 +3,15 @@
 from pathlib import Path
 
 from ollm.client import RuntimeClient
-from ollm.runtime.benchmark_commands import measure_runtime_probe
-from ollm.runtime.benchmark_details import backend_pair_payload
-from ollm.runtime.benchmark_probe_measurements import (
+from ollm.runtime.benchmark.commands import measure_runtime_probe
+from ollm.runtime.benchmark.details import backend_pair_payload
+from ollm.runtime.benchmark.probe_measurements import (
     measure_output_scaling_probe,
     measure_prompt_scaling_probe,
     measure_session_growth_probe,
     measure_warm_runtime_probe,
 )
-from ollm.runtime.benchmark_types import (
+from ollm.runtime.benchmark.types import (
     DEFAULT_OUTPUT_TOKEN_TARGETS,
     DEFAULT_PROMPT_TOKEN_TARGETS,
     DEFAULT_SESSION_MAX_NEW_TOKENS,

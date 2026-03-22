@@ -8,8 +8,8 @@ from typing import Protocol
 
 import torch
 
-from ollm.kv_cache_strategy import normalize_kv_cache_strategy
-from ollm.resident_kv_cache import ResidentKVCache
+from ollm.kv_cache.resident import ResidentKVCache
+from ollm.kv_cache.strategy import normalize_kv_cache_strategy
 from ollm.runtime.resolver import NativeFamily, ResolvedModel
 from ollm.runtime.specialization.base import (
     SpecializationMatch,

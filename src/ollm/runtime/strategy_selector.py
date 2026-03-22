@@ -9,7 +9,7 @@ from typing import Protocol
 import psutil
 import torch
 
-from ollm.kv_cache_strategy import normalize_kv_cache_strategy
+from ollm.kv_cache.strategy import normalize_kv_cache_strategy
 from ollm.runtime.catalog import ModelModality
 from ollm.runtime.resolver import ResolvedModel
 

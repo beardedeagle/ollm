@@ -9,7 +9,7 @@ from pathlib import Path
 import torch
 
 from ollm.async_io import subprocess_popen_process
-from ollm.runtime.benchmark_process_memory import current_process_memory_snapshot
+from ollm.runtime.benchmark.process_memory import current_process_memory_snapshot
 
 
 @dataclass(frozen=True, slots=True)

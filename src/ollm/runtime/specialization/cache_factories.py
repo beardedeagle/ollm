@@ -4,10 +4,10 @@ from typing import Protocol, cast
 
 import torch
 
-from ollm.kv_cache_strategy import normalize_kv_cache_strategy
-from ollm.kvcache import KVCache
+from ollm.kv_cache import KVCache
+from ollm.kv_cache.resident import ResidentKVCache
+from ollm.kv_cache.strategy import normalize_kv_cache_strategy
 from ollm.qwen3_next_resident_cache import Qwen3NextResidentCache
-from ollm.resident_kv_cache import ResidentKVCache
 from ollm.runtime.config import RuntimeConfig
 from ollm.utils import Stats
 

@@ -1,4 +1,4 @@
-from ollm.runtime.benchmark_metadata import probe_comparison_key, report_comparison_key
+from ollm.runtime.benchmark.metadata import probe_comparison_key, report_comparison_key
 
 
 def test_probe_comparison_key_includes_probe_specific_targets() -> None:

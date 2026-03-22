@@ -6,16 +6,16 @@ from typing import cast
 
 from ollm.app.types import ContentPart, Message, MessageRole
 from ollm.client import RuntimeClient
-from ollm.runtime.benchmark_probe_execution import (
+from ollm.runtime.benchmark.probe_execution import (
     _clear_backend_stats,
     build_prompt_request,
     execute_request_probe,
 )
-from ollm.runtime.benchmark_probe_types import (
+from ollm.runtime.benchmark.probe_types import (
     ReopenSessionGrowthProbeResult,
     ReopenSessionGrowthTurn,
 )
-from ollm.runtime.benchmark_resources import measure_stage
+from ollm.runtime.benchmark.resources import measure_stage
 from ollm.runtime.config import DEFAULT_SYSTEM_PROMPT, GenerationConfig, RuntimeConfig
 from ollm.runtime.loader import LoadedRuntime
 from ollm.runtime.strategy_selector import DEFAULT_STRATEGY_SELECTOR_PROFILE

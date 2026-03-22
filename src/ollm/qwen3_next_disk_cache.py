@@ -9,9 +9,9 @@ from transformers.models.qwen3_next.modeling_qwen3_next import (
     Qwen3NextDynamicCache,
 )
 
-from ollm.kv_cache_policy import KVCachePolicy
-from ollm.kv_cache_strategy import DEFAULT_KV_CACHE_STRATEGY
-from ollm.kvcache import oCache
+from ollm.kv_cache import oCache
+from ollm.kv_cache.policy import KVCachePolicy
+from ollm.kv_cache.strategy import DEFAULT_KV_CACHE_STRATEGY
 from ollm.utils import Stats
 
 

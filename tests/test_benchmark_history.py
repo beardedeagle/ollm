@@ -5,17 +5,17 @@ from pathlib import Path
 from subprocess import run
 from typing import cast
 
-from ollm.runtime.benchmark_history import (
+from ollm.runtime.benchmark.history import (
     _append_jsonl_entry,
     record_benchmark_history,
     summarize_benchmark_payload,
 )
-from ollm.runtime.benchmark_metadata import (
+from ollm.runtime.benchmark.metadata import (
     normalize_git_remote_url,
     probe_comparison_key,
     resolve_history_codebase_label,
 )
-from ollm.runtime.benchmark_probe_types import (
+from ollm.runtime.benchmark.probe_types import (
     PromptScalingCase,
     PromptScalingProbeResult,
     ReopenSessionGrowthProbeResult,
