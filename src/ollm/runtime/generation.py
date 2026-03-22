@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Protocol, cast
 
 import torch
+from transformers import GenerationConfig as TransformersGenerationConfig
 
 from ollm.app.types import ContentKind, Message, PromptRequest, PromptResponse
 from ollm.kv_cache_matrix import (
@@ -14,6 +15,11 @@ from ollm.kv_cache_state import KVCacheStateSnapshot
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.catalog import ModelModality
 from ollm.runtime.errors import PromptExecutionError
+from ollm.runtime.generation_config_support import (
+    clear_sampling_fields,
+    normalized_generation_config,
+    temporary_generation_config,
+)
 from ollm.runtime.loader import LoadedRuntime
 from ollm.runtime.output_control import suppress_module_prints
 from ollm.runtime.streaming import BufferedTextStreamer, NullStreamSink, StreamSink
@@ -83,12 +89,17 @@ class RuntimeExecutor:
                 skip_special_tokens=True,
             )
 
-        generate_kwargs = self._build_generate_kwargs(runtime, request, streamer)
+        generate_kwargs, generation_config = self._build_generate_kwargs(
+            runtime, request, streamer
+        )
         filtered_inputs = _normalize_generate_inputs(inputs)
 
         with torch.inference_mode():
             with suppress_module_prints(runtime.backend.print_suppression_modules):
-                outputs = runtime.model.generate(**filtered_inputs, **generate_kwargs)
+                with temporary_generation_config(runtime.model, generation_config):
+                    outputs = runtime.model.generate(
+                        **filtered_inputs, **generate_kwargs
+                    )
 
         if hasattr(outputs, "detach"):
             outputs = outputs.detach()
@@ -220,12 +231,9 @@ class RuntimeExecutor:
 
     def _build_generate_kwargs(
         self, runtime: LoadedRuntime, request: PromptRequest, streamer
-    ) -> dict[str, object]:
-        config = request.generation_config
-        generate_kwargs: dict[str, object] = {
-            "max_new_tokens": config.max_new_tokens,
-            "use_cache": True,
-        }
+    ) -> tuple[dict[str, object], TransformersGenerationConfig]:
+        generation_config = normalized_generation_config(runtime, request)
+        generate_kwargs: dict[str, object] = {}
 
         if request.runtime_config.use_cache:
             resolved_strategy = request.runtime_config.resolved_kv_cache_strategy()
@@ -252,16 +260,6 @@ class RuntimeExecutor:
             if cache is not None:
                 generate_kwargs["past_key_values"] = cache
 
-        if config.sampling_enabled():
-            generate_kwargs["do_sample"] = True
-            generate_kwargs["temperature"] = config.temperature
-            if config.top_p is not None:
-                generate_kwargs["top_p"] = config.top_p
-            if config.top_k is not None:
-                generate_kwargs["top_k"] = config.top_k
-        else:
-            generate_kwargs["do_sample"] = False
-
         if streamer is not None:
             generate_kwargs["streamer"] = streamer
 
@@ -270,9 +268,10 @@ class RuntimeExecutor:
             for message in request.messages
             for part in message.content
         ):
-            generate_kwargs["do_sample"] = False
+            generation_config.do_sample = False
+            clear_sampling_fields(generation_config)
 
-        return generate_kwargs
+        return generate_kwargs, generation_config
 
     def _decode_response(
         self, runtime: LoadedRuntime, inputs: dict[str, object], outputs
