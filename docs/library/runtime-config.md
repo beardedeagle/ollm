@@ -20,6 +20,7 @@ The current KV scaffolding now distinguishes:
 - `strategy_selector_profile` — the deterministic selector profile (`balanced`, `latency`, `capacity`, or `bounded-window`)
 - `kv_cache_strategy` — optional explicit strategy override; when omitted, the selector chooses a concrete preset
 - `kv_cache_window_tokens` — bounded recent-context token budget for `sliding-window-ring-buffer`; omitted for full-history strategies
+- `dense_projection_chunk_rows` — optional explicit row budget for dense optimized-native MLP chunking; when omitted, the dense Llama, Gemma3, and Voxtral paths keep the current `16384`-row ceiling but derive smaller chunks only when accelerator headroom is tight
 - `kv_cache_lifecycle` — `runtime-scoped` or explicit `persistent` reuse semantics; `resident` requires `runtime-scoped`
 - `kv_cache_adaptation_mode` — `disabled`, `observe-only`, or `automatic`; observe-only recommendation rules exist, but live switching is still disabled
 - `offload_cpu_layers` — requested CPU offload layer budget

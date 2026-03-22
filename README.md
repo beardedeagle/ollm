@@ -182,6 +182,7 @@ use_cache = true
 strategy_selector_profile = "balanced"
 # kv_cache_strategy = "paged"  # explicit override; omit to let the selector choose
 # kv_cache_window_tokens = 256  # only for sliding-window-ring-buffer
+# dense_projection_chunk_rows = 8192  # optional explicit override for dense optimized-native MLP chunking
 kv_cache_lifecycle = "runtime-scoped"
 kv_cache_adaptation_mode = "observe-only"
 
@@ -376,6 +377,16 @@ latest layers on the active accelerator by offloading a contiguous middle band.
 This slice intentionally does **not** support simultaneous `offload_cpu_layers`
 and `offload_gpu_layers`; mixed placement still needs a separate truthful
 design.
+
+On the dense optimized-native families (`llama`, `gemma3`, and the Llama-backed
+path inside `voxtral`), `mlp-chunking` now keeps the current `16384`-row cap as
+the fast-path ceiling but can derive smaller chunks when accelerator memory
+headroom is tight. You can also set an explicit `dense_projection_chunk_rows`
+override through `RuntimeConfig`, `ollm.toml`, or
+`OLLM_RUNTIME__DENSE_PROJECTION_CHUNK_ROWS` when you need a deterministic
+feasibility fallback. Smaller chunks trade peak activation pressure for
+different kernel scheduling and should be validated on target hardware; they
+are not a blanket speed optimization.
 
 When `kv_cache_strategy="resident"` is selected, the runtime keeps KV fully in
 memory and does not initialize any disk-KV root at all. That makes `resident`

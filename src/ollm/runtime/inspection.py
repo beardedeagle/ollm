@@ -80,6 +80,7 @@ class RuntimeConfigPayload(TypedDict):
     kv_cache_lifecycle: str
     kv_cache_adaptation_mode: str
     kv_cache_window_tokens: int | None
+    dense_projection_chunk_rows: int | None
     offload_cpu_layers: int
     offload_cpu_policy: str
     offload_gpu_layers: int
@@ -199,6 +200,7 @@ def runtime_config_payload(runtime_config: RuntimeConfig) -> RuntimeConfigPayloa
             "kv_cache_lifecycle": runtime_config.resolved_kv_cache_lifecycle(),
             "kv_cache_adaptation_mode": runtime_config.resolved_kv_cache_adaptation_mode(),
             "kv_cache_window_tokens": runtime_config.resolved_kv_cache_window_tokens(),
+            "dense_projection_chunk_rows": runtime_config.resolved_dense_projection_chunk_rows(),
             "offload_cpu_layers": runtime_config.offload_cpu_layers,
             "offload_cpu_policy": runtime_config.resolved_offload_cpu_policy(),
             "offload_gpu_layers": runtime_config.offload_gpu_layers,

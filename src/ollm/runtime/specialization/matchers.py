@@ -171,6 +171,12 @@ def build_default_pass_matchers() -> tuple[SpecializationPassMatcher, ...]:
             native_families=(NativeFamily.VOXTRAL,),
         ),
         SpecializationPassMatcher(
+            matcher_id="voxtral-mlp-chunking",
+            pass_id=SpecializationPassId.MLP_CHUNKING,
+            provider_ids=("voxtral-native",),
+            native_families=(NativeFamily.VOXTRAL,),
+        ),
+        SpecializationPassMatcher(
             matcher_id="voxtral-multimodal-shell",
             pass_id=SpecializationPassId.MULTIMODAL_SHELL,
             provider_ids=("voxtral-native",),

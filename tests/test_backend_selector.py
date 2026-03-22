@@ -51,6 +51,8 @@ def test_backend_selector_prefers_optimized_native_for_built_in_aliases() -> Non
     assert plan.supports_gpu_offload is False
     assert plan.details["execution_device_type"] == "cpu"
     assert plan.details["specialization_device_profile"] == "host"
+    assert plan.details["mlp_chunking_mode"] == "adaptive-headroom"
+    assert plan.details["mlp_chunking_max_rows"] == "16384"
 
 
 def test_backend_selector_records_accelerator_execution_profile_for_mps() -> None:
@@ -74,6 +76,16 @@ def test_backend_selector_records_requested_cpu_offload_policy_details() -> None
     assert plan.details["offload_cpu_requested_layers"] == "2"
     assert plan.details["offload_cpu_policy"] == "suffix"
     assert plan.details["offload_gpu_layers"] == "0"
+
+
+def test_backend_selector_records_explicit_dense_projection_chunk_rows() -> None:
+    plan = BackendSelector().select(
+        build_catalog_resolved_model(),
+        RuntimeConfig(device="cpu", dense_projection_chunk_rows=2048),
+    )
+
+    assert plan.details["mlp_chunking_mode"] == "explicit-rows"
+    assert plan.details["mlp_chunking_max_rows"] == "2048"
 
 
 def test_backend_selector_routes_catalog_models_with_adapters_to_generic_backend() -> (

@@ -36,6 +36,7 @@ class _OffloadProtocol(Protocol):
 
 loader: _LoaderProtocol | None = None
 stats = None
+dense_projection_chunk_rows: int | None = None
 
 
 def _require_loader() -> _LoaderProtocol:
@@ -147,3 +148,4 @@ class MyVoxtralForConditionalGeneration(
         self.num_hidden_layers = config.text_config.num_hidden_layers  # type: ignore[attr-defined]
         self.language_model = llama.MyLlamaForCausalLM(config.text_config)  # type: ignore[attr-defined]
         llama.stats = stats
+        llama.dense_projection_chunk_rows = dense_projection_chunk_rows

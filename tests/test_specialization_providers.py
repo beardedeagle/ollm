@@ -8,9 +8,11 @@ from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.reference import ModelReference
 from ollm.runtime.resolver import ModelSourceKind, NativeFamily, ResolvedModel
+from ollm.runtime.specialization.passes.base import SpecializationPassId
 from ollm.runtime.specialization.providers import (
     Gemma3SpecializationProvider,
     LlamaSpecializationProvider,
+    VoxtralSpecializationProvider,
 )
 from ollm.utils import Stats
 
@@ -261,3 +263,82 @@ def test_gemma3_specialization_provider_skips_processor_for_text_only_runtime(
     )
 
     assert artifacts.processor is None
+
+
+def test_voxtral_specialization_provider_declares_mlp_chunking(
+    tmp_path: Path, monkeypatch
+) -> None:
+    model_dir = tmp_path / "voxtral"
+    model_dir.mkdir()
+    (model_dir / "config.json").write_text(
+        json.dumps(
+            {
+                "model_type": "voxtral",
+                "architectures": ["VoxtralForConditionalGeneration"],
+            }
+        ),
+        encoding="utf-8",
+    )
+    (model_dir / "model.safetensors").write_text("safe", encoding="utf-8")
+
+    class FakeVoxtralModel:
+        @classmethod
+        def from_pretrained(cls, *args, **kwargs):
+            del cls, args, kwargs
+            return FakeLoadedModel()
+
+    fake_module = SimpleNamespace(
+        loader=None,
+        stats=None,
+        dense_projection_chunk_rows=None,
+        MyVoxtralForConditionalGeneration=FakeVoxtralModel,
+    )
+    monkeypatch.setattr(
+        "ollm.runtime.specialization.providers.import_module",
+        lambda module_name: fake_module,
+    )
+    monkeypatch.setattr(
+        "ollm.runtime.specialization.providers.get_attention_implementation",
+        lambda: None,
+    )
+    monkeypatch.setattr(
+        "ollm.runtime.specialization.providers.DenseWeightsLoader",
+        lambda *args, **kwargs: object(),
+    )
+    monkeypatch.setattr(
+        "ollm.runtime.specialization.providers.AutoProcessor.from_pretrained",
+        lambda *args, **kwargs: SimpleNamespace(tokenizer=object()),
+    )
+
+    provider = VoxtralSpecializationProvider()
+    resolved_model = ResolvedModel(
+        reference=ModelReference.parse("voxtral-small-24B"),
+        source_kind=ModelSourceKind.BUILTIN,
+        normalized_name="voxtral-small-24b",
+        model_path=model_dir,
+        repo_id="mistralai/Voxtral-Small-24B-2507",
+        revision=None,
+        catalog_entry=None,
+        capabilities=CapabilityProfile(support_level=SupportLevel.OPTIMIZED),
+        native_family=NativeFamily.VOXTRAL,
+        resolution_message="optimized",
+        architecture="VoxtralForConditionalGeneration",
+        model_type="voxtral",
+        generic_model_kind=GenericModelKind.SEQ2SEQ_LM,
+    )
+
+    artifacts = provider.load(
+        resolved_model,
+        RuntimeConfig(
+            model_reference="voxtral-small-24B",
+            models_dir=tmp_path,
+            device="cpu",
+            multimodal=True,
+            use_cache=False,
+            dense_projection_chunk_rows=2048,
+        ),
+        stats=None,
+    )
+
+    assert artifacts.provided_pass_ids == (SpecializationPassId.MLP_CHUNKING,)
+    assert fake_module.dense_projection_chunk_rows == 2048
