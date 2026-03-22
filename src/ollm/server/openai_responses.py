@@ -21,10 +21,13 @@ from ollm.runtime.streaming import StreamSink
 from ollm.server.openai_compat import build_openai_error_response
 from ollm.server.openai_response_models import (
     OpenAIResponseCompletedEventModel,
+    OpenAIResponseContentPartAddedEventModel,
     OpenAIResponseCreatedEventModel,
     OpenAIResponseCreateRequestModel,
+    OpenAIResponseInputContentPartRequestModel,
     OpenAIResponseInputMessageRequestModel,
-    OpenAIResponseInputTextPartRequestModel,
+    OpenAIResponseOutputItemAddedEventModel,
+    OpenAIResponseOutputItemDoneEventModel,
     OpenAIResponseOutputMessageResponseModel,
     OpenAIResponseOutputTextDeltaEventModel,
     OpenAIResponseOutputTextDoneEventModel,
@@ -217,7 +220,7 @@ def _translate_input_message(
 
 
 def _translate_input_content(
-    content: str | list[OpenAIResponseInputTextPartRequestModel],
+    content: str | list[OpenAIResponseInputContentPartRequestModel],
 ) -> list[ContentPart]:
     if isinstance(content, str):
         if not content:
@@ -229,12 +232,24 @@ def _translate_input_content(
     return parts
 
 
-def _translate_input_part(part: OpenAIResponseInputTextPartRequestModel) -> ContentPart:
-    if part.type != "text":
-        raise ValueError("responses input currently supports only text content parts")
-    if not part.text:
-        raise ValueError("responses text parts must not be empty")
-    return ContentPart.text(part.text)
+def _translate_input_part(
+    part: OpenAIResponseInputContentPartRequestModel,
+) -> ContentPart:
+    if part.type in {"text", "input_text"}:
+        if not part.text:
+            raise ValueError("responses text parts must not be empty")
+        return ContentPart.text(part.text)
+    if part.type in {"image", "input_image"}:
+        if not part.image_url:
+            raise ValueError("responses image parts require image_url")
+        return ContentPart.image(part.image_url)
+    if part.type in {"audio", "input_audio"}:
+        if not part.audio_url:
+            raise ValueError("responses audio parts require audio_url")
+        return ContentPart.audio(part.audio_url)
+    raise ValueError(
+        "responses input currently supports only text, image, and audio content parts"
+    )
 
 
 def _new_response_id() -> str:
@@ -323,6 +338,27 @@ def _response_event_iterator(
             ),
         )
     )
+    output_item = initial_response.output[0]
+    output_text_part = output_item.content[0]
+    queue.put(
+        _sse_event(
+            "response.output_item.added",
+            OpenAIResponseOutputItemAddedEventModel(
+                response_id=response_id,
+                item=output_item,
+            ).model_dump(exclude_none=True),
+        )
+    )
+    queue.put(
+        _sse_event(
+            "response.content_part.added",
+            OpenAIResponseContentPartAddedEventModel(
+                response_id=response_id,
+                item_id=output_message_id,
+                part=output_text_part,
+            ).model_dump(exclude_none=True),
+        )
+    )
 
     def run() -> None:
         try:
@@ -353,6 +389,15 @@ def _response_event_iterator(
                         response_id=response_id,
                         item_id=output_message_id,
                         text=prompt_response.text,
+                    ).model_dump(exclude_none=True),
+                )
+            )
+            queue.put(
+                _sse_event(
+                    "response.output_item.done",
+                    OpenAIResponseOutputItemDoneEventModel(
+                        response_id=response_id,
+                        item=final_response.output[0],
                     ).model_dump(exclude_none=True),
                 )
             )

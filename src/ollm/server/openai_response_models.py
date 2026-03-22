@@ -5,13 +5,15 @@ import builtins
 from pydantic import BaseModel, ConfigDict, Field
 
 
-class OpenAIResponseInputTextPartRequestModel(BaseModel):
+class OpenAIResponseInputContentPartRequestModel(BaseModel):
     """Structured content part for a Responses API input message."""
 
     model_config = ConfigDict(extra="allow", frozen=True)
 
     type: str
     text: str | None = None
+    image_url: str | None = None
+    audio_url: str | None = None
 
 
 class OpenAIResponseInputMessageRequestModel(BaseModel):
@@ -20,7 +22,7 @@ class OpenAIResponseInputMessageRequestModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     role: str
-    content: str | list[OpenAIResponseInputTextPartRequestModel]
+    content: str | list[OpenAIResponseInputContentPartRequestModel]
 
 
 class OpenAIResponseCreateRequestModel(BaseModel):
@@ -85,6 +87,30 @@ class OpenAIResponseCreatedEventModel(BaseModel):
     response: OpenAIResponseResponseModel
 
 
+class OpenAIResponseOutputItemAddedEventModel(BaseModel):
+    """Streaming event emitted when an output item is opened."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    type: str = "response.output_item.added"
+    response_id: str
+    output_index: int = 0
+    item: OpenAIResponseOutputMessageResponseModel
+
+
+class OpenAIResponseContentPartAddedEventModel(BaseModel):
+    """Streaming event emitted when a content part is opened."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    type: str = "response.content_part.added"
+    response_id: str
+    item_id: str
+    output_index: int = 0
+    content_index: int = 0
+    part: OpenAIResponseOutputTextResponseModel
+
+
 class OpenAIResponseOutputTextDeltaEventModel(BaseModel):
     """Streaming event emitted for a text delta."""
 
@@ -109,6 +135,17 @@ class OpenAIResponseOutputTextDoneEventModel(BaseModel):
     output_index: int = 0
     content_index: int = 0
     text: str
+
+
+class OpenAIResponseOutputItemDoneEventModel(BaseModel):
+    """Streaming event emitted when an output item completes."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    type: str = "response.output_item.done"
+    response_id: str
+    output_index: int = 0
+    item: OpenAIResponseOutputMessageResponseModel
 
 
 class OpenAIResponseCompletedEventModel(BaseModel):

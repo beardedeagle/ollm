@@ -49,17 +49,20 @@ The local server publishes:
 - Chat-completions requests currently support plain string content and structured
   text-part arrays only.
 - Responses requests currently support plain string input or message arrays with
-  text content only.
+  text, image, and audio content parts.
 - OpenAI-compatible chat streaming uses `text/event-stream` with chat-completion
   chunks and a final `data: [DONE]` marker.
 - Responses streaming uses typed SSE events such as `response.created`,
-  `response.output_text.delta`, `response.output_text.done`, and
-  `response.completed`.
+  `response.output_item.added`, `response.content_part.added`,
+  `response.output_text.delta`, `response.output_text.done`,
+  `response.output_item.done`, and `response.completed`.
 - Native prompt streaming continues to use the oLLM-specific SSE event shape.
 - Server-side sessions are in-memory only in the current slice.
 - Responses storage is disabled by default. Configure a response-store backend
   if you want `GET /v1/responses/{response_id}` or `previous_response_id`
   chaining.
+- Responses tool definitions, tool-call outputs, and non-text output items are
+  not supported yet.
 - Runtime and generation defaults still follow the standard config layering
   contract for native endpoints.
 

@@ -140,6 +140,52 @@ def test_openai_chat_completions_accepts_structured_text_parts() -> None:
     assert message["content"] == "echo:hello world"
 
 
+def test_openai_responses_accept_multimodal_input_parts(monkeypatch) -> None:
+    _configure_response_store(monkeypatch, backend="memory")
+    application_service = build_application_service()
+    app = create_server_app(application_service)
+    client = _test_client(app)
+
+    response = cast(
+        JsonResponseProtocol,
+        client.post(
+            "/v1/responses",
+            json={
+                "model": "llama3-1B-chat",
+                "input": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "input_text", "text": "describe"},
+                            {
+                                "type": "input_image",
+                                "image_url": "file:///tmp/example.png",
+                            },
+                            {
+                                "type": "input_audio",
+                                "audio_url": "file:///tmp/example.wav",
+                            },
+                        ],
+                    }
+                ],
+            },
+        ),
+    )
+
+    runtime_executor = cast(
+        FakeRuntimeExecutor,
+        application_service.runtime_client.runtime_executor,
+    )
+    assert response.status_code == 200
+    assert [
+        part.kind.value for part in runtime_executor.message_batches[0][-1].content
+    ] == [
+        "text",
+        "image",
+        "audio",
+    ]
+
+
 def test_openai_chat_completions_streams_openai_sse_chunks() -> None:
     application_service = build_application_service()
     app = create_server_app(application_service)
@@ -347,7 +393,8 @@ def test_openai_responses_support_previous_response_id_history(monkeypatch) -> N
     assert second_messages[2].text_content() == "again"
 
 
-def test_openai_responses_stream_response_events() -> None:
+def test_openai_responses_stream_response_events(monkeypatch) -> None:
+    _configure_response_store(monkeypatch, backend="memory")
     app = create_server_app(build_application_service())
     client = _test_client(app)
 
@@ -374,21 +421,30 @@ def test_openai_responses_stream_response_events() -> None:
         )
 
     created_payload = payloads[0]
-    delta_payload = payloads[1]
-    done_payload = payloads[2]
-    completed_payload = payloads[3]
+    output_item_added_payload = payloads[1]
+    content_part_added_payload = payloads[2]
+    delta_payload = payloads[3]
+    done_payload = payloads[4]
+    output_item_done_payload = payloads[5]
+    completed_payload = payloads[6]
 
     assert response.status_code == 200
     assert events == [
         "response.created",
+        "response.output_item.added",
+        "response.content_part.added",
         "response.output_text.delta",
         "response.output_text.done",
+        "response.output_item.done",
         "response.completed",
     ]
     assert created_payload["type"] == "response.created"
+    assert output_item_added_payload["type"] == "response.output_item.added"
+    assert content_part_added_payload["type"] == "response.content_part.added"
     assert delta_payload["type"] == "response.output_text.delta"
     assert delta_payload["delta"] == "echo:hello"
     assert done_payload["text"] == "echo:hello"
+    assert output_item_done_payload["type"] == "response.output_item.done"
     assert completed_payload["type"] == "response.completed"
 
 
