@@ -176,6 +176,11 @@ For optimized-native runs, the request metrics can now include a
 by the runtime itself, rather than numbers inferred from high-level wall clock
 latency.
 
+On the dense optimized-native families, the loader now submits the next layer's
+weight reads one layer ahead of use. That means a later `layer_load` step may
+consume already-pending safetensor reads instead of starting from an idle
+storage queue.
+
 Typical event names include:
 
 - `layer_load`
