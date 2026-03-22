@@ -259,7 +259,9 @@ def test_dense_weights_loader_prefetch_layer_weights_stages_sharded_tensors(
     (model_dir / "model.safetensors.index.json").write_text(
         json.dumps(
             {
-                "metadata": {"total_size": int(expected.numel() * expected.element_size())},
+                "metadata": {
+                    "total_size": int(expected.numel() * expected.element_size())
+                },
                 "weight_map": {tensor_name: filename},
             }
         ),
