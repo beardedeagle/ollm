@@ -26,6 +26,7 @@ from ollm.utils import _assign_tensor_to_module, _set_meta_placeholder, _walk_to
 class _LoaderProtocol(Protocol):
     manifest: dict[str, dict[str, str]]
 
+    def prefetch_layer_weights(self, base: str) -> None: ...
     def preload_layer_safetensors(self, base: str) -> None: ...
     def load_dict_to_cuda(self, base: str) -> dict[str, torch.Tensor]: ...
     def offload_dict_to_gpu_cpu(self, base: str, gpu: bool = False) -> None: ...
@@ -35,6 +36,10 @@ class _LayerLoaderContext(Protocol):
     layer_idx: int
 
     def get_base(self, base: str) -> str: ...
+    def _layer_weight_base(self) -> str: ...
+    def _next_layer_weight_base(
+        self, current_loader: _LoaderProtocol
+    ) -> str | None: ...
 
 
 class _OffloadProtocol(Protocol):
@@ -87,18 +92,32 @@ class loaderLayer:
             return base
         return f"language_model.{base}"
 
+    def _layer_weight_base(self: _LayerLoaderContext) -> str:
+        return self.get_base(f"model.layers.{self.layer_idx}.")
+
+    def _next_layer_weight_base(
+        self: _LayerLoaderContext, current_loader: _LoaderProtocol
+    ) -> str | None:
+        next_base = self.get_base(f"model.layers.{self.layer_idx + 1}.")
+        if next_base not in current_loader.manifest:
+            return None
+        return next_base
+
     def _load_layer_weights(self: _LayerLoaderContext) -> None:
         started_at = time.perf_counter()
-        base = self.get_base(f"model.layers.{self.layer_idx}.")
         current_loader = _require_loader()
-        current_loader.preload_layer_safetensors(base)
+        base = self._layer_weight_base()
+        current_loader.prefetch_layer_weights(base)
         for attr_path, tensor in current_loader.load_dict_to_cuda(base).items():
             parent, leaf = _walk_to_parent(self, attr_path)
             _assign_tensor_to_module(_unwrap_base_layer(parent), leaf, tensor)
+        next_base = self._next_layer_weight_base(current_loader)
+        if next_base is not None:
+            current_loader.prefetch_layer_weights(next_base)
         _record_stats("layer_load", started_at)
 
     def _unload_layer_weights(self: _LayerLoaderContext) -> None:
-        base = self.get_base(f"model.layers.{self.layer_idx}.")
+        base = self._layer_weight_base()
         current_loader = _require_loader()
         for attr_path in current_loader.manifest[base]:
             parent, leaf = _walk_to_parent(self, attr_path)
@@ -183,7 +202,7 @@ class oForGeneration(loaderLayer):
         current_loader = _require_loader()
         for layer_idx in layer_indices:
             base = self.get_base(f"model.layers.{layer_idx}.")
-            current_loader.preload_layer_safetensors(base)
+            current_loader.prefetch_layer_weights(base)
             current_loader.offload_dict_to_gpu_cpu(base, gpu=False)
         print(
             "./finished offloading layers to CPU "

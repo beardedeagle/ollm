@@ -228,6 +228,55 @@ def test_single_dense_weights_loader_preload_submits_layer_tensors(
     assert "model.layers.0.mlp.gate_proj.weight" in reader._pending_reads
 
 
+def test_single_dense_weights_loader_load_dict_to_cuda_without_prefetch(
+    tmp_path: Path,
+) -> None:
+    model_dir = tmp_path / "single-dense-sync"
+    model_dir.mkdir()
+    expected = torch.tensor([9.0, 10.0], dtype=torch.float32)
+    _write_minimal_safetensor(
+        model_dir / "model.safetensors",
+        "model.layers.0.mlp.gate_proj.weight",
+        expected,
+    )
+
+    loader = gds_loader.SingleDenseWeightsLoader(str(model_dir), device="cpu")
+
+    loaded = loader.load_dict_to_cuda("model.layers.0.")
+
+    assert torch.equal(loaded["mlp.gate_proj.weight"], expected)
+
+
+def test_dense_weights_loader_prefetch_layer_weights_stages_sharded_tensors(
+    tmp_path: Path,
+) -> None:
+    model_dir = tmp_path / "sharded-dense"
+    model_dir.mkdir()
+    expected = torch.tensor([11.0, 12.0], dtype=torch.float32)
+    filename = "model-00001-of-00001.safetensors"
+    tensor_name = "model.layers.0.mlp.gate_proj.weight"
+    _write_minimal_safetensor(model_dir / filename, tensor_name, expected)
+    (model_dir / "model.safetensors.index.json").write_text(
+        json.dumps(
+            {
+                "metadata": {"total_size": int(expected.numel() * expected.element_size())},
+                "weight_map": {tensor_name: filename},
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    loader = gds_loader.DenseWeightsLoader(str(model_dir), device="cpu")
+    loader.prefetch_layer_weights("model.layers.0.")
+    reader = cast(gds_loader.SafeTensorReader, loader.safetensors[filename])
+
+    assert tensor_name in reader._pending_reads
+
+    loaded = loader.load_dict_to_cuda("model.layers.0.")
+
+    assert torch.equal(loaded["mlp.gate_proj.weight"], expected)
+
+
 def test_gds_weights_preload_defers_future_wait(monkeypatch, tmp_path: Path) -> None:
     export_dir = tmp_path / "gds_export"
     export_dir.mkdir()

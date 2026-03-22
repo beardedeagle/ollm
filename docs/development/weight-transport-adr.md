@@ -52,8 +52,9 @@ for each loaded layer.
 That limitation is visible in the current code:
 
 - `src/ollm/llama.py` and `src/ollm/gemma3.py`
-  preload and materialize one layer's safetensors, assign tensors into the live
-  module, then unload them again after the forward pass.
+  preload and materialize one layer's safetensors, queue the next dense layer's
+  reads one stage ahead when possible, assign tensors into the live module,
+  then unload them again after the forward pass.
 - `src/ollm/gds_loader.py`
   reads direct byte ranges from safetensor files or raw `gds_export` blobs into
   CPU or CUDA buffers.
