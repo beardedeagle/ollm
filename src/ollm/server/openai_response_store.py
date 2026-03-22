@@ -1,9 +1,12 @@
-"""Thread-safe in-memory store for OpenAI-compatible response objects."""
+"""Configurable storage backends for OpenAI-compatible response objects."""
 
 from dataclasses import dataclass, field
+from importlib import import_module
 from threading import RLock
+from typing import Protocol, cast
 
 from ollm.app.types import Message
+from ollm.runtime.settings import ServerSettings
 from ollm.server.openai_response_models import OpenAIResponseResponseModel
 
 
@@ -15,10 +18,41 @@ class StoredOpenAIResponse:
     conversation_messages: list[Message]
 
 
-@dataclass(slots=True)
-class OpenAIResponseStore:
-    """Manage in-memory Responses API objects with explicit locking."""
+class OpenAIResponseStore(Protocol):
+    """Storage boundary for response retrieval and chaining."""
 
+    enabled: bool
+
+    def put(self, stored_response: StoredOpenAIResponse) -> None: ...
+
+    def get(self, response_id: str) -> StoredOpenAIResponse | None: ...
+
+    def require(self, response_id: str) -> StoredOpenAIResponse: ...
+
+
+@dataclass(slots=True)
+class DisabledOpenAIResponseStore:
+    """No-op response store used when persistence is disabled."""
+
+    enabled: bool = False
+
+    def put(self, stored_response: StoredOpenAIResponse) -> None:
+        del stored_response
+
+    def get(self, response_id: str) -> StoredOpenAIResponse | None:
+        del response_id
+        return None
+
+    def require(self, response_id: str) -> StoredOpenAIResponse:
+        del response_id
+        raise ValueError("Responses storage is disabled for this server")
+
+
+@dataclass(slots=True)
+class MemoryOpenAIResponseStore:
+    """Thread-safe in-memory response store."""
+
+    enabled: bool = True
     _responses: dict[str, StoredOpenAIResponse] = field(
         default_factory=dict, repr=False
     )
@@ -37,3 +71,39 @@ class OpenAIResponseStore:
         if stored_response is None:
             raise ValueError(f"Response '{response_id}' does not exist")
         return stored_response
+
+
+def build_openai_response_store(server_settings: ServerSettings) -> OpenAIResponseStore:
+    """Build the configured response-store backend for the local server."""
+    backend = server_settings.response_store_backend
+    if backend == "none":
+        return DisabledOpenAIResponseStore()
+    if backend == "memory":
+        return MemoryOpenAIResponseStore()
+    return _load_plugin_store(server_settings)
+
+
+def _load_plugin_store(server_settings: ServerSettings) -> OpenAIResponseStore:
+    factory_path = server_settings.response_store_factory
+    if factory_path is None:
+        raise ValueError(
+            "response_store_factory is required when response_store_backend=plugin"
+        )
+    module_name, separator, attribute_name = factory_path.partition(":")
+    if not separator or not module_name or not attribute_name:
+        raise ValueError(
+            "response_store_factory must use the form 'package.module:factory'"
+        )
+    module = import_module(module_name)
+    factory = getattr(module, attribute_name, None)
+    if factory is None or not callable(factory):
+        raise ValueError(
+            f"response_store_factory '{factory_path}' did not resolve to a callable"
+        )
+    return cast(OpenAIResponseStoreFactory, factory)(server_settings)
+
+
+class OpenAIResponseStoreFactory(Protocol):
+    """Callable factory contract for plugin-backed response stores."""
+
+    def __call__(self, server_settings: ServerSettings) -> OpenAIResponseStore: ...

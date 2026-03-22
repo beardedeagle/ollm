@@ -129,6 +129,13 @@ def register_openai_responses_routes(
         tags=["openai-compatible"],
     )
     def get_response(response_id: str) -> OpenAIResponseResponseModel | object:
+        if not response_store.enabled:
+            return build_openai_error_response(
+                status_code=501,
+                message="Responses retrieval requires a configured response-store backend",
+                error_type="server_error",
+                code="responses_storage_disabled",
+            )
         try:
             return response_store.require(response_id).response
         except ValueError as exc:
@@ -171,6 +178,10 @@ def _build_response_prompt(
 ) -> tuple[list[Message], list[ContentPart]]:
     history: list[Message] = []
     if previous_response_id is not None:
+        if not response_store.enabled:
+            raise ValueError(
+                "previous_response_id requires a configured response-store backend"
+            )
         stored_response = response_store.require(previous_response_id)
         history.extend(stored_response.conversation_messages)
 

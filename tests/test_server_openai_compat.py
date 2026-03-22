@@ -5,6 +5,7 @@ from typing import Protocol, Self, cast
 
 import pytest
 
+from ollm.runtime.settings import load_app_settings
 from ollm.server.runtime import create_server_app
 from tests.fakes import FakeRuntimeExecutor
 from tests.server_support import build_application_service
@@ -51,6 +52,20 @@ def _payload_dict(value: object) -> dict[str, object]:
 
 def _payload_list(value: object) -> list[object]:
     return cast(list[object], value)
+
+
+def _configure_response_store(monkeypatch, *, backend: str) -> None:
+    settings = load_app_settings()
+    monkeypatch.setattr(
+        "ollm.server.runtime.load_app_settings",
+        lambda: settings.model_copy(
+            update={
+                "server": settings.server.model_copy(
+                    update={"response_store_backend": backend}
+                )
+            }
+        ),
+    )
 
 
 def test_openai_chat_completions_returns_non_streaming_response() -> None:
@@ -239,7 +254,10 @@ def test_openai_models_routes_use_openai_shapes() -> None:
     assert detail_payload["id"] == "llama3-1B-chat"
 
 
-def test_openai_responses_create_and_retrieve_use_response_objects() -> None:
+def test_openai_responses_create_and_retrieve_use_response_objects(
+    monkeypatch,
+) -> None:
+    _configure_response_store(monkeypatch, backend="memory")
     application_service = build_application_service()
     app = create_server_app(application_service)
     client = _test_client(app)
@@ -286,7 +304,8 @@ def test_openai_responses_create_and_retrieve_use_response_objects() -> None:
     assert fetch_payload["id"] == response_id
 
 
-def test_openai_responses_support_previous_response_id_history() -> None:
+def test_openai_responses_support_previous_response_id_history(monkeypatch) -> None:
+    _configure_response_store(monkeypatch, backend="memory")
     application_service = build_application_service()
     app = create_server_app(application_service)
     client = _test_client(app)
@@ -394,3 +413,18 @@ def test_openai_responses_report_missing_previous_response_cleanly() -> None:
     assert response.status_code == 400
     assert error["type"] == "invalid_request_error"
     assert "does not exist" in cast(str, error["message"])
+
+
+def test_openai_responses_retrieval_is_disabled_by_default() -> None:
+    app = create_server_app(build_application_service())
+    client = _test_client(app)
+
+    response = cast(
+        JsonResponseProtocol,
+        client.get("/v1/responses/resp_missing"),
+    )
+
+    payload = _json_object(response)
+    error = _payload_dict(payload["error"])
+    assert response.status_code == 501
+    assert error["code"] == "responses_storage_disabled"

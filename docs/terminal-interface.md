@@ -59,6 +59,7 @@ stream = true
 [server]
 host = "127.0.0.1"
 port = 8000
+response_store_backend = "none"
 ```
 
 The current settings surface covers runtime defaults, generation defaults, and
@@ -79,7 +80,8 @@ Then start the local-only server:
 ollm serve
 ```
 
-`ollm serve` resolves `host`, `port`, `reload`, and `log_level` through the
+`ollm serve` resolves `host`, `port`, `reload`, `log_level`, and response-store
+settings through the
 same settings-precedence contract as the rest of the CLI. The default bind is
 `127.0.0.1`, and the server also publishes:
 

@@ -42,8 +42,8 @@ with `ollm serve`.
   streaming responses.
 - `POST /v1/responses` supports both standard JSON responses and typed SSE
   response events.
-- `GET /v1/responses/{response_id}` retrieves in-memory response objects created
-  through this local server process.
+- `GET /v1/responses/{response_id}` and `previous_response_id` require a
+  configured response-store backend.
 - The server continues to expose native oLLM-only runtime planning, prompt, and
   session endpoints beside the compatibility layer.
 
@@ -57,6 +57,7 @@ with `ollm serve`.
   `response.completed`.
 - Native streaming responses still use oLLM's SSE event family.
 - Server-side sessions are in-memory only.
-- Retrieved response objects are also in-memory only.
+- Responses storage is disabled by default; enable a response-store backend when
+  you want retrieval or `previous_response_id` chaining.
 - The HTTP transport reuses the same `ApplicationService` runtime planning and
   prompt execution logic as the CLI.

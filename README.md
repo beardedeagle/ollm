@@ -194,6 +194,8 @@ stream = true
 host = "127.0.0.1"
 port = 8000
 reload = false
+response_store_backend = "none"
+# response_store_factory = "custom.module:build_store"
 ```
 
 Example environment overrides:
@@ -215,7 +217,7 @@ uv sync --extra server
 ollm serve
 ```
 
-`ollm serve` resolves its host, port, reload, and log-level settings through the same `CLI > env > config file > defaults` contract. The default bind is `127.0.0.1`, and the server publishes machine-readable and interactive OpenAPI surfaces at `/openapi.json`, `/docs`, and `/redoc`.
+`ollm serve` resolves its host, port, reload, log-level, and response-store settings through the same `CLI > env > config file > defaults` contract. The default bind is `127.0.0.1`, and the server publishes machine-readable and interactive OpenAPI surfaces at `/openapi.json`, `/docs`, and `/redoc`.
 
 Runtime benchmarking now records a persistent history ledger under
 `.omx/logs/benchmark-history/` by default. Each record includes a stable

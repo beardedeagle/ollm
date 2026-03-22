@@ -57,8 +57,9 @@ The local server publishes:
   `response.completed`.
 - Native prompt streaming continues to use the oLLM-specific SSE event shape.
 - Server-side sessions are in-memory only in the current slice.
-- Retrieved response objects are also in-memory only in the current server
-  process.
+- Responses storage is disabled by default. Configure a response-store backend
+  if you want `GET /v1/responses/{response_id}` or `previous_response_id`
+  chaining.
 - Runtime and generation defaults still follow the standard config layering
   contract for native endpoints.
 
