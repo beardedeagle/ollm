@@ -100,7 +100,7 @@ class loaderLayer:
         started_at = time.perf_counter()
         current_loader = _require_loader()
         base = self._layer_weight_base()
-        current_loader.prefetch_layer_weights(base)
+        current_loader.preload_layer_safetensors(base)
         for attr_path, tensor in current_loader.load_dict_to_cuda(base).items():
             parent, leaf = _walk_to_parent(self, attr_path)
             _assign_tensor_to_module(_unwrap_base_layer(parent), leaf, tensor)
@@ -283,7 +283,7 @@ class oForGeneration:
         current_loader = _require_loader()
         for layer_idx in layer_indices:
             base = f"model.layers.{layer_idx}."
-            current_loader.prefetch_layer_weights(base)
+            current_loader.preload_layer_safetensors(base)
             current_loader.offload_dict_to_gpu_cpu(base, gpu=False)
         print(
             "./finished offloading layers to CPU "
