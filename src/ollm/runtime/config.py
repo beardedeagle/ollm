@@ -4,14 +4,14 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from ollm.kv_cache_matrix import (
+from ollm.kv_cache.matrix import (
     DEFAULT_KV_CACHE_ADAPTATION_MODE,
     DEFAULT_KV_CACHE_LIFECYCLE,
     normalize_kv_cache_adaptation_mode,
     resolve_kv_cache_lifecycle,
     resolve_kv_cache_window_tokens,
 )
-from ollm.kv_cache_strategy import (
+from ollm.kv_cache.strategy import (
     DEFAULT_KV_CACHE_STRATEGY,
     normalize_kv_cache_strategy,
 )

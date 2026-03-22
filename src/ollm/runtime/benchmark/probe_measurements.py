@@ -2,20 +2,20 @@
 
 from pathlib import Path
 
-from ollm.runtime.benchmark_commands import (
+from ollm.runtime.benchmark.commands import (
     command_failure_measurement,
     probe_parse_failure_measurement,
     run_command,
     summarize_samples,
 )
-from ollm.runtime.benchmark_details import summarize_request_metrics
-from ollm.runtime.benchmark_probes import (
+from ollm.runtime.benchmark.details import summarize_request_metrics
+from ollm.runtime.benchmark.probes import (
     parse_output_scaling_probe_result,
     parse_prompt_scaling_probe_result,
     parse_session_growth_probe_result,
     parse_warm_runtime_probe_result,
 )
-from ollm.runtime.benchmark_types import BenchmarkMeasurement, CommandBenchmarkSpec
+from ollm.runtime.benchmark.types import BenchmarkMeasurement, CommandBenchmarkSpec
 
 
 def measure_warm_runtime_probe(

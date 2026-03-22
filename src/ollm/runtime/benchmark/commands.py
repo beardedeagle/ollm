@@ -8,9 +8,9 @@ from pathlib import Path
 from typing import TypeVar
 
 from ollm.async_io import subprocess_run_process
-from ollm.runtime.benchmark_details import build_cold_probe_details, clip_text
-from ollm.runtime.benchmark_probes import parse_runtime_probe_result
-from ollm.runtime.benchmark_types import (
+from ollm.runtime.benchmark.details import build_cold_probe_details, clip_text
+from ollm.runtime.benchmark.probes import parse_runtime_probe_result
+from ollm.runtime.benchmark.types import (
     BenchmarkMeasurement,
     BenchmarkStats,
     CommandBenchmarkSpec,

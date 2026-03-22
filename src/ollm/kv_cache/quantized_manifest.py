@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 import torch
 
-from ollm.kv_cache_store_common import (
+from ollm.kv_cache.store_common import (
     SEQUENCE_AXIS,
     require_int,
     require_object_list,

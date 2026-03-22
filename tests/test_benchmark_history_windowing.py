@@ -1,8 +1,8 @@
 from dataclasses import replace
 
-from ollm.runtime.benchmark_history import summarize_benchmark_payload
-from ollm.runtime.benchmark_metadata import probe_comparison_key
-from ollm.runtime.benchmark_probe_types import (
+from ollm.runtime.benchmark.history import summarize_benchmark_payload
+from ollm.runtime.benchmark.metadata import probe_comparison_key
+from ollm.runtime.benchmark.probe_types import (
     ReopenSessionGrowthProbeResult,
     ReopenSessionGrowthTurn,
     SessionGrowthProbeResult,

@@ -12,7 +12,7 @@ from ollm.async_io import (
     path_mkdir,
     path_read_bytes_range,
 )
-from ollm.kv_cache_store_common import (
+from ollm.kv_cache.store_common import (
     CACHE_SCHEMA_VERSION,
     PERSISTED_DEVICE,
     SEQUENCE_AXIS,
@@ -28,7 +28,7 @@ from ollm.kv_cache_store_common import (
     sequence_length,
     shape_prefix,
 )
-from ollm.kv_cache_streamed_manifest import (
+from ollm.kv_cache.streamed_manifest import (
     DEFAULT_SEGMENT_BYTES_TARGET,
     STREAMED_CACHE_LAYOUT,
     KVStreamExtentMetadata,

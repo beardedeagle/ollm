@@ -6,11 +6,11 @@ import pytest
 import torch
 from transformers.models.qwen3_next.modeling_qwen3_next import Qwen3NextConfig
 
-from ollm.kv_cache_policy import KVCachePolicy
-from ollm.kv_cache_store import ChunkedKVStore
-from ollm.kv_cache_strategy import kv_cache_root
-from ollm.kv_cache_streamed_store import StreamedSegmentedKVStore
-from ollm.kvcache import KVCache
+from ollm.kv_cache import KVCache
+from ollm.kv_cache.policy import KVCachePolicy
+from ollm.kv_cache.store import ChunkedKVStore
+from ollm.kv_cache.strategy import kv_cache_root
+from ollm.kv_cache.streamed_store import StreamedSegmentedKVStore
 from ollm.qwen3_next import Qwen3NextDiskCache
 from ollm.utils import Stats
 
@@ -438,7 +438,7 @@ def test_streamed_store_reads_shared_segment_once_per_tensor_kind(
         ),
     )
 
-    import ollm.kv_cache_streamed_store as streamed_module
+    import ollm.kv_cache.streamed_store as streamed_module
 
     calls: list[tuple[Path, int, int]] = []
     original = streamed_module.path_read_bytes_range

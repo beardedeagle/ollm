@@ -6,12 +6,12 @@ import torch
 from transformers import GenerationConfig as TransformersGenerationConfig
 
 from ollm.app.types import ContentKind, Message, PromptRequest, PromptResponse
-from ollm.kv_cache_matrix import (
+from ollm.kv_cache.matrix import (
     build_kv_cache_adaptation_surface,
     resolve_kv_cache_base_dir,
     resolve_kv_cache_eviction_policy,
 )
-from ollm.kv_cache_state import KVCacheStateSnapshot
+from ollm.kv_cache.state import KVCacheStateSnapshot
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.catalog import ModelModality
 from ollm.runtime.errors import PromptExecutionError

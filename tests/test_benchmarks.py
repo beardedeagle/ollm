@@ -4,22 +4,11 @@ from typing import cast
 
 import torch
 
-import ollm.runtime.benchmark_targets as benchmark_targets_module
+import ollm.runtime.benchmark.targets as benchmark_targets_module
 from ollm.app.types import ContentPart, Message, MessageRole
 from ollm.client import RuntimeClient
 from ollm.runtime.backends.base import BackendRuntime
-from ollm.runtime.benchmark_probe_execution import (
-    build_prompt_request,
-    execute_request_probe,
-)
-from ollm.runtime.benchmark_probes import RuntimeProbeResult
-from ollm.runtime.benchmark_types import (
-    BenchmarkMeasurement,
-    BenchmarkStats,
-    RuntimeComparisonTarget,
-    resolve_runtime_benchmark_profile,
-)
-from ollm.runtime.benchmarks import (
+from ollm.runtime.benchmark import (
     CommandBenchmarkSpec,
     build_runtime_probe_command,
     create_tiny_t5_fixture,
@@ -28,6 +17,17 @@ from ollm.runtime.benchmarks import (
     measure_no_specialization_fallback_cost,
     measure_runtime_probe,
     render_runtime_probe_json,
+)
+from ollm.runtime.benchmark.probe_execution import (
+    build_prompt_request,
+    execute_request_probe,
+)
+from ollm.runtime.benchmark.probes import RuntimeProbeResult
+from ollm.runtime.benchmark.types import (
+    BenchmarkMeasurement,
+    BenchmarkStats,
+    RuntimeComparisonTarget,
+    resolve_runtime_benchmark_profile,
 )
 from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
 from ollm.runtime.catalog import ModelModality

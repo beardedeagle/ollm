@@ -8,8 +8,8 @@ from transformers.models.qwen3_next.modeling_qwen3_next import (
     Qwen3NextDynamicCache,
 )
 
-from ollm.kv_cache_state import KVCacheStateSnapshot
-from ollm.resident_kv_cache import build_resident_cache_snapshot
+from ollm.kv_cache.resident import build_resident_cache_snapshot
+from ollm.kv_cache.state import KVCacheStateSnapshot
 
 
 class Qwen3NextResidentCache(Qwen3NextDynamicCache):

@@ -4,8 +4,21 @@ from pathlib import Path
 from typing import cast
 
 from ollm.async_io import subprocess_run_process
-from ollm.runtime.benchmark_details import summarize_request_metrics
-from ollm.runtime.benchmark_probes import (
+from ollm.runtime.benchmark import (
+    BenchmarkMeasurement,
+    BenchmarkStats,
+    CommandBenchmarkSpec,
+    RuntimeBenchmarkReport,
+    RuntimeComparisonTarget,
+    benchmark_runtime_target,
+    build_current_supported_family_targets,
+    build_host_summary,
+    measure_runtime_probe,
+    render_report_json,
+    render_runtime_probe_json,
+)
+from ollm.runtime.benchmark.details import summarize_request_metrics
+from ollm.runtime.benchmark.probes import (
     OutputScalingCase,
     OutputScalingProbeResult,
     PromptScalingCase,
@@ -26,19 +39,6 @@ from ollm.runtime.benchmark_probes import (
     render_reopen_session_growth_probe_json,
     render_session_growth_probe_json,
     render_warm_runtime_probe_json,
-)
-from ollm.runtime.benchmarks import (
-    BenchmarkMeasurement,
-    BenchmarkStats,
-    CommandBenchmarkSpec,
-    RuntimeBenchmarkReport,
-    RuntimeComparisonTarget,
-    benchmark_runtime_target,
-    build_current_supported_family_targets,
-    build_host_summary,
-    measure_runtime_probe,
-    render_report_json,
-    render_runtime_probe_json,
 )
 from tests.benchmark_support import (
     build_request_probe_metrics,

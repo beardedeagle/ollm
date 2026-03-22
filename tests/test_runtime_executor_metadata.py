@@ -1,7 +1,7 @@
 from dataclasses import replace
 
 from ollm.app.types import ContentPart, Message, MessageRole
-from ollm.kv_cache_state import KVCacheStateSnapshot
+from ollm.kv_cache.state import KVCacheStateSnapshot
 from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
 from ollm.runtime.generation import RuntimeExecutor
 from ollm.runtime.plan import RuntimePlan, SpecializationState

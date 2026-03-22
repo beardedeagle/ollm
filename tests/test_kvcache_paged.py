@@ -5,7 +5,7 @@ from typing import cast
 import pytest
 import torch
 
-from ollm.kv_cache_paged_store import PagedKVStore
+from ollm.kv_cache.paged_store import PagedKVStore
 
 
 def _chunk_tensor(token_count: int, offset: int = 0) -> torch.Tensor:

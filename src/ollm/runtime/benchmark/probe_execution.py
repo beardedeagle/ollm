@@ -6,19 +6,19 @@ from typing import cast
 import torch
 
 from ollm.app.types import Message, PromptRequest
-from ollm.kv_cache_matrix import (
+from ollm.kv_cache.matrix import (
     build_kv_cache_adaptation_surface,
     resolve_kv_cache_base_dir,
 )
-from ollm.kv_cache_state import KVCacheStateSnapshot
-from ollm.kv_cache_strategy import is_disk_backed_kv_cache_strategy, kv_cache_root
-from ollm.runtime.benchmark_probe_types import (
+from ollm.kv_cache.state import KVCacheStateSnapshot
+from ollm.kv_cache.strategy import is_disk_backed_kv_cache_strategy, kv_cache_root
+from ollm.runtime.benchmark.probe_types import (
     EventTimingSummary,
     NativeRuntimeProfile,
     RequestProbeExecution,
     RequestProbeMetrics,
 )
-from ollm.runtime.benchmark_resources import cache_dir_size_mb, measure_stage
+from ollm.runtime.benchmark.resources import cache_dir_size_mb, measure_stage
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
 from ollm.runtime.errors import PromptExecutionError

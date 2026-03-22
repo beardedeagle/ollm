@@ -16,14 +16,14 @@ from transformers import PreTrainedTokenizerFast
 from transformers.models.t5 import T5Config, T5ForConditionalGeneration
 
 from ollm.client import RuntimeClient
-from ollm.runtime.benchmark_commands import (
+from ollm.runtime.benchmark.commands import (
     measure_callable,
     measure_command,
     measure_runtime_probe,
     run_command,
 )
-from ollm.runtime.benchmark_details import mean_delta_ms
-from ollm.runtime.benchmark_probe_serialization import (
+from ollm.runtime.benchmark.details import mean_delta_ms
+from ollm.runtime.benchmark.probe_serialization import (
     render_output_scaling_probe_json,
     render_prompt_scaling_probe_json,
     render_reopen_session_growth_probe_json,
@@ -31,7 +31,7 @@ from ollm.runtime.benchmark_probe_serialization import (
     render_session_growth_probe_json,
     render_warm_runtime_probe_json,
 )
-from ollm.runtime.benchmark_probes import (
+from ollm.runtime.benchmark.probes import (
     run_output_scaling_probe,
     run_prompt_scaling_probe,
     run_reopen_session_growth_probe,
@@ -39,12 +39,12 @@ from ollm.runtime.benchmark_probes import (
     run_session_growth_probe,
     run_warm_runtime_probe,
 )
-from ollm.runtime.benchmark_targets import (
+from ollm.runtime.benchmark.targets import (
     benchmark_runtime_target,
     build_current_supported_family_targets,
     build_runtime_probe_command,
 )
-from ollm.runtime.benchmark_types import (
+from ollm.runtime.benchmark.types import (
     DEFAULT_OUTPUT_TOKEN_TARGETS,
     DEFAULT_PROMPT_TOKEN_TARGETS,
     DEFAULT_SESSION_MAX_NEW_TOKENS,

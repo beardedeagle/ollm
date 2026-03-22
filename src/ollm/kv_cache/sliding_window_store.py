@@ -7,7 +7,7 @@ from pathlib import Path
 import torch
 
 from ollm.async_io import path_exists, path_mkdir
-from ollm.kv_cache_store_common import (
+from ollm.kv_cache.store_common import (
     CACHE_SCHEMA_VERSION,
     PERSISTED_DEVICE,
     SEQUENCE_AXIS,

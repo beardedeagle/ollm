@@ -11,18 +11,7 @@ from benchmark_runtime_support import (
     positive_int,
     resolve_report_selector_result,
 )
-from ollm.runtime.benchmark_history import record_benchmark_history
-from ollm.runtime.benchmark_metadata import (
-    probe_comparison_key,
-    report_comparison_key,
-    resolve_history_codebase_label,
-)
-from ollm.runtime.benchmark_types import (
-    DEFAULT_RUNTIME_BENCHMARK_PROFILE,
-    KNOWN_RUNTIME_BENCHMARK_PROFILES,
-    resolve_runtime_benchmark_profile,
-)
-from ollm.runtime.benchmarks import (
+from ollm.runtime.benchmark import (
     build_runtime_benchmark_report,
     choose_default_device,
     render_output_scaling_probe_json,
@@ -38,6 +27,17 @@ from ollm.runtime.benchmarks import (
     run_runtime_probe,
     run_session_growth_probe,
     run_warm_runtime_probe,
+)
+from ollm.runtime.benchmark.history import record_benchmark_history
+from ollm.runtime.benchmark.metadata import (
+    probe_comparison_key,
+    report_comparison_key,
+    resolve_history_codebase_label,
+)
+from ollm.runtime.benchmark.types import (
+    DEFAULT_RUNTIME_BENCHMARK_PROFILE,
+    KNOWN_RUNTIME_BENCHMARK_PROFILES,
+    resolve_runtime_benchmark_profile,
 )
 from ollm.runtime.strategy_selector import DEFAULT_STRATEGY_SELECTOR_PROFILE
 

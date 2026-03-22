@@ -1,11 +1,11 @@
-from ollm.kv_cache_matrix import KVCacheAdaptationSurface
-from ollm.kv_cache_state import KVCacheStateSnapshot
-from ollm.runtime.benchmark_probes import (
+from ollm.kv_cache.matrix import KVCacheAdaptationSurface
+from ollm.kv_cache.state import KVCacheStateSnapshot
+from ollm.runtime.benchmark.probes import (
     EventTimingSummary,
     NativeRuntimeProfile,
     RequestProbeMetrics,
 )
-from ollm.runtime.benchmark_resources import StageResourceSnapshot
+from ollm.runtime.benchmark.resources import StageResourceSnapshot
 
 
 def build_stage_resources() -> StageResourceSnapshot:

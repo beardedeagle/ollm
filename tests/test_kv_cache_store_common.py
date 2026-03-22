@@ -2,7 +2,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from threading import Barrier
 
-from ollm.kv_cache_store_common import atomic_write_bytes, atomic_write_text
+from ollm.kv_cache.store_common import atomic_write_bytes, atomic_write_text
 
 
 def test_atomic_write_text_supports_concurrent_writers(tmp_path: Path) -> None:

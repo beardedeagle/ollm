@@ -1,6 +1,6 @@
 import torch
 
-from ollm.kv_cache_policy import KVCacheResourceSnapshot, select_kv_cache_policy
+from ollm.kv_cache.policy import KVCacheResourceSnapshot, select_kv_cache_policy
 
 
 def test_select_kv_cache_policy_prefers_buffering_for_darwin_cpu() -> None:

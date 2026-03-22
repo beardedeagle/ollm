@@ -3,8 +3,8 @@
 import torch
 from transformers import DynamicCache
 
-from ollm.kv_cache_matrix import describe_kv_cache_strategy
-from ollm.kv_cache_state import KVCacheStateSnapshot
+from ollm.kv_cache.matrix import describe_kv_cache_strategy
+from ollm.kv_cache.state import KVCacheStateSnapshot
 
 _RESIDENT_POLICY_ID = "resident-baseline"
 _EMPTY_CACHE_PLACEHOLDER = torch.empty(0)

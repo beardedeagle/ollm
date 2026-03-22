@@ -1,6 +1,6 @@
 """Benchmark-history summary normalization and regression comparison helpers."""
 
-from ollm.runtime.benchmark_history_summary_support import (
+from ollm.runtime.benchmark.history_summary_support import (
     event_total_ms,
     max_optional_float,
     mean_optional_float,

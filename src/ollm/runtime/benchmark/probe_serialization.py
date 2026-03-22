@@ -4,9 +4,9 @@ import json
 from collections.abc import Mapping
 from typing import cast
 
-from ollm.kv_cache_matrix import KVCacheAdaptationSurface
-from ollm.kv_cache_state import KVCacheStateSnapshot
-from ollm.runtime.benchmark_probe_types import (
+from ollm.kv_cache.matrix import KVCacheAdaptationSurface
+from ollm.kv_cache.state import KVCacheStateSnapshot
+from ollm.runtime.benchmark.probe_types import (
     EventTimingSummary,
     NativeRuntimeProfile,
     OutputScalingCase,
@@ -21,7 +21,7 @@ from ollm.runtime.benchmark_probe_types import (
     SessionGrowthTurn,
     WarmRuntimeProbeResult,
 )
-from ollm.runtime.benchmark_resources import (
+from ollm.runtime.benchmark.resources import (
     AcceleratorUtilizationSnapshot,
     NumericSummary,
     StageResourceSnapshot,

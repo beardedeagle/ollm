@@ -5,9 +5,9 @@ from typing import cast
 import pytest
 import torch
 
-from ollm.kv_cache_policy import KVCachePolicy
-from ollm.kv_cache_strategy import kv_cache_root
-from ollm.kvcache import KVCache
+from ollm.kv_cache import KVCache
+from ollm.kv_cache.policy import KVCachePolicy
+from ollm.kv_cache.strategy import kv_cache_root
 from ollm.utils import Stats
 
 

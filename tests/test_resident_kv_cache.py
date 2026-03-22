@@ -1,6 +1,6 @@
 import torch
 
-from ollm.resident_kv_cache import ResidentKVCache
+from ollm.kv_cache.resident import ResidentKVCache
 
 
 def test_resident_kv_cache_reports_truthful_resident_state() -> None:

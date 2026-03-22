@@ -1,4 +1,4 @@
-from ollm.runtime.benchmark_resources import (
+from ollm.runtime.benchmark.resources import (
     capture_accelerator_memory,
     reset_accelerator_metrics,
     synchronize_device,

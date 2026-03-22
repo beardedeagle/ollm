@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from ollm.kv_cache_matrix import (
+from ollm.kv_cache.matrix import (
     KVCacheAdaptationSurface,
     build_kv_cache_adaptation_surface,
     describe_kv_cache_strategy,
