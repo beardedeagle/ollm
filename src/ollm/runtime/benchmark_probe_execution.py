@@ -23,6 +23,7 @@ from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
 from ollm.runtime.errors import PromptExecutionError
 from ollm.runtime.generation import RuntimeExecutor, _normalize_generate_inputs
+from ollm.runtime.generation_config_support import temporary_generation_config
 from ollm.runtime.loader import LoadedRuntime
 from ollm.runtime.output_control import suppress_module_prints
 from ollm.runtime.streaming import BufferedTextStreamer
@@ -94,14 +95,21 @@ def execute_request_probe(
     inputs = executor._build_inputs(runtime, request.messages)
     prompt_tokens = _count_prompt_tokens(inputs)
     streamer = TimedBufferedTextStreamer(runtime.tokenizer)
-    generate_kwargs = executor._build_generate_kwargs(runtime, request, streamer)
+    generate_kwargs, generation_config = executor._build_generate_kwargs(
+        runtime, request, streamer
+    )
     cache_mode = _cache_mode(runtime, request)
     kv_cache_strategy = _kv_cache_strategy(runtime, request)
     _clear_backend_stats(runtime)
     normalized_inputs = _normalize_generate_inputs(inputs)
     generation_result, generation_ms, generation_resources = measure_stage(
         runtime.config.device,
-        lambda: _generate_outputs(runtime, normalized_inputs, generate_kwargs),
+        lambda: _generate_outputs(
+            runtime,
+            normalized_inputs,
+            generate_kwargs,
+            generation_config,
+        ),
         sample_accelerator_utilization=True,
     )
     output_tensor = cast(torch.Tensor, cast(tuple[object, float], generation_result)[0])
@@ -300,14 +308,16 @@ def _generate_outputs(
     runtime: LoadedRuntime,
     inputs: dict[str, object],
     generate_kwargs: dict[str, object],
+    generation_config: object,
 ) -> tuple[object, float]:
     generation_started = time.perf_counter()
     try:
         with torch.inference_mode():
             with suppress_module_prints(runtime.backend.print_suppression_modules):
-                return runtime.model.generate(
-                    **inputs, **generate_kwargs
-                ), generation_started
+                with temporary_generation_config(runtime.model, generation_config):
+                    return runtime.model.generate(
+                        **inputs, **generate_kwargs
+                    ), generation_started
     except TypeError as exc:
         if "streamer" not in str(exc):
             raise
@@ -315,9 +325,10 @@ def _generate_outputs(
         retry_kwargs.pop("streamer", None)
         with torch.inference_mode():
             with suppress_module_prints(runtime.backend.print_suppression_modules):
-                return runtime.model.generate(
-                    **inputs, **retry_kwargs
-                ), generation_started
+                with temporary_generation_config(runtime.model, generation_config):
+                    return runtime.model.generate(
+                        **inputs, **retry_kwargs
+                    ), generation_started
 
 
 def _count_prompt_tokens(inputs: dict[str, object]) -> int:
