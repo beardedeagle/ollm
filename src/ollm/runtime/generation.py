@@ -80,7 +80,7 @@ class RuntimeExecutor:
                 runtime.tokenizer,
                 stream_sink,
                 skip_prompt=True,
-                skip_special_tokens=False,
+                skip_special_tokens=True,
             )
 
         generate_kwargs = self._build_generate_kwargs(runtime, request, streamer)
@@ -281,18 +281,18 @@ class RuntimeExecutor:
             input_ids = _require_tensor(inputs["input_ids"])
             decoded = runtime.processor.batch_decode(
                 outputs[:, input_ids.shape[1] :],
-                skip_special_tokens=False,
+                skip_special_tokens=True,
             )
             if not decoded:
                 return ""
             return decoded[0]
 
         if runtime.plan.generic_model_kind is GenericModelKind.SEQ2SEQ_LM:
-            return runtime.tokenizer.decode(outputs[0], skip_special_tokens=False)
+            return runtime.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
         input_ids = _require_tensor(inputs["input_ids"])
         return runtime.tokenizer.decode(
-            outputs[0][input_ids.shape[-1] :], skip_special_tokens=False
+            outputs[0][input_ids.shape[-1] :], skip_special_tokens=True
         )
 
     def _finalize_response(

@@ -14,6 +14,10 @@ from ollm.runtime.specialization.passes.base import SpecializationPassId
 @dataclass(slots=True)
 class FakeLoadedRuntime:
     config: RuntimeConfig
+    reset_kv_cache_instances_calls: int = 0
+
+    def reset_kv_cache_instances(self) -> None:
+        self.reset_kv_cache_instances_calls += 1
 
 
 class FakeRuntimeLoader:
@@ -22,12 +26,15 @@ class FakeRuntimeLoader:
         self.loaded_configs: list[RuntimeConfig] = []
         self.download_calls: list[tuple[str, Path, bool]] = []
         self.plan_calls: list[RuntimeConfig] = []
+        self.loaded_runtimes: list[FakeLoadedRuntime] = []
         self._resolver = ModelResolver()
 
     def load(self, config: RuntimeConfig) -> FakeLoadedRuntime:
         self.load_calls.append(config.model_reference)
         self.loaded_configs.append(config)
-        return FakeLoadedRuntime(config=config)
+        runtime = FakeLoadedRuntime(config=config)
+        self.loaded_runtimes.append(runtime)
+        return runtime
 
     def download(
         self, model_reference: str, models_dir: Path, force_download: bool = False

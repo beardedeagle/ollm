@@ -105,6 +105,11 @@ class LoadedRuntime:
             self._kv_cache_instances[cache_key] = created_cache
         return created_cache
 
+    def reset_kv_cache_instances(self) -> None:
+        """Drop any cached KV objects before a full-history re-execution."""
+
+        self._kv_cache_instances.clear()
+
 
 class RuntimeLoader:
     """Resolve, plan, materialize, and load runtimes for model references."""
