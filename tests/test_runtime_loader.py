@@ -222,6 +222,51 @@ def test_runtime_loader_routes_built_in_alias_to_generic_when_specialization_is_
 
     assert runtime.plan.backend_id == "transformers-generic"
     assert runtime.plan.specialization_enabled is False
+    assert runtime.config.kv_cache_strategy == "resident"
+    assert runtime.plan.details["strategy_selector_rule_id"] == "no-disk-cache-support"
+
+
+def test_runtime_loader_coerces_resident_fallback_to_runtime_scoped_lifecycle(
+    tmp_path: Path,
+) -> None:
+    def snapshot_downloader(
+        repo_id: str, model_dir: str, force_download: bool, revision: str | None
+    ) -> None:
+        del repo_id, force_download, revision
+        target = Path(model_dir)
+        target.mkdir(parents=True, exist_ok=True)
+        (target / "config.json").write_text(
+            json.dumps({"model_type": "llama", "architectures": ["LlamaForCausalLM"]}),
+            encoding="utf-8",
+        )
+        (target / "tokenizer.json").write_text("{}", encoding="utf-8")
+        (target / "model.safetensors").write_text("safe", encoding="utf-8")
+
+    fake_backend = FakeGenericBackend()
+    loader = RuntimeLoader(
+        backends=(fake_backend,),
+        snapshot_downloader=snapshot_downloader,
+    )
+    runtime = loader.load(
+        RuntimeConfig(
+            model_reference="llama3-1B-chat",
+            models_dir=tmp_path / "models",
+            device="cpu",
+            use_specialization=False,
+            kv_cache_lifecycle="persistent",
+        )
+    )
+
+    assert runtime.config.kv_cache_strategy == "resident"
+    assert runtime.config.kv_cache_lifecycle == "runtime-scoped"
+    assert (
+        runtime.plan.details["strategy_selector_applied_kv_cache_lifecycle"]
+        == "runtime-scoped"
+    )
+    assert (
+        runtime.plan.details["strategy_selector_lifecycle_reason"]
+        == "Resident fallback requires runtime-scoped lifecycle."
+    )
 
 
 def test_runtime_loader_plan_predicts_generic_backend_when_specialization_is_disabled(

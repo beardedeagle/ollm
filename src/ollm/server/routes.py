@@ -97,6 +97,7 @@ def _build_runtime_config(
             cache_dir=request_runtime.cache_dir,
             use_cache=request_runtime.use_cache,
             kv_cache_strategy=request_runtime.kv_cache_strategy,
+            strategy_selector_profile=request_runtime.strategy_selector_profile,
             offload_cpu_layers=request_runtime.offload_cpu_layers,
             offload_cpu_policy=request_runtime.offload_cpu_policy,
             offload_gpu_layers=request_runtime.offload_gpu_layers,

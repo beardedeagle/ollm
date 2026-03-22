@@ -92,6 +92,37 @@ The intended progression is:
 3. prove the recommendation loop against benchmarks and repeated-session runs
 4. only then enable real automatic policy changes
 
+## Strategy selector
+
+The repo now also has a deterministic pre-run strategy selector above the
+explicit presets.
+
+Current selector profiles are:
+
+- `balanced`
+- `latency`
+- `capacity`
+- `bounded-window`
+
+Current selector-default candidates are intentionally conservative:
+
+- `paged`
+- `resident`
+- `quantized-cold-tier`
+
+The following presets remain explicit opt-in or pinned overrides:
+
+- `sliding-window-ring-buffer`
+- `streamed-segmented`
+- `log-structured-journal`
+- `tiered-write-back`
+
+This selector is separate from `kv_cache_adaptation_mode`.
+
+- selector: chooses the initial strategy before runtime execution
+- adaptation mode: emits observe-only recommendations or future live changes
+  from current KV state
+
 ## Resident-state observability
 
 The in-process resident KV snapshot is now treated as a first-class observable

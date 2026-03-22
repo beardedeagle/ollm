@@ -5,7 +5,6 @@ from typing import cast
 
 from ollm.app.types import ContentPart, Message, MessageRole
 from ollm.client import RuntimeClient
-from ollm.kv_cache_strategy import DEFAULT_KV_CACHE_STRATEGY
 from ollm.runtime.benchmark_probe_execution import (
     _clear_backend_stats,
     build_prompt_request,
@@ -46,6 +45,7 @@ from ollm.runtime.benchmark_probe_types import (
 from ollm.runtime.benchmark_resources import measure_stage
 from ollm.runtime.config import DEFAULT_SYSTEM_PROMPT, GenerationConfig, RuntimeConfig
 from ollm.runtime.loader import LoadedRuntime
+from ollm.runtime.strategy_selector import DEFAULT_STRATEGY_SELECTOR_PROFILE
 
 __all__ = [
     "EventTimingSummary",
@@ -90,7 +90,8 @@ def _build_probe_runtime_config(
     device: str,
     backend: str,
     use_specialization: bool,
-    kv_cache_strategy: str,
+    kv_cache_strategy: str | None,
+    strategy_selector_profile: str,
     kv_cache_window_tokens: int | None,
     offload_cpu_layers: int,
     offload_cpu_policy: str,
@@ -104,6 +105,7 @@ def _build_probe_runtime_config(
         use_specialization=use_specialization,
         use_cache=True,
         kv_cache_strategy=kv_cache_strategy,
+        strategy_selector_profile=strategy_selector_profile,
         kv_cache_window_tokens=kv_cache_window_tokens,
         offload_cpu_layers=offload_cpu_layers,
         offload_cpu_policy=offload_cpu_policy,
@@ -121,7 +123,8 @@ def run_runtime_probe(
     use_specialization: bool,
     prompt: str,
     max_new_tokens: int,
-    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
+    kv_cache_strategy: str | None = None,
+    strategy_selector_profile: str = DEFAULT_STRATEGY_SELECTOR_PROFILE,
     kv_cache_window_tokens: int | None = None,
     offload_cpu_layers: int = 0,
     offload_cpu_policy: str = "auto",
@@ -134,6 +137,7 @@ def run_runtime_probe(
         backend=backend,
         use_specialization=use_specialization,
         kv_cache_strategy=kv_cache_strategy,
+        strategy_selector_profile=strategy_selector_profile,
         kv_cache_window_tokens=kv_cache_window_tokens,
         offload_cpu_layers=offload_cpu_layers,
         offload_cpu_policy=offload_cpu_policy,
@@ -154,7 +158,7 @@ def run_runtime_probe(
     execution = execute_request_probe(
         runtime=runtime,
         request=build_prompt_request(
-            runtime_config=runtime_config,
+            runtime_config=runtime.config,
             generation_config=generation_config,
             messages=[
                 Message(
@@ -183,7 +187,8 @@ def run_warm_runtime_probe(
     max_new_tokens: int,
     iterations: int,
     warmup_iterations: int,
-    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
+    kv_cache_strategy: str | None = None,
+    strategy_selector_profile: str = DEFAULT_STRATEGY_SELECTOR_PROFILE,
     kv_cache_window_tokens: int | None = None,
     offload_cpu_layers: int = 0,
     offload_cpu_policy: str = "auto",
@@ -196,6 +201,7 @@ def run_warm_runtime_probe(
         backend=backend,
         use_specialization=use_specialization,
         kv_cache_strategy=kv_cache_strategy,
+        strategy_selector_profile=strategy_selector_profile,
         kv_cache_window_tokens=kv_cache_window_tokens,
         offload_cpu_layers=offload_cpu_layers,
         offload_cpu_policy=offload_cpu_policy,
@@ -214,7 +220,7 @@ def run_warm_runtime_probe(
     runtime = cast(LoadedRuntime, runtime_result[0])
     _clear_backend_stats(runtime)
     request = build_prompt_request(
-        runtime_config=runtime_config,
+        runtime_config=runtime.config,
         generation_config=generation_config,
         messages=[
             Message(
@@ -246,7 +252,8 @@ def run_prompt_scaling_probe(
     use_specialization: bool,
     prompt_token_targets: tuple[int, ...],
     max_new_tokens: int,
-    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
+    kv_cache_strategy: str | None = None,
+    strategy_selector_profile: str = DEFAULT_STRATEGY_SELECTOR_PROFILE,
     kv_cache_window_tokens: int | None = None,
     offload_cpu_layers: int = 0,
     offload_cpu_policy: str = "auto",
@@ -259,6 +266,7 @@ def run_prompt_scaling_probe(
         backend=backend,
         use_specialization=use_specialization,
         kv_cache_strategy=kv_cache_strategy,
+        strategy_selector_profile=strategy_selector_profile,
         kv_cache_window_tokens=kv_cache_window_tokens,
         offload_cpu_layers=offload_cpu_layers,
         offload_cpu_policy=offload_cpu_policy,
@@ -285,7 +293,7 @@ def run_prompt_scaling_probe(
                 request=execute_request_probe(
                     runtime=runtime,
                     request=build_prompt_request(
-                        runtime_config=runtime_config,
+                        runtime_config=runtime.config,
                         generation_config=generation_config,
                         messages=[
                             Message(
@@ -320,7 +328,8 @@ def run_output_scaling_probe(
     use_specialization: bool,
     prompt: str,
     output_token_targets: tuple[int, ...],
-    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
+    kv_cache_strategy: str | None = None,
+    strategy_selector_profile: str = DEFAULT_STRATEGY_SELECTOR_PROFILE,
     kv_cache_window_tokens: int | None = None,
     offload_cpu_layers: int = 0,
     offload_cpu_policy: str = "auto",
@@ -333,6 +342,7 @@ def run_output_scaling_probe(
         backend=backend,
         use_specialization=use_specialization,
         kv_cache_strategy=kv_cache_strategy,
+        strategy_selector_profile=strategy_selector_profile,
         kv_cache_window_tokens=kv_cache_window_tokens,
         offload_cpu_layers=offload_cpu_layers,
         offload_cpu_policy=offload_cpu_policy,
@@ -354,7 +364,7 @@ def run_output_scaling_probe(
                 request=execute_request_probe(
                     runtime=runtime,
                     request=build_prompt_request(
-                        runtime_config=runtime_config,
+                        runtime_config=runtime.config,
                         generation_config=GenerationConfig(
                             stream=True,
                             max_new_tokens=target,
@@ -387,7 +397,8 @@ def run_session_growth_probe(
     use_specialization: bool,
     session_turns: int,
     max_new_tokens: int,
-    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
+    kv_cache_strategy: str | None = None,
+    strategy_selector_profile: str = DEFAULT_STRATEGY_SELECTOR_PROFILE,
     kv_cache_window_tokens: int | None = None,
     offload_cpu_layers: int = 0,
     offload_cpu_policy: str = "auto",
@@ -400,6 +411,7 @@ def run_session_growth_probe(
         backend=backend,
         use_specialization=use_specialization,
         kv_cache_strategy=kv_cache_strategy,
+        strategy_selector_profile=strategy_selector_profile,
         kv_cache_window_tokens=kv_cache_window_tokens,
         offload_cpu_layers=offload_cpu_layers,
         offload_cpu_policy=offload_cpu_policy,
@@ -431,7 +443,7 @@ def run_session_growth_probe(
         execution = execute_request_probe(
             runtime=runtime,
             request=build_prompt_request(
-                runtime_config=runtime_config,
+                runtime_config=runtime.config,
                 generation_config=generation_config,
                 messages=[
                     Message(

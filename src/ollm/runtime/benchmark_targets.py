@@ -3,7 +3,6 @@
 from pathlib import Path
 
 from ollm.client import RuntimeClient
-from ollm.kv_cache_strategy import DEFAULT_KV_CACHE_STRATEGY
 from ollm.runtime.benchmark_commands import measure_runtime_probe
 from ollm.runtime.benchmark_details import backend_pair_payload
 from ollm.runtime.benchmark_probe_measurements import (
@@ -22,6 +21,7 @@ from ollm.runtime.benchmark_types import (
     unavailable_measurement,
 )
 from ollm.runtime.catalog import list_model_catalog
+from ollm.runtime.strategy_selector import DEFAULT_STRATEGY_SELECTOR_PROFILE
 
 
 def build_runtime_probe_command(
@@ -32,7 +32,8 @@ def build_runtime_probe_command(
     device: str,
     backend: str,
     use_specialization: bool,
-    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
+    kv_cache_strategy: str | None = None,
+    strategy_selector_profile: str = DEFAULT_STRATEGY_SELECTOR_PROFILE,
     offload_cpu_layers: int = 0,
     offload_cpu_policy: str = "auto",
     offload_gpu_layers: int = 0,
@@ -62,8 +63,8 @@ def build_runtime_probe_command(
         device,
         "--probe-backend",
         backend,
-        "--probe-kv-cache-strategy",
-        kv_cache_strategy,
+        "--probe-strategy-selector-profile",
+        strategy_selector_profile,
         "--probe-offload-cpu-layers",
         str(offload_cpu_layers),
         "--probe-offload-cpu-policy",
@@ -85,6 +86,8 @@ def build_runtime_probe_command(
         "--probe-session-turns",
         str(session_turns),
     ]
+    if kv_cache_strategy is not None:
+        command.extend(("--probe-kv-cache-strategy", kv_cache_strategy))
     if kv_cache_window_tokens is not None:
         command.extend(("--probe-kv-cache-window-tokens", str(kv_cache_window_tokens)))
     if not use_specialization:
@@ -128,7 +131,8 @@ def benchmark_runtime_target(
     device: str,
     iterations: int,
     warmup_iterations: int,
-    kv_cache_strategy: str = DEFAULT_KV_CACHE_STRATEGY,
+    kv_cache_strategy: str | None = None,
+    strategy_selector_profile: str = DEFAULT_STRATEGY_SELECTOR_PROFILE,
     kv_cache_window_tokens: int | None = None,
     offload_cpu_layers: int = 0,
     offload_cpu_policy: str = "auto",
@@ -187,6 +191,7 @@ def benchmark_runtime_target(
                 backend="transformers-generic",
                 use_specialization=False,
                 kv_cache_strategy=kv_cache_strategy,
+                strategy_selector_profile=strategy_selector_profile,
                 kv_cache_window_tokens=kv_cache_window_tokens,
                 offload_cpu_layers=offload_cpu_layers,
                 offload_cpu_policy=offload_cpu_policy,
@@ -211,6 +216,7 @@ def benchmark_runtime_target(
                 backend="optimized-native",
                 use_specialization=True,
                 kv_cache_strategy=kv_cache_strategy,
+                strategy_selector_profile=strategy_selector_profile,
                 kv_cache_window_tokens=kv_cache_window_tokens,
                 offload_cpu_layers=offload_cpu_layers,
                 offload_cpu_policy=offload_cpu_policy,
@@ -235,6 +241,7 @@ def benchmark_runtime_target(
                 backend="transformers-generic",
                 use_specialization=False,
                 kv_cache_strategy=kv_cache_strategy,
+                strategy_selector_profile=strategy_selector_profile,
                 kv_cache_window_tokens=kv_cache_window_tokens,
                 offload_cpu_layers=offload_cpu_layers,
                 offload_cpu_policy=offload_cpu_policy,
@@ -258,6 +265,7 @@ def benchmark_runtime_target(
                 backend="optimized-native",
                 use_specialization=True,
                 kv_cache_strategy=kv_cache_strategy,
+                strategy_selector_profile=strategy_selector_profile,
                 kv_cache_window_tokens=kv_cache_window_tokens,
                 offload_cpu_layers=offload_cpu_layers,
                 offload_cpu_policy=offload_cpu_policy,
@@ -296,6 +304,7 @@ def benchmark_runtime_target(
                         backend="transformers-generic",
                         use_specialization=False,
                         kv_cache_strategy=kv_cache_strategy,
+                        strategy_selector_profile=strategy_selector_profile,
                         kv_cache_window_tokens=kv_cache_window_tokens,
                         offload_cpu_layers=offload_cpu_layers,
                         offload_cpu_policy=offload_cpu_policy,
@@ -319,6 +328,7 @@ def benchmark_runtime_target(
                         backend="optimized-native",
                         use_specialization=True,
                         kv_cache_strategy=kv_cache_strategy,
+                        strategy_selector_profile=strategy_selector_profile,
                         kv_cache_window_tokens=kv_cache_window_tokens,
                         offload_cpu_layers=offload_cpu_layers,
                         offload_cpu_policy=offload_cpu_policy,
@@ -344,6 +354,7 @@ def benchmark_runtime_target(
                         backend="transformers-generic",
                         use_specialization=False,
                         kv_cache_strategy=kv_cache_strategy,
+                        strategy_selector_profile=strategy_selector_profile,
                         kv_cache_window_tokens=kv_cache_window_tokens,
                         offload_cpu_layers=offload_cpu_layers,
                         offload_cpu_policy=offload_cpu_policy,
@@ -367,6 +378,7 @@ def benchmark_runtime_target(
                         backend="optimized-native",
                         use_specialization=True,
                         kv_cache_strategy=kv_cache_strategy,
+                        strategy_selector_profile=strategy_selector_profile,
                         kv_cache_window_tokens=kv_cache_window_tokens,
                         offload_cpu_layers=offload_cpu_layers,
                         offload_cpu_policy=offload_cpu_policy,
@@ -392,6 +404,7 @@ def benchmark_runtime_target(
                         backend="transformers-generic",
                         use_specialization=False,
                         kv_cache_strategy=kv_cache_strategy,
+                        strategy_selector_profile=strategy_selector_profile,
                         kv_cache_window_tokens=kv_cache_window_tokens,
                         offload_cpu_layers=offload_cpu_layers,
                         offload_cpu_policy=offload_cpu_policy,
@@ -415,6 +428,7 @@ def benchmark_runtime_target(
                         backend="optimized-native",
                         use_specialization=True,
                         kv_cache_strategy=kv_cache_strategy,
+                        strategy_selector_profile=strategy_selector_profile,
                         kv_cache_window_tokens=kv_cache_window_tokens,
                         offload_cpu_layers=offload_cpu_layers,
                         offload_cpu_policy=offload_cpu_policy,

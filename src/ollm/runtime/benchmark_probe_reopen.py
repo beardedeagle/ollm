@@ -18,6 +18,7 @@ from ollm.runtime.benchmark_probe_types import (
 from ollm.runtime.benchmark_resources import measure_stage
 from ollm.runtime.config import DEFAULT_SYSTEM_PROMPT, GenerationConfig, RuntimeConfig
 from ollm.runtime.loader import LoadedRuntime
+from ollm.runtime.strategy_selector import DEFAULT_STRATEGY_SELECTOR_PROFILE
 
 
 def run_reopen_session_growth_probe(
@@ -29,7 +30,8 @@ def run_reopen_session_growth_probe(
     use_specialization: bool,
     session_turns: int,
     max_new_tokens: int,
-    kv_cache_strategy: str,
+    kv_cache_strategy: str | None,
+    strategy_selector_profile: str = DEFAULT_STRATEGY_SELECTOR_PROFILE,
     kv_cache_window_tokens: int | None,
     offload_cpu_layers: int,
     offload_cpu_policy: str,
@@ -54,6 +56,7 @@ def run_reopen_session_growth_probe(
                 cache_dir=persistent_cache_dir,
                 use_cache=True,
                 kv_cache_strategy=kv_cache_strategy,
+                strategy_selector_profile=strategy_selector_profile,
                 kv_cache_lifecycle="persistent",
                 kv_cache_window_tokens=kv_cache_window_tokens,
                 offload_cpu_layers=offload_cpu_layers,
@@ -79,7 +82,7 @@ def run_reopen_session_growth_probe(
             execution = execute_request_probe(
                 runtime=runtime,
                 request=build_prompt_request(
-                    runtime_config=runtime_config,
+                    runtime_config=runtime.config,
                     generation_config=generation_config,
                     messages=[
                         Message(

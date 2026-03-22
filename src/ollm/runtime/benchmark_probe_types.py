@@ -55,6 +55,12 @@ class RequestProbeMetrics:
     native_runtime_profile: NativeRuntimeProfile | None
     resources: StageResourceSnapshot
     text_excerpt: str
+    strategy_selector_profile: str | None = None
+    strategy_selector_rule_id: str | None = None
+    strategy_selector_requested_override: str | None = None
+    strategy_selector_selected_kv_cache_strategy: str | None = None
+    strategy_selector_applied_kv_cache_strategy: str | None = None
+    strategy_selector_fallback_chain: tuple[str, ...] = ()
     offload_cpu_policy: str | None = None
     offload_cpu_requested_layers: int | None = None
     offload_cpu_applied_layers: int | None = None

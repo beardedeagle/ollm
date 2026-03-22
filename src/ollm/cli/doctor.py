@@ -78,6 +78,7 @@ def register_doctor_command(app: typer.Typer, services: CommandServices) -> None
             stats=None,
             verbose=verbose,
             quiet=None,
+            strategy_selector_profile=None,
             settings=load_app_settings(),
         )
         console = build_console(no_color=no_color)

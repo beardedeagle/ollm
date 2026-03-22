@@ -106,7 +106,7 @@ class RuntimeClient:
             request_messages.extend(history)
         request_messages.append(Message(role=MessageRole.USER, content=list(parts)))
         request = PromptRequest(
-            runtime_config=effective_runtime_config,
+            runtime_config=runtime.config,
             generation_config=effective_generation_config,
             messages=request_messages,
         )

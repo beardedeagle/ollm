@@ -31,6 +31,7 @@ def _write_settings_file(path: Path) -> None:
                 'cache_dir = "file-cache"',
                 "use_cache = false",
                 'kv_cache_strategy = "streamed-segmented"',
+                'strategy_selector_profile = "latency"',
                 "",
                 "[generation]",
                 "max_new_tokens = 64",
@@ -59,7 +60,8 @@ def test_default_app_settings_match_current_runtime_defaults() -> None:
     assert settings.runtime.cache_dir == Path("kv_cache")
     assert settings.runtime.use_specialization is True
     assert settings.runtime.use_cache is True
-    assert settings.runtime.kv_cache_strategy == "chunked"
+    assert settings.runtime.kv_cache_strategy is None
+    assert settings.runtime.strategy_selector_profile == "balanced"
     assert settings.runtime.kv_cache_lifecycle == "runtime-scoped"
     assert settings.runtime.kv_cache_adaptation_mode == "observe-only"
     assert settings.runtime.kv_cache_window_tokens is None
@@ -96,6 +98,7 @@ def test_load_app_settings_reads_toml_defaults_from_explicit_file(
     assert settings.runtime.cache_dir == Path("file-cache")
     assert settings.runtime.use_cache is False
     assert settings.runtime.kv_cache_strategy == "streamed-segmented"
+    assert settings.runtime.strategy_selector_profile == "latency"
     assert settings.runtime.kv_cache_lifecycle == "runtime-scoped"
     assert settings.runtime.kv_cache_adaptation_mode == "observe-only"
     assert settings.runtime.kv_cache_window_tokens is None
@@ -187,6 +190,7 @@ def test_resolve_runtime_config_prefers_explicit_overrides() -> None:
         cache_dir=Path("/tmp/default-cache"),
         use_cache=True,
         kv_cache_strategy="chunked",
+        strategy_selector_profile="balanced",
         kv_cache_lifecycle="runtime-scoped",
         kv_cache_adaptation_mode="observe-only",
         verbose=False,
@@ -199,6 +203,7 @@ def test_resolve_runtime_config_prefers_explicit_overrides() -> None:
             device="mps",
             use_cache=False,
             kv_cache_strategy="streamed-segmented",
+            strategy_selector_profile="capacity",
             kv_cache_lifecycle="persistent",
             kv_cache_adaptation_mode="automatic",
             verbose=True,
@@ -211,6 +216,7 @@ def test_resolve_runtime_config_prefers_explicit_overrides() -> None:
     assert resolved.cache_dir == Path("/tmp/default-cache")
     assert resolved.use_cache is False
     assert resolved.kv_cache_strategy == "streamed-segmented"
+    assert resolved.strategy_selector_profile == "capacity"
     assert resolved.kv_cache_lifecycle == "persistent"
     assert resolved.kv_cache_adaptation_mode == "automatic"
     assert resolved.verbose is True
@@ -230,6 +236,7 @@ def test_resolve_runtime_config_cli_overrides_beat_loaded_settings(
             device="mps",
             use_cache=True,
             kv_cache_strategy="chunked",
+            strategy_selector_profile="latency",
             kv_cache_lifecycle="persistent",
             kv_cache_adaptation_mode="disabled",
         ),
@@ -239,6 +246,7 @@ def test_resolve_runtime_config_cli_overrides_beat_loaded_settings(
     assert resolved.device == "mps"
     assert resolved.use_cache is True
     assert resolved.kv_cache_strategy == "chunked"
+    assert resolved.strategy_selector_profile == "latency"
     assert resolved.kv_cache_lifecycle == "persistent"
     assert resolved.kv_cache_adaptation_mode == "disabled"
     assert resolved.backend == "transformers-generic"
@@ -380,6 +388,22 @@ def test_runtime_settings_accept_sliding_window_strategy_with_window_tokens() ->
     assert overrides.kv_cache_window_tokens == 48
 
 
+def test_runtime_settings_accept_window_tokens_with_bounded_window_profile() -> None:
+    settings = RuntimeSettings(
+        strategy_selector_profile="bounded-window",
+        kv_cache_window_tokens=48,
+    )
+    overrides = RuntimeConfigOverrides(
+        strategy_selector_profile="bounded-window",
+        kv_cache_window_tokens=48,
+    )
+
+    assert settings.strategy_selector_profile == "bounded-window"
+    assert settings.kv_cache_window_tokens == 48
+    assert overrides.strategy_selector_profile == "bounded-window"
+    assert overrides.kv_cache_window_tokens == 48
+
+
 def test_runtime_settings_reject_window_tokens_without_sliding_strategy() -> None:
     try:
         RuntimeSettings(kv_cache_strategy="chunked", kv_cache_window_tokens=48)
@@ -427,6 +451,14 @@ def test_runtime_settings_accept_cpu_offload_policy() -> None:
 
     assert settings.offload_cpu_policy == "suffix"
     assert overrides.offload_cpu_policy == "middle-band"
+
+
+def test_runtime_settings_accept_strategy_selector_profile() -> None:
+    settings = RuntimeSettings(strategy_selector_profile="capacity")
+    overrides = RuntimeConfigOverrides(strategy_selector_profile="latency")
+
+    assert settings.strategy_selector_profile == "capacity"
+    assert overrides.strategy_selector_profile == "latency"
 
 
 def test_runtime_settings_reject_cpu_offload_on_cpu_device() -> None:

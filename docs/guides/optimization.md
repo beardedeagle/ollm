@@ -109,6 +109,36 @@ KV entirely in memory and exists as the explicit low-overhead baseline when the
 active runtime can afford that footprint. It is intentionally not aligned with
 oLLM's large-model spill/offload goal.
 
+## Runtime strategy selector
+
+The runtime now has a deterministic pre-run selector above the explicit KV
+presets.
+
+Current selector profiles are:
+
+- `balanced`
+- `latency`
+- `capacity`
+- `bounded-window`
+
+Current selector-default candidates are intentionally narrow:
+
+- `paged`
+- `resident`
+- `quantized-cold-tier`
+
+The other presets stay explicit opt-in or pinned overrides for now:
+
+- `sliding-window-ring-buffer`
+- `streamed-segmented`
+- `log-structured-journal`
+- `tiered-write-back`
+
+The selector is not the same thing as the live KV adaptation surface.
+`kv_cache_adaptation_mode` still describes post-start observe-only or automatic
+adaptation behavior, while the selector chooses the initial strategy before the
+runtime starts.
+
 Within one loaded runtime, the cache layer now also keeps a resident in-process
 snapshot of the reconstructed per-layer KV state so repeated updates do not
 need to reread and rebuild the same on-disk history every token. For the
