@@ -2363,7 +2363,14 @@ uv<span class="w"> </span>build
 uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pip_audit
 uv<span class="w"> </span>run<span class="w"> </span>--group<span class="w"> </span>docs<span class="w"> </span>mkdocs<span class="w"> </span>build<span class="w"> </span>--strict
 </code></pre></div>
-<p>For runtime-heavy changes, run one targeted script or CLI smoke for the path you touched.</p>
+<p>For runtime-heavy changes, also run the reusable smoke harness on the lane you
+actually changed:</p>
+<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/runtime_smoke.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--model<span class="w"> </span>llama3-1B-chat<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>.omx/logs/runtime-smoke.json
+</code></pre></div>
+<p>If you recommend a specific command or runtime lane to a user, validate that
+exact lane before push, or explicitly say which stricter equivalent you used.</p>
 <h2 id="engineering-standards">Engineering standards<a class="headerlink" href="#engineering-standards" title="Permanent link">&para;</a></h2>
 <p>The canonical standards baseline lives in <a href="../guides/python-standards/">Python Standards</a>.</p>
 <p>This repo is currently being treated as greenfield:</p>
@@ -2397,8 +2404,11 @@ uv<span class="w"> </span>run<span class="w"> </span>--group<span class="w"> </s
 <li>end-user smoke examples live in <code>examples/</code></li>
 <li>export and manual validation scripts live in <code>scripts/</code></li>
 <li>large text fixtures live in <code>samples/</code></li>
+<li><code>scripts/runtime_smoke.py</code> is the reusable pre-push runtime validation path for
+  prompt and chat-session semantics</li>
 </ul>
-<p>Adjust any hard-coded local model paths in manual scripts before running them.</p>
+<p>Some older manual scripts still contain machine-specific paths and should be
+treated as ad hoc local experiments rather than the canonical validation path.</p>
 
 
 

@@ -2339,6 +2339,15 @@ uv<span class="w"> </span>build
 uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pip_audit
 uv<span class="w"> </span>run<span class="w"> </span>--group<span class="w"> </span>docs<span class="w"> </span>mkdocs<span class="w"> </span>build<span class="w"> </span>--strict
 </code></pre></div>
+<p>If the change touches runtime planning, loading, generation, prompt/chat flows,
+server prompt execution, or a user-facing command recommendation, also run:</p>
+<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/runtime_smoke.py<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--model<span class="w"> </span>llama3-1B-chat<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--output<span class="w"> </span>.omx/logs/runtime-smoke.json
+</code></pre></div>
+<p>Use the lane you actually changed whenever possible. If you recommend a
+specific command to a user, validate that exact lane before push or say which
+stricter equivalent you validated.</p>
 <p>For docs-only changes, still verify the docs build and run at least the tests affected by the changed examples or commands.</p>
 <h2 id="documentation-expectations">Documentation expectations<a class="headerlink" href="#documentation-expectations" title="Permanent link">&para;</a></h2>
 <p>This project treats docs as part of the product surface:</p>
@@ -2361,7 +2370,8 @@ repo-wide remediation matrix lives in <a href="../python-standards-audit/">Pytho
 <h2 id="testing-style">Testing style<a class="headerlink" href="#testing-style" title="Permanent link">&para;</a></h2>
 <ul>
 <li>prefer fakes and tiny real fixtures over mocks</li>
-<li>use targeted CLI or script smokes when touching runtime-heavy flows</li>
+<li>use <code>scripts/runtime_smoke.py</code> for reusable runtime smokes instead of ad hoc one-off commands</li>
+<li>if you changed interactive shell rendering itself, add a manual <code>uv run ollm chat ...</code> check in addition to the reusable smoke</li>
 </ul>
 
 
