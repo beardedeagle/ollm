@@ -2450,6 +2450,15 @@
 <li><code>gds-export-weights</code></li>
 </ul>
 <p>These passes are validated against the assembled optimized runtime before execution proceeds.</p>
+<p><code>mlp-chunking</code> is currently the dense-sub-layer feasibility guard on the
+optimized-native Llama, Gemma3, and Voxtral paths. The runtime keeps the
+existing <code>16384</code>-row ceiling as the normal fast path, derives smaller chunks
+when accelerator headroom is tight, and accepts an explicit
+<code>dense_projection_chunk_rows</code> override through <code>RuntimeConfig</code>, <code>ollm.toml</code>, or
+<code>OLLM_RUNTIME__DENSE_PROJECTION_CHUNK_ROWS</code>. Smaller chunks reduce peak
+activation pressure but can shift latency differently across devices, so this
+path should be treated as a fallback-first memory control rather than a general
+latency optimization.</p>
 <h2 id="fallback-behavior">Fallback behavior<a class="headerlink" href="#fallback-behavior" title="Permanent link">&para;</a></h2>
 <p>If an optimized specialization cannot satisfy its planned pass contract and a compatible generic Transformers path exists, oLLM falls back safely to <code>transformers-generic</code>.</p>
 <p>This is intentional. The runtime does <strong>not</strong> pretend the optimized path succeeded.</p>

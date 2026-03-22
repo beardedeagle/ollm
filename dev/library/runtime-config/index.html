@@ -2275,6 +2275,7 @@
 <li><code>strategy_selector_profile</code> — the deterministic selector profile (<code>balanced</code>, <code>latency</code>, <code>capacity</code>, or <code>bounded-window</code>)</li>
 <li><code>kv_cache_strategy</code> — optional explicit strategy override; when omitted, the selector chooses a concrete preset</li>
 <li><code>kv_cache_window_tokens</code> — bounded recent-context token budget for <code>sliding-window-ring-buffer</code>; omitted for full-history strategies</li>
+<li><code>dense_projection_chunk_rows</code> — optional explicit row budget for dense optimized-native MLP chunking; when omitted, the dense Llama, Gemma3, and Voxtral paths keep the current <code>16384</code>-row ceiling but derive smaller chunks only when accelerator headroom is tight</li>
 <li><code>kv_cache_lifecycle</code> — <code>runtime-scoped</code> or explicit <code>persistent</code> reuse semantics; <code>resident</code> requires <code>runtime-scoped</code></li>
 <li><code>kv_cache_adaptation_mode</code> — <code>disabled</code>, <code>observe-only</code>, or <code>automatic</code>; observe-only recommendation rules exist, but live switching is still disabled</li>
 <li><code>offload_cpu_layers</code> — requested CPU offload layer budget</li>

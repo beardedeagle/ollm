@@ -2443,6 +2443,7 @@ different config file with <code>OLLM_CONFIG_FILE=/path/to/ollm.toml</code>.</p>
 <li><code>OLLM_RUNTIME__MODEL_REFERENCE</code></li>
 <li><code>OLLM_RUNTIME__MODELS_DIR</code></li>
 <li><code>OLLM_RUNTIME__DEVICE</code></li>
+<li><code>OLLM_RUNTIME__DENSE_PROJECTION_CHUNK_ROWS</code></li>
 <li><code>OLLM_GENERATION__MAX_NEW_TOKENS</code></li>
 <li><code>OLLM_GENERATION__STREAM</code></li>
 <li><code>OLLM_SERVER__PORT</code></li>
@@ -2452,6 +2453,7 @@ different config file with <code>OLLM_CONFIG_FILE=/path/to/ollm.toml</code>.</p>
 <span class="n">model_reference</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;llama3-8B-chat&quot;</span>
 <span class="n">models_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;models&quot;</span>
 <span class="n">device</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;cpu&quot;</span>
+<span class="c1"># dense_projection_chunk_rows = 8192</span>
 
 <span class="k">[generation]</span>
 <span class="n">max_new_tokens</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">256</span>
