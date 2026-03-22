@@ -36,16 +36,18 @@ with `ollm serve`.
   model discovery.
 - Chat-completions requests currently support plain string content and structured
   text-part arrays only.
-- Responses requests currently support plain string input or message arrays with
-  text, image, and audio content parts.
+- Responses requests support:
+  - plain string input
+  - message arrays with text, image, and audio content parts
+  - `function_call_output` tool-result input items
+  - custom `type=function` tool definitions plus `tool_choice`
 - `POST /v1/chat/completions` supports both standard JSON responses and SSE
   streaming responses.
 - `POST /v1/responses` supports both standard JSON responses and typed SSE
   response events.
 - `GET /v1/responses/{response_id}` and `previous_response_id` require a
   configured response-store backend.
-- Responses tool definitions, tool-call outputs, and non-text output items are
-  not supported yet.
+- Responses output items include assistant messages and `function_call` items.
 - The server continues to expose native oLLM-only runtime planning, prompt, and
   session endpoints beside the compatibility layer.
 
@@ -57,6 +59,8 @@ with `ollm serve`.
 - Responses streaming uses typed SSE events such as `response.created`,
   `response.output_item.added`, `response.content_part.added`,
   `response.output_text.delta`, `response.output_text.done`,
+  `response.function_call_arguments.delta`,
+  `response.function_call_arguments.done`,
   `response.output_item.done`, and `response.completed`.
 - Native streaming responses still use oLLM's SSE event family.
 - Server-side sessions are in-memory only.

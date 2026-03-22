@@ -10,12 +10,34 @@ from ollm.runtime.settings import ServerSettings
 from ollm.server.openai_response_models import OpenAIResponseResponseModel
 
 
+@dataclass(frozen=True, slots=True)
+class StoredOpenAIResponseFunctionCall:
+    """Stored function-call output item used for response chaining."""
+
+    item_id: str
+    call_id: str
+    name: str
+    arguments: str
+
+
+@dataclass(frozen=True, slots=True)
+class StoredOpenAIResponseFunctionCallOutput:
+    """Stored tool-result input item used for response chaining."""
+
+    call_id: str
+    output_text: str
+
+
 @dataclass(slots=True)
 class StoredOpenAIResponse:
     """Stored response payload plus conversation history for chaining."""
 
     response: OpenAIResponseResponseModel
-    conversation_messages: list[Message]
+    conversation_items: list[
+        Message
+        | StoredOpenAIResponseFunctionCall
+        | StoredOpenAIResponseFunctionCallOutput
+    ]
 
 
 class OpenAIResponseStore(Protocol):

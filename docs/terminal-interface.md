@@ -108,8 +108,11 @@ The current REST surface is:
 - `POST /v1/sessions/{session_id}/prompt/stream`
 
 The streaming transport is SSE-based and the current server-side sessions are
-in-memory only. See [Local Server API](guides/local-server.md) for the complete
-HTTP surface and [CLI `ollm serve`](cli/server.md) for command-specific usage.
+in-memory only. The OpenAI-compatible `/v1/responses` surface supports custom
+function tools, `tool_choice`, `function_call_output` chaining, and typed
+function-call SSE events. See [Local Server API](guides/local-server.md) for the
+complete HTTP surface and [CLI `ollm serve`](cli/server.md) for command-specific
+usage.
 
 ## Model references
 

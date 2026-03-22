@@ -91,6 +91,7 @@ class FakeRuntimeExecutor:
         self.requests: list[object] = []
         self.message_batches: list[list[Message]] = []
         self.response_prefix = "echo:"
+        self.fixed_response_text: str | None = None
         self.response_metadata: dict[str, str] = {}
 
     def execute(self, runtime, request, sink=None) -> PromptResponse:
@@ -100,7 +101,11 @@ class FakeRuntimeExecutor:
         self.message_batches.append(messages)
         prompt_text = messages[-1].text_content()
         self.prompts.append(prompt_text)
-        text = f"{self.response_prefix}{prompt_text}"
+        text = (
+            self.fixed_response_text
+            if self.fixed_response_text is not None
+            else f"{self.response_prefix}{prompt_text}"
+        )
         metadata = dict(self.response_metadata)
         if sink is not None:
             sink.on_status("fake")

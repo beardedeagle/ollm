@@ -21,8 +21,40 @@ class OpenAIResponseInputMessageRequestModel(BaseModel):
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
+    type: str = "message"
     role: str
     content: str | list[OpenAIResponseInputContentPartRequestModel]
+
+
+class OpenAIResponseFunctionCallOutputRequestModel(BaseModel):
+    """Tool-result input item for a Responses API request."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    type: str = "function_call_output"
+    call_id: str
+    output: str | dict[str, object] | list[object] | int | float | bool | None
+
+
+class OpenAIResponseFunctionToolRequestModel(BaseModel):
+    """Custom function-tool definition for a Responses request."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    type: str = "function"
+    name: str
+    description: str | None = None
+    parameters: dict[str, object] = Field(default_factory=dict)
+    strict: bool = False
+
+
+class OpenAIResponseFunctionToolChoiceRequestModel(BaseModel):
+    """Specific function-tool choice for a Responses request."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    type: str = "function"
+    name: str
 
 
 class OpenAIResponseCreateRequestModel(BaseModel):
@@ -31,7 +63,13 @@ class OpenAIResponseCreateRequestModel(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     model: str
-    input: str | list[OpenAIResponseInputMessageRequestModel]
+    input: (
+        str
+        | list[
+            OpenAIResponseInputMessageRequestModel
+            | OpenAIResponseFunctionCallOutputRequestModel
+        ]
+    )
     instructions: str | None = None
     previous_response_id: str | None = None
     stream: bool = False
@@ -39,6 +77,9 @@ class OpenAIResponseCreateRequestModel(BaseModel):
     temperature: float | None = Field(default=None, ge=0.0)
     top_p: float | None = Field(default=None, gt=0.0, le=1.0)
     seed: int | None = None
+    tools: list[OpenAIResponseFunctionToolRequestModel] = Field(default_factory=list)
+    tool_choice: str | OpenAIResponseFunctionToolChoiceRequestModel | None = None
+    parallel_tool_calls: bool = True
 
 
 class OpenAIResponseOutputTextResponseModel(BaseModel):
@@ -59,7 +100,21 @@ class OpenAIResponseOutputMessageResponseModel(BaseModel):
     id: str
     type: str = "message"
     role: str = "assistant"
+    status: str = "completed"
     content: list[OpenAIResponseOutputTextResponseModel]
+
+
+class OpenAIResponseFunctionCallResponseModel(BaseModel):
+    """Function-call output item for a response object."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    id: str
+    type: str = "function_call"
+    call_id: str
+    name: str
+    arguments: str
+    status: str = "completed"
 
 
 class OpenAIResponseResponseModel(BaseModel):
@@ -72,9 +127,15 @@ class OpenAIResponseResponseModel(BaseModel):
     created_at: int
     status: str
     model: str
-    output: list[OpenAIResponseOutputMessageResponseModel]
+    output: list[
+        OpenAIResponseOutputMessageResponseModel
+        | OpenAIResponseFunctionCallResponseModel
+    ]
     instructions: str | None = None
     previous_response_id: str | None = None
+    tools: list[OpenAIResponseFunctionToolRequestModel] = Field(default_factory=list)
+    tool_choice: str | OpenAIResponseFunctionToolChoiceRequestModel | None = None
+    parallel_tool_calls: bool = True
     error: builtins.object | None = None
 
 
@@ -95,7 +156,10 @@ class OpenAIResponseOutputItemAddedEventModel(BaseModel):
     type: str = "response.output_item.added"
     response_id: str
     output_index: int = 0
-    item: OpenAIResponseOutputMessageResponseModel
+    item: (
+        OpenAIResponseOutputMessageResponseModel
+        | OpenAIResponseFunctionCallResponseModel
+    )
 
 
 class OpenAIResponseContentPartAddedEventModel(BaseModel):
@@ -145,7 +209,34 @@ class OpenAIResponseOutputItemDoneEventModel(BaseModel):
     type: str = "response.output_item.done"
     response_id: str
     output_index: int = 0
-    item: OpenAIResponseOutputMessageResponseModel
+    item: (
+        OpenAIResponseOutputMessageResponseModel
+        | OpenAIResponseFunctionCallResponseModel
+    )
+
+
+class OpenAIResponseFunctionCallArgumentsDeltaEventModel(BaseModel):
+    """Streaming event emitted for a function-call arguments delta."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    type: str = "response.function_call_arguments.delta"
+    response_id: str
+    item_id: str
+    output_index: int = 0
+    delta: str
+
+
+class OpenAIResponseFunctionCallArgumentsDoneEventModel(BaseModel):
+    """Streaming event emitted when function-call arguments complete."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    type: str = "response.function_call_arguments.done"
+    response_id: str
+    item_id: str
+    output_index: int = 0
+    arguments: str
 
 
 class OpenAIResponseCompletedEventModel(BaseModel):
