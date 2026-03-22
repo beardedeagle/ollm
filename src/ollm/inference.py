@@ -64,7 +64,12 @@ class _PeftModelProtocol(Protocol):
 
 
 def get_attn_implementation() -> str | None:
-    """Return the preferred attention implementation identifier when available."""
+    """Return the preferred attention implementation identifier when available.
+
+    Returns:
+        str | None: ``"flash_attention_2"`` when FlashAttention is importable,
+        otherwise ``None``.
+    """
     if importlib.util.find_spec("flash_attn") is not None:
         return "flash_attention_2"
     LOGGER.debug(
@@ -87,7 +92,22 @@ def _load_peft_symbols() -> tuple[
 
 
 class Inference:
-    """Direct optimized-native helper for built-in aliases and matching local native families."""
+    """Direct optimized-native helper for built-in aliases.
+
+    This class is the low-level optimized-native entry point. It is best suited
+    for direct model control in scripts that intentionally want to bypass the
+    higher-level ``RuntimeClient`` surface.
+
+    Args:
+        model_id (str): Built-in optimized alias to load.
+        device (str): Target device string such as ``"cuda:0"`` or ``"mps"``.
+        logging (bool): Whether to collect runtime stats.
+        multimodality (bool): Whether the runtime should plan for multimodal
+            execution.
+        specialization_registry (SpecializationRegistry | None): Optional
+            specialization registry override.
+        resolver (ModelResolver | None): Optional model resolver override.
+    """
 
     def __init__(
         self,
@@ -119,7 +139,16 @@ class Inference:
         self.loaded_applied_specialization_pass_ids = ()
 
     def hf_download(self, model_dir: str, force_download: bool = False) -> None:
-        """Download the built-in optimized alias into a local directory."""
+        """Download the built-in optimized alias into a local directory.
+
+        Args:
+            model_dir (str): Target local model directory.
+            force_download (bool): Whether to force a fresh snapshot download.
+
+        Raises:
+            ValueError: Raised when the current ``optimized_model_id`` is not a
+                built-in optimized alias.
+        """
         entry = find_model_catalog_entry(self.optimized_model_id)
         if entry is None:
             raise ValueError(
@@ -130,7 +159,17 @@ class Inference:
     def ini_model(
         self, models_dir: str = "./models/", force_download: bool = False
     ) -> None:
-        """Download if needed and then load the optimized-native runtime."""
+        """Download if needed and then load the optimized-native runtime.
+
+        Args:
+            models_dir (str): Parent directory that will contain the managed
+                model directory.
+            force_download (bool): Whether to force a fresh snapshot download.
+
+        Raises:
+            ValueError: Raised when the current optimized alias is invalid or the
+                local model directory cannot be prepared.
+        """
         entry = find_model_catalog_entry(self.optimized_model_id)
         if entry is None:
             raise ValueError(
@@ -148,7 +187,15 @@ class Inference:
         self.load_model(str(model_dir))
 
     def load_model(self, model_dir: str) -> None:
-        """Load an optimized-native runtime from a local directory."""
+        """Load an optimized-native runtime from a local directory.
+
+        Args:
+            model_dir (str): Local model directory for the optimized alias.
+
+        Raises:
+            ValueError: Raised when the path does not exist or the current
+                optimized alias is invalid.
+        """
         model_path = Path(model_dir).expanduser().resolve()
         if not model_path.exists() or not model_path.is_dir():
             raise ValueError(f"Model directory does not exist: {model_path}")
@@ -234,7 +281,17 @@ class Inference:
         self._apply_gpu_offload = artifacts.apply_gpu_offload
 
     def offload_layers_to_cpu(self, layers_num: int, policy: str = "prefix") -> None:
-        """Apply CPU layer offload through the selected specialization when supported."""
+        """Apply CPU layer offload through the selected specialization.
+
+        Args:
+            layers_num (int): Number of layers to place on CPU.
+            policy (str): Placement policy such as ``"prefix"``,
+                ``"suffix"``, or ``"middle-band"``.
+
+        Raises:
+            ValueError: Raised when the model is not loaded or the selected
+                specialization does not expose CPU offload support.
+        """
         if self._apply_cpu_offload is None:
             raise ValueError(f"{self.model_id} does not support CPU layer offload")
         model = getattr(self, "model", None)
@@ -250,7 +307,16 @@ class Inference:
     def offload_layers_to_gpu_cpu(
         self, gpu_layers_num: int = 0, cpu_layers_num: int = 0
     ) -> None:
-        """Apply mixed GPU/CPU layer placement when the specialization exposes it."""
+        """Apply mixed GPU/CPU layer placement when the specialization exposes it.
+
+        Args:
+            gpu_layers_num (int): Number of layers to keep on the accelerator.
+            cpu_layers_num (int): Number of layers to move to CPU.
+
+        Raises:
+            ValueError: Raised when the specialization does not expose mixed
+                placement support.
+        """
         if gpu_layers_num == 0 and cpu_layers_num == 0:
             return
         if self._apply_gpu_offload is None:
@@ -263,8 +329,20 @@ class Inference:
         cache_strategy: str | None = None,
         cache_lifecycle: str | None = None,
         cache_window_tokens: int | None = None,
-    ):
-        """Create the specialization-backed disk KV cache when supported."""
+    ) -> object | None:
+        """Create the specialization-backed KV cache when supported.
+
+        Args:
+            cache_dir (str): Base cache directory for the cache instance.
+            cache_strategy (str | None): Optional explicit KV strategy override.
+            cache_lifecycle (str | None): Optional cache lifecycle override.
+            cache_window_tokens (int | None): Optional sliding-window token
+                budget override.
+
+        Returns:
+            object | None: Specialization-backed cache object, or ``None`` when
+            the loaded specialization does not expose a cache factory.
+        """
         if self._cache_factory is None:
             return None
         return self._cache_factory(
@@ -276,7 +354,28 @@ class Inference:
 
 
 class AutoInference(Inference):
-    """Optimized-native helper that infers the matching local native family from a model directory."""
+    """Optimized-native helper for compatible local model directories.
+
+    ``AutoInference`` inspects a local model directory, infers the matching
+    optimized-native family, and then loads the same optimized path that
+    ``Inference`` uses for built-in aliases.
+
+    Args:
+        model_dir (str): Local model directory to inspect and load.
+        adapter_dir (str | None): Optional LoRA adapter directory.
+        device (str): Target device string such as ``"cuda:0"`` or ``"mps"``.
+        logging (bool): Whether to collect runtime stats.
+        multimodality (bool): Whether the runtime should plan for multimodal
+            execution.
+        specialization_registry (SpecializationRegistry | None): Optional
+            specialization registry override.
+        resolver (ModelResolver | None): Optional model resolver override.
+
+    Raises:
+        ValueError: Raised when the local model directory is missing, uses an
+            unsupported architecture, or references an invalid adapter
+            directory.
+    """
 
     def __init__(
         self,

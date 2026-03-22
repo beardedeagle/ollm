@@ -12,6 +12,22 @@ ollm serve
 
 The default bind is `127.0.0.1:8000`.
 
+## Request flow
+
+<div class="mermaid">
+flowchart LR
+    A[HTTP client] --> B[FastAPI route]
+    B --> C[ApplicationService]
+    C --> D[RuntimeLoader plan/load]
+    D --> E[RuntimeExecutor]
+    B --> F[Session store]
+    B --> G[OpenAI response store]
+</div>
+
+The server is deliberately thin. It reuses the same planning and execution
+stack as the CLI, then layers HTTP transport, session state, and optional
+Responses storage on top.
+
 ## OpenAPI surfaces
 
 The local server publishes:
@@ -20,27 +36,33 @@ The local server publishes:
 - `/docs` for Swagger UI
 - `/redoc` for ReDoc
 
-## OpenAI-compatible routes
+## Route groups
 
-- `GET /v1/models`
-- `GET /v1/models/{model_id}`
-- `POST /v1/chat/completions`
-- `POST /v1/responses`
-- `GET /v1/responses/{response_id}`
-- `DELETE /v1/responses/{response_id}`
+### OpenAI-compatible routes
 
-## Native oLLM routes
+| Route | Purpose |
+| --- | --- |
+| `GET /v1/models` | List model IDs in OpenAI-compatible shape. |
+| `GET /v1/models/{model_id}` | Inspect one model in OpenAI-compatible shape. |
+| `POST /v1/chat/completions` | Run text chat completions. |
+| `POST /v1/responses` | Run the OpenAI-compatible Responses surface. |
+| `GET /v1/responses/{response_id}` | Retrieve a stored response when response storage is enabled. |
+| `DELETE /v1/responses/{response_id}` | Delete a stored response when response storage is enabled. |
 
-- `GET /v1/health`
-- `GET /v1/ollm/models`
-- `GET /v1/ollm/models/{model_reference}`
-- `POST /v1/plan`
-- `POST /v1/prompt`
-- `POST /v1/prompt/stream`
-- `POST /v1/sessions`
-- `GET /v1/sessions/{session_id}`
-- `POST /v1/sessions/{session_id}/prompt`
-- `POST /v1/sessions/{session_id}/prompt/stream`
+### Native oLLM routes
+
+| Route | Purpose |
+| --- | --- |
+| `GET /v1/health` | Basic service metadata and mode health. |
+| `GET /v1/ollm/models` | Native model discovery and filtering. |
+| `GET /v1/ollm/models/{model_reference}` | Native model inspection with runtime details. |
+| `POST /v1/plan` | Runtime planning without prompt execution. |
+| `POST /v1/prompt` | One-shot native prompt execution. |
+| `POST /v1/prompt/stream` | Native SSE prompt streaming. |
+| `POST /v1/sessions` | Create an in-memory session. |
+| `GET /v1/sessions/{session_id}` | Inspect a session transcript. |
+| `POST /v1/sessions/{session_id}/prompt` | Prompt within a session. |
+| `POST /v1/sessions/{session_id}/prompt/stream` | Stream a session prompt. |
 
 ## Behavior notes
 

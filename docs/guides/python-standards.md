@@ -45,6 +45,35 @@ runtime changes, and contributor-facing documentation.
 - Keep imports at the top of the module.
 - Use `|` unions instead of `Optional[...]` or `Union[...]`.
 
+## Docstring format
+
+Public modules, classes, and user-facing functions should use Google-style
+docstrings with explicit types inside the sections that MkDocs renders:
+
+```python
+def resolve(raw_reference: str, models_dir: Path) -> ResolvedModel:
+    """Resolve a user-facing model reference.
+
+    Args:
+        raw_reference (str): User-supplied model reference such as an alias,
+            Hugging Face ID, or local path.
+        models_dir (Path): Local models root used for implicit path resolution.
+
+    Returns:
+        ResolvedModel: Normalized model metadata used by planning and loading.
+
+    Raises:
+        ValueError: Raised when the input is structurally invalid for this API.
+    """
+```
+
+Keep docstrings concise, but do include:
+
+- `Args:` with names, types, and purpose.
+- `Returns:` with the concrete return type and meaning.
+- `Raises:` for user-visible validation or loading failures.
+- Omit empty sections rather than adding placeholders.
+
 ## Forbidden patterns
 
 - No `Any`.

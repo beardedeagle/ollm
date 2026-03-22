@@ -4,6 +4,8 @@ from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
+import torch
+
 from ollm.runtime.backend_selector import BackendSelector
 from ollm.runtime.backends.base import BackendRuntime, ExecutionBackend
 from ollm.runtime.backends.native_optimized import NativeOptimizedBackend
@@ -33,7 +35,17 @@ from ollm.runtime.strategy_selector_application import (
 
 @dataclass(slots=True)
 class LoadedRuntime:
-    """Loaded runtime bundle containing the finalized backend and plan metadata."""
+    """Loaded runtime bundle containing the finalized backend and plan metadata.
+
+    Attributes:
+        resolved_model (ResolvedModel): Final resolved model metadata for the
+            loaded runtime.
+        config (RuntimeConfig): Effective runtime configuration after selector
+            application.
+        backend (BackendRuntime): Loaded backend runtime implementation.
+        model_path (Path | None): Local materialized model path when one exists.
+        plan (RuntimePlan): Final runtime plan used to load the backend.
+    """
 
     resolved_model: ResolvedModel
     config: RuntimeConfig
@@ -46,7 +58,12 @@ class LoadedRuntime:
 
     @property
     def capabilities(self) -> CapabilityProfile:
-        """Return capability information aligned with the finalized runtime plan."""
+        """Return capability information aligned with the finalized runtime plan.
+
+        Returns:
+            CapabilityProfile: Capability metadata adjusted to reflect the final
+            support level and disk-cache behavior of the loaded runtime.
+        """
         resolved_capabilities = self.resolved_model.capabilities
         if (
             resolved_capabilities.support_level is self.plan.support_level
@@ -82,7 +99,7 @@ class LoadedRuntime:
         return self.backend.processor
 
     @property
-    def device(self):
+    def device(self) -> torch.device:
         """Expose the backend runtime device."""
         return self.backend.device
 
@@ -93,7 +110,19 @@ class LoadedRuntime:
         lifecycle: str,
         window_tokens: int | None,
     ) -> object | None:
-        """Reuse one KV-cache instance per resolved cache key."""
+        """Reuse one KV-cache instance per resolved cache key.
+
+        Args:
+            cache_dir (Path): Cache root for the KV cache instance.
+            strategy (str): Resolved KV cache strategy ID.
+            lifecycle (str): Resolved cache lifecycle ID.
+            window_tokens (int | None): Sliding-window token budget when the
+                strategy requires one.
+
+        Returns:
+            object | None: Existing or newly created cache object, or ``None``
+            when the backend does not expose a cache.
+        """
         cache_key = (cache_dir.resolve(), strategy, lifecycle, window_tokens)
         cache = self._kv_cache_instances.get(cache_key)
         if cache is not None:
@@ -112,7 +141,18 @@ class LoadedRuntime:
 
 
 class RuntimeLoader:
-    """Resolve, plan, materialize, and load runtimes for model references."""
+    """Resolve, plan, materialize, and load runtimes for model references.
+
+    Args:
+        resolver (ModelResolver | None): Optional resolver override.
+        selector (BackendSelector | None): Optional backend selector override.
+        backends (tuple[ExecutionBackend, ...] | None): Optional registered
+            backend implementations.
+        snapshot_downloader (Callable[[str, str, bool, str | None], None] | None):
+            Optional Hugging Face snapshot downloader override.
+        specialization_registry (SpecializationRegistry | None): Optional
+            specialization registry override.
+    """
 
     def __init__(
         self,
@@ -143,17 +183,48 @@ class RuntimeLoader:
         )
 
     def resolve(self, model_reference: str, models_dir: Path) -> ResolvedModel:
-        """Resolve a model reference without planning or loading."""
+        """Resolve a model reference without planning or loading.
+
+        Args:
+            model_reference (str): User-facing model reference.
+            models_dir (Path): Local models root used for implicit path
+                resolution.
+
+        Returns:
+            ResolvedModel: Normalized model metadata.
+        """
         return self._resolver.resolve(model_reference, models_dir)
 
     def discover_local_models(self, models_dir: Path) -> tuple[ResolvedModel, ...]:
-        """Discover local materialized models under a models directory."""
+        """Discover local materialized models under a models directory.
+
+        Args:
+            models_dir (Path): Local models root to inspect.
+
+        Returns:
+            tuple[ResolvedModel, ...]: Resolved local model directories found
+            under the given root.
+        """
         return self._resolver.discover_local_models(models_dir)
 
     def download(
         self, model_reference: str, models_dir: Path, force_download: bool = False
     ) -> Path:
-        """Materialize a downloadable model reference locally and return its path."""
+        """Materialize a downloadable model reference locally.
+
+        Args:
+            model_reference (str): User-facing model reference to materialize.
+            models_dir (Path): Local models root used for materialization.
+            force_download (bool): Whether to re-download even when a managed
+                directory already exists.
+
+        Returns:
+            Path: Local materialized model directory.
+
+        Raises:
+            ValueError: Raised when the reference cannot be materialized or the
+                resulting managed directory is incomplete.
+        """
         resolved_model = self.resolve(model_reference, models_dir)
         if resolved_model.source_kind is ModelSourceKind.LOCAL_PATH:
             if (
@@ -186,7 +257,18 @@ class RuntimeLoader:
         return resolved_model.model_path
 
     def load(self, config: RuntimeConfig) -> LoadedRuntime:
-        """Validate, plan, and load a runtime backend for execution."""
+        """Validate, plan, and load a runtime backend for execution.
+
+        Args:
+            config (RuntimeConfig): Runtime configuration to execute.
+
+        Returns:
+            LoadedRuntime: Loaded backend runtime bundle ready for execution.
+
+        Raises:
+            ValueError: Raised when planning, materialization, specialization, or
+                backend loading fails without a truthful fallback path.
+        """
         config.validate()
         resolved_model = self.resolve(
             config.model_reference, config.resolved_models_dir()
@@ -262,7 +344,18 @@ class RuntimeLoader:
         )
 
     def plan(self, config: RuntimeConfig) -> RuntimePlan:
-        """Build a runtime plan without loading a backend."""
+        """Build a runtime plan without loading a backend.
+
+        Args:
+            config (RuntimeConfig): Runtime configuration to inspect.
+
+        Returns:
+            RuntimePlan: Planned backend, specialization, and strategy state.
+
+        Raises:
+            ValueError: Raised when the runtime configuration is invalid or no
+                truthful plan can be produced.
+        """
         config.validate()
         resolved_model = self.resolve(
             config.model_reference, config.resolved_models_dir()

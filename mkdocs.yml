@@ -135,3 +135,7 @@ theme:
       toggle:
         icon: material/brightness-4
         name: Switch to system preference
+
+extra_javascript:
+  - https://unpkg.com/mermaid@10/dist/mermaid.min.js
+  - javascripts/mermaid-init.js

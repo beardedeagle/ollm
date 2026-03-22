@@ -34,30 +34,30 @@ full-history KV entirely in memory and does not initialize any disk-KV path.
 When disk-backed strategies are selected, the default path uses an explicit
 disk-KV store under `cache_dir/kv_cache_chunked`, with explicit
 dtype/shape/sequence metadata and raw payloads instead of pickle-backed torch
-artifacts. When the selected runtime uses
-`kv_cache_strategy="paged"`, it writes to
-`cache_dir/kv_cache_paged` and persists fixed-capacity pages through an
-explicit page table. When it uses
-`kv_cache_strategy="streamed-segmented"`, it writes to
-`cache_dir/kv_cache_streamed_segmented` instead. When it uses
-`kv_cache_strategy="log-structured-journal"`, it writes to
-`cache_dir/kv_cache_log_structured_journal` and compacts journal metadata
-deterministically once the configured entry threshold is reached. When it uses
-`kv_cache_strategy="sliding-window-ring-buffer"`, it writes to
-`cache_dir/kv_cache_sliding_window_ring_buffer` and retains only the most
-recent `cache_window_tokens` cached tokens; older history is evicted under a
-`drop-oldest` policy, so this mode deliberately changes runtime semantics. When
-it uses
-`kv_cache_strategy="quantized-cold-tier"`, it writes to
-`cache_dir/kv_cache_quantized_cold_tier` and persists colder KV entries in the
-explicit `int8-symmetric-per-tensor` representation while dequantizing back to
-the runtime dtype on load. When it uses
-`kv_cache_strategy="tiered-write-back"`, it writes the cold tier to
-`cache_dir/kv_cache_tiered_write_back` through a journal-backed append store
-while keeping a bounded hot tail in memory. The active runtime then applies a
-platform/resource-aware buffering or spill policy on top of the selected
-store. `Inference.DiskCache()` accepts the same switch through
-`cache_strategy=...`.
+artifacts.
+
+- `kv_cache_strategy="paged"` writes to `cache_dir/kv_cache_paged` and uses an
+  explicit page table.
+- `kv_cache_strategy="streamed-segmented"` writes to
+  `cache_dir/kv_cache_streamed_segmented`.
+- `kv_cache_strategy="log-structured-journal"` writes to
+  `cache_dir/kv_cache_log_structured_journal` and compacts journal metadata
+  deterministically once the configured entry threshold is reached.
+- `kv_cache_strategy="sliding-window-ring-buffer"` writes to
+  `cache_dir/kv_cache_sliding_window_ring_buffer` and retains only the most
+  recent `cache_window_tokens` cached tokens; older history is evicted under a
+  `drop-oldest` policy, so this mode deliberately changes runtime semantics.
+- `kv_cache_strategy="quantized-cold-tier"` writes to
+  `cache_dir/kv_cache_quantized_cold_tier` and persists colder KV entries in the
+  explicit `int8-symmetric-per-tensor` representation while dequantizing back to
+  the runtime dtype on load.
+- `kv_cache_strategy="tiered-write-back"` writes the cold tier to
+  `cache_dir/kv_cache_tiered_write_back` through a journal-backed append store
+  while keeping a bounded hot tail in memory.
+
+The active runtime then applies a platform/resource-aware buffering or spill
+policy on top of the selected store. `Inference.DiskCache()` accepts the same
+switch through `cache_strategy=...`.
 
 `Inference.offload_layers_to_cpu()` now also accepts an explicit
 `policy=...` argument. The current supported CPU placement policies are

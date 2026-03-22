@@ -17,6 +17,16 @@ comparison key exists, the CLI appends a comparison summary and emits any
 obvious potential regressions on `stderr` without changing the JSON written to
 `stdout`.
 
+<div class="mermaid">
+flowchart LR
+    A[benchmark_runtime.py] --> B[Runtime planning probes]
+    A --> C[Runtime execution probes]
+    B --> D[Raw JSON report]
+    C --> D
+    D --> E[History record]
+    E --> F[Comparison summary]
+</div>
+
 History matching now includes an explicit `codebase_label` so fork and upstream
 baseline runs do not collide accidentally. By default, that label is derived
 from the normalized `origin` remote URL. Override it only when you need a
@@ -189,52 +199,59 @@ These fields are only present when the selected runtime actually emits native
 stats. Generic Transformers-backed runs may report `null` here.
 
 For disk KV requests, `disk-kv-cache` now refers to the explicit strategy root
-under `cache_dir/kv_cache_chunked`,
-`cache_dir/kv_cache_paged`,
-`cache_dir/kv_cache_streamed_segmented`, or
-`cache_dir/kv_cache_tiered_write_back`, or
-`cache_dir/kv_cache_sliding_window_ring_buffer`, not to pickle-backed `.pt`
-layer artifacts. The request metrics report both `kv_cache_strategy` and
-`cache_state`, so benchmark comparisons can distinguish the selected backend
-and, for tier-aware strategies, the current hot/cold split. `cache_dir_size_mb`
-describes only the persisted on-disk portion of the cache, while `cache_state`
-surfaces persisted artifact counts, compaction counts, cold-store format,
-cold-tier representation, hot in-memory tokens, spill counts, and, for bounded
-window strategies, the active window size plus eviction totals.
+under these strategy-specific roots:
+
+- `cache_dir/kv_cache_chunked`
+- `cache_dir/kv_cache_paged`
+- `cache_dir/kv_cache_streamed_segmented`
+- `cache_dir/kv_cache_tiered_write_back`
+- `cache_dir/kv_cache_sliding_window_ring_buffer`
+
+Those paths refer to explicit strategy roots, not to pickle-backed `.pt` layer
+artifacts.
+
+The request metrics report both `kv_cache_strategy` and `cache_state`, so
+benchmark comparisons can distinguish the selected backend and, for tier-aware
+strategies, the current hot/cold split. `cache_dir_size_mb` describes only the
+persisted on-disk portion of the cache, while `cache_state` surfaces persisted
+artifact counts, compaction counts, cold-store format, cold-tier
+representation, hot in-memory tokens, spill counts, and, for bounded-window
+strategies, the active window size plus eviction totals.
+
 Within one loaded runtime, the cache layer can satisfy repeated requests from
 an in-process resident KV snapshot instead of rereading the same persisted
 history from disk. In those cases, `kvload` may legitimately disappear even
-though disk KV is still the active strategy. The `streamed-segmented` store now
-also coalesces extents by segment file on readback, so fewer file-range reads
-can show up under the same `disk-kv-cache` storage path label.
-For `tiered-write-back`, the persisted cold tier now uses a journal-backed
-append store under `cache_dir/kv_cache_tiered_write_back/cold`, so the tiered
-spill path no longer depends on the chunked cold-store substrate.
-That current preset is still a bounded hot-tail plus cold journal strategy, not
-the future GPU/CPU/SSD multi-tier architecture.
-For `log-structured-journal`, compaction is visible both through
-`cache_state.compaction_count` and, when it occurs during a request, native
-runtime profile timing under `kvcompact`. `kvsave` now measures append-path
-write cost without double-counting compaction rewrite time; when compaction
-occurs, `kvcompact` reports that rewrite separately.
-For `paged`, benchmark output surfaces the explicit `paged-manifest`
-persistence format and `ollm-kv-paged` cold-store format. The persisted
-artifact count for this strategy means page-table entries, not raw blob files,
-so comparisons stay aligned to logical fixed-size movement units.
-For `quantized-cold-tier`, the persisted cold journal uses the explicit
-`int8-symmetric-per-tensor` representation and benchmark output surfaces that
-representation through `cache_state.cold_tier_representation`.
-For `sliding-window-ring-buffer`, benchmark output also surfaces
-`cache_state.window_max_tokens`, `cache_state.eviction_policy`,
-`cache_state.eviction_count`, and `cache_state.evicted_tokens` so bounded
-history runs are never confused with full-history runs. When you benchmark this
-mode, pass an explicit `--kv-cache-window-tokens` value so benchmark history
-does not compare unlike window sizes. Current local CPU and MPS proof keeps
-this mode in the explicit opt-in bucket rather than the selector-default
-bucket; it materially bounds persisted KV, but it is not a general perf win.
-For `resident`, benchmark output surfaces `cache_mode="resident-kv"` plus the
-resident layer/token/byte counters while leaving `cache_dir_size_mb` empty
-because there is no persisted KV root.
+though disk KV is still the active strategy. The `streamed-segmented` store also
+coalesces extents by segment file on readback, so fewer file-range reads can
+show up under the same `disk-kv-cache` storage path label.
+
+Strategy-specific interpretation notes:
+
+- `tiered-write-back` stores its persisted cold tier under
+  `cache_dir/kv_cache_tiered_write_back/cold` through a journal-backed append
+  store. This is still a bounded hot-tail plus cold-journal preset, not the
+  future GPU/CPU/SSD multi-tier architecture.
+- `log-structured-journal` exposes compaction through both
+  `cache_state.compaction_count` and runtime timing under `kvcompact`. `kvsave`
+  measures append-path write cost without double-counting compaction rewrite
+  time.
+- `paged` surfaces the explicit `paged-manifest` persistence format and
+  `ollm-kv-paged` cold-store format. Persisted artifact counts mean page-table
+  entries, not raw blob files.
+- `quantized-cold-tier` surfaces the explicit
+  `int8-symmetric-per-tensor` cold-tier representation through
+  `cache_state.cold_tier_representation`.
+- `sliding-window-ring-buffer` reports
+  `cache_state.window_max_tokens`, `cache_state.eviction_policy`,
+  `cache_state.eviction_count`, and `cache_state.evicted_tokens` so bounded
+  history runs are never confused with full-history runs. Pass an explicit
+  `--kv-cache-window-tokens` value so history comparisons do not mix unlike
+  window sizes. Current local CPU and MPS proof still keeps this mode in the
+  explicit opt-in bucket rather than the selector-default bucket.
+- `resident` reports `cache_mode="resident-kv"` plus resident
+  layer/token/byte counters while leaving `cache_dir_size_mb` empty because
+  there is no persisted KV root.
+
 CPU offload policy work can now be probed with:
 
 ```bash
