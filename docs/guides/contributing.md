@@ -24,6 +24,19 @@ uv run python -m pip_audit
 uv run --group docs mkdocs build --strict
 ```
 
+If the change touches runtime planning, loading, generation, prompt/chat flows,
+server prompt execution, or a user-facing command recommendation, also run:
+
+```bash
+uv run python scripts/runtime_smoke.py \
+  --model llama3-1B-chat \
+  --output .omx/logs/runtime-smoke.json
+```
+
+Use the lane you actually changed whenever possible. If you recommend a
+specific command to a user, validate that exact lane before push or say which
+stricter equivalent you validated.
+
 For docs-only changes, still verify the docs build and run at least the tests affected by the changed examples or commands.
 
 ## Documentation expectations
@@ -50,4 +63,5 @@ repo-wide remediation matrix lives in [Python Standards Audit](python-standards-
 ## Testing style
 
 - prefer fakes and tiny real fixtures over mocks
-- use targeted CLI or script smokes when touching runtime-heavy flows
+- use `scripts/runtime_smoke.py` for reusable runtime smokes instead of ad hoc one-off commands
+- if you changed interactive shell rendering itself, add a manual `uv run ollm chat ...` check in addition to the reusable smoke

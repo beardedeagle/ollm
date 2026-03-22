@@ -24,7 +24,17 @@ uv run python -m pip_audit
 uv run --group docs mkdocs build --strict
 ```
 
-For runtime-heavy changes, run one targeted script or CLI smoke for the path you touched.
+For runtime-heavy changes, also run the reusable smoke harness on the lane you
+actually changed:
+
+```bash
+uv run python scripts/runtime_smoke.py \
+  --model llama3-1B-chat \
+  --output .omx/logs/runtime-smoke.json
+```
+
+If you recommend a specific command or runtime lane to a user, validate that
+exact lane before push, or explicitly say which stricter equivalent you used.
 
 ## Engineering standards
 
@@ -71,5 +81,8 @@ Current ADR pages:
 - end-user smoke examples live in `examples/`
 - export and manual validation scripts live in `scripts/`
 - large text fixtures live in `samples/`
+- `scripts/runtime_smoke.py` is the reusable pre-push runtime validation path for
+  prompt and chat-session semantics
 
-Adjust any hard-coded local model paths in manual scripts before running them.
+Some older manual scripts still contain machine-specific paths and should be
+treated as ad hoc local experiments rather than the canonical validation path.

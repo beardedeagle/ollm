@@ -16,6 +16,36 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  standards:
+    name: Standards (python rules + compileall)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Install uv (manual)
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          "$HOME/.local/bin/uv" --version
+        shell: bash
+
+      - name: Install Python and dependencies (manual)
+        run: |
+          uv python install 3.12
+          uv sync --frozen --group dev --group docs --python 3.12
+        shell: bash
+
+      - name: Check repo-local Python standards
+        run: uv run --python 3.12 python scripts/check_python_standards.py
+        shell: bash
+
+      - name: Compile sources and tests
+        run: uv run --python 3.12 python -m compileall src tests examples scripts
+        shell: bash
+
   lint:
     name: Lint (ruff)
     runs-on: ubuntu-latest
