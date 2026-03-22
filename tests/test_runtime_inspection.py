@@ -7,10 +7,15 @@ from tests.test_backend_selector import build_catalog_resolved_model
 
 def test_runtime_config_payload_includes_cpu_offload_policy() -> None:
     payload = runtime_config_payload(
-        RuntimeConfig(device="mps", offload_cpu_policy="suffix")
+        RuntimeConfig(
+            device="mps",
+            offload_cpu_policy="suffix",
+            dense_projection_chunk_rows=2048,
+        )
     )
 
     assert payload["offload_cpu_policy"] == "suffix"
+    assert payload["dense_projection_chunk_rows"] == 2048
 
 
 def test_runtime_config_payload_marks_auto_strategy_when_unset() -> None:

@@ -67,7 +67,7 @@ def detect_kv_cache_resources(device: torch.device) -> KVCacheResourceSnapshot:
     return KVCacheResourceSnapshot(
         platform=sys.platform,
         available_system_memory_bytes=_available_system_memory_bytes(),
-        available_accelerator_memory_bytes=_available_accelerator_memory_bytes(device),
+        available_accelerator_memory_bytes=available_accelerator_memory_bytes(device),
     )
 
 
@@ -457,7 +457,7 @@ def _windows_available_memory_bytes() -> int | None:
     return int(status.ullAvailPhys)
 
 
-def _available_accelerator_memory_bytes(device: torch.device) -> int | None:
+def available_accelerator_memory_bytes(device: torch.device) -> int | None:
     if device.type != "cuda" or not torch.cuda.is_available():
         return None
     device_index = (

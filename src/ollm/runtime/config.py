@@ -4,6 +4,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ollm.dense_projection_chunking import normalize_dense_projection_chunk_rows
 from ollm.kv_cache.matrix import (
     DEFAULT_KV_CACHE_ADAPTATION_MODE,
     DEFAULT_KV_CACHE_LIFECYCLE,
@@ -98,6 +99,7 @@ class RuntimeConfig:
     kv_cache_lifecycle: str = DEFAULT_KV_CACHE_LIFECYCLE
     kv_cache_adaptation_mode: str = DEFAULT_KV_CACHE_ADAPTATION_MODE
     kv_cache_window_tokens: int | None = None
+    dense_projection_chunk_rows: int | None = None
     offload_cpu_layers: int = 0
     offload_cpu_policy: str = DEFAULT_CPU_OFFLOAD_POLICY
     offload_gpu_layers: int = 0
@@ -164,6 +166,11 @@ class RuntimeConfig:
             self.kv_cache_window_tokens,
         )
 
+    def resolved_dense_projection_chunk_rows(self) -> int | None:
+        """Return the normalized explicit dense-projection chunk row budget."""
+
+        return normalize_dense_projection_chunk_rows(self.dense_projection_chunk_rows)
+
     def resolved_offload_cpu_policy(self) -> str:
         """Return the normalized CPU offload policy."""
 
@@ -201,6 +208,7 @@ class RuntimeConfig:
             ),
             self.kv_cache_window_tokens,
         )
+        normalize_dense_projection_chunk_rows(self.dense_projection_chunk_rows)
         normalize_cpu_offload_policy(self.offload_cpu_policy)
         if self.verbose and self.quiet:
             raise ValueError("--verbose and --quiet cannot be used together")

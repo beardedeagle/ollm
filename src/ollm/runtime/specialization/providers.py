@@ -46,10 +46,15 @@ from ollm.utils import Stats
 
 
 def _configure_loader_module(
-    module: object, *, loader: object, stats: Stats | None
+    module: object,
+    *,
+    loader: object,
+    stats: Stats | None,
+    dense_projection_chunk_rows: int | None,
 ) -> None:
     setattr(module, "loader", loader)
     setattr(module, "stats", stats)
+    setattr(module, "dense_projection_chunk_rows", dense_projection_chunk_rows)
     gds_loader_module.stats = stats
 
 
@@ -91,12 +96,14 @@ class LlamaSpecializationProvider(SpecializationProvider):
                 module,
                 loader=DenseWeightsLoader(str(model_path), device=str(device)),
                 stats=stats,
+                dense_projection_chunk_rows=config.resolved_dense_projection_chunk_rows(),
             )
         else:
             _configure_loader_module(
                 module,
                 loader=SingleDenseWeightsLoader(str(model_path), device=str(device)),
                 stats=stats,
+                dense_projection_chunk_rows=config.resolved_dense_projection_chunk_rows(),
             )
         model = cast(
             _CpuOffloadModel,
@@ -171,6 +178,7 @@ class Gemma3SpecializationProvider(SpecializationProvider):
             module,
             loader=DenseWeightsLoader(str(model_path), device=str(device)),
             stats=stats,
+            dense_projection_chunk_rows=config.resolved_dense_projection_chunk_rows(),
         )
         model_class = (
             module.MyGemma3ForConditionalGeneration
@@ -255,6 +263,7 @@ class Qwen3NextSpecializationProvider(SpecializationProvider):
             module,
             loader=MoEWeightsLoader(str(model_path), device=str(device)),
             stats=stats,
+            dense_projection_chunk_rows=config.resolved_dense_projection_chunk_rows(),
         )
         model = cast(
             _GpuCpuOffloadModel,
@@ -352,6 +361,7 @@ class GptOssSpecializationProvider(SpecializationProvider):
             module,
             loader=GDSWeights(str(export_path), device=str(device)),
             stats=stats,
+            dense_projection_chunk_rows=config.resolved_dense_projection_chunk_rows(),
         )
         model = cast(
             _CpuOffloadModel,
@@ -427,6 +437,7 @@ class VoxtralSpecializationProvider(SpecializationProvider):
             module,
             loader=DenseWeightsLoader(str(model_path), device=str(device)),
             stats=stats,
+            dense_projection_chunk_rows=config.resolved_dense_projection_chunk_rows(),
         )
         model = cast(
             _CpuOffloadModel,
@@ -458,7 +469,7 @@ class VoxtralSpecializationProvider(SpecializationProvider):
                 layer_indices
             ),
             apply_gpu_offload=None,
-            provided_pass_ids=(),
+            provided_pass_ids=(SpecializationPassId.MLP_CHUNKING,),
         )
 
 

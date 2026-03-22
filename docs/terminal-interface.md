@@ -39,6 +39,7 @@ Nested environment variables use a double-underscore separator:
 - `OLLM_RUNTIME__MODEL_REFERENCE`
 - `OLLM_RUNTIME__MODELS_DIR`
 - `OLLM_RUNTIME__DEVICE`
+- `OLLM_RUNTIME__DENSE_PROJECTION_CHUNK_ROWS`
 - `OLLM_GENERATION__MAX_NEW_TOKENS`
 - `OLLM_GENERATION__STREAM`
 - `OLLM_SERVER__PORT`
@@ -50,6 +51,7 @@ Example config file:
 model_reference = "llama3-8B-chat"
 models_dir = "models"
 device = "cpu"
+# dense_projection_chunk_rows = 8192
 
 [generation]
 max_new_tokens = 256

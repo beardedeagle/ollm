@@ -37,6 +37,7 @@ class RuntimeConfigResponseModel(BaseModel):
     kv_cache_lifecycle: str
     kv_cache_adaptation_mode: str
     kv_cache_window_tokens: int | None
+    dense_projection_chunk_rows: int | None
     offload_cpu_layers: int
     offload_cpu_policy: str
     offload_gpu_layers: int
@@ -156,6 +157,7 @@ class RuntimeRequestModel(BaseModel):
     kv_cache_lifecycle: str | None = None
     kv_cache_adaptation_mode: str | None = None
     kv_cache_window_tokens: int | None = Field(default=None, gt=0)
+    dense_projection_chunk_rows: int | None = Field(default=None, gt=0)
     offload_cpu_layers: int | None = Field(default=None, ge=0)
     offload_cpu_policy: str | None = None
     offload_gpu_layers: int | None = Field(default=None, ge=0)

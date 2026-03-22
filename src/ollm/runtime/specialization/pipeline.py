@@ -1,3 +1,4 @@
+from ollm.dense_projection_chunking import DEFAULT_DENSE_PROJECTION_CHUNK_ROWS
 from ollm.runtime.config import RuntimeConfig
 from ollm.runtime.resolver import ResolvedModel
 from ollm.runtime.specialization.base import PlannedSpecialization
@@ -40,6 +41,16 @@ class SpecializationPipeline:
             "provider_id": provider_id,
             "pass_count": str(len(selected_passes)),
         }
+        if SpecializationPassId.MLP_CHUNKING in seen_pass_ids:
+            resolved_chunk_rows = config.resolved_dense_projection_chunk_rows()
+            if resolved_chunk_rows is None:
+                details["mlp_chunking_mode"] = "adaptive-headroom"
+                details["mlp_chunking_max_rows"] = str(
+                    DEFAULT_DENSE_PROJECTION_CHUNK_ROWS
+                )
+            else:
+                details["mlp_chunking_mode"] = "explicit-rows"
+                details["mlp_chunking_max_rows"] = str(resolved_chunk_rows)
         if resolved_model.native_family is not None:
             details["native_family"] = resolved_model.native_family.value
         if resolved_model.architecture is not None:

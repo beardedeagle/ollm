@@ -93,6 +93,27 @@ def test_specialization_pipeline_selects_multimodal_shell_only_when_enabled(
     assert SpecializationPassId.MULTIMODAL_SHELL not in disabled_plan.pass_ids
 
 
+def test_specialization_pipeline_marks_voxtral_mlp_chunking_as_supported(
+    tmp_path: Path,
+) -> None:
+    model_path = tmp_path / "voxtral"
+    model_path.mkdir()
+
+    planned_specialization = SpecializationPipeline().plan(
+        _build_resolved_model(
+            model_path,
+            native_family=NativeFamily.VOXTRAL,
+            architecture="VoxtralForConditionalGeneration",
+            modalities=(ModelModality.TEXT, ModelModality.AUDIO),
+        ),
+        RuntimeConfig(device="cpu"),
+        "voxtral-native",
+    )
+
+    assert SpecializationPassId.MLP_CHUNKING in planned_specialization.pass_ids
+    assert planned_specialization.details["mlp_chunking_mode"] == "adaptive-headroom"
+
+
 def test_specialization_pipeline_returns_empty_plan_without_provider() -> None:
     planned_specialization = SpecializationPipeline().plan(
         ResolvedModel(

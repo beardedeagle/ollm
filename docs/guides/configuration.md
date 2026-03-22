@@ -32,6 +32,7 @@ Key runtime configuration fields:
 - `strategy_selector_profile` — selector profile (`balanced`, `latency`, `capacity`, or `bounded-window`)
 - `kv_cache_strategy` — optional explicit KV cache strategy override (`resident`, `chunked`, `paged`, `streamed-segmented`, `log-structured-journal`, `sliding-window-ring-buffer`, `quantized-cold-tier`, or `tiered-write-back`)
 - `kv_cache_window_tokens` — bounded recent-context token budget for `sliding-window-ring-buffer`; the field is invalid for full-history strategies
+- `dense_projection_chunk_rows` — optional explicit row budget for dense optimized-native MLP chunking; when omitted, the dense Llama, Gemma3, and Voxtral paths derive smaller chunks only when accelerator headroom is tight
 - `kv_cache_lifecycle` — whether KV artifacts are `runtime-scoped` or explicitly `persistent`; `resident` requires `runtime-scoped`
 - `kv_cache_adaptation_mode` — whether adaptation telemetry is `disabled`, `observe-only`, or `automatic` (live switching is still not enabled)
 - `offload_cpu_layers` — native CPU offload layer budget when supported
@@ -78,6 +79,7 @@ Nested configuration keys use a double-underscore separator:
 - `OLLM_RUNTIME__STRATEGY_SELECTOR_PROFILE`
 - `OLLM_RUNTIME__KV_CACHE_STRATEGY`
 - `OLLM_RUNTIME__KV_CACHE_WINDOW_TOKENS`
+- `OLLM_RUNTIME__DENSE_PROJECTION_CHUNK_ROWS`
 - `OLLM_RUNTIME__KV_CACHE_LIFECYCLE`
 - `OLLM_RUNTIME__KV_CACHE_ADAPTATION_MODE`
 - `OLLM_RUNTIME__OFFLOAD_CPU_LAYERS`

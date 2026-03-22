@@ -7,6 +7,7 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from ollm.dense_projection_chunking import normalize_dense_projection_chunk_rows
 from ollm.kv_cache.matrix import (
     DEFAULT_KV_CACHE_ADAPTATION_MODE,
     DEFAULT_KV_CACHE_LIFECYCLE,
@@ -83,6 +84,7 @@ class RuntimeSettings(BaseModel):
     kv_cache_lifecycle: str = DEFAULT_KV_CACHE_LIFECYCLE
     kv_cache_adaptation_mode: str = DEFAULT_KV_CACHE_ADAPTATION_MODE
     kv_cache_window_tokens: int | None = Field(default=None, gt=0)
+    dense_projection_chunk_rows: int | None = Field(default=None, gt=0)
     offload_cpu_layers: int = Field(default=0, ge=0)
     offload_cpu_policy: str = DEFAULT_CPU_OFFLOAD_POLICY
     offload_gpu_layers: int = Field(default=0, ge=0)
@@ -126,6 +128,11 @@ class RuntimeSettings(BaseModel):
     @classmethod
     def _normalize_kv_cache_window_tokens(cls, window_tokens: int | None) -> int | None:
         return normalize_kv_cache_window_tokens(window_tokens)
+
+    @field_validator("dense_projection_chunk_rows")
+    @classmethod
+    def _normalize_dense_projection_chunk_rows(cls, rows: int | None) -> int | None:
+        return normalize_dense_projection_chunk_rows(rows)
 
     @field_validator("offload_cpu_policy")
     @classmethod
@@ -254,6 +261,7 @@ class RuntimeConfigOverrides(BaseModel):
     kv_cache_lifecycle: str | None = None
     kv_cache_adaptation_mode: str | None = None
     kv_cache_window_tokens: int | None = Field(default=None, gt=0)
+    dense_projection_chunk_rows: int | None = Field(default=None, gt=0)
     offload_cpu_layers: int | None = Field(default=None, ge=0)
     offload_cpu_policy: str | None = None
     offload_gpu_layers: int | None = Field(default=None, ge=0)
@@ -293,6 +301,11 @@ class RuntimeConfigOverrides(BaseModel):
     @classmethod
     def _normalize_kv_cache_window_tokens(cls, window_tokens: int | None) -> int | None:
         return normalize_kv_cache_window_tokens(window_tokens)
+
+    @field_validator("dense_projection_chunk_rows")
+    @classmethod
+    def _normalize_dense_projection_chunk_rows(cls, rows: int | None) -> int | None:
+        return normalize_dense_projection_chunk_rows(rows)
 
     @field_validator("offload_cpu_policy")
     @classmethod

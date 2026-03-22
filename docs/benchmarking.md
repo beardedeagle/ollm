@@ -181,6 +181,12 @@ weight reads one layer ahead of use. That means a later `layer_load` step may
 consume already-pending safetensor reads instead of starting from an idle
 storage queue.
 
+Those same dense paths now keep `mlp-chunking` as a feasibility-oriented memory
+control. The default optimized runtime keeps the existing `16384`-row ceiling
+and only derives smaller chunks when accelerator headroom is tight; forcing an
+explicit smaller `dense_projection_chunk_rows` value lowers peak activation
+pressure but can shift latency and throughput differently across devices.
+
 Typical event names include:
 
 - `layer_load`

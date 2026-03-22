@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from ollm.runtime.config import DEFAULT_DEVICE, DEFAULT_MAX_NEW_TOKENS, RuntimeConfig
 from ollm.runtime.settings import (
     DEFAULT_SERVER_HOST,
@@ -65,6 +67,7 @@ def test_default_app_settings_match_current_runtime_defaults() -> None:
     assert settings.runtime.kv_cache_lifecycle == "runtime-scoped"
     assert settings.runtime.kv_cache_adaptation_mode == "observe-only"
     assert settings.runtime.kv_cache_window_tokens is None
+    assert settings.runtime.dense_projection_chunk_rows is None
     assert settings.generation.max_new_tokens == DEFAULT_MAX_NEW_TOKENS
     assert settings.generation.stream is True
     assert settings.server.host == DEFAULT_SERVER_HOST
@@ -206,6 +209,7 @@ def test_resolve_runtime_config_prefers_explicit_overrides() -> None:
             strategy_selector_profile="capacity",
             kv_cache_lifecycle="persistent",
             kv_cache_adaptation_mode="automatic",
+            dense_projection_chunk_rows=2048,
             verbose=True,
         ),
     )
@@ -219,6 +223,7 @@ def test_resolve_runtime_config_prefers_explicit_overrides() -> None:
     assert resolved.strategy_selector_profile == "capacity"
     assert resolved.kv_cache_lifecycle == "persistent"
     assert resolved.kv_cache_adaptation_mode == "automatic"
+    assert resolved.dense_projection_chunk_rows == 2048
     assert resolved.verbose is True
 
 
@@ -481,3 +486,8 @@ def test_runtime_settings_reject_mixed_cpu_and_gpu_offload() -> None:
         raise AssertionError(
             "RuntimeSettings should reject simultaneous CPU and GPU offload"
         )
+
+
+def test_runtime_config_rejects_non_positive_dense_projection_chunk_rows() -> None:
+    with pytest.raises(ValueError, match="dense_projection_chunk_rows"):
+        RuntimeConfig(dense_projection_chunk_rows=0).validate()

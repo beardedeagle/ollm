@@ -33,6 +33,16 @@ Optimized-native planning can record reusable passes such as:
 
 These passes are validated against the assembled optimized runtime before execution proceeds.
 
+`mlp-chunking` is currently the dense-sub-layer feasibility guard on the
+optimized-native Llama, Gemma3, and Voxtral paths. The runtime keeps the
+existing `16384`-row ceiling as the normal fast path, derives smaller chunks
+when accelerator headroom is tight, and accepts an explicit
+`dense_projection_chunk_rows` override through `RuntimeConfig`, `ollm.toml`, or
+`OLLM_RUNTIME__DENSE_PROJECTION_CHUNK_ROWS`. Smaller chunks reduce peak
+activation pressure but can shift latency differently across devices, so this
+path should be treated as a fallback-first memory control rather than a general
+latency optimization.
+
 ## Fallback behavior
 
 If an optimized specialization cannot satisfy its planned pass contract and a compatible generic Transformers path exists, oLLM falls back safely to `transformers-generic`.

@@ -19,6 +19,7 @@ from transformers.models.gemma3.modeling_gemma3 import (
     TransformersKwargs,
 )
 
+from ollm.dense_projection_chunking import apply_gated_dense_projection
 from ollm.device_staging import attach_parent_lm_head
 from ollm.utils import _assign_tensor_to_module, _set_meta_placeholder, _walk_to_parent
 
@@ -52,6 +53,7 @@ class _OffloadProtocol(Protocol):
 
 loader: _LoaderProtocol | None = None
 stats = None
+dense_projection_chunk_rows: int | None = None
 
 
 def _coerce_hidden_layer_count(value: object) -> int:
@@ -126,15 +128,15 @@ class loaderLayer:
 
 class MyGemma3MLP(Gemma3MLP, loaderLayer):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        chunk_size = 16384
-        chunks: list[torch.Tensor] = []
-        squeezed = x.squeeze(0)
-        for index in range(0, squeezed.shape[0], chunk_size):
-            chunk = squeezed[index : index + chunk_size]
-            gate_chunk = self.act_fn(self.gate_proj(chunk))
-            up_chunk = self.up_proj(chunk)
-            chunks.append(self.down_proj(gate_chunk * up_chunk))
-        return torch.cat(chunks, dim=0).unsqueeze(0)
+        return apply_gated_dense_projection(
+            x,
+            gate_proj=self.gate_proj,
+            up_proj=self.up_proj,
+            down_proj=self.down_proj,
+            activation=self.act_fn,
+            intermediate_features=self.gate_proj.out_features,
+            configured_chunk_rows=dense_projection_chunk_rows,
+        )
 
 
 class MyGemma3DecoderLayer(Gemma3DecoderLayer, loaderLayer):
