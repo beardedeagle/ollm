@@ -105,20 +105,29 @@ def execute_request_probe(
     generation_result, generation_ms, generation_resources = measure_stage(
         runtime.config.device,
         lambda: _generate_outputs(
+            executor,
             runtime,
+            request,
             normalized_inputs,
             generate_kwargs,
             generation_config,
         ),
         sample_accelerator_utilization=True,
     )
-    output_tensor = cast(torch.Tensor, cast(tuple[object, float], generation_result)[0])
-    generation_started = cast(tuple[object, float], generation_result)[1]
+    generated = cast(
+        tuple[object, float, dict[str, object], dict[str, object]], generation_result
+    )
+    output_tensor = cast(torch.Tensor, generated[0])
+    generation_started = generated[1]
+    prepared_inputs = generated[2]
+    prepared_generate_kwargs = generated[3]
     if hasattr(output_tensor, "detach"):
         output_tensor = output_tensor.detach()
     cpu_outputs = output_tensor.cpu()
-    response_text = executor._decode_response(runtime, inputs, cpu_outputs)
-    cache_state = _extract_cache_state_snapshot(generate_kwargs.get("past_key_values"))
+    response_text = executor._decode_response(runtime, prepared_inputs, cpu_outputs)
+    cache_state = _extract_cache_state_snapshot(
+        prepared_generate_kwargs.get("past_key_values")
+    )
     offload_cpu_applied_indices = tuple(
         int(layer_idx)
         for layer_idx in runtime.plan.details.get(
@@ -126,7 +135,7 @@ def execute_request_probe(
         ).split(",")
         if layer_idx
     )
-    output_tokens = _count_output_tokens(runtime, inputs, cpu_outputs)
+    output_tokens = _count_output_tokens(runtime, prepared_inputs, cpu_outputs)
     time_to_first_token_ms = None
     if streamer.token_timestamps:
         time_to_first_token_ms = round(
@@ -305,30 +314,46 @@ def _collect_native_runtime_profile(
 
 
 def _generate_outputs(
+    executor: RuntimeExecutor,
     runtime: LoadedRuntime,
+    request: PromptRequest,
     inputs: dict[str, object],
     generate_kwargs: dict[str, object],
     generation_config: object,
-) -> tuple[object, float]:
+) -> tuple[object, float, dict[str, object], dict[str, object]]:
     generation_started = time.perf_counter()
+    prepared_inputs, prepared_generate_kwargs = executor._prepare_generate_inputs(
+        runtime,
+        request,
+        inputs,
+        generate_kwargs,
+    )
     try:
         with torch.inference_mode():
             with suppress_module_prints(runtime.backend.print_suppression_modules):
                 with temporary_generation_config(runtime.model, generation_config):
-                    return runtime.model.generate(
-                        **inputs, **generate_kwargs
-                    ), generation_started
+                    return (
+                        runtime.model.generate(
+                            **prepared_inputs, **prepared_generate_kwargs
+                        ),
+                        generation_started,
+                        prepared_inputs,
+                        prepared_generate_kwargs,
+                    )
     except TypeError as exc:
         if "streamer" not in str(exc):
             raise
-        retry_kwargs = dict(generate_kwargs)
+        retry_kwargs = dict(prepared_generate_kwargs)
         retry_kwargs.pop("streamer", None)
         with torch.inference_mode():
             with suppress_module_prints(runtime.backend.print_suppression_modules):
                 with temporary_generation_config(runtime.model, generation_config):
-                    return runtime.model.generate(
-                        **inputs, **retry_kwargs
-                    ), generation_started
+                    return (
+                        runtime.model.generate(**prepared_inputs, **retry_kwargs),
+                        generation_started,
+                        prepared_inputs,
+                        retry_kwargs,
+                    )
 
 
 def _count_prompt_tokens(inputs: dict[str, object]) -> int:

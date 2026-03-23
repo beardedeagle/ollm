@@ -30,6 +30,7 @@ from ollm.runtime.benchmark.types import (
     resolve_runtime_benchmark_profile,
 )
 from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
+from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.catalog import ModelModality
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
 from ollm.runtime.loader import LoadedRuntime
@@ -40,6 +41,7 @@ from tests.benchmark_support import (
     build_request_probe_metrics,
     build_stage_resources,
 )
+from tests.test_runtime_executor import ChunkedPrefillModel, LongMappingTokenizer
 
 
 class BenchmarkProcessorInputs(dict):
@@ -170,6 +172,57 @@ def test_execute_request_probe_strips_processor_token_type_ids() -> None:
 
     assert execution.response_text == "decoded-benchmark"
     assert "token_type_ids" not in runtime.model.generate_kwargs
+
+
+def test_execute_request_probe_uses_chunked_prefill_for_long_causal_prompts(
+    monkeypatch,
+) -> None:
+    runtime = _build_processor_runtime()
+    runtime.backend = BackendRuntime(
+        backend_id="optimized-native",
+        model=ChunkedPrefillModel(),
+        tokenizer=LongMappingTokenizer(),
+        processor=None,
+        device=torch.device("cpu"),
+        stats=None,
+        print_suppression_modules=(),
+        create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None, cache_window_tokens=None: (
+            None
+        ),
+        apply_offload=lambda runtime_config: None,
+    )
+    runtime.plan = RuntimePlan(
+        resolved_model=runtime.plan.resolved_model,
+        backend_id="optimized-native",
+        model_path=runtime.plan.model_path,
+        support_level=SupportLevel.OPTIMIZED,
+        generic_model_kind=GenericModelKind.CAUSAL_LM,
+        supports_disk_cache=True,
+        supports_cpu_offload=True,
+        supports_gpu_offload=False,
+        specialization_enabled=True,
+        specialization_applied=False,
+        specialization_provider_id="llama-native",
+        specialization_state=SpecializationState.PLANNED,
+        reason="benchmark test",
+    )
+    request = build_prompt_request(
+        runtime_config=runtime.config,
+        generation_config=GenerationConfig(stream=False, max_new_tokens=1),
+        messages=[
+            Message(role=MessageRole.USER, content=[ContentPart.text("hello")]),
+        ],
+    )
+    monkeypatch.setattr("ollm.runtime.generation.DEFAULT_PREFILL_CHUNK_TOKENS", 2)
+    model = cast(ChunkedPrefillModel, runtime.model)
+
+    execution = execute_request_probe(runtime=runtime, request=request)
+
+    assert execution.response_text == "long-decoded"
+    assert len(model.forward_calls) == 2
+    generate_input_ids = model.generate_kwargs["input_ids"]
+    assert isinstance(generate_input_ids, torch.Tensor)
+    assert torch.equal(generate_input_ids, torch.tensor([[5]]))
 
 
 def test_measure_callable_reports_stats() -> None:

@@ -15,6 +15,11 @@ Current native families:
 - `gpt-oss`
 - `voxtral`
 
+Optimized-native decoder-only text prompts now use bounded chunked prefill for
+long prompt ingestion before the final decode step. This is a memory-control
+path, not a blanket latency optimization, so prompt-scaling benchmarks are the
+truthful way to evaluate whether the chunking tradeoff helps on a given host.
+
 ### Transformers-generic
 Used for compatible local or materialized models that can run through the generic Transformers-backed path.
 
