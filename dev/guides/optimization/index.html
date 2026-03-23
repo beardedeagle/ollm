@@ -2435,6 +2435,10 @@
 <li><code>gpt-oss</code></li>
 <li><code>voxtral</code></li>
 </ul>
+<p>Optimized-native decoder-only text prompts now use bounded chunked prefill for
+long prompt ingestion before the final decode step. This is a memory-control
+path, not a blanket latency optimization, so prompt-scaling benchmarks are the
+truthful way to evaluate whether the chunking tradeoff helps on a given host.</p>
 <h3 id="transformers-generic">Transformers-generic<a class="headerlink" href="#transformers-generic" title="Permanent link">&para;</a></h3>
 <p>Used for compatible local or materialized models that can run through the generic Transformers-backed path.</p>
 <h2 id="specialization-passes">Specialization passes<a class="headerlink" href="#specialization-passes" title="Permanent link">&para;</a></h2>
