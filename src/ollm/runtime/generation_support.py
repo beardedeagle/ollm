@@ -43,7 +43,7 @@ def render_plain_prompt(messages: list[Message]) -> str:
     """Render fallback text-only prompts for tokenizers without chat templates.
 
     Args:
-        messages (list[object]): Prompt messages exposing `role` and
+        messages (list[Message]): Prompt messages exposing `role` and
             `text_content()`.
 
     Returns:
