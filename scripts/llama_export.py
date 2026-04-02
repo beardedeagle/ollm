@@ -7,7 +7,7 @@ from pathlib import Path
 import torch
 from transformers import AutoModelForCausalLM
 
-from ollm.async_io import path_mkdir, path_write_text
+from ollm.async_io import path_mkdir, path_write_bytes, path_write_text
 
 _EXPORT_PREFIXES = ("model.layers", "transformer.h")
 
@@ -58,7 +58,7 @@ def export_llama_weights(
         filename = f"{name.replace('.', '__')}.bin"
         output_path = resolved_out_dir / filename
         path_mkdir(output_path.parent, parents=True, exist_ok=True)
-        contiguous_tensor.numpy().tofile(output_path)
+        _write_raw_tensor_file(contiguous_tensor, output_path)
         manifest[name] = {
             "path": filename,
             "dtype": str(contiguous_tensor.dtype).replace("torch.", ""),
@@ -70,6 +70,17 @@ def export_llama_weights(
         json.dumps(manifest, indent=2),
     )
     return len(manifest)
+
+
+def _write_raw_tensor_file(tensor: torch.Tensor, output_path: Path) -> None:
+    """Write a tensor's raw bytes without relying on NumPy dtype support.
+
+    Args:
+        tensor (torch.Tensor): Contiguous CPU tensor to serialize.
+        output_path (Path): Destination raw `.bin` file path.
+    """
+    raw_bytes = tensor.view(torch.uint8).numpy().tobytes()
+    path_write_bytes(output_path, raw_bytes)
 
 
 def parse_args() -> argparse.Namespace:

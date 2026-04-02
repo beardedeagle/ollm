@@ -229,8 +229,12 @@ def check_script_top_level_statements(
             | ast.ClassDef,
         ):
             continue
-        if isinstance(statement, ast.Assign | ast.AnnAssign):
-            continue
+        if isinstance(statement, ast.Assign):
+            if _assignment_value_is_safe(statement.value):
+                continue
+        if isinstance(statement, ast.AnnAssign):
+            if statement.value is None or _assignment_value_is_safe(statement.value):
+                continue
         if isinstance(statement, ast.If) and _is_main_guard(statement):
             continue
         violations.append(
@@ -367,6 +371,24 @@ def _is_main_guard(statement: ast.If) -> bool:
         and isinstance(right, ast.Constant)
         and right.value == "__main__"
     )
+
+
+def _assignment_value_is_safe(node: ast.AST) -> bool:
+    if isinstance(node, ast.Constant | ast.Name):
+        return True
+    if isinstance(node, ast.Attribute):
+        return _assignment_value_is_safe(node.value)
+    if isinstance(node, ast.UnaryOp):
+        return isinstance(node.op, ast.UAdd | ast.USub) and _assignment_value_is_safe(
+            node.operand
+        )
+    if isinstance(node, ast.Tuple | ast.List | ast.Set):
+        return all(_assignment_value_is_safe(element) for element in node.elts)
+    if isinstance(node, ast.Dict):
+        return all(
+            key is None or _assignment_value_is_safe(key) for key in node.keys
+        ) and all(_assignment_value_is_safe(value) for value in node.values)
+    return False
 
 
 def _call_target(node: ast.AST) -> tuple[str, str | None] | None:

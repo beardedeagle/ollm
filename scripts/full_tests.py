@@ -37,74 +37,75 @@ class _ManualTestCase:
     max_new_tokens: int
 
 
-_TEST_CASES = {
-    1: _ManualTestCase(
-        test_id=1,
-        model_id="llama3-8B-chat",
-        sample_file="10k_sample.txt",
-        prompt_mode="chat",
-        user_prompt="Analyze chats above and write top 10 most popular questions (translate to english).",
-        use_disk_cache=True,
-        offload_layers_to_cpu=2,
-        offload_layers_to_gpu=0,
-        max_new_tokens=500,
-    ),
-    2: _ManualTestCase(
-        test_id=2,
-        model_id="gpt-oss-20B",
-        sample_file="2k_sample.txt",
-        prompt_mode="chat",
-        user_prompt="Analyze chats above and write top 10 most popular questions (translate to english).",
-        use_disk_cache=True,
-        offload_layers_to_cpu=6,
-        offload_layers_to_gpu=0,
-        max_new_tokens=10,
-    ),
-    3: _ManualTestCase(
-        test_id=3,
-        model_id="llama3-8B-chat",
-        sample_file="85k_sample.txt",
-        prompt_mode="paper",
-        user_prompt="Analyze papers above and find 3 common similarities.",
-        use_disk_cache=True,
-        offload_layers_to_cpu=2,
-        offload_layers_to_gpu=0,
-        max_new_tokens=10,
-    ),
-    4: _ManualTestCase(
-        test_id=4,
-        model_id="qwen3-next-80B",
-        sample_file="45k_sample.txt",
-        prompt_mode="paper",
-        user_prompt="Analyze papers above and find 3 common similarities.",
-        use_disk_cache=True,
-        offload_layers_to_cpu=48,
-        offload_layers_to_gpu=0,
-        max_new_tokens=100,
-    ),
-    5: _ManualTestCase(
-        test_id=5,
-        model_id="qwen3-next-80B",
-        sample_file="2k_sample.txt",
-        prompt_mode="chat",
-        user_prompt="Analyze chats above and write top 10 most popular questions (translate to english).",
-        use_disk_cache=True,
-        offload_layers_to_cpu=0,
-        offload_layers_to_gpu=0,
-        max_new_tokens=100,
-    ),
-    6: _ManualTestCase(
-        test_id=6,
-        model_id="gemma3-12B",
-        sample_file="2k_sample.txt",
-        prompt_mode="chat",
-        user_prompt="Analyze chats above and write top 10 most popular questions (translate to english).",
-        use_disk_cache=False,
-        offload_layers_to_cpu=12,
-        offload_layers_to_gpu=0,
-        max_new_tokens=10,
-    ),
-}
+def _test_cases() -> dict[int, _ManualTestCase]:
+    return {
+        1: _ManualTestCase(
+            test_id=1,
+            model_id="llama3-8B-chat",
+            sample_file="10k_sample.txt",
+            prompt_mode="chat",
+            user_prompt="Analyze chats above and write top 10 most popular questions (translate to english).",
+            use_disk_cache=True,
+            offload_layers_to_cpu=2,
+            offload_layers_to_gpu=0,
+            max_new_tokens=500,
+        ),
+        2: _ManualTestCase(
+            test_id=2,
+            model_id="gpt-oss-20B",
+            sample_file="2k_sample.txt",
+            prompt_mode="chat",
+            user_prompt="Analyze chats above and write top 10 most popular questions (translate to english).",
+            use_disk_cache=True,
+            offload_layers_to_cpu=6,
+            offload_layers_to_gpu=0,
+            max_new_tokens=10,
+        ),
+        3: _ManualTestCase(
+            test_id=3,
+            model_id="llama3-8B-chat",
+            sample_file="85k_sample.txt",
+            prompt_mode="paper",
+            user_prompt="Analyze papers above and find 3 common similarities.",
+            use_disk_cache=True,
+            offload_layers_to_cpu=2,
+            offload_layers_to_gpu=0,
+            max_new_tokens=10,
+        ),
+        4: _ManualTestCase(
+            test_id=4,
+            model_id="qwen3-next-80B",
+            sample_file="45k_sample.txt",
+            prompt_mode="paper",
+            user_prompt="Analyze papers above and find 3 common similarities.",
+            use_disk_cache=True,
+            offload_layers_to_cpu=48,
+            offload_layers_to_gpu=0,
+            max_new_tokens=100,
+        ),
+        5: _ManualTestCase(
+            test_id=5,
+            model_id="qwen3-next-80B",
+            sample_file="2k_sample.txt",
+            prompt_mode="chat",
+            user_prompt="Analyze chats above and write top 10 most popular questions (translate to english).",
+            use_disk_cache=True,
+            offload_layers_to_cpu=0,
+            offload_layers_to_gpu=0,
+            max_new_tokens=100,
+        ),
+        6: _ManualTestCase(
+            test_id=6,
+            model_id="gemma3-12B",
+            sample_file="2k_sample.txt",
+            prompt_mode="chat",
+            user_prompt="Analyze chats above and write top 10 most popular questions (translate to english).",
+            use_disk_cache=False,
+            offload_layers_to_cpu=12,
+            offload_layers_to_gpu=0,
+            max_new_tokens=10,
+        ),
+    }
 
 
 def _build_messages(sample_dir: Path, test_case: _ManualTestCase) -> tuple[str, str]:
@@ -245,16 +246,17 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     """Run the selected manual regression scenarios."""
     args = parse_args()
+    test_cases = _test_cases()
     selected_ids = _DEFAULT_TEST_IDS if not args.test_ids else tuple(args.test_ids)
     for test_id in selected_ids:
-        if test_id not in _TEST_CASES:
+        if test_id not in test_cases:
             raise ValueError(f"Unsupported test id: {test_id}")
         run_test(
             models_dir=args.models_dir,
             cache_dir=args.cache_dir,
             device=args.device,
             sample_dir=args.sample_dir,
-            test_case=_TEST_CASES[test_id],
+            test_case=test_cases[test_id],
         )
         print(f"#{test_id}.TestSuccess")
     return 0

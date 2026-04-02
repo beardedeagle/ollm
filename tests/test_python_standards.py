@@ -157,3 +157,25 @@ def test_standards_checker_reports_script_import_side_effects(tmp_path: Path) ->
 
     assert completed.returncode == 1
     assert "script-import-side-effect" in completed.stdout
+
+
+def test_standards_checker_reports_callable_top_level_assignments(
+    tmp_path: Path,
+) -> None:
+    script_root = tmp_path / "scripts"
+    script_root.mkdir(parents=True)
+    (script_root / "manual.py").write_text(
+        (
+            "def build_value() -> int:\n"
+            "    return 1\n\n"
+            "VALUE = build_value()\n"
+        ),
+        encoding="utf-8",
+    )
+
+    completed = subprocess_run_process(
+        (sys.executable, str(SCRIPT_PATH), "--root", str(tmp_path))
+    )
+
+    assert completed.returncode == 1
+    assert "script-import-side-effect" in completed.stdout
