@@ -2332,8 +2332,8 @@
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>format<span class="w"> </span>src<span class="w"> </span>tests<span class="w"> </span>examples<span class="w"> </span>scripts
 uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>src<span class="w"> </span>tests<span class="w"> </span>examples<span class="w"> </span>scripts
 uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/check_python_standards.py
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>compileall<span class="w"> </span>src<span class="w"> </span>tests<span class="w"> </span>examples<span class="w"> </span>scripts
-uv<span class="w"> </span>run<span class="w"> </span>ty<span class="w"> </span>check<span class="w"> </span>src<span class="w"> </span>tests
+uv<span class="w"> </span>run<span class="w"> </span>ty<span class="w"> </span>check<span class="w"> </span>src<span class="w"> </span>tests<span class="w"> </span>scripts
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>compileall<span class="w"> </span>src<span class="w"> </span>tests<span class="w"> </span>scripts
 uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-q
 uv<span class="w"> </span>build
 uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pip_audit
@@ -2345,10 +2345,13 @@ server prompt execution, or a user-facing command recommendation, also run:</p>
 <span class="w">  </span>--model<span class="w"> </span>llama3-1B-chat<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output<span class="w"> </span>.omx/logs/runtime-smoke.json
 </code></pre></div>
+<p>The manual regression helpers in <code>scripts/test.py</code>, <code>scripts/test_autoinference.py</code>,
+and <code>scripts/full_tests.py</code> take explicit CLI arguments for model roots,
+cache directories, and prompt/sample inputs.</p>
 <p>Use the lane you actually changed whenever possible. If you recommend a
 specific command to a user, validate that exact lane before push or say which
 stricter equivalent you validated.</p>
-<p>For docs-only changes, still verify the docs build and run at least the tests affected by the changed examples or commands.</p>
+<p>For docs-only changes, verify the docs build and run at least the tests affected by the changed examples or commands.</p>
 <h2 id="documentation-expectations">Documentation expectations<a class="headerlink" href="#documentation-expectations" title="Permanent link">&para;</a></h2>
 <p>This project treats docs as part of the product surface:</p>
 <ul>
@@ -2365,7 +2368,7 @@ stricter equivalent you validated.</p>
 <li>no compatibility scaffolding</li>
 <li>no preserving bad structures because they already exist</li>
 </ul>
-<p>The mechanically enforced rules live in <code>scripts/check_python_standards.py</code>, and the current
+<p>The mechanically enforced rules live in <code>scripts/check_python_standards.py</code>, and the
 repo-wide remediation matrix lives in <a href="../python-standards-audit/">Python Standards Audit</a>.</p>
 <h2 id="testing-style">Testing style<a class="headerlink" href="#testing-style" title="Permanent link">&para;</a></h2>
 <ul>

@@ -2370,7 +2370,7 @@ ollm<span class="w"> </span>doctor<span class="w"> </span>--runtime<span class="
 <h3 id="a-hugging-face-repo-resolves-but-will-not-execute-yet">A Hugging Face repo resolves but will not execute yet<a class="headerlink" href="#a-hugging-face-repo-resolves-but-will-not-execute-yet" title="Permanent link">&para;</a></h3>
 <p>Some Hugging Face refs must be materialized locally before generic capability discovery can inspect them.</p>
 <h3 id="provider-prefixed-refs-are-rejected">Provider-prefixed refs are rejected<a class="headerlink" href="#provider-prefixed-refs-are-rejected" title="Permanent link">&para;</a></h3>
-<p>That is intentional. oLLM now executes only locally managed models. Use a built-in alias, a local model directory, or a Hugging Face repository reference.</p>
+<p>That is intentional. oLLM executes only locally managed models. Use a built-in alias, a local model directory, or a Hugging Face repository reference.</p>
 <h3 id="generic-runtime-rejects-a-checkpoint">Generic runtime rejects a checkpoint<a class="headerlink" href="#generic-runtime-rejects-a-checkpoint" title="Permanent link">&para;</a></h3>
 <p>The generic runtime intentionally refuses unsafe <code>.bin</code> or pickle-backed local weights. Use <code>safetensors</code> artifacts for the generic local path.</p>
 

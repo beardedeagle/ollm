@@ -2270,24 +2270,24 @@
 <li>cache strategy, cache lifecycle, adaptation mode, cache root, and offload behavior</li>
 <li>sliding-window token budget when bounded-history KV is selected</li>
 </ul>
-<p>The current KV scaffolding now distinguishes:</p>
+<p>The KV scaffolding distinguishes:</p>
 <ul>
 <li><code>strategy_selector_profile</code> — the deterministic selector profile (<code>balanced</code>, <code>latency</code>, <code>capacity</code>, or <code>bounded-window</code>)</li>
 <li><code>kv_cache_strategy</code> — optional explicit strategy override; when omitted, the selector chooses a concrete preset</li>
 <li><code>kv_cache_window_tokens</code> — bounded recent-context token budget for <code>sliding-window-ring-buffer</code>; omitted for full-history strategies</li>
-<li><code>dense_projection_chunk_rows</code> — optional explicit row budget for dense optimized-native MLP chunking; when omitted, the dense Llama, Gemma3, and Voxtral paths keep the current <code>16384</code>-row ceiling but derive smaller chunks only when accelerator headroom is tight</li>
+<li><code>dense_projection_chunk_rows</code> — optional explicit row budget for dense optimized-native MLP chunking; when omitted, the dense Llama, Gemma3, and Voxtral paths keep the <code>16384</code>-row ceiling but derive smaller chunks only when accelerator headroom is tight</li>
 <li><code>kv_cache_lifecycle</code> — <code>runtime-scoped</code> or explicit <code>persistent</code> reuse semantics; <code>resident</code> requires <code>runtime-scoped</code></li>
-<li><code>kv_cache_adaptation_mode</code> — <code>disabled</code>, <code>observe-only</code>, or <code>automatic</code>; observe-only recommendation rules exist, but live switching is still disabled</li>
+<li><code>kv_cache_adaptation_mode</code> — <code>disabled</code>, <code>observe-only</code>, or <code>automatic</code>; observe-only recommendation rules exist, but live switching is disabled</li>
 <li><code>offload_cpu_layers</code> — requested CPU offload layer budget</li>
 <li><code>offload_cpu_policy</code> — CPU offload placement policy (<code>auto</code>, <code>prefix</code>, <code>suffix</code>, or <code>middle-band</code>)</li>
 <li><code>offload_gpu_layers</code> — requested GPU offload layer budget</li>
 </ul>
-<p>Current offload truth:</p>
+<p>Offload constraints:</p>
 <ul>
 <li><code>offload_cpu_layers</code> requires an accelerator runtime device</li>
 <li><code>offload_cpu_layers</code> and <code>offload_gpu_layers</code> cannot be combined in the current implementation</li>
 </ul>
-<p>Current selector truth:</p>
+<p>Selector behavior:</p>
 <ul>
 <li>selector-default candidates are <code>paged</code>, <code>resident</code>, and <code>quantized-cold-tier</code></li>
 <li><code>sliding-window-ring-buffer</code> remains explicit bounded-history opt-in only</li>

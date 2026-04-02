@@ -2359,8 +2359,9 @@ runtime changes, and contributor-facing documentation.</p>
 <li>Follow the repo validation order exactly:</li>
 <li><code>uv run ruff format src tests examples scripts</code></li>
 <li><code>uv run ruff check src tests examples scripts</code></li>
-<li><code>uv run ty check src tests</code></li>
-<li><code>uv run python -m compileall src tests</code></li>
+<li><code>uv run python scripts/check_python_standards.py</code></li>
+<li><code>uv run ty check src tests scripts</code></li>
+<li><code>uv run python -m compileall src tests scripts</code></li>
 <li><code>uv run pytest -q</code></li>
 <li><code>uv build</code></li>
 <li><code>uv run python -m pip_audit</code></li>
@@ -2435,8 +2436,8 @@ just because it already exists.</p>
 <h2 id="enforcement-and-audit">Enforcement and audit<a class="headerlink" href="#enforcement-and-audit" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>uv run python scripts/check_python_standards.py</code> enforces the mechanically checkable rules.</li>
-<li><code>docs/guides/python-standards-audit.md</code> is the current remediation matrix for repo-wide
-  violations that still require follow-on work.</li>
+<li><code>docs/guides/python-standards-audit.md</code> is the remediation matrix for repo-wide
+  violations that require follow-on work.</li>
 <li><code>docs/development.md</code> and <code>docs/guides/contributing.md</code> summarize the contributor workflow, but
   this page is the canonical standards source.</li>
 </ul>

@@ -2519,9 +2519,9 @@ Responses storage on top.</p>
 <h2 id="behavior-notes">Behavior notes<a class="headerlink" href="#behavior-notes" title="Permanent link">&para;</a></h2>
 <ul>
 <li>The bind is local-only by default.</li>
-<li>The OpenAI-compatible surface currently covers model discovery, text chat
+<li>The OpenAI-compatible surface covers model discovery, text chat
   completions, and text responses.</li>
-<li>Chat-completions requests currently support plain string content and structured
+<li>Chat-completions requests support plain string content and structured
   text-part arrays only.</li>
 <li>Responses requests support plain string input, message arrays with text/image/audio
   and file-reference content parts, <code>function_call_output</code> tool-result items, and custom
@@ -2537,11 +2537,11 @@ Responses storage on top.</p>
   <code>response.function_call_arguments.done</code>,
   <code>response.output_item.done</code>, <code>response.completed</code>, and <code>response.failed</code>.</li>
 <li>Native prompt streaming continues to use the oLLM-specific SSE event shape.</li>
-<li>Server-side sessions are in-memory only in the current slice.</li>
+<li>Server-side sessions are in-memory only.</li>
 <li>Responses storage is disabled by default. Configure a response-store backend
   if you want <code>GET /v1/responses/{response_id}</code>,
   <code>DELETE /v1/responses/{response_id}</code>, or <code>previous_response_id</code> chaining.</li>
-<li>Runtime and generation defaults still follow the standard config layering
+<li>Runtime and generation defaults follow the standard config layering
   contract for native endpoints.</li>
 </ul>
 <h2 id="example-requests">Example requests<a class="headerlink" href="#example-requests" title="Permanent link">&para;</a></h2>

@@ -2356,8 +2356,8 @@ uv<span class="w"> </span>sync<span class="w"> </span>--group<span class="w"> </
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>format<span class="w"> </span>src<span class="w"> </span>tests<span class="w"> </span>examples<span class="w"> </span>scripts
 uv<span class="w"> </span>run<span class="w"> </span>ruff<span class="w"> </span>check<span class="w"> </span>src<span class="w"> </span>tests<span class="w"> </span>examples<span class="w"> </span>scripts
 uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/check_python_standards.py
-uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>compileall<span class="w"> </span>src<span class="w"> </span>tests
-uv<span class="w"> </span>run<span class="w"> </span>ty<span class="w"> </span>check<span class="w"> </span>src<span class="w"> </span>tests
+uv<span class="w"> </span>run<span class="w"> </span>ty<span class="w"> </span>check<span class="w"> </span>src<span class="w"> </span>tests<span class="w"> </span>scripts
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>compileall<span class="w"> </span>src<span class="w"> </span>tests<span class="w"> </span>scripts
 uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-q
 uv<span class="w"> </span>build
 uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>pip_audit
@@ -2369,11 +2369,15 @@ actually changed:</p>
 <span class="w">  </span>--model<span class="w"> </span>llama3-1B-chat<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--output<span class="w"> </span>.omx/logs/runtime-smoke.json
 </code></pre></div>
+<p>The manual regression helpers in <code>scripts/test.py</code>, <code>scripts/test_autoinference.py</code>,
+and <code>scripts/full_tests.py</code> require explicit CLI arguments for model roots,
+cache directories, and prompt/sample inputs instead of relying on machine-local
+hard-coded paths.</p>
 <p>If you recommend a specific command or runtime lane to a user, validate that
 exact lane before push, or explicitly say which stricter equivalent you used.</p>
 <h2 id="engineering-standards">Engineering standards<a class="headerlink" href="#engineering-standards" title="Permanent link">&para;</a></h2>
 <p>The canonical standards baseline lives in <a href="../guides/python-standards/">Python Standards</a>.</p>
-<p>This repo is currently being treated as greenfield:</p>
+<p>This repo is treated as greenfield:</p>
 <ul>
 <li>no legacy preservation</li>
 <li>no backwards-compatibility ballast</li>

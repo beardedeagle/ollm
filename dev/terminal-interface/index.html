@@ -2428,7 +2428,7 @@ ollm<span class="w"> </span>serve<span class="w">                   </span><span
 </ul>
 <p><code>ollm prompt</code>, <code>ollm chat</code>, <code>ollm doctor</code>, and <code>ollm models info</code> all honor these controls.</p>
 <h2 id="configuration-sources">Configuration sources<a class="headerlink" href="#configuration-sources" title="Permanent link">&para;</a></h2>
-<p>oLLM now resolves runtime, generation, and server defaults through an explicit
+<p>oLLM resolves runtime, generation, and server defaults through an explicit
 layered settings contract:</p>
 <ol>
 <li>CLI flags</li>
@@ -2465,9 +2465,9 @@ different config file with <code>OLLM_CONFIG_FILE=/path/to/ollm.toml</code>.</p>
 <span class="n">port</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">8000</span>
 <span class="n">response_store_backend</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;none&quot;</span>
 </code></pre></div>
-<p>The current settings surface covers runtime defaults, generation defaults, and
-future server defaults. Prompt-specific values outside that schema, such as the
-system prompt text, still remain explicit CLI options today.</p>
+<p>The settings surface covers runtime defaults, generation defaults, and
+server defaults. Prompt-specific values outside that schema, such as the
+system prompt text, remain explicit CLI options.</p>
 <h2 id="local-server">Local server<a class="headerlink" href="#local-server" title="Permanent link">&para;</a></h2>
 <p>Install the optional server transport stack first:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>sync<span class="w"> </span>--extra<span class="w"> </span>server
@@ -2484,7 +2484,7 @@ same settings-precedence contract as the rest of the CLI. The default bind is
 <li><code>/docs</code></li>
 <li><code>/redoc</code></li>
 </ul>
-<p>The current REST surface is:</p>
+<p>The REST surface is:</p>
 <ul>
 <li><code>GET /v1/health</code></li>
 <li><code>GET /v1/models</code></li>
@@ -2503,7 +2503,7 @@ same settings-precedence contract as the rest of the CLI. The default bind is
 <li><code>POST /v1/sessions/{session_id}/prompt</code></li>
 <li><code>POST /v1/sessions/{session_id}/prompt/stream</code></li>
 </ul>
-<p>The streaming transport is SSE-based and the current server-side sessions are
+<p>The streaming transport is SSE-based and the server-side sessions are
 in-memory only. The OpenAI-compatible <code>/v1/responses</code> surface supports custom
 function tools, <code>tool_choice</code>, <code>function_call_output</code> chaining, and typed
 function-call SSE events, plus delete/retrieval when a response-store backend is
@@ -2522,7 +2522,7 @@ surface and <a href="../cli/server/">CLI <code>ollm serve</code></a> for command
 <ul>
 <li><code>optimized</code> — a native specialization provider can run the reference</li>
 <li><code>generic</code> — the Transformers-backed generic runtime can run the reference</li>
-<li><code>unsupported</code> — the reference resolves, but the current runtime cannot execute it</li>
+<li><code>unsupported</code> — the reference resolves, but the runtime cannot execute it</li>
 </ul>
 <h2 id="discovery-and-availability-terms">Discovery and availability terms<a class="headerlink" href="#discovery-and-availability-terms" title="Permanent link">&para;</a></h2>
 <p><code>ollm models list</code> is a discovery view. It combines:</p>

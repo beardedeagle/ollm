@@ -2355,9 +2355,9 @@ with <code>ollm serve</code>.</p>
 </ul>
 <h2 id="compatibility-scope">Compatibility scope<a class="headerlink" href="#compatibility-scope" title="Permanent link">&para;</a></h2>
 <ul>
-<li>The OpenAI-compatible surface currently targets text chat, text responses, and
+<li>The OpenAI-compatible surface targets text chat, text responses, and
   model discovery.</li>
-<li>Chat-completions requests currently support plain string content and structured
+<li>Chat-completions requests support plain string content and structured
   text-part arrays only.</li>
 <li>Responses requests support:</li>
 <li>plain string input</li>
@@ -2389,7 +2389,7 @@ with <code>ollm serve</code>.</p>
   <code>response.function_call_arguments.delta</code>,
   <code>response.function_call_arguments.done</code>,
   <code>response.output_item.done</code>, <code>response.completed</code>, and <code>response.failed</code>.</li>
-<li>Native streaming responses still use oLLM's SSE event family.</li>
+<li>Native streaming responses use oLLM's SSE event family.</li>
 <li>Server-side sessions are in-memory only.</li>
 <li>Responses storage is disabled by default; enable a response-store backend when
   you want retrieval or <code>previous_response_id</code> chaining.</li>

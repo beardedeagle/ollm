@@ -2352,22 +2352,22 @@ lives at <code>examples/ollm.toml</code> in the repository root.</p>
 <li><code>kv_cache_window_tokens</code> — bounded recent-context token budget for <code>sliding-window-ring-buffer</code>; the field is invalid for full-history strategies</li>
 <li><code>dense_projection_chunk_rows</code> — optional explicit row budget for dense optimized-native MLP chunking; when omitted, the dense Llama, Gemma3, and Voxtral paths derive smaller chunks only when accelerator headroom is tight</li>
 <li><code>kv_cache_lifecycle</code> — whether KV artifacts are <code>runtime-scoped</code> or explicitly <code>persistent</code>; <code>resident</code> requires <code>runtime-scoped</code></li>
-<li><code>kv_cache_adaptation_mode</code> — whether adaptation telemetry is <code>disabled</code>, <code>observe-only</code>, or <code>automatic</code> (live switching is still not enabled)</li>
+<li><code>kv_cache_adaptation_mode</code> — whether adaptation telemetry is <code>disabled</code>, <code>observe-only</code>, or <code>automatic</code> (live switching is not enabled)</li>
 <li><code>offload_cpu_layers</code> — native CPU offload layer budget when supported</li>
 <li><code>offload_cpu_policy</code> — CPU offload placement policy (<code>auto</code>, <code>prefix</code>, <code>suffix</code>, or <code>middle-band</code>)</li>
 <li><code>offload_gpu_layers</code> — GPU offload layer budget for mixed-placement-capable runtimes</li>
 </ul>
-<p>Current constraint:</p>
+<p>Constraints:</p>
 <ul>
 <li><code>offload_cpu_layers</code> requires an accelerator runtime device</li>
-<li><code>offload_cpu_layers</code> cannot be combined with <code>offload_gpu_layers</code> in the current implementation</li>
+<li><code>offload_cpu_layers</code> cannot be combined with <code>offload_gpu_layers</code></li>
 </ul>
-<p>Current selector truth:</p>
+<p>Selector behavior:</p>
 <ul>
 <li>the selector default path is deterministic and table-driven</li>
-<li><code>paged</code>, <code>resident</code>, and <code>quantized-cold-tier</code> are the current selector-default candidates</li>
+<li><code>paged</code>, <code>resident</code>, and <code>quantized-cold-tier</code> are the selector-default candidates</li>
 <li><code>sliding-window-ring-buffer</code> stays explicit bounded-history opt-in only</li>
-<li><code>streamed-segmented</code>, <code>log-structured-journal</code>, and <code>tiered-write-back</code> stay explicit overrides for now</li>
+<li><code>streamed-segmented</code>, <code>log-structured-journal</code>, and <code>tiered-write-back</code> stay explicit overrides</li>
 </ul>
 <p>Generation configuration fields:</p>
 <ul>

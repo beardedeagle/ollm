@@ -2427,7 +2427,7 @@
 <h2 id="runtime-tiers">Runtime tiers<a class="headerlink" href="#runtime-tiers" title="Permanent link">&para;</a></h2>
 <h3 id="optimized-native">Optimized-native<a class="headerlink" href="#optimized-native" title="Permanent link">&para;</a></h3>
 <p>Used when a built-in alias or compatible native-family local model matches a specialization provider.</p>
-<p>Current native families:</p>
+<p>Native families:</p>
 <ul>
 <li><code>llama</code></li>
 <li><code>gemma3</code></li>
@@ -2435,7 +2435,7 @@
 <li><code>gpt-oss</code></li>
 <li><code>voxtral</code></li>
 </ul>
-<p>Optimized-native decoder-only text prompts now use bounded chunked prefill for
+<p>Optimized-native decoder-only text prompts use bounded chunked prefill for
 long prompt ingestion before the final decode step. This is a memory-control
 path, not a blanket latency optimization, so prompt-scaling benchmarks are the
 truthful way to evaluate whether the chunking tradeoff helps on a given host.</p>
@@ -2454,7 +2454,7 @@ truthful way to evaluate whether the chunking tradeoff helps on a given host.</p
 <li><code>gds-export-weights</code></li>
 </ul>
 <p>These passes are validated against the assembled optimized runtime before execution proceeds.</p>
-<p><code>mlp-chunking</code> is currently the dense-sub-layer feasibility guard on the
+<p><code>mlp-chunking</code> is the dense-sub-layer feasibility guard on the
 optimized-native Llama, Gemma3, and Voxtral paths. The runtime keeps the
 existing <code>16384</code>-row ceiling as the normal fast path, derives smaller chunks
 when accelerator headroom is tight, and accepts an explicit
@@ -2475,17 +2475,17 @@ latency optimization.</p>
 </ul>
 <p>These controls are backend-dependent. The generic path does not expose the same
 low-level layer-placement controls as optimized-native runtimes.</p>
-<p>Current CPU offload policies are:</p>
+<p>CPU offload policies are:</p>
 <ul>
 <li><code>auto</code></li>
 <li><code>prefix</code></li>
 <li><code>suffix</code></li>
 <li><code>middle-band</code></li>
 </ul>
-<p><code>auto</code> currently resolves to <code>middle-band</code>. Simultaneous CPU and GPU offload is
-intentionally rejected in this slice because the mixed-placement path is still
-prefix-shaped and would be misleading if reported as policy-driven.</p>
-<p>The optimized-native KV cache surface now exposes eight explicit presets:</p>
+<p><code>auto</code> resolves to <code>middle-band</code>. Simultaneous CPU and GPU offload is
+intentionally rejected because the mixed-placement path is prefix-shaped and
+would be misleading if reported as policy-driven.</p>
+<p>The optimized-native KV cache surface exposes eight explicit presets:</p>
 <ul>
 <li><code>chunked</code></li>
 <li><code>paged</code></li>
@@ -2522,7 +2522,7 @@ flowchart LR
   <code>kv_cache_window_tokens</code> limit is exceeded, the oldest cached tokens are
   evicted under a <code>drop-oldest</code> policy. This mode changes runtime semantics and
   should be used only when a bounded recent context is the intended contract.
-  Current local proof keeps it as an explicit opt-in mode rather than a general
+  Local proof keeps it as an explicit opt-in mode rather than a general
   default strategy.</li>
 <li><code>quantized-cold-tier</code> persists the same full-history journal shape under
   <code>cache_dir/kv_cache_quantized_cold_tier</code>, but stores colder entries in the
@@ -2530,8 +2530,8 @@ flowchart LR
   the runtime dtype on load.</li>
 <li><code>tiered-write-back</code> persists only the colder KV prefix under
   <code>cache_dir/kv_cache_tiered_write_back</code> while keeping a bounded hot region in
-  memory; its cold tier now uses a journal-backed append store. That preset is
-  still not the full future GPU/CPU/SSD tiered architecture.</li>
+  memory; its cold tier uses a journal-backed append store. That preset is
+  not the full GPU/CPU/SSD tiered architecture.</li>
 <li><code>resident</code> does not initialize any disk-KV root at all; it keeps full-history
   KV entirely in memory and exists as the explicit low-overhead baseline when
   the active runtime can afford that footprint. It is intentionally not aligned
@@ -2543,22 +2543,22 @@ metadata, and none uses opaque pickle-backed <code>.pt</code> cache blobs.</p>
 top of the selected strategy so the cache can trade write amplification against
 memory headroom instead of flushing every delta identically on every machine.</p>
 <h2 id="runtime-strategy-selector">Runtime strategy selector<a class="headerlink" href="#runtime-strategy-selector" title="Permanent link">&para;</a></h2>
-<p>The runtime now has a deterministic pre-run selector above the explicit KV
+<p>The runtime has a deterministic pre-run selector above the explicit KV
 presets.</p>
-<p>Current selector profiles are:</p>
+<p>Selector profiles are:</p>
 <ul>
 <li><code>balanced</code></li>
 <li><code>latency</code></li>
 <li><code>capacity</code></li>
 <li><code>bounded-window</code></li>
 </ul>
-<p>Current selector-default candidates are intentionally narrow:</p>
+<p>Selector-default candidates are intentionally narrow:</p>
 <ul>
 <li><code>paged</code></li>
 <li><code>resident</code></li>
 <li><code>quantized-cold-tier</code></li>
 </ul>
-<p>The other presets stay explicit opt-in or pinned overrides for now:</p>
+<p>The other presets stay explicit opt-in or pinned overrides:</p>
 <ul>
 <li><code>sliding-window-ring-buffer</code></li>
 <li><code>streamed-segmented</code></li>
@@ -2566,13 +2566,13 @@ presets.</p>
 <li><code>tiered-write-back</code></li>
 </ul>
 <p>The selector is not the same thing as the live KV adaptation surface.
-<code>kv_cache_adaptation_mode</code> still describes post-start observe-only or automatic
+<code>kv_cache_adaptation_mode</code> describes post-start observe-only or automatic
 adaptation behavior, while the selector chooses the initial strategy before the
 runtime starts.</p>
-<p>Within one loaded runtime, the cache layer now also keeps a resident in-process
+<p>Within one loaded runtime, the cache layer also keeps a resident in-process
 snapshot of the reconstructed per-layer KV state so repeated updates do not
 need to reread and rebuild the same on-disk history every token. For the
-<code>streamed-segmented</code> store specifically, readback now coalesces extents by
+<code>streamed-segmented</code> store specifically, readback coalesces extents by
 segment file instead of replaying a separate file-range read for every extent.</p>
 <h2 id="gpt-oss-gds_export-requirement">GPT-OSS <code>gds_export</code> requirement<a class="headerlink" href="#gpt-oss-gds_export-requirement" title="Permanent link">&para;</a></h2>
 <p>The optimized GPT-OSS path is intentionally strict:</p>
@@ -2586,7 +2586,7 @@ segment file instead of replaying a separate file-range read for every extent.</
 <ul>
 <li>planner overhead and no-specialization cost do not require large model loads</li>
 <li>runtime comparisons only load weights when the target actually exists locally</li>
-<li>the requested primary target now reports cold-start and warm-runtime behavior separately, including TTFT, inter-token latency, prompt/output throughput, peak memory, cache footprint, and supported utilization / allocator-gap metrics</li>
+<li>the requested primary target reports cold-start and warm-runtime behavior separately, including TTFT, inter-token latency, prompt/output throughput, peak memory, cache footprint, and supported utilization / allocator-gap metrics</li>
 <li>optimized-native benchmark requests can also expose native loader and KV IO timing summaries plus the storage paths used by the request</li>
 <li>prompt-length scaling, output-length scaling, and repeated-turn session growth are measured only for the requested primary target, not for every built-in family alias</li>
 <li>unavailable optimized comparisons are reported as unavailable instead of being fabricated</li>
@@ -2594,7 +2594,7 @@ segment file instead of replaying a separate file-range read for every extent.</
 <p>When present, the native runtime profile is the most truthful place to inspect
 whether an optimized request actually used GDS, standard safetensor IO,
 CPU-offloaded artifacts, or disk KV cache IO.</p>
-<p>For disk KV specifically, <code>kvload</code> and <code>kvsave</code> now represent reads and writes
+<p>For disk KV specifically, <code>kvload</code> and <code>kvsave</code> represent reads and writes
 against the selected explicit disk-KV store rather than whole-layer torch
 artifacts. Benchmark/runtime output also reports <code>kv_cache_strategy</code> so the
 active backend is visible during A/B runs, and <code>cache_state</code> exposes the

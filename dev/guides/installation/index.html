@@ -2328,9 +2328,9 @@ uv<span class="w"> </span>sync<span class="w"> </span>--group<span class="w"> </
 pip<span class="w"> </span>install<span class="w"> </span>--no-build-isolation<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[adapters]&quot;</span>
 pip<span class="w"> </span>install<span class="w"> </span>--no-build-isolation<span class="w"> </span>-e<span class="w"> </span><span class="s2">&quot;.[server]&quot;</span>
 </code></pre></div>
-<p><code>kvikio</code> remains a manual install because the package name depends on your CUDA version.</p>
+<p><code>kvikio</code> is a manual install because the package name depends on your CUDA version.</p>
 <h2 id="verify-the-install">Verify the install<a class="headerlink" href="#verify-the-install" title="Permanent link">&para;</a></h2>
-<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>compileall<span class="w"> </span>src<span class="w"> </span>tests
+<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>compileall<span class="w"> </span>src<span class="w"> </span>tests<span class="w"> </span>scripts
 uv<span class="w"> </span>run<span class="w"> </span>pytest<span class="w"> </span>-q
 uv<span class="w"> </span>run<span class="w"> </span>ollm<span class="w"> </span>doctor<span class="w"> </span>--imports<span class="w"> </span>--json<span class="w"> </span>--no-color
 uv<span class="w"> </span>run<span class="w"> </span>ollm<span class="w"> </span>prompt<span class="w"> </span>--help

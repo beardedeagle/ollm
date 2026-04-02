@@ -2304,11 +2304,11 @@
 <p>oLLM ships a dedicated runtime benchmark harness:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span>--device<span class="w"> </span>cpu<span class="w"> </span>--output<span class="w"> </span>.omx/runtime-benchmark.json
 </code></pre></div>
-<p>The CLI now defaults to the <code>quick</code> benchmark profile for development use. That
+<p>The CLI defaults to the <code>quick</code> benchmark profile for development use. That
 profile limits the run to the requested primary target, skips the family-wide
 matrix and deeper scaling sweeps, and applies tighter per-lane budgets so a
 strategy check cannot silently turn into an hour-long run.</p>
-<p>Every benchmark run now also records its full raw payload plus a normalized
+<p>Every benchmark run also records its full raw payload plus a normalized
 summary under <code>.omx/logs/benchmark-history/</code>. If a prior run with the same
 comparison key exists, the CLI appends a comparison summary and emits any
 obvious potential regressions on <code>stderr</code> without changing the JSON written to
@@ -2323,7 +2323,7 @@ flowchart LR
     E --> F[Comparison summary]
 </div>
 
-<p>History matching now includes an explicit <code>codebase_label</code> so fork and upstream
+<p>History matching includes an explicit <code>codebase_label</code> so fork and upstream
 baseline runs do not collide accidentally. By default, that label is derived
 from the normalized <code>origin</code> remote URL. Override it only when you need a
 different stable grouping:</p>
@@ -2342,7 +2342,7 @@ different stable grouping:</p>
 The comparison key is based on the actual run shape, including model, device,
 backend, requested strategy override, selector profile, codebase label, and prompt/profile controls, so
 incomparable runs do not get mashed together.</p>
-<p>By default, the benchmark harness now uses the runtime strategy selector with
+<p>By default, the benchmark harness uses the runtime strategy selector with
 <code>--strategy-selector-profile balanced</code>.</p>
 <p>For KV strategy A/B work, pin the preset explicitly:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
@@ -2394,7 +2394,7 @@ and leaves <code>cache_dir_size_mb</code> empty because no on-disk KV root is cr
 <li>it always measures specialization planner overhead without loading model weights</li>
 <li>it measures the extra planning cost when no specialization applies by creating a tiny local T5 fixture on the fly</li>
 <li>it reports a bounded family-wide comparison matrix for the current optimized families using any locally materialized built-in aliases it finds</li>
-<li>the requested <code>--model-reference</code> now gets deeper benchmark sections:</li>
+<li>the requested <code>--model-reference</code> gets deeper benchmark sections:</li>
 <li>cold-start vs warm-runtime comparisons</li>
 <li>TTFT and inter-token latency</li>
 <li>prompt-token and output-token throughput</li>
@@ -2425,22 +2425,22 @@ and leaves <code>cache_dir_size_mb</code> empty because no on-disk KV root is cr
 <li>output throughput is generated output tokens divided by total generation latency</li>
 <li>peak RSS includes a source label; long-lived warm/scaling/session probes use stage-local sampled peaks instead of process-lifetime peaks</li>
 <li>allocator-gap metrics are reported as reserved-minus-allocated style slack when the backend exposes the required counters; unsupported backends serialize them as <code>null</code></li>
-<li>optimized-native decoder-only prompt-scaling runs now exercise bounded chunked prefill on long text prompts, so the prompt-length sweep is the intended place to inspect the memory versus TTFT tradeoff for this feature</li>
+<li>optimized-native decoder-only prompt-scaling runs exercise bounded chunked prefill on long text prompts, so the prompt-length sweep is the intended place to inspect the memory versus TTFT tradeoff for this feature</li>
 </ul>
 <p>On loader-streamed families such as optimized Gemma3 on CPU, a long per-turn
 session-growth response can become dominated by repeated safetensor layer reads
 instead of disk-KV behavior. The bounded <code>--session-max-new-tokens</code> default is
 there to keep this probe representative and practical on development machines.</p>
 <h2 id="native-loader-and-kv-io-profile">Native loader and KV IO profile<a class="headerlink" href="#native-loader-and-kv-io-profile" title="Permanent link">&para;</a></h2>
-<p>For optimized-native runs, the request metrics can now include a
+<p>For optimized-native runs, the request metrics can include a
 <code>native_runtime_profile</code> payload. This captures event timing summaries emitted
 by the runtime itself, rather than numbers inferred from high-level wall clock
 latency.</p>
-<p>On the dense optimized-native families, the loader now submits the next layer's
+<p>On the dense optimized-native families, the loader submits the next layer's
 weight reads one layer ahead of use. That means a later <code>layer_load</code> step may
 consume already-pending safetensor reads instead of starting from an idle
 storage queue.</p>
-<p>Those same dense paths now keep <code>mlp-chunking</code> as a feasibility-oriented memory
+<p>Those same dense paths keep <code>mlp-chunking</code> as a feasibility-oriented memory
 control. The default optimized runtime keeps the existing <code>16384</code>-row ceiling
 and only derives smaller chunks when accelerator headroom is tight; forcing an
 explicit smaller <code>dense_projection_chunk_rows</code> value lowers peak activation
@@ -2466,7 +2466,7 @@ pressure but can shift latency and throughput differently across devices.</p>
 </ul>
 <p>These fields are only present when the selected runtime actually emits native
 stats. Generic Transformers-backed runs may report <code>null</code> here.</p>
-<p>For disk KV requests, <code>disk-kv-cache</code> now refers to the explicit strategy root
+<p>For disk KV requests, <code>disk-kv-cache</code> refers to the explicit strategy root
 under these strategy-specific roots:</p>
 <ul>
 <li><code>cache_dir/kv_cache_chunked</code></li>

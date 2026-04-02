@@ -1517,10 +1517,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#current-matrix-axes" class="md-nav__link">
+  <a href="#matrix-axes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Current matrix axes
+        Matrix axes
       
     </span>
   </a>
@@ -2264,10 +2264,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#current-matrix-axes" class="md-nav__link">
+  <a href="#matrix-axes" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Current matrix axes
+        Matrix axes
       
     </span>
   </a>
@@ -2367,15 +2367,15 @@
 
 
 <h1 id="kv-strategy-matrix">KV Strategy Matrix<a class="headerlink" href="#kv-strategy-matrix" title="Permanent link">&para;</a></h1>
-<p>oLLM's current KV cache presets are still selected as single strings such as
+<p>oLLM's KV cache presets are selected as single strings such as
 <code>resident</code>, <code>chunked</code>, <code>paged</code>, <code>streamed-segmented</code>, <code>log-structured-journal</code>,
 <code>sliding-window-ring-buffer</code>, <code>quantized-cold-tier</code>, and
 <code>tiered-write-back</code>.</p>
-<p>That is still the public control surface today, but the system is now being
-scaffolded around a more explicit internal matrix so future strategies do not
+<p>That is the public control surface, but the system is scaffolded around a more
+explicit internal matrix so future strategies do not
 turn into one giant preset enum with hidden semantics.</p>
-<h2 id="current-matrix-axes">Current matrix axes<a class="headerlink" href="#current-matrix-axes" title="Permanent link">&para;</a></h2>
-<p>The current scaffold separates these concerns:</p>
+<h2 id="matrix-axes">Matrix axes<a class="headerlink" href="#matrix-axes" title="Permanent link">&para;</a></h2>
+<p>The scaffold separates these concerns:</p>
 <ul>
 <li>persistence format</li>
 <li>residency mode</li>
@@ -2384,10 +2384,10 @@ turn into one giant preset enum with hidden semantics.</p>
 <li>cache lifecycle</li>
 <li>adaptation mode</li>
 </ul>
-<p>The first four describe the current preset itself. The last two describe how
-that preset is owned and how telemetry may influence future runtime choices.</p>
+<p>The first four describe the preset itself. The last two describe how
+that preset is owned and how telemetry may influence runtime choices.</p>
 <h2 id="presets-versus-axes">Presets versus axes<a class="headerlink" href="#presets-versus-axes" title="Permanent link">&para;</a></h2>
-<p>Current presets are now understood as bundles of axis values:</p>
+<p>Presets are understood as bundles of axis values:</p>
 <table>
 <thead>
 <tr>
@@ -2457,7 +2457,7 @@ that preset is owned and how telemetry may influence future runtime choices.</p>
 </tr>
 </tbody>
 </table>
-<p>The current <code>tiered-write-back</code> preset should not be confused with a future
+<p>The <code>tiered-write-back</code> preset should not be confused with a future
 broader multi-tier GPU/CPU/SSD architecture.</p>
 <p>This does not erase the semantic differences between presets. For example,
 <code>sliding-window-ring-buffer</code> deliberately preserves only a bounded recent
@@ -2471,9 +2471,9 @@ cleanly.</p>
 <li><code>runtime-scoped</code></li>
 <li><code>persistent</code></li>
 </ul>
-<p>Current default behavior is still <code>runtime-scoped</code>, but <code>persistent</code> is now an
+<p>The default behavior is <code>runtime-scoped</code>, and <code>persistent</code> is an
 explicit implemented mode.</p>
-<p>That means oLLM can now distinguish between:</p>
+<p>That means oLLM can distinguish between:</p>
 <ul>
 <li>within-runtime reuse</li>
 <li>explicit persistent reuse across later runs under a lifecycle-aware,
@@ -2495,8 +2495,8 @@ explicit implemented mode.</p>
 <li><code>observe-only</code></li>
 <li><code>automatic</code></li>
 </ul>
-<p>Current behavior now supports observe-only recommendation rules. The runtime can
-emit a truthful recommendation from current KV state, but it does not yet
+<p>The runtime supports observe-only recommendation rules. It can
+emit a truthful recommendation from KV state, but it does not
 switch KV strategies live.</p>
 <p>The intended progression is:</p>
 <ol>
@@ -2506,16 +2506,16 @@ switch KV strategies live.</p>
 <li>only then enable real automatic policy changes</li>
 </ol>
 <h2 id="strategy-selector">Strategy selector<a class="headerlink" href="#strategy-selector" title="Permanent link">&para;</a></h2>
-<p>The repo now also has a deterministic pre-run strategy selector above the
+<p>The repo also has a deterministic pre-run strategy selector above the
 explicit presets.</p>
-<p>Current selector profiles are:</p>
+<p>Selector profiles are:</p>
 <ul>
 <li><code>balanced</code></li>
 <li><code>latency</code></li>
 <li><code>capacity</code></li>
 <li><code>bounded-window</code></li>
 </ul>
-<p>Current selector-default candidates are intentionally conservative:</p>
+<p>Selector-default candidates are intentionally conservative:</p>
 <ul>
 <li><code>paged</code></li>
 <li><code>resident</code></li>
@@ -2535,9 +2535,9 @@ explicit presets.</p>
   from current KV state</li>
 </ul>
 <h2 id="resident-state-observability">Resident-state observability<a class="headerlink" href="#resident-state-observability" title="Permanent link">&para;</a></h2>
-<p>The in-process resident KV snapshot is now treated as a first-class observable
+<p>The in-process resident KV snapshot is treated as a first-class observable
 part of cache state, not just an implementation detail.</p>
-<p>Current reporting now has room to distinguish:</p>
+<p>Reporting distinguishes:</p>
 <ul>
 <li>persisted state</li>
 <li>resident in-process state</li>
