@@ -19,10 +19,6 @@ _DEFAULT_AUDIO_URL = (
 class _GenerativeModelProtocol(Protocol):
     def generate(self, **kwargs: object) -> torch.Tensor: ...
 
-    def eval(self) -> object: ...
-
-    def to(self, device: torch.device) -> object: ...
-
 
 class _ChatTokenizerProtocol(Protocol):
     def apply_chat_template(self, *args: object, **kwargs: object) -> torch.Tensor: ...
@@ -119,9 +115,6 @@ def _load_inference(args: argparse.Namespace) -> Inference:
     )
     if args.offload_cpu_layers > 0:
         inference.offload_layers_to_cpu(layers_num=args.offload_cpu_layers)
-    typed_model = cast(_GenerativeModelProtocol, inference.model)
-    typed_model.eval()
-    typed_model.to(torch.device(args.device))
     return inference
 
 
