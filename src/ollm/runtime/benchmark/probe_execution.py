@@ -25,7 +25,7 @@ from ollm.runtime.errors import PromptExecutionError
 from ollm.runtime.generation import RuntimeExecutor
 from ollm.runtime.generation_config_support import temporary_generation_config
 from ollm.runtime.generation_support import normalize_generate_inputs
-from ollm.runtime.loader import LoadedRuntime
+from ollm.runtime.loaded_runtime import LoadedRuntime
 from ollm.runtime.output_control import suppress_module_prints
 from ollm.runtime.streaming import BufferedTextStreamer
 from ollm.utils import Stats

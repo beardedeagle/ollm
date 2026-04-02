@@ -10,6 +10,20 @@ from huggingface_hub import HfApi, create_repo
 
 from ollm.async_io import path_mkdir, torch_load_file, torch_save_file
 
+_DEFAULT_EXPERT_COUNT = 32
+_DEFAULT_HIDDEN_SIZE = 256
+_BENCHMARK_BYTES_LIMIT = 512 * 1024 * 1024
+
+
+def _estimated_benchmark_bytes(expert_count: int, hidden_size: int) -> int:
+    return expert_count * hidden_size * hidden_size * 4
+
+
+def _build_expert_tensor(expert_id: int, hidden_size: int) -> torch.Tensor:
+    generator = torch.Generator(device="cpu")
+    generator.manual_seed(expert_id)
+    return torch.randn(hidden_size, hidden_size, generator=generator)
+
 
 def benchmark_tensor_storage(
     *,
@@ -17,6 +31,7 @@ def benchmark_tensor_storage(
     expert_count: int,
     hidden_size: int,
     expert_ids: tuple[int, ...],
+    allow_large_allocation: bool,
 ) -> None:
     """Compare `.pt` shards against one shared safetensors file.
 
@@ -25,21 +40,35 @@ def benchmark_tensor_storage(
         expert_count (int): Number of fake experts to generate.
         hidden_size (int): Square tensor size for each expert weight.
         expert_ids (tuple[int, ...]): Expert IDs to load during the benchmark.
+        allow_large_allocation (bool): Whether to allow a large safetensors
+            materialization footprint.
     """
     pt_dir = output_dir / "experts_pt"
     safetensors_path = output_dir / "experts_all.safetensors"
     path_mkdir(pt_dir, parents=True, exist_ok=True)
 
+    estimated_bytes = _estimated_benchmark_bytes(expert_count, hidden_size)
+    if estimated_bytes > _BENCHMARK_BYTES_LIMIT and not allow_large_allocation:
+        raise ValueError(
+            "Benchmark allocation is too large for the default safety limit. "
+            "Lower --expert-count/--hidden-size or pass --allow-large-allocation."
+        )
+    for expert_id in range(expert_count):
+        name = f"layer1.expert{expert_id}"
+        torch_save_file(
+            _build_expert_tensor(expert_id, hidden_size),
+            pt_dir / f"{name}.pt",
+        )
     experts = {
-        f"layer1.expert{expert_id}": torch.randn(hidden_size, hidden_size)
+        f"layer1.expert{expert_id}": _build_expert_tensor(expert_id, hidden_size)
         for expert_id in range(expert_count)
     }
-    for name, tensor in experts.items():
-        torch_save_file(tensor, pt_dir / f"{name}.pt")
     safetensors_torch.save_file(experts, str(safetensors_path))
 
     started_at = time.perf_counter()
     for expert_id in expert_ids:
+        if expert_id >= expert_count:
+            raise ValueError(f"Expert id {expert_id} is outside the generated range")
         torch_load_file(pt_dir / f"layer1.expert{expert_id}.pt", map_location="cpu")
     print(f"PT load time: {time.perf_counter() - started_at:.6f} sec")
 
@@ -99,19 +128,24 @@ def parse_args() -> argparse.Namespace:
     benchmark_parser.add_argument(
         "--expert-count",
         type=int,
-        default=512,
+        default=_DEFAULT_EXPERT_COUNT,
         help="Number of fake experts to generate.",
     )
     benchmark_parser.add_argument(
         "--hidden-size",
         type=int,
-        default=1024,
+        default=_DEFAULT_HIDDEN_SIZE,
         help="Square tensor dimension for generated fake experts.",
     )
     benchmark_parser.add_argument(
         "--expert-ids",
         default="1,3,9",
         help="Comma-separated expert IDs to load during the benchmark.",
+    )
+    benchmark_parser.add_argument(
+        "--allow-large-allocation",
+        action="store_true",
+        help="Allow benchmark settings that exceed the default memory safety limit.",
     )
 
     upload_parser = subparsers.add_parser(
@@ -155,6 +189,7 @@ def main() -> int:
                 for raw_value in args.expert_ids.split(",")
                 if raw_value.strip()
             ),
+            allow_large_allocation=args.allow_large_allocation,
         )
         return 0
 

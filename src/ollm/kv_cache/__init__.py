@@ -290,7 +290,10 @@ def _tensor_pair_nbytes(tensors: tuple[torch.Tensor, torch.Tensor]) -> int:
 def _to_cpu_tensor_pair(
     tensors: tuple[torch.Tensor, torch.Tensor],
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    return tuple(tensor.detach().cpu().contiguous() for tensor in tensors)  # type: ignore[return-value]
+    return (
+        tensors[0].detach().cpu().contiguous(),
+        tensors[1].detach().cpu().contiguous(),
+    )
 
 
 def _to_resident_tensor_pair(
@@ -299,7 +302,10 @@ def _to_resident_tensor_pair(
     device: torch.device,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     if device.type == "cpu":
-        return tuple(tensor.detach().contiguous() for tensor in tensors)  # type: ignore[return-value]
+        return (
+            tensors[0].detach().contiguous(),
+            tensors[1].detach().contiguous(),
+        )
     return _to_cpu_tensor_pair(tensors)
 
 
@@ -307,7 +313,10 @@ def _move_tensor_pair(
     tensors: tuple[torch.Tensor, torch.Tensor],
     device: torch.device,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    return tuple(tensor.to(device) for tensor in tensors)  # type: ignore[return-value]
+    return (
+        tensors[0].to(device),
+        tensors[1].to(device),
+    )
 
 
 def _resident_layer_for_device(

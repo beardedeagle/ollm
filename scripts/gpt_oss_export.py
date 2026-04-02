@@ -93,26 +93,45 @@ def convert_moe_packed_tensors(
     )
 
 
-def load_tensor_specs(
+def build_tensor_spec_index(
     model_dir: Path,
     shard_stems: tuple[str, ...],
-) -> dict[str, torch.Tensor]:
-    """Load original safetensor entries used to preserve packed GPT-OSS tensors.
+) -> dict[str, Path]:
+    """Build a lightweight key-to-shard index for packed GPT-OSS tensors.
 
     Args:
         model_dir (Path): Directory containing the original shard files.
         shard_stems (tuple[str, ...]): Shard basenames without `.safetensors`.
 
     Returns:
-        dict[str, torch.Tensor]: Mapping from tensor name to tensor value.
+        dict[str, Path]: Mapping from tensor name to the shard that contains it.
     """
-    tensor_specs: dict[str, torch.Tensor] = {}
+    tensor_specs: dict[str, Path] = {}
     for shard_stem in shard_stems:
         shard_path = model_dir / f"{shard_stem}.safetensors"
         with safe_open(shard_path, framework="pt") as handle:
             for key in handle.keys():
-                tensor_specs[key] = handle.get_tensor(key)
+                tensor_specs[key] = shard_path
     return tensor_specs
+
+
+def load_optional_tensor(
+    tensor_name: str, tensor_index: dict[str, Path]
+) -> torch.Tensor | None:
+    """Load one packed GPT-OSS tensor on demand from its source shard.
+
+    Args:
+        tensor_name (str): Tensor key to fetch.
+        tensor_index (dict[str, Path]): Lightweight key-to-shard index.
+
+    Returns:
+        torch.Tensor | None: The loaded tensor when present.
+    """
+    shard_path = tensor_index.get(tensor_name)
+    if shard_path is None:
+        return None
+    with safe_open(shard_path, framework="pt") as handle:
+        return handle.get_tensor(tensor_name)
 
 
 def export_gpt_oss_weights(
@@ -135,7 +154,7 @@ def export_gpt_oss_weights(
     resolved_out_dir = out_dir.expanduser().resolve()
     path_mkdir(resolved_out_dir, parents=True, exist_ok=True)
 
-    tensor_specs = load_tensor_specs(resolved_model_dir, shard_stems)
+    tensor_index = build_tensor_spec_index(resolved_model_dir, shard_stems)
     state_dict = AutoModelForCausalLM.from_pretrained(
         str(resolved_model_dir),
         quantization_config=Mxfp4Config(dequantize=False),
@@ -153,8 +172,8 @@ def export_gpt_oss_weights(
         packed: str | None = None
         dtype = str(exported_tensor.dtype)
         shape = list(exported_tensor.shape)
-        blocks = tensor_specs.get(f"{name}_blocks")
-        scales = tensor_specs.get(f"{name}_scales")
+        blocks = load_optional_tensor(f"{name}_blocks", tensor_index)
+        scales = load_optional_tensor(f"{name}_scales", tensor_index)
         if blocks is not None and scales is not None:
             exported_tensor = {"_blocks": blocks, "_scales": scales}
             packed = "mxfp4"

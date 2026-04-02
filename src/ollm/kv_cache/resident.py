@@ -115,4 +115,7 @@ def _prime_cache_layer(
 def _to_resident_tensor_pair(
     tensors: tuple[torch.Tensor, torch.Tensor],
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    return tuple(tensor.detach().contiguous() for tensor in tensors)  # type: ignore[return-value]
+    return (
+        tensors[0].detach().contiguous(),
+        tensors[1].detach().contiguous(),
+    )

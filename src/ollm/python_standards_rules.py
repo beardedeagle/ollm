@@ -378,6 +378,10 @@ def _assignment_value_is_safe(node: ast.AST) -> bool:
         return True
     if isinstance(node, ast.Attribute):
         return _assignment_value_is_safe(node.value)
+    if isinstance(node, ast.BinOp):
+        return _assignment_value_is_safe(node.left) and _assignment_value_is_safe(
+            node.right
+        )
     if isinstance(node, ast.UnaryOp):
         return isinstance(node.op, ast.UAdd | ast.USub) and _assignment_value_is_safe(
             node.operand

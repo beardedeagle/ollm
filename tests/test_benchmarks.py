@@ -33,7 +33,7 @@ from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.catalog import ModelModality
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
-from ollm.runtime.loader import LoadedRuntime
+from ollm.runtime.loaded_runtime import LoadedRuntime
 from ollm.runtime.plan import RuntimePlan, SpecializationState
 from ollm.runtime.reference import ModelReference
 from ollm.runtime.resolver import ModelSourceKind, ResolvedModel

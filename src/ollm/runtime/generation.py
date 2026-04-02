@@ -27,7 +27,7 @@ from ollm.runtime.generation_support import (
     render_plain_prompt,
     require_tensor,
 )
-from ollm.runtime.loader import LoadedRuntime
+from ollm.runtime.loaded_runtime import LoadedRuntime
 from ollm.runtime.output_control import suppress_module_prints
 from ollm.runtime.streaming import BufferedTextStreamer, NullStreamSink, StreamSink
 
