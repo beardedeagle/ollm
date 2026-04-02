@@ -23,7 +23,7 @@ Use `ollm` or `ollm chat` only from an interactive terminal. For scripts, pipes,
 
 ## Configuration sources
 
-oLLM now resolves runtime, generation, and server defaults through an explicit
+oLLM resolves runtime, generation, and server defaults through an explicit
 layered settings contract:
 
 1. CLI flags
@@ -64,9 +64,9 @@ port = 8000
 response_store_backend = "none"
 ```
 
-The current settings surface covers runtime defaults, generation defaults, and
-future server defaults. Prompt-specific values outside that schema, such as the
-system prompt text, still remain explicit CLI options today.
+The settings surface covers runtime defaults, generation defaults, and
+server defaults. Prompt-specific values outside that schema, such as the
+system prompt text, remain explicit CLI options.
 
 ## Local server
 
@@ -91,7 +91,7 @@ same settings-precedence contract as the rest of the CLI. The default bind is
 - `/docs`
 - `/redoc`
 
-The current REST surface is:
+The REST surface is:
 
 - `GET /v1/health`
 - `GET /v1/models`
@@ -110,7 +110,7 @@ The current REST surface is:
 - `POST /v1/sessions/{session_id}/prompt`
 - `POST /v1/sessions/{session_id}/prompt/stream`
 
-The streaming transport is SSE-based and the current server-side sessions are
+The streaming transport is SSE-based and the server-side sessions are
 in-memory only. The OpenAI-compatible `/v1/responses` surface supports custom
 function tools, `tool_choice`, `function_call_output` chaining, and typed
 function-call SSE events, plus delete/retrieval when a response-store backend is
@@ -133,7 +133,7 @@ oLLM reports one of three active support levels for a resolved model reference:
 
 - `optimized` — a native specialization provider can run the reference
 - `generic` — the Transformers-backed generic runtime can run the reference
-- `unsupported` — the reference resolves, but the current runtime cannot execute it
+- `unsupported` — the reference resolves, but the runtime cannot execute it
 
 ## Discovery and availability terms
 

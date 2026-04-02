@@ -41,7 +41,10 @@ from tests.benchmark_support import (
     build_request_probe_metrics,
     build_stage_resources,
 )
-from tests.test_runtime_executor import ChunkedPrefillModel, LongMappingTokenizer
+from tests.test_runtime_executor_prefill import (
+    ChunkedPrefillModel,
+    LongMappingTokenizer,
+)
 
 
 class BenchmarkProcessorInputs(dict):

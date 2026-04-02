@@ -1,6 +1,6 @@
 # Optimized-native Helpers
 
-`Inference` and `AutoInference` remain available for direct optimized-native control.
+`Inference` and `AutoInference` are available for direct optimized-native control.
 
 ## When to use them
 
@@ -59,10 +59,10 @@ The active runtime then applies a platform/resource-aware buffering or spill
 policy on top of the selected store. `Inference.DiskCache()` accepts the same
 switch through `cache_strategy=...`.
 
-`Inference.offload_layers_to_cpu()` now also accepts an explicit
-`policy=...` argument. The current supported CPU placement policies are
+`Inference.offload_layers_to_cpu()` also accepts an explicit
+`policy=...` argument. The supported CPU placement policies are
 `auto`, `prefix`, `suffix`, and `middle-band`, where `auto` resolves to
-`middle-band`. The runtime currently rejects simultaneous CPU and GPU offload
+`middle-band`. The runtime rejects simultaneous CPU and GPU offload
 requests instead of pretending mixed policy placement is supported.
 
 ## Typical `AutoInference` example

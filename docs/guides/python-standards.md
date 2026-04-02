@@ -16,13 +16,14 @@ runtime changes, and contributor-facing documentation.
 - Follow the repo validation order exactly:
   1. `uv run ruff format src tests examples scripts`
   2. `uv run ruff check src tests examples scripts`
-  3. `uv run ty check src tests`
-  4. `uv run python -m compileall src tests`
-  5. `uv run pytest -q`
-  6. `uv build`
-  7. `uv run python -m pip_audit`
-  8. `uv run --group docs mkdocs build --strict`
-  9. `git diff --check`
+  3. `uv run python scripts/check_python_standards.py`
+  4. `uv run ty check src tests scripts`
+  5. `uv run python -m compileall src tests scripts`
+  6. `uv run pytest -q`
+  7. `uv build`
+  8. `uv run python -m pip_audit`
+  9. `uv run --group docs mkdocs build --strict`
+  10. `git diff --check`
 - For runtime-heavy changes, structural gates are not enough. Run a real smoke over
   the shared generation stack:
   `uv run python scripts/runtime_smoke.py --model <model-reference> --output .omx/logs/runtime-smoke.json`
@@ -98,7 +99,7 @@ just because it already exists.
 ## Enforcement and audit
 
 - `uv run python scripts/check_python_standards.py` enforces the mechanically checkable rules.
-- `docs/guides/python-standards-audit.md` is the current remediation matrix for repo-wide
-  violations that still require follow-on work.
+- `docs/guides/python-standards-audit.md` is the remediation matrix for repo-wide
+  violations that require follow-on work.
 - `docs/development.md` and `docs/guides/contributing.md` summarize the contributor workflow, but
   this page is the canonical standards source.

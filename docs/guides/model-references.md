@@ -53,4 +53,4 @@ oLLM resolves a model reference into one of these source kinds:
 - `local-path`
 - `opaque`
 
-Opaque references are parsed, but not currently resolvable to a runnable runtime or materialization path.
+Opaque references are parsed, but they do not resolve to a runnable runtime or materialization path.

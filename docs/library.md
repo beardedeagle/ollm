@@ -43,7 +43,7 @@ Useful high-level operations:
 
 ## Low-level optimized-native helpers
 
-The direct optimized-native helpers still exist when you want explicit control over the native specialization path.
+The direct optimized-native helpers exist when you want explicit control over the native specialization path.
 
 ```python
 from ollm import Inference, TextStreamer
@@ -82,11 +82,11 @@ platform/resource-aware buffering or spill policy on top of the selected store.
 The low-level optimized-native helper exposes the same cache switch directly
 through `Inference.DiskCache(cache_strategy=...)`.
 
-Current supported CPU offload policies are `auto`, `prefix`, `suffix`, and
-`middle-band`. `auto` currently resolves to `middle-band`, and combined
+Supported CPU offload policies are `auto`, `prefix`, `suffix`, and
+`middle-band`. `auto` resolves to `middle-band`, and combined
 CPU+GPU offload is intentionally unsupported in this slice.
 
-For compatible local Llama or Gemma3 directories, `AutoInference` remains the direct optimized-native helper:
+For compatible local Llama or Gemma3 directories, `AutoInference` is the direct optimized-native helper:
 
 ```python
 from ollm import AutoInference

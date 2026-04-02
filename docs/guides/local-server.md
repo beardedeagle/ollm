@@ -67,9 +67,9 @@ The local server publishes:
 ## Behavior notes
 
 - The bind is local-only by default.
-- The OpenAI-compatible surface currently covers model discovery, text chat
+- The OpenAI-compatible surface covers model discovery, text chat
   completions, and text responses.
-- Chat-completions requests currently support plain string content and structured
+- Chat-completions requests support plain string content and structured
   text-part arrays only.
 - Responses requests support plain string input, message arrays with text/image/audio
   and file-reference content parts, `function_call_output` tool-result items, and custom
@@ -85,11 +85,11 @@ The local server publishes:
   `response.function_call_arguments.done`,
   `response.output_item.done`, `response.completed`, and `response.failed`.
 - Native prompt streaming continues to use the oLLM-specific SSE event shape.
-- Server-side sessions are in-memory only in the current slice.
+- Server-side sessions are in-memory only.
 - Responses storage is disabled by default. Configure a response-store backend
   if you want `GET /v1/responses/{response_id}`,
   `DELETE /v1/responses/{response_id}`, or `previous_response_id` chaining.
-- Runtime and generation defaults still follow the standard config layering
+- Runtime and generation defaults follow the standard config layering
   contract for native endpoints.
 
 ## Example requests

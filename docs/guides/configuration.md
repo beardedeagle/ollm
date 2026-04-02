@@ -34,22 +34,22 @@ Key runtime configuration fields:
 - `kv_cache_window_tokens` — bounded recent-context token budget for `sliding-window-ring-buffer`; the field is invalid for full-history strategies
 - `dense_projection_chunk_rows` — optional explicit row budget for dense optimized-native MLP chunking; when omitted, the dense Llama, Gemma3, and Voxtral paths derive smaller chunks only when accelerator headroom is tight
 - `kv_cache_lifecycle` — whether KV artifacts are `runtime-scoped` or explicitly `persistent`; `resident` requires `runtime-scoped`
-- `kv_cache_adaptation_mode` — whether adaptation telemetry is `disabled`, `observe-only`, or `automatic` (live switching is still not enabled)
+- `kv_cache_adaptation_mode` — whether adaptation telemetry is `disabled`, `observe-only`, or `automatic` (live switching is not enabled)
 - `offload_cpu_layers` — native CPU offload layer budget when supported
 - `offload_cpu_policy` — CPU offload placement policy (`auto`, `prefix`, `suffix`, or `middle-band`)
 - `offload_gpu_layers` — GPU offload layer budget for mixed-placement-capable runtimes
 
-Current constraint:
+Constraints:
 
 - `offload_cpu_layers` requires an accelerator runtime device
-- `offload_cpu_layers` cannot be combined with `offload_gpu_layers` in the current implementation
+- `offload_cpu_layers` cannot be combined with `offload_gpu_layers`
 
-Current selector truth:
+Selector behavior:
 
 - the selector default path is deterministic and table-driven
-- `paged`, `resident`, and `quantized-cold-tier` are the current selector-default candidates
+- `paged`, `resident`, and `quantized-cold-tier` are the selector-default candidates
 - `sliding-window-ring-buffer` stays explicit bounded-history opt-in only
-- `streamed-segmented`, `log-structured-journal`, and `tiered-write-back` stay explicit overrides for now
+- `streamed-segmented`, `log-structured-journal`, and `tiered-write-back` stay explicit overrides
 
 Generation configuration fields:
 

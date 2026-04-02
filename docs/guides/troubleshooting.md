@@ -22,7 +22,7 @@ ollm doctor --runtime --json
 Some Hugging Face refs must be materialized locally before generic capability discovery can inspect them.
 
 ### Provider-prefixed refs are rejected
-That is intentional. oLLM now executes only locally managed models. Use a built-in alias, a local model directory, or a Hugging Face repository reference.
+That is intentional. oLLM executes only locally managed models. Use a built-in alias, a local model directory, or a Hugging Face repository reference.
 
 ### Generic runtime rejects a checkpoint
 The generic runtime intentionally refuses unsafe `.bin` or pickle-backed local weights. Use `safetensors` artifacts for the generic local path.

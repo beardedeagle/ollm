@@ -101,6 +101,7 @@ plugins:
               - '!^_'
               - '!^__'
             members_order: source
+            show_source: false
             show_signature_annotations: true
             separate_signature: true
             signature_crossrefs: true

@@ -1,17 +1,17 @@
 # KV Strategy Matrix
 
-oLLM's current KV cache presets are still selected as single strings such as
+oLLM's KV cache presets are selected as single strings such as
 `resident`, `chunked`, `paged`, `streamed-segmented`, `log-structured-journal`,
 `sliding-window-ring-buffer`, `quantized-cold-tier`, and
 `tiered-write-back`.
 
-That is still the public control surface today, but the system is now being
-scaffolded around a more explicit internal matrix so future strategies do not
+That is the public control surface, but the system is scaffolded around a more
+explicit internal matrix so future strategies do not
 turn into one giant preset enum with hidden semantics.
 
-## Current matrix axes
+## Matrix axes
 
-The current scaffold separates these concerns:
+The scaffold separates these concerns:
 
 - persistence format
 - residency mode
@@ -20,12 +20,12 @@ The current scaffold separates these concerns:
 - cache lifecycle
 - adaptation mode
 
-The first four describe the current preset itself. The last two describe how
-that preset is owned and how telemetry may influence future runtime choices.
+The first four describe the preset itself. The last two describe how
+that preset is owned and how telemetry may influence runtime choices.
 
 ## Presets versus axes
 
-Current presets are now understood as bundles of axis values:
+Presets are understood as bundles of axis values:
 
 | Preset | Persistence Format | Residency Mode | Window Policy | Cold-Tier Encoding |
 | --- | --- | --- | --- | --- |
@@ -38,7 +38,7 @@ Current presets are now understood as bundles of axis values:
 | `quantized-cold-tier` | `log-structured-journal` | `buffered-tail` | `full-history` | `quantized` |
 | `tiered-write-back` | `log-structured-journal` | `tiered-write-back` | `full-history` | `full-precision` |
 
-The current `tiered-write-back` preset should not be confused with a future
+The `tiered-write-back` preset should not be confused with a future
 broader multi-tier GPU/CPU/SSD architecture.
 
 This does not erase the semantic differences between presets. For example,
@@ -55,10 +55,10 @@ Cache lifecycle is intentionally treated as a separate axis:
 - `runtime-scoped`
 - `persistent`
 
-Current default behavior is still `runtime-scoped`, but `persistent` is now an
+The default behavior is `runtime-scoped`, and `persistent` is an
 explicit implemented mode.
 
-That means oLLM can now distinguish between:
+That means oLLM can distinguish between:
 
 - within-runtime reuse
 - explicit persistent reuse across later runs under a lifecycle-aware,
@@ -81,8 +81,8 @@ Adaptation mode is also scaffolded explicitly:
 - `observe-only`
 - `automatic`
 
-Current behavior now supports observe-only recommendation rules. The runtime can
-emit a truthful recommendation from current KV state, but it does not yet
+The runtime supports observe-only recommendation rules. It can
+emit a truthful recommendation from KV state, but it does not
 switch KV strategies live.
 
 The intended progression is:
@@ -94,17 +94,17 @@ The intended progression is:
 
 ## Strategy selector
 
-The repo now also has a deterministic pre-run strategy selector above the
+The repo also has a deterministic pre-run strategy selector above the
 explicit presets.
 
-Current selector profiles are:
+Selector profiles are:
 
 - `balanced`
 - `latency`
 - `capacity`
 - `bounded-window`
 
-Current selector-default candidates are intentionally conservative:
+Selector-default candidates are intentionally conservative:
 
 - `paged`
 - `resident`
@@ -125,10 +125,10 @@ This selector is separate from `kv_cache_adaptation_mode`.
 
 ## Resident-state observability
 
-The in-process resident KV snapshot is now treated as a first-class observable
+The in-process resident KV snapshot is treated as a first-class observable
 part of cache state, not just an implementation detail.
 
-Current reporting now has room to distinguish:
+Reporting distinguishes:
 
 - persisted state
 - resident in-process state

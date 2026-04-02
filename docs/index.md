@@ -4,7 +4,7 @@ oLLM is a Python library and terminal interface for local LLM inference. It comb
 
 - optimized-native runtimes for built-in aliases when a specialization matches
 - a generic Transformers-backed path for compatible local or materialized models
-- runtime inspection so you can see which backend will run, why it was selected, and what the current support level is
+- runtime inspection so you can see which backend will run, why it was selected, and what the support level is
 
 ## Audience
 

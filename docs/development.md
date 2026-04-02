@@ -16,8 +16,8 @@ uv sync --group docs
 uv run ruff format src tests examples scripts
 uv run ruff check src tests examples scripts
 uv run python scripts/check_python_standards.py
-uv run python -m compileall src tests
-uv run ty check src tests
+uv run ty check src tests scripts
+uv run python -m compileall src tests scripts
 uv run pytest -q
 uv build
 uv run python -m pip_audit
@@ -33,6 +33,11 @@ uv run python scripts/runtime_smoke.py \
   --output .omx/logs/runtime-smoke.json
 ```
 
+The manual regression helpers in `scripts/test.py`, `scripts/test_autoinference.py`,
+and `scripts/full_tests.py` require explicit CLI arguments for model roots,
+cache directories, and prompt/sample inputs instead of relying on machine-local
+hard-coded paths.
+
 If you recommend a specific command or runtime lane to a user, validate that
 exact lane before push, or explicitly say which stricter equivalent you used.
 
@@ -40,7 +45,7 @@ exact lane before push, or explicitly say which stricter equivalent you used.
 
 The canonical standards baseline lives in [Python Standards](guides/python-standards.md).
 
-This repo is currently being treated as greenfield:
+This repo is treated as greenfield:
 
 - no legacy preservation
 - no backwards-compatibility ballast
