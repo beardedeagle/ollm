@@ -35,7 +35,9 @@ def test_benchmark_tensor_storage_rejects_large_defaults_by_default(
         raise AssertionError("expected ValueError for oversized benchmark inputs")
 
 
-def test_build_tensor_spec_index_keeps_tensor_loading_lazy(monkeypatch, tmp_path: Path) -> None:
+def test_build_tensor_spec_index_keeps_tensor_loading_lazy(
+    monkeypatch, tmp_path: Path
+) -> None:
     shard_path = tmp_path / "model-00000-of-00002.safetensors"
     shard_path.write_bytes(b"placeholder")
     calls: list[tuple[str, str]] = []
