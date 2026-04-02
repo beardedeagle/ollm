@@ -165,11 +165,7 @@ def test_standards_checker_reports_callable_top_level_assignments(
     script_root = tmp_path / "scripts"
     script_root.mkdir(parents=True)
     (script_root / "manual.py").write_text(
-        (
-            "def build_value() -> int:\n"
-            "    return 1\n\n"
-            "VALUE = build_value()\n"
-        ),
+        ("def build_value() -> int:\n    return 1\n\nVALUE = build_value()\n"),
         encoding="utf-8",
     )
 

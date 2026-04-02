@@ -89,7 +89,7 @@ class oCache:
         self._hot_tails: dict[int, tuple[torch.Tensor, torch.Tensor]] = {}
         self._spill_count = 0
         self._spilled_tokens = 0
-        self._cache_store = build_cache_store(
+        self._cache_store: KVCacheStoreProtocol = build_cache_store(
             self.cache_folder,
             self.cache_strategy,
             self.policy,
