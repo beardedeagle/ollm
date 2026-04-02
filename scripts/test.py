@@ -1,49 +1,140 @@
+"""Manual native-model smoke runner with explicit model and cache paths."""
+
+import argparse
 from datetime import datetime
+from pathlib import Path
 from typing import Protocol, cast
 
 import torch
-from transformers import AutoProcessor, AutoTokenizer, TextStreamer
+from transformers import AutoTokenizer, TextStreamer
 
-from ollm import gds_loader, gemma3, qwen3_next, voxtral
-from ollm.gds_loader import DenseWeightsLoader, MoEWeightsLoader
+from ollm import Inference
+
+_DEFAULT_AUDIO_URL = (
+    "https://huggingface.co/datasets/hf-internal-testing/dummy-audio-samples/"
+    "resolve/main/dude_where_is_my_car.wav"
+)
 
 
 class _GenerativeModelProtocol(Protocol):
     def generate(self, **kwargs: object) -> torch.Tensor: ...
-    def offload_layers_to_cpu(self, layers_num: int = 2) -> None: ...
-    def eval(self) -> object: ...
-    def to(self, device: torch.device) -> object: ...
-    @property
-    def config(self) -> object: ...
 
 
 class _ChatTokenizerProtocol(Protocol):
     def apply_chat_template(self, *args: object, **kwargs: object) -> torch.Tensor: ...
+
     def decode(self, *args: object, **kwargs: object) -> str: ...
 
 
-def ini_model(model_id):
-    if model_id == "qwen3-next-80B":
-        o, CausalLM = qwen3_next, qwen3_next.MyQwen3NextForCausalLM
-        setattr(o, "loader", MoEWeightsLoader(model_dir, device=str(device)))
-    elif model_id == "gemma3-12B":
-        o, CausalLM = gemma3, gemma3.MyGemma3ForCausalLM
-        setattr(o, "loader", DenseWeightsLoader(model_dir, device=str(device)))
-    elif model_id == "voxtral-small-24B":
-        o, CausalLM = voxtral, voxtral.MyVoxtralForConditionalGeneration
-        setattr(o, "loader", DenseWeightsLoader(model_dir, device=str(device)))
+class _AudioProcessorProtocol(Protocol):
+    tokenizer: AutoTokenizer
 
-    stats = None  # Stats()
-    setattr(o, "stats", stats)
-    gds_loader.stats = stats
-    return (o, CausalLM)
+    def apply_chat_template(self, *args: object, **kwargs: object) -> object: ...
+
+    def batch_decode(self, *args: object, **kwargs: object) -> list[str]: ...
 
 
-def inference_chat():
-    sm, um, max_new_tokens = "您是有用的人工智能助手", "列出从水星开始的行星", 100
-    # sm, um, max_new_tokens = "You are helpful AI assistant", "List planets starting from Mercury", 100
-    messages = [{"role": "system", "content": sm}, {"role": "user", "content": um}]
-    tokenizer = cast(_ChatTokenizerProtocol, AutoTokenizer.from_pretrained(model_dir))
+class _AudioInputsProtocol(Protocol):
+    def to(self, device: torch.device) -> dict[str, object]: ...
+
+
+def parse_args() -> argparse.Namespace:
+    """Parse CLI arguments for the manual model smoke."""
+    parser = argparse.ArgumentParser(
+        description="Run a manual chat or audio smoke against a local optimized model."
+    )
+    parser.add_argument(
+        "--model-id",
+        choices=("qwen3-next-80B", "gemma3-12B", "voxtral-small-24B"),
+        required=True,
+        help="Built-in optimized model alias to load.",
+    )
+    parser.add_argument(
+        "--models-dir",
+        type=Path,
+        required=True,
+        help="Directory containing the local optimized model folders.",
+    )
+    parser.add_argument(
+        "--device",
+        default="cpu",
+        help="Torch device string.",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=("chat", "audio"),
+        default="chat",
+        help="Smoke mode to run.",
+    )
+    parser.add_argument(
+        "--cache-dir",
+        type=Path,
+        default=None,
+        help="Optional cache directory for chat mode.",
+    )
+    parser.add_argument(
+        "--offload-cpu-layers",
+        type=int,
+        default=0,
+        help="Optional number of layers to offload to CPU before generation.",
+    )
+    parser.add_argument(
+        "--system-prompt",
+        default="You are a helpful AI assistant.",
+        help="System prompt for chat mode.",
+    )
+    parser.add_argument(
+        "--user-prompt",
+        default="List planets starting from Mercury.",
+        help="User prompt for chat mode.",
+    )
+    parser.add_argument(
+        "--audio-url",
+        default=_DEFAULT_AUDIO_URL,
+        help="Audio URL for audio mode.",
+    )
+    parser.add_argument(
+        "--audio-prompt",
+        default="What can you tell me about this audio?",
+        help="Text prompt paired with the audio input.",
+    )
+    parser.add_argument(
+        "--max-new-tokens",
+        type=int,
+        default=100,
+        help="Maximum generated tokens for the smoke run.",
+    )
+    return parser.parse_args()
+
+
+def _load_inference(args: argparse.Namespace) -> Inference:
+    inference = Inference(args.model_id, device=args.device, logging=False)
+    inference.ini_model(
+        models_dir=str(args.models_dir.expanduser().resolve()),
+        force_download=False,
+    )
+    if args.offload_cpu_layers > 0:
+        inference.offload_layers_to_cpu(layers_num=args.offload_cpu_layers)
+    return inference
+
+
+def run_chat_smoke(inference: Inference, args: argparse.Namespace) -> None:
+    """Run the chat-mode smoke.
+
+    Args:
+        inference (Inference): Loaded optimized inference helper.
+        args (argparse.Namespace): Parsed CLI arguments.
+    """
+    tokenizer = cast(_ChatTokenizerProtocol, inference.tokenizer)
+    text_streamer = TextStreamer(
+        cast(AutoTokenizer, inference.tokenizer),
+        skip_prompt=True,
+        skip_special_tokens=False,
+    )
+    messages = [
+        {"role": "system", "content": args.system_prompt},
+        {"role": "user", "content": args.user_prompt},
+    ]
     input_ids = tokenizer.apply_chat_template(
         messages,
         tokenize=True,
@@ -51,104 +142,99 @@ def inference_chat():
         add_generation_prompt=True,
         return_tensors="pt",
         return_dict=False,
-    ).to(device)
-    text_streamer = TextStreamer(
-        cast(AutoTokenizer, AutoTokenizer.from_pretrained(model_dir)),
-        skip_prompt=True,
+    ).to(inference.device)
+    past_key_values = None
+    if args.cache_dir is not None:
+        past_key_values = inference.DiskCache(
+            cache_dir=str(args.cache_dir.expanduser().resolve())
+        )
+    print(
+        "\n\nGenerate started.",
+        datetime.now().strftime("%H:%M:%S"),
+        "input_ids.shape:",
+        input_ids.shape,
+    )
+    outputs = (
+        cast(_GenerativeModelProtocol, inference.model)
+        .generate(
+            input_ids=input_ids,
+            max_new_tokens=args.max_new_tokens,
+            do_sample=False,
+            past_key_values=past_key_values,
+            use_cache=True,
+            streamer=text_streamer,
+        )
+        .detach()
+        .cpu()
+    )
+    answer = tokenizer.decode(
+        outputs[0][input_ids.shape[-1] :],
         skip_special_tokens=False,
     )
-    typed_model = model
-    with torch.no_grad():
-        # past_key_values = KVCache(cache_dir="/media/mega4alik/ssd/kv_cache/", stats=o.stats, device=device) #DynamicCache(offloading=True)
-        past_key_values = qwen3_next.Qwen3NextDiskCache(
-            model.config,
-            cache_dir="/media/mega4alik/ssd/kv_cache/",
-            device=device,
-            stats=o.stats,
-        )
-        print(
-            "\n\nGenerate started.",
-            datetime.now().strftime("%H:%M:%S"),
-            "input_ids.shape:",
-            input_ids.shape,
-        )
-        outputs = (
-            typed_model.generate(
-                input_ids=input_ids,
-                max_new_tokens=max_new_tokens,
-                do_sample=False,
-                past_key_values=past_key_values,
-                use_cache=True,
-                streamer=text_streamer,
-            )
-            .detach()
-            .cpu()
-        )
-        answer = tokenizer.decode(
-            outputs[0][input_ids.shape[-1] :], skip_special_tokens=False
-        )
-        print(answer)
+    print(answer)
 
 
-def inference_audio():
-    processor = AutoProcessor.from_pretrained(model_dir)
+def run_audio_smoke(inference: Inference, args: argparse.Namespace) -> None:
+    """Run the audio-mode smoke.
+
+    Args:
+        inference (Inference): Loaded optimized inference helper.
+        args (argparse.Namespace): Parsed CLI arguments.
+    """
+    processor = cast(_AudioProcessorProtocol, inference.processor)
     messages = [
         {
             "role": "user",
             "content": [
-                {
-                    "type": "audio",
-                    "url": "https://huggingface.co/datasets/hf-internal-testing/dummy-audio-samples/resolve/main/dude_where_is_my_car.wav",
-                },
-                {"type": "text", "text": "What can you tell me about this audio?"},
+                {"type": "audio", "url": args.audio_url},
+                {"type": "text", "text": args.audio_prompt},
             ],
         }
     ]
-    inputs = processor.apply_chat_template(messages, return_tensors="pt").to(device)
+    raw_inputs = cast(
+        _AudioInputsProtocol,
+        processor.apply_chat_template(messages, return_tensors="pt"),
+    )
+    typed_inputs = raw_inputs.to(inference.device)
+    input_ids = cast(torch.Tensor, typed_inputs["input_ids"])
     text_streamer = TextStreamer(
-        processor.tokenizer, skip_prompt=True, skip_special_tokens=False
+        processor.tokenizer,
+        skip_prompt=True,
+        skip_special_tokens=False,
     )
-    with torch.inference_mode():
-        print("\n\nAudio Generate started.", datetime.now().strftime("%H:%M:%S"))
-        outputs = (
-            model.generate(
-                **inputs,
-                max_new_tokens=10,
-                do_sample=False,
-                past_key_values=None,
-                use_cache=True,
-                streamer=text_streamer,
-            )
-            .detach()
-            .cpu()
+    print("\n\nAudio Generate started.", datetime.now().strftime("%H:%M:%S"))
+    outputs = (
+        cast(_GenerativeModelProtocol, inference.model)
+        .generate(
+            **typed_inputs,
+            max_new_tokens=args.max_new_tokens,
+            do_sample=False,
+            past_key_values=None,
+            use_cache=True,
+            streamer=text_streamer,
         )
-        answer = processor.batch_decode(
-            outputs[:, inputs.input_ids.shape[1] :], skip_special_tokens=False
-        )
-        print(answer)
+        .detach()
+        .cpu()
+    )
+    answer = processor.batch_decode(
+        outputs[:, input_ids.shape[1] :],
+        skip_special_tokens=False,
+    )
+    print(answer)
 
 
-# =======================================================
+def main() -> int:
+    """Run the selected manual smoke mode."""
+    args = parse_args()
+    inference = _load_inference(args)
+    if args.mode == "audio":
+        if not hasattr(inference, "processor"):
+            raise ValueError(f"{args.model_id} does not expose a processor")
+        run_audio_smoke(inference, args)
+        return 0
+    run_chat_smoke(inference, args)
+    return 0
+
+
 if __name__ == "__main__":
-    device = torch.device("cuda:0")
-    model_id = "qwen3-next-80B"  # "gemma3-12B" # #"voxtral-small-24B"
-    model_dir = f"/media/mega4alik/ssd/models/{model_id}/"
-    print("loading", model_dir)
-    o, CausalLM = ini_model(model_id)
-    model = cast(
-        _GenerativeModelProtocol,
-        CausalLM.from_pretrained(
-            model_dir,
-            torch_dtype=torch.bfloat16,
-            device_map="cpu",
-            low_cpu_mem_usage=True,
-            ignore_mismatched_sizes=True,
-            attn_implementation="flash_attention_2",
-        ),
-    )
-    # model.clean_layers_weights()
-    # model.offload_layers_to_gpu_cpu(gpu_layers_num=48, cpu_layers_num=0)
-    model.offload_layers_to_cpu(layers_num=1)
-    model.eval()
-    model.to(device)
-    inference_chat()
+    raise SystemExit(main())

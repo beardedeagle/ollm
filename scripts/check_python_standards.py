@@ -11,6 +11,8 @@ from ollm.python_standards_rules import (
     StandardsVisitor,
     Violation,
     check_import_placement,
+    check_script_top_level_statements,
+    scan_machine_specific_paths,
     scan_partial_work_markers,
 )
 
@@ -136,8 +138,10 @@ async def scan_python_file(path: Path) -> list[Violation]:
         )
     tree = ast.parse(source, filename=str(path))
     check_import_placement(path=path, tree=tree, violations=violations)
+    check_script_top_level_statements(path=path, tree=tree, violations=violations)
     visitor = StandardsVisitor(path)
     visitor.visit(tree)
+    violations.extend(scan_machine_specific_paths(path=path, tree=tree))
     violations.extend(visitor.violations)
     return violations
 

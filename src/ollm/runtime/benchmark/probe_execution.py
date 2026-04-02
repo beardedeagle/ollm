@@ -22,9 +22,10 @@ from ollm.runtime.benchmark.resources import cache_dir_size_mb, measure_stage
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
 from ollm.runtime.errors import PromptExecutionError
-from ollm.runtime.generation import RuntimeExecutor, _normalize_generate_inputs
+from ollm.runtime.generation import RuntimeExecutor
 from ollm.runtime.generation_config_support import temporary_generation_config
-from ollm.runtime.loader import LoadedRuntime
+from ollm.runtime.generation_support import normalize_generate_inputs
+from ollm.runtime.loaded_runtime import LoadedRuntime
 from ollm.runtime.output_control import suppress_module_prints
 from ollm.runtime.streaming import BufferedTextStreamer
 from ollm.utils import Stats
@@ -101,7 +102,7 @@ def execute_request_probe(
     cache_mode = _cache_mode(runtime, request)
     kv_cache_strategy = _kv_cache_strategy(runtime, request)
     _clear_backend_stats(runtime)
-    normalized_inputs = _normalize_generate_inputs(inputs)
+    normalized_inputs = normalize_generate_inputs(inputs)
     generation_result, generation_ms, generation_resources = measure_stage(
         runtime.config.device,
         lambda: _generate_outputs(

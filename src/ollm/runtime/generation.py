@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Protocol, cast
 
@@ -20,7 +19,15 @@ from ollm.runtime.generation_config_support import (
     normalized_generation_config,
     temporary_generation_config,
 )
-from ollm.runtime.loader import LoadedRuntime
+from ollm.runtime.generation_support import (
+    PLAN_METADATA_DETAIL_KEYS,
+    extract_cache_state_snapshot,
+    normalize_generate_inputs,
+    prepare_text_inputs,
+    render_plain_prompt,
+    require_tensor,
+)
+from ollm.runtime.loaded_runtime import LoadedRuntime
 from ollm.runtime.output_control import suppress_module_prints
 from ollm.runtime.streaming import BufferedTextStreamer, NullStreamSink, StreamSink
 
@@ -29,35 +36,6 @@ class _StatsProtocol(Protocol):
     def print_and_clean(self) -> str: ...
 
 
-PLAN_METADATA_DETAIL_KEYS = (
-    "execution_device_type",
-    "specialization_device_profile",
-    "strategy_selector_profile",
-    "strategy_selector_rule_id",
-    "strategy_selector_requested_override",
-    "strategy_selector_selected_kv_cache_strategy",
-    "strategy_selector_applied_kv_cache_strategy",
-    "strategy_selector_fallback_chain",
-    "strategy_selector_reason",
-    "strategy_selector_requested_kv_cache_lifecycle",
-    "strategy_selector_applied_kv_cache_lifecycle",
-    "strategy_selector_lifecycle_reason",
-    "strategy_selector_model_family",
-    "strategy_selector_modality_bucket",
-    "strategy_selector_platform",
-    "strategy_selector_accelerator_kind",
-    "strategy_selector_host_ram_tier",
-    "strategy_selector_accelerator_memory_tier",
-    "strategy_selector_required_runtime_features",
-    "strategy_selector_model_size_tier",
-    "offload_cpu_requested_layers",
-    "offload_cpu_policy",
-    "offload_cpu_total_layers",
-    "offload_cpu_resolved_policy",
-    "offload_cpu_applied_layers",
-    "offload_cpu_applied_indices",
-    "offload_gpu_layers",
-)
 DEFAULT_PREFILL_CHUNK_TOKENS = 512
 
 
@@ -93,7 +71,7 @@ class RuntimeExecutor:
         generate_kwargs, generation_config = self._build_generate_kwargs(
             runtime, request, streamer
         )
-        filtered_inputs = _normalize_generate_inputs(inputs)
+        filtered_inputs = normalize_generate_inputs(inputs)
         filtered_inputs, generate_kwargs = self._prepare_generate_inputs(
             runtime,
             request,
@@ -112,7 +90,7 @@ class RuntimeExecutor:
             outputs = outputs.detach()
         outputs = outputs.cpu()
         response_text = self._decode_response(runtime, filtered_inputs, outputs)
-        cache_state = _extract_cache_state_snapshot(
+        cache_state = extract_cache_state_snapshot(
             generate_kwargs.get("past_key_values")
         )
         if streamer is not None and not response_text.strip():
@@ -197,7 +175,7 @@ class RuntimeExecutor:
                     return_tensors="pt",
                     return_dict=True,
                 )
-                return _prepare_text_inputs(inputs, runtime.device)
+                return prepare_text_inputs(inputs, runtime.device)
             except (TypeError, ValueError, AttributeError):
                 try:
                     inputs = runtime.tokenizer.apply_chat_template(
@@ -207,7 +185,7 @@ class RuntimeExecutor:
                         return_tensors="pt",
                         return_dict=True,
                     )
-                    return _prepare_text_inputs(inputs, runtime.device)
+                    return prepare_text_inputs(inputs, runtime.device)
                 except (TypeError, ValueError, AttributeError):
                     try:
                         input_ids = runtime.tokenizer.apply_chat_template(
@@ -218,7 +196,7 @@ class RuntimeExecutor:
                             return_tensors="pt",
                             return_dict=False,
                         ).to(runtime.device)
-                        return _prepare_text_inputs(input_ids, runtime.device)
+                        return prepare_text_inputs(input_ids, runtime.device)
                     except (TypeError, ValueError, AttributeError):
                         try:
                             input_ids = runtime.tokenizer.apply_chat_template(
@@ -228,11 +206,11 @@ class RuntimeExecutor:
                                 return_tensors="pt",
                                 return_dict=False,
                             ).to(runtime.device)
-                            return _prepare_text_inputs(input_ids, runtime.device)
+                            return prepare_text_inputs(input_ids, runtime.device)
                         except (TypeError, ValueError, AttributeError):
                             pass
 
-        rendered_prompt = _render_plain_prompt(messages)
+        rendered_prompt = render_plain_prompt(messages)
         tokenized = runtime.tokenizer(rendered_prompt, return_tensors="pt")
         return {key: value.to(runtime.device) for key, value in tokenized.items()}
 
@@ -315,12 +293,12 @@ class RuntimeExecutor:
         forward_method = getattr(runtime.model, "forward", None)
         if not callable(forward_method):
             return inputs, generate_kwargs
-        input_ids = _require_tensor(inputs["input_ids"])
+        input_ids = require_tensor(inputs["input_ids"])
         attention_mask_value = inputs.get("attention_mask")
         attention_mask = (
             None
             if attention_mask_value is None
-            else _require_tensor(attention_mask_value)
+            else require_tensor(attention_mask_value)
         )
         prefill_cache = generate_kwargs.get("past_key_values")
         prefill_end = input_ids.shape[1] - 1
@@ -362,7 +340,7 @@ class RuntimeExecutor:
         self, runtime: LoadedRuntime, inputs: dict[str, object], outputs
     ) -> str:
         if runtime.processor is not None:
-            input_ids = _require_tensor(inputs["input_ids"])
+            input_ids = require_tensor(inputs["input_ids"])
             decoded = runtime.processor.batch_decode(
                 outputs[:, input_ids.shape[1] :],
                 skip_special_tokens=True,
@@ -374,7 +352,7 @@ class RuntimeExecutor:
         if runtime.plan.generic_model_kind is GenericModelKind.SEQ2SEQ_LM:
             return runtime.tokenizer.decode(outputs[0], skip_special_tokens=True)
 
-        input_ids = _require_tensor(inputs["input_ids"])
+        input_ids = require_tensor(inputs["input_ids"])
         return runtime.tokenizer.decode(
             outputs[0][input_ids.shape[-1] :], skip_special_tokens=True
         )
@@ -501,69 +479,3 @@ class RuntimeExecutor:
 
     def _status_message(self, runtime: LoadedRuntime) -> str:
         return f"Running {runtime.config.model_reference} on {runtime.config.device} via {runtime.plan.backend_id}"
-
-
-def _render_plain_prompt(messages: list[Message]) -> str:
-    rendered_messages: list[str] = []
-    for message in messages:
-        text = message.text_content().strip()
-        if not text:
-            continue
-        rendered_messages.append(f"{message.role.value.upper()}: {text}")
-    rendered_messages.append("ASSISTANT:")
-    return "\n\n".join(rendered_messages)
-
-
-def _require_tensor(value: object) -> torch.Tensor:
-    if not isinstance(value, torch.Tensor):
-        raise PromptExecutionError("Expected tensor-backed model inputs")
-    return value
-
-
-def _prepare_text_inputs(
-    value: object, device: torch.device
-) -> dict[str, torch.Tensor | object]:
-    if isinstance(value, torch.Tensor):
-        input_ids = value.to(device)
-        return {
-            "input_ids": input_ids,
-            "attention_mask": torch.ones_like(input_ids, device=device),
-        }
-
-    if isinstance(value, Mapping):
-        prepared_inputs: dict[str, torch.Tensor | object] = {}
-        for key, item in value.items():
-            if isinstance(item, torch.Tensor):
-                prepared_inputs[str(key)] = item.to(device)
-            else:
-                prepared_inputs[str(key)] = item
-        if "input_ids" not in prepared_inputs:
-            raise PromptExecutionError(
-                "Tokenizer chat template did not return input_ids"
-            )
-        input_ids = _require_tensor(prepared_inputs["input_ids"])
-        if "attention_mask" not in prepared_inputs:
-            prepared_inputs["attention_mask"] = torch.ones_like(
-                input_ids, device=device
-            )
-        return prepared_inputs
-
-    raise PromptExecutionError(
-        "Tokenizer chat template returned unsupported model inputs"
-    )
-
-
-def _extract_cache_state_snapshot(value: object) -> KVCacheStateSnapshot | None:
-    snapshot_method = getattr(value, "cache_state_snapshot", None)
-    if not callable(snapshot_method):
-        return None
-    snapshot = snapshot_method()
-    if not isinstance(snapshot, KVCacheStateSnapshot):
-        return None
-    return snapshot
-
-
-def _normalize_generate_inputs(inputs: dict[str, object]) -> dict[str, object]:
-    normalized_inputs = dict(inputs)
-    normalized_inputs.pop("token_type_ids", None)
-    return normalized_inputs

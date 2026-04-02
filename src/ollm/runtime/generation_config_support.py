@@ -5,7 +5,7 @@ from contextlib import contextmanager
 from transformers import GenerationConfig as TransformersGenerationConfig
 
 from ollm.app.types import PromptRequest
-from ollm.runtime.loader import LoadedRuntime
+from ollm.runtime.loaded_runtime import LoadedRuntime
 
 
 def normalized_generation_config(

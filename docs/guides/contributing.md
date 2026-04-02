@@ -16,8 +16,8 @@ Before sending a documentation or code change, run the relevant gates:
 uv run ruff format src tests examples scripts
 uv run ruff check src tests examples scripts
 uv run python scripts/check_python_standards.py
-uv run python -m compileall src tests examples scripts
-uv run ty check src tests
+uv run ty check src tests scripts
+uv run python -m compileall src tests scripts
 uv run pytest -q
 uv build
 uv run python -m pip_audit
@@ -33,11 +33,15 @@ uv run python scripts/runtime_smoke.py \
   --output .omx/logs/runtime-smoke.json
 ```
 
+The manual regression helpers in `scripts/test.py`, `scripts/test_autoinference.py`,
+and `scripts/full_tests.py` take explicit CLI arguments for model roots,
+cache directories, and prompt/sample inputs.
+
 Use the lane you actually changed whenever possible. If you recommend a
 specific command to a user, validate that exact lane before push or say which
 stricter equivalent you validated.
 
-For docs-only changes, still verify the docs build and run at least the tests affected by the changed examples or commands.
+For docs-only changes, verify the docs build and run at least the tests affected by the changed examples or commands.
 
 ## Documentation expectations
 
@@ -57,7 +61,7 @@ This project treats docs as part of the product surface:
 - no compatibility scaffolding
 - no preserving bad structures because they already exist
 
-The mechanically enforced rules live in `scripts/check_python_standards.py`, and the current
+The mechanically enforced rules live in `scripts/check_python_standards.py`, and the
 repo-wide remediation matrix lives in [Python Standards Audit](python-standards-audit.md).
 
 ## Testing style

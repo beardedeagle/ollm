@@ -48,5 +48,5 @@ ollm serve --response-store-backend plugin \
 OLLM_SERVER__PORT=8123 ollm serve
 ```
 
-See [Local Server API](../guides/local-server.md) for the current HTTP route
+See [Local Server API](../guides/local-server.md) for the HTTP route
 surface.

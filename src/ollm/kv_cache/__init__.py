@@ -2,13 +2,11 @@
 
 import time
 from pathlib import Path
-from typing import Protocol
 
 import torch
 from transformers import DynamicCache
 
 from ollm.async_io import path_exists, path_mkdir, remove_tree
-from ollm.kv_cache.journal_store import JournaledKVStore
 from ollm.kv_cache.matrix import (
     DEFAULT_KV_CACHE_LIFECYCLE,
     describe_kv_cache_strategy,
@@ -16,54 +14,19 @@ from ollm.kv_cache.matrix import (
     resolve_kv_cache_eviction_policy,
     resolve_kv_cache_window_tokens,
 )
-from ollm.kv_cache.paged_store import PagedKVStore
 from ollm.kv_cache.policy import KVCachePolicy, select_kv_cache_policy
-from ollm.kv_cache.quantized_store import QuantizedJournaledKVStore
-from ollm.kv_cache.sliding_window_store import SlidingWindowRingBufferKVStore
 from ollm.kv_cache.state import KVCacheStateSnapshot
-from ollm.kv_cache.store import ChunkedKVStore
+from ollm.kv_cache.store_factory import KVCacheStoreProtocol, build_cache_store
 from ollm.kv_cache.strategy import (
     DEFAULT_KV_CACHE_STRATEGY,
     kv_cache_root,
     normalize_kv_cache_strategy,
 )
-from ollm.kv_cache.streamed_store import StreamedSegmentedKVStore
-from ollm.kv_cache.tiered_store import TieredWriteBackKVStore
 from ollm.utils import Stats
 
 __all__ = ["KVCache", "oCache"]
 
 _EMPTY_CACHE_PLACEHOLDER = torch.empty(0)
-
-
-class _KVCacheStoreProtocol(Protocol):
-    def initialize(self, policy_id: str) -> None: ...
-
-    def load_layer(
-        self, layer_idx: int, *, device: torch.device
-    ) -> tuple[torch.Tensor, torch.Tensor] | None: ...
-
-    def append_layer_chunk(
-        self, layer_idx: int, tensors: tuple[torch.Tensor, torch.Tensor]
-    ) -> None: ...
-
-    def persisted_layer_ids(self) -> tuple[int, ...]: ...
-
-    def persisted_token_count(self) -> int: ...
-
-    def persisted_artifact_count(self) -> int: ...
-
-    def cold_store_format_id(self) -> str | None: ...
-
-    def cold_tier_representation_id(self) -> str | None: ...
-
-    def compaction_count(self) -> int: ...
-
-    def eviction_count(self) -> int: ...
-
-    def evicted_token_count(self) -> int: ...
-
-    def consume_last_compaction_elapsed_seconds(self) -> float | None: ...
 
 
 class oCache:
@@ -126,7 +89,7 @@ class oCache:
         self._hot_tails: dict[int, tuple[torch.Tensor, torch.Tensor]] = {}
         self._spill_count = 0
         self._spilled_tokens = 0
-        self._cache_store = _build_cache_store(
+        self._cache_store: KVCacheStoreProtocol = build_cache_store(
             self.cache_folder,
             self.cache_strategy,
             self.policy,
@@ -327,7 +290,10 @@ def _tensor_pair_nbytes(tensors: tuple[torch.Tensor, torch.Tensor]) -> int:
 def _to_cpu_tensor_pair(
     tensors: tuple[torch.Tensor, torch.Tensor],
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    return tuple(tensor.detach().cpu().contiguous() for tensor in tensors)  # type: ignore[return-value]
+    return (
+        tensors[0].detach().cpu().contiguous(),
+        tensors[1].detach().cpu().contiguous(),
+    )
 
 
 def _to_resident_tensor_pair(
@@ -336,7 +302,10 @@ def _to_resident_tensor_pair(
     device: torch.device,
 ) -> tuple[torch.Tensor, torch.Tensor]:
     if device.type == "cpu":
-        return tuple(tensor.detach().contiguous() for tensor in tensors)  # type: ignore[return-value]
+        return (
+            tensors[0].detach().contiguous(),
+            tensors[1].detach().contiguous(),
+        )
     return _to_cpu_tensor_pair(tensors)
 
 
@@ -344,7 +313,10 @@ def _move_tensor_pair(
     tensors: tuple[torch.Tensor, torch.Tensor],
     device: torch.device,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    return tuple(tensor.to(device) for tensor in tensors)  # type: ignore[return-value]
+    return (
+        tensors[0].to(device),
+        tensors[1].to(device),
+    )
 
 
 def _resident_layer_for_device(
@@ -379,42 +351,6 @@ def _prime_cache_layer(
     if callable(lazy_initialization):
         lazy_initialization(tensors[0], tensors[1])
     layer.keys, layer.values = tensors
-
-
-def _build_cache_store(
-    cache_folder: Path,
-    cache_strategy: str,
-    policy: KVCachePolicy,
-    cache_window_tokens: int | None,
-) -> _KVCacheStoreProtocol:
-    if cache_strategy == "chunked":
-        return ChunkedKVStore(cache_folder)
-    if cache_strategy == "paged":
-        return PagedKVStore(cache_folder)
-    if cache_strategy == "streamed-segmented":
-        return StreamedSegmentedKVStore(cache_folder)
-    if cache_strategy == "log-structured-journal":
-        return JournaledKVStore(
-            cache_folder,
-            compaction_entry_threshold=policy.journal_compaction_entry_threshold,
-        )
-    if cache_strategy == "quantized-cold-tier":
-        return QuantizedJournaledKVStore(
-            cache_folder,
-            compaction_entry_threshold=policy.journal_compaction_entry_threshold,
-        )
-    if cache_strategy == "sliding-window-ring-buffer":
-        if cache_window_tokens is None:
-            raise ValueError(
-                "sliding-window-ring-buffer requires an explicit resolved window"
-            )
-        return SlidingWindowRingBufferKVStore(
-            cache_folder,
-            window_max_tokens=cache_window_tokens,
-        )
-    if cache_strategy == "tiered-write-back":
-        return TieredWriteBackKVStore(cache_folder)
-    raise ValueError(f"Unsupported KV cache strategy: {cache_strategy}")
 
 
 def _sequence_length(tensor: torch.Tensor) -> int:

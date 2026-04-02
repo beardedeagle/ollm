@@ -4,6 +4,7 @@ import time
 from typing import Protocol, Unpack, cast
 
 import torch
+from transformers.models.llama.configuration_llama import LlamaConfig
 from transformers.models.voxtral.modeling_voxtral import VoxtralForConditionalGeneration
 
 import ollm.llama as llama
@@ -32,6 +33,10 @@ class _OffloadProtocol(Protocol):
     num_hidden_layers: int
 
     def offload_layers_to_cpu_indices(self, layer_indices: tuple[int, ...]) -> None: ...
+
+
+class _VoxtralConfigProtocol(Protocol):
+    text_config: LlamaConfig
 
 
 loader: _LoaderProtocol | None = None
@@ -145,7 +150,8 @@ class MyVoxtralForConditionalGeneration(
 ):
     def __init__(self, config: object):
         super().__init__(config)
-        self.num_hidden_layers = config.text_config.num_hidden_layers  # type: ignore[attr-defined]
-        self.language_model = llama.MyLlamaForCausalLM(config.text_config)  # type: ignore[attr-defined]
+        typed_config = cast(_VoxtralConfigProtocol, config)
+        self.num_hidden_layers = typed_config.text_config.num_hidden_layers
+        self.language_model = llama.MyLlamaForCausalLM(typed_config.text_config)
         llama.stats = stats
         llama.dense_projection_chunk_rows = dense_projection_chunk_rows

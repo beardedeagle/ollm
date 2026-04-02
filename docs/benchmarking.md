@@ -6,12 +6,12 @@ oLLM ships a dedicated runtime benchmark harness:
 uv run python scripts/benchmark_runtime.py --device cpu --output .omx/runtime-benchmark.json
 ```
 
-The CLI now defaults to the `quick` benchmark profile for development use. That
+The CLI defaults to the `quick` benchmark profile for development use. That
 profile limits the run to the requested primary target, skips the family-wide
 matrix and deeper scaling sweeps, and applies tighter per-lane budgets so a
 strategy check cannot silently turn into an hour-long run.
 
-Every benchmark run now also records its full raw payload plus a normalized
+Every benchmark run also records its full raw payload plus a normalized
 summary under `.omx/logs/benchmark-history/`. If a prior run with the same
 comparison key exists, the CLI appends a comparison summary and emits any
 obvious potential regressions on `stderr` without changing the JSON written to
@@ -27,7 +27,7 @@ flowchart LR
     E --> F[Comparison summary]
 </div>
 
-History matching now includes an explicit `codebase_label` so fork and upstream
+History matching includes an explicit `codebase_label` so fork and upstream
 baseline runs do not collide accidentally. By default, that label is derived
 from the normalized `origin` remote URL. Override it only when you need a
 different stable grouping:
@@ -53,7 +53,7 @@ The comparison key is based on the actual run shape, including model, device,
 backend, requested strategy override, selector profile, codebase label, and prompt/profile controls, so
 incomparable runs do not get mashed together.
 
-By default, the benchmark harness now uses the runtime strategy selector with
+By default, the benchmark harness uses the runtime strategy selector with
 `--strategy-selector-profile balanced`.
 
 For KV strategy A/B work, pin the preset explicitly:
@@ -127,7 +127,7 @@ The harness is designed to stay truthful on hardware-constrained machines:
 - it always measures specialization planner overhead without loading model weights
 - it measures the extra planning cost when no specialization applies by creating a tiny local T5 fixture on the fly
 - it reports a bounded family-wide comparison matrix for the current optimized families using any locally materialized built-in aliases it finds
-- the requested `--model-reference` now gets deeper benchmark sections:
+- the requested `--model-reference` gets deeper benchmark sections:
   - cold-start vs warm-runtime comparisons
   - TTFT and inter-token latency
   - prompt-token and output-token throughput
@@ -163,7 +163,7 @@ Interpretation notes:
 - output throughput is generated output tokens divided by total generation latency
 - peak RSS includes a source label; long-lived warm/scaling/session probes use stage-local sampled peaks instead of process-lifetime peaks
 - allocator-gap metrics are reported as reserved-minus-allocated style slack when the backend exposes the required counters; unsupported backends serialize them as `null`
-- optimized-native decoder-only prompt-scaling runs now exercise bounded chunked prefill on long text prompts, so the prompt-length sweep is the intended place to inspect the memory versus TTFT tradeoff for this feature
+- optimized-native decoder-only prompt-scaling runs exercise bounded chunked prefill on long text prompts, so the prompt-length sweep is the intended place to inspect the memory versus TTFT tradeoff for this feature
 
 On loader-streamed families such as optimized Gemma3 on CPU, a long per-turn
 session-growth response can become dominated by repeated safetensor layer reads
@@ -172,17 +172,17 @@ there to keep this probe representative and practical on development machines.
 
 ## Native loader and KV IO profile
 
-For optimized-native runs, the request metrics can now include a
+For optimized-native runs, the request metrics can include a
 `native_runtime_profile` payload. This captures event timing summaries emitted
 by the runtime itself, rather than numbers inferred from high-level wall clock
 latency.
 
-On the dense optimized-native families, the loader now submits the next layer's
+On the dense optimized-native families, the loader submits the next layer's
 weight reads one layer ahead of use. That means a later `layer_load` step may
 consume already-pending safetensor reads instead of starting from an idle
 storage queue.
 
-Those same dense paths now keep `mlp-chunking` as a feasibility-oriented memory
+Those same dense paths keep `mlp-chunking` as a feasibility-oriented memory
 control. The default optimized runtime keeps the existing `16384`-row ceiling
 and only derives smaller chunks when accelerator headroom is tight; forcing an
 explicit smaller `dense_projection_chunk_rows` value lowers peak activation
@@ -210,7 +210,7 @@ The same profile also reports storage-path labels such as:
 These fields are only present when the selected runtime actually emits native
 stats. Generic Transformers-backed runs may report `null` here.
 
-For disk KV requests, `disk-kv-cache` now refers to the explicit strategy root
+For disk KV requests, `disk-kv-cache` refers to the explicit strategy root
 under these strategy-specific roots:
 
 - `cache_dir/kv_cache_chunked`

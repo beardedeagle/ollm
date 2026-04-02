@@ -36,12 +36,12 @@ pip install --no-build-isolation -e ".[adapters]"
 pip install --no-build-isolation -e ".[server]"
 ```
 
-`kvikio` remains a manual install because the package name depends on your CUDA version.
+`kvikio` is a manual install because the package name depends on your CUDA version.
 
 ## Verify the install
 
 ```bash
-uv run python -m compileall src tests
+uv run python -m compileall src tests scripts
 uv run pytest -q
 uv run ollm doctor --imports --json --no-color
 uv run ollm prompt --help

@@ -27,6 +27,11 @@ SYNC_IO_CALLS: frozenset[tuple[str, str | None]] = frozenset(
     }
 )
 PARTIAL_WORK_MARKER_PATTERN = re.compile(r"\b(TODO|FIXME|XXX)\b")
+MACHINE_SPECIFIC_PATH_PREFIXES: tuple[str, ...] = (
+    "/content/",
+    "/home/",
+    "/media/",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -206,6 +211,72 @@ def check_import_placement(
         first_non_import_seen = True
 
 
+def check_script_top_level_statements(
+    *, path: Path, tree: ast.Module, violations: list[Violation]
+) -> None:
+    """Reject script modules that execute real work at import time."""
+    if "scripts" not in path.parts:
+        return
+    for index, statement in enumerate(tree.body):
+        if index == 0 and _is_module_docstring(statement):
+            continue
+        if isinstance(
+            statement,
+            ast.Import
+            | ast.ImportFrom
+            | ast.FunctionDef
+            | ast.AsyncFunctionDef
+            | ast.ClassDef,
+        ):
+            continue
+        if isinstance(statement, ast.Assign):
+            if _assignment_value_is_safe(statement.value):
+                continue
+        if isinstance(statement, ast.AnnAssign):
+            if statement.value is None or _assignment_value_is_safe(statement.value):
+                continue
+        if isinstance(statement, ast.If) and _is_main_guard(statement):
+            continue
+        violations.append(
+            Violation(
+                rule_id="script-import-side-effect",
+                severity="error",
+                category="mechanical",
+                path=path,
+                line=statement.lineno,
+                column=statement.col_offset,
+                message=(
+                    "scripts must keep executable work inside functions and the "
+                    "__main__ guard"
+                ),
+            )
+        )
+
+
+def scan_machine_specific_paths(*, path: Path, tree: ast.AST) -> list[Violation]:
+    """Find machine-local absolute paths committed into Python source."""
+    violations: list[Violation] = []
+    if path.name == "python_standards_rules.py":
+        return violations
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Constant) or not isinstance(node.value, str):
+            continue
+        if not node.value.startswith(MACHINE_SPECIFIC_PATH_PREFIXES):
+            continue
+        violations.append(
+            Violation(
+                rule_id="machine-specific-path",
+                severity="error",
+                category="mechanical",
+                path=path,
+                line=node.lineno,
+                column=node.col_offset,
+                message="machine-specific absolute path detected",
+            )
+        )
+    return violations
+
+
 def _check_annotations(
     path: Path,
     node: ast.FunctionDef | ast.AsyncFunctionDef,
@@ -282,6 +353,46 @@ def _is_module_docstring(statement: ast.stmt) -> bool:
         and isinstance(statement.value, ast.Constant)
         and isinstance(statement.value.value, str)
     )
+
+
+def _is_main_guard(statement: ast.If) -> bool:
+    comparison = statement.test
+    if not isinstance(comparison, ast.Compare):
+        return False
+    if len(comparison.ops) != 1 or len(comparison.comparators) != 1:
+        return False
+    if not isinstance(comparison.ops[0], ast.Eq):
+        return False
+    left = comparison.left
+    right = comparison.comparators[0]
+    return (
+        isinstance(left, ast.Name)
+        and left.id == "__name__"
+        and isinstance(right, ast.Constant)
+        and right.value == "__main__"
+    )
+
+
+def _assignment_value_is_safe(node: ast.AST) -> bool:
+    if isinstance(node, ast.Constant | ast.Name):
+        return True
+    if isinstance(node, ast.Attribute):
+        return _assignment_value_is_safe(node.value)
+    if isinstance(node, ast.BinOp):
+        return _assignment_value_is_safe(node.left) and _assignment_value_is_safe(
+            node.right
+        )
+    if isinstance(node, ast.UnaryOp):
+        return isinstance(node.op, ast.UAdd | ast.USub) and _assignment_value_is_safe(
+            node.operand
+        )
+    if isinstance(node, ast.Tuple | ast.List | ast.Set):
+        return all(_assignment_value_is_safe(element) for element in node.elts)
+    if isinstance(node, ast.Dict):
+        return all(
+            key is None or _assignment_value_is_safe(key) for key in node.keys
+        ) and all(_assignment_value_is_safe(value) for value in node.values)
+    return False
 
 
 def _call_target(node: ast.AST) -> tuple[str, str | None] | None:

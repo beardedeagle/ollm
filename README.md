@@ -15,7 +15,7 @@ oLLM is a lightweight Python library for large-context LLM inference, built on t
 <p dir="auto"><em><a href="https://github.com/Mega4alik/ollm/wiki/Releases">Latest updates</a> (1.0.3)</em> 🔥</p>
 <ul dir="auto">
 <li><code>AutoInference</code> for compatible local Llama and Gemma3 model directories with optional <a href="https://github.com/huggingface/peft">PEFT</a> adapter support</li>
-<li><code>kvikio</code> and <code>flash-attn</code> are optional now, meaning no hardware restrictions beyond HF transformers</li>
+<li><code>kvikio</code> and <code>flash-attn</code> are optional, meaning no hardware restrictions beyond HF transformers</li>
 <li>Multimodal <b>voxtral-small-24B</b> (audio+text) added. <a href="examples/example_audio.py">[sample with audio]</a> </li>
 <li>Multimodal <b>gemma3-12B</b> (image+text) added. <a href="examples/example_image.py">[sample with image]</a> </li>
 <li><b>qwen3-next-80B</b> (160GB model) added with <span style="color:blue">⚡️1tok/2s</span> throughput (our fastest model so far)</li>
@@ -57,7 +57,7 @@ Typical use cases include:
 
 ## Getting Started
 
-oLLM now targets Python 3.12 and newer.
+oLLM targets Python 3.12 and newer.
 
 Use `uv` to create and manage the local environment:
 ```bash
@@ -84,11 +84,11 @@ pip install --no-build-isolation -e ".[adapters]" # optional extras
 pip install kvikio-cu{cuda_version} Ex, kvikio-cu12 #speeds up the inference
 ```
 > 💡 **Note**  
-> `kvikio` remains a manual install because the package name depends on your CUDA version. For `voxtral-small-24B`, use `uv sync --extra audio` or install `mistral-common[audio]` and `librosa`.
+> `kvikio` is a manual install because the package name depends on your CUDA version. For `voxtral-small-24B`, use `uv sync --extra audio` or install `mistral-common[audio]` and `librosa`.
 
 Check out the [Troubleshooting](https://github.com/Mega4alik/ollm/wiki/Troubleshooting) in case of any installation issues 
 
-The primary project documentation now lives under `docs/` and is built with MkDocs Material:
+The primary project documentation lives under `docs/` and is built with MkDocs Material:
 
 - [Overview](docs/index.md)
 - [Getting Started / Installation](docs/guides/installation.md)
@@ -105,7 +105,7 @@ The primary project documentation now lives under `docs/` and is built with MkDo
 
 ## Terminal Interface
 
-oLLM now ships with a first-party terminal interface in addition to the importable library.
+oLLM ships with a first-party terminal interface in addition to the importable library.
 
 ```bash
 ollm                         # interactive terminal chat
@@ -133,7 +133,7 @@ Runtime selection and inspection controls:
 - `--no-specialization` disables optimized native specialization selection and forces the generic path when one exists
 - `--plan-json` prints the resolved runtime plan as JSON and exits without running generation
 
-`ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` now all honor `--backend` and `--no-specialization`. `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` also support `--plan-json` for script-friendly inspection of the resolver/backend decision.
+`ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` all honor `--backend` and `--no-specialization`. `ollm prompt`, `ollm chat`, `ollm doctor`, and `ollm models info` also support `--plan-json` for script-friendly inspection of the resolver/backend decision.
 `ollm prompt` and `ollm chat` also honor:
 
 - `--strategy-selector-profile` to pick the deterministic selector profile
@@ -141,13 +141,13 @@ Runtime selection and inspection controls:
 - `--kv-cache-strategy` to pin an explicit KV cache strategy override
 
 When no explicit KV strategy override is supplied, the selector chooses among
-the current selector-default candidates:
+the selector-default candidates:
 
 - `paged` for the balanced full-history default
 - `resident` for high-headroom latency-oriented cases
 - `quantized-cold-tier` for conservative capacity-oriented cases
 
-The remaining presets stay explicit opt-in only for now:
+The remaining presets stay explicit opt-in only:
 
 - `sliding-window-ring-buffer`
 - `streamed-segmented`
@@ -160,14 +160,14 @@ full-history KV in memory. When the bounded
 the recent-context token budget and oldest tokens are evicted once the window
 is exceeded.
 
-On optimized-native decoder-only text runtimes, long prompts are now ingested
+On optimized-native decoder-only text runtimes, long prompts are ingested
 through bounded prefill chunks before the final decode step. That keeps prompt
 execution from growing one full prompt-wide activation step at a time on very
 long inputs while preserving the external prompt/chat contract. Prompt-scaling
 benchmarks remain the right place to evaluate the TTFT and memory tradeoff on
 target hardware.
 
-Configuration layering is now first-class:
+Configuration layering uses an explicit precedence contract:
 
 - built-in defaults remain the lowest-precedence layer
 - `./ollm.toml` is loaded automatically when present
@@ -216,7 +216,7 @@ export OLLM_RUNTIME__KV_CACHE_ADAPTATION_MODE=observe-only
 export OLLM_GENERATION__MAX_NEW_TOKENS=128
 ```
 
-This slice configures runtime, generation, and future server defaults. Request-specific values that are not part of that schema, such as the prompt/chat system message, still remain explicit CLI arguments today.
+This configuration surface covers runtime, generation, and server defaults. Request-specific values outside that schema, such as the prompt/chat system message, remain explicit CLI arguments.
 
 Headless server mode is opt-in and local-only by default:
 
@@ -227,13 +227,13 @@ ollm serve
 
 `ollm serve` resolves its host, port, reload, log-level, and response-store settings through the same `CLI > env > config file > defaults` contract. The default bind is `127.0.0.1`, and the server publishes machine-readable and interactive OpenAPI surfaces at `/openapi.json`, `/docs`, and `/redoc`.
 
-Runtime benchmarking now records a persistent history ledger under
+Runtime benchmarking records a persistent history ledger under
 `.omx/logs/benchmark-history/` by default. Each record includes a stable
 `codebase_label`, derived from the normalized git `origin` remote unless you
 override it with `--history-codebase-label`, so this fork and any adjacent
 upstream baseline clone cannot silently compare against each other.
 
-The current local REST surface is:
+The local REST surface is:
 
 - `GET /v1/health`
 - `GET /v1/models`
@@ -271,8 +271,8 @@ curl -N -X POST http://127.0.0.1:8000/v1/prompt/stream \
   -d '{"prompt":"List planets","runtime":{"model_reference":"llama3-1B-chat"}}'
 ```
 
-The streaming transport is SSE-based and the current server-side sessions are
-in-memory only. The OpenAI-compatible `/v1/responses` surface now supports
+The streaming transport is SSE-based and the server-side sessions are
+in-memory only. The OpenAI-compatible `/v1/responses` surface supports
 custom `type=function` tools, `tool_choice`, `function_call_output` chaining,
 typed function-call streaming events, and `DELETE /v1/responses/{response_id}`
 when a response-store backend is enabled. Responses inputs also accept
@@ -283,7 +283,7 @@ Runtime vocabulary:
 - support levels:
   - `optimized`: a native specialization provider can run the reference
   - `generic`: the Transformers-backed generic runtime can run the reference
-  - `unsupported`: the reference resolves, but the current runtime cannot execute it
+  - `unsupported`: the reference resolves, but the runtime cannot execute it
 - discovery sources:
   - `built-in`: a shipped oLLM alias
   - `discovered-local`: a materialized local model directory found under `--models-dir`
@@ -291,25 +291,25 @@ Runtime vocabulary:
   - `materialized` / `not-materialized` describe whether local weights are present on disk
   - `ollm models list --installed` filters to materialized local entries only
 
-`--model` now accepts opaque model references. Today that means:
+`--model` accepts opaque model references. That includes:
 - built-in aliases such as `llama3-1B-chat` and `gemma3-12B` load through registered optimized specialization providers
 - Hugging Face repo IDs such as `Qwen/Qwen2.5-7B-Instruct` resolve and materialize locally
 - local model directories resolve directly
 
-The current generic execution path now covers compatible local or materialized Transformers-backed:
+The generic execution path covers compatible local or materialized Transformers-backed:
 - causal language models such as Qwen2-family checkpoints
 - encoder-decoder text generation models such as T5-family checkpoints
 - image-text conditional generation models that expose a processor-backed `vision_config`
 
-When the resolved model matches a native family specialization (`llama`, `gemma3`, `qwen3-next`, `gpt-oss`, or `voxtral`), `ollm` now records and selects the matching optimized specialization provider through the runtime plan instead of hard-coding model-family branches inside `Inference.load_model()`. Built-in aliases still prefer the optimized native backend, and compatible local native-family directories can now do the same when a specialization provider matches while preserving the original local-path reference internally for optimized local loads.
+When the resolved model matches a native family specialization (`llama`, `gemma3`, `qwen3-next`, `gpt-oss`, or `voxtral`), `ollm` records and selects the matching optimized specialization provider through the runtime plan instead of hard-coding model-family branches inside `Inference.load_model()`. Built-in aliases prefer the optimized native backend, and compatible local native-family directories do the same when a specialization provider matches while preserving the original local-path reference internally for optimized local loads.
 
-Optimized-native planning now also records reusable specialization passes such as `disk-cache`, `cpu-offload`, `gpu-offload`, `mlp-chunking`, `moe-routing`, `attention-replacement`, `multimodal-shell`, and `gds-export-weights`. Those passes are now validated against the assembled optimized runtime before execution proceeds. If an optimized specialization cannot satisfy its planned pass contract and a compatible generic Transformers path exists, `ollm` falls back safely to `transformers-generic` instead of silently pretending the optimized path succeeded.
+Optimized-native planning records reusable specialization passes such as `disk-cache`, `cpu-offload`, `gpu-offload`, `mlp-chunking`, `moe-routing`, `attention-replacement`, `multimodal-shell`, and `gds-export-weights`. Those passes are validated against the assembled optimized runtime before execution proceeds. If an optimized specialization cannot satisfy its planned pass contract and a compatible generic Transformers path exists, `ollm` falls back safely to `transformers-generic` instead of silently pretending the optimized path succeeded.
 
-Planning-only surfaces such as `ollm doctor` and `ollm models info --json` now expose an explicit `specialization_state` plus the planned specialization provider/pass ids. They do **not** execute a backend load just to answer an inspection request, so they should be read as runtime-planning output.
+Planning-only surfaces such as `ollm doctor` and `ollm models info --json` expose an explicit `specialization_state` plus the planned specialization provider/pass ids. They do **not** execute a backend load just to answer an inspection request, so they should be read as runtime-planning output.
 
 Actual execution surfaces follow the finalized runtime plan instead. In particular, prompt response metadata includes the execution backend, specialization state, execution-device profile details for optimized-native runs, applied specialization pass ids, and any recorded fallback reason.
 
-The optimized GPT-OSS provider is intentionally stricter than before: it only matches when a validated `gds_export/` tree is present beside the model, and that export manifest must stay inside the export directory and avoid torch-serialized or pickle-backed artifacts.
+The optimized GPT-OSS provider matches only when a validated `gds_export/` tree is present beside the model, and that export manifest stays inside the export directory and avoids torch-serialized or pickle-backed artifacts.
 
 For safety, the generic runtime only loads local or materialized model weights from safetensors artifacts. Arbitrary `.bin` or pickle-backed checkpoints are intentionally rejected on that path.
 
@@ -360,7 +360,7 @@ print(response.text)
 
 ### Low-level optimized-native API
 
-The older low-level optimized-native helpers still exist for direct control of the native specialization path:
+The low-level optimized-native helpers exist for direct control of the native specialization path:
 
 ```python
 from ollm import Inference, TextStreamer
@@ -372,21 +372,21 @@ past_key_values = o.DiskCache(cache_dir="./kv_cache/")
 text_streamer = TextStreamer(o.tokenizer, skip_prompt=True, skip_special_tokens=False)
 ```
 
-Native CPU offload is now policy-driven. The current supported policies are:
+Native CPU offload is policy-driven. The supported policies are:
 
 - `auto`
 - `prefix`
 - `suffix`
 - `middle-band`
 
-`auto` currently resolves to `middle-band`, which preserves the earliest and
+`auto` resolves to `middle-band`, which preserves the earliest and
 latest layers on the active accelerator by offloading a contiguous middle band.
 This slice intentionally does **not** support simultaneous `offload_cpu_layers`
 and `offload_gpu_layers`; mixed placement still needs a separate truthful
 design.
 
 On the dense optimized-native families (`llama`, `gemma3`, and the Llama-backed
-path inside `voxtral`), `mlp-chunking` now keeps the current `16384`-row cap as
+path inside `voxtral`), `mlp-chunking` keeps the `16384`-row cap as
 the fast-path ceiling but can derive smaller chunks when accelerator memory
 headroom is tight. You can also set an explicit `dense_projection_chunk_rows`
 override through `RuntimeConfig`, `ollm.toml`, or
@@ -418,7 +418,7 @@ instead of opaque torch cache blobs.
   bounded KV tail on disk and in memory. Once the configured
   `kv_cache_window_tokens` limit is exceeded, the oldest cached tokens are
   dropped under a `drop-oldest` eviction policy. This is a semantic mode, not a
-  transparent storage optimization, so current local proof still keeps it as an
+  transparent storage optimization, so local proof keeps it as an
   explicit opt-in mode rather than a selector default.
 - `kv_cache_strategy="quantized-cold-tier"` uses
   `cache_dir/kv_cache_quantized_cold_tier` and keeps the active in-process KV at
@@ -430,15 +430,15 @@ instead of opaque torch cache blobs.
 
 The runtime also applies a platform/resource-aware buffering or spill policy on
 top of the selected format, so small KV deltas do not have to flush to disk on
-every update. That current preset family is still not the full future
+every update. That preset family is not the full future
 GPU/CPU/SSD tiered architecture.
-Within one loaded runtime, the cache layer now also keeps a resident
+Within one loaded runtime, the cache layer also keeps a resident
 in-process per-layer KV snapshot so repeated updates do not have to reread and
 reconstruct the same persisted history every token. The streamed store also
 coalesces readback by segment file instead of replaying a separate file-range
 read for every extent.
 
-For compatible local Llama or Gemma3 directories, `AutoInference` remains the direct optimized-native helper:
+For compatible local Llama or Gemma3 directories, `AutoInference` is the direct optimized-native helper:
 
 ```python
 from ollm import AutoInference
@@ -452,7 +452,7 @@ o = AutoInference(
 )
 ```
 
-You can still run the original sample script as `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True uv run python examples/example.py`.
+You can run the original sample script as `PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True uv run python examples/example.py`.
 **More samples**
 - [gemma3-12B image+text](examples/example_image.py)
 - [voxtral-small-24B audio+text](examples/example_audio.py)
@@ -460,7 +460,7 @@ You can still run the original sample script as `PYTORCH_CUDA_ALLOC_CONF=expanda
 
 ## Development
 
-The project now builds with Hatchling and uses `uv` for environment and lock management.
+The project builds with Hatchling and uses `uv` for environment and lock management.
 
 Run the automated test suite with:
 
@@ -468,14 +468,14 @@ Run the automated test suite with:
 uv run pytest
 ```
 
-Fast syntax-only verification remains:
+Fast syntax-only verification:
 
 ```bash
 uv run ruff format src tests examples scripts
 uv run ruff check src tests examples scripts
 uv run python scripts/check_python_standards.py
-uv run python -m compileall src tests
-uv run ty check src tests
+uv run ty check src tests scripts
+uv run python -m compileall src tests scripts
 ```
 
 For runtime-heavy changes, run a real prompt-plus-chat smoke before push:
@@ -498,13 +498,13 @@ uv run --group docs mkdocs build --strict
 
 ### Benchmark and perf proof
 
-oLLM now ships a dedicated runtime benchmark harness:
+oLLM ships a dedicated runtime benchmark harness:
 
 ```bash
 uv run python scripts/benchmark_runtime.py --device cpu --output .omx/runtime-benchmark.json
 ```
 
-Each run now also records its full raw payload plus a normalized summary under
+Each run also records its full raw payload plus a normalized summary under
 `.omx/logs/benchmark-history/`, and the CLI compares against the last matching
 run shape automatically so obvious latency or accelerator-memory regressions are
 surfaced immediately without changing the JSON emitted to `stdout`.
@@ -512,8 +512,8 @@ surfaced immediately without changing the JSON emitted to `stdout`.
 The harness is designed to stay truthful on hardware-constrained machines:
 - it always measures specialization planner overhead without loading model weights
 - it measures the extra planning cost when no specialization applies by using a tiny local T5 fixture created on the fly
-- it reports a runtime-comparison matrix for the current optimized families, using any locally materialized built-in aliases it finds and marking missing families as unavailable instead of fabricating results
-- the requested `--model-reference` now gets deeper analysis:
+- it reports a runtime-comparison matrix for the optimized families, using any locally materialized built-in aliases it finds and marking missing families as unavailable instead of fabricating results
+- the requested `--model-reference` gets deeper analysis:
   - cold-start vs warm-runtime comparisons
   - TTFT and inter-token latency
   - prompt-token and output-token throughput
@@ -523,14 +523,14 @@ The harness is designed to stay truthful on hardware-constrained machines:
   - prompt-length scaling, output-length scaling, and repeated-turn session-growth sweeps
 - family-wide comparisons stay bounded to cold-start and warm-runtime generic-vs-optimized results so the harness remains practical on development machines
 - unsupported metrics and non-executable optimized paths remain explicitly unavailable instead of being fabricated
-- peak RSS reports now carry source labels so warm/scaling/session sections can use stage-local sampled peaks instead of misleading process-lifetime maxima
+- peak RSS reports carry source labels so warm/scaling/session sections can use stage-local sampled peaks instead of misleading process-lifetime maxima
 
-Session-growth now uses a dedicated small per-turn output cap rather than
+Session-growth uses a dedicated small per-turn output cap rather than
 reusing the output-scaling sweep length. That keeps repeated-turn probes focused
 on retained-session growth instead of turning loader-streamed CPU families such
 as Gemma3 into a long-form generation or safetensor-streaming marathon.
 
-When an optimized-native run emits runtime timing stats, the request metrics now
+When an optimized-native run emits runtime timing stats, the request metrics
 also include a `native_runtime_profile` section with:
 
 - event summaries such as `layer_load`, `experts_load`, `kvload`, `kvsave`,
@@ -539,11 +539,11 @@ also include a `native_runtime_profile` section with:
 - storage-path labels such as `gds`, `safetensor-io`,
   `cpu-offloaded-artifacts`, `disk-kv-cache`, and `torch-artifact-io`
 
-For disk KV requests, `disk-kv-cache` now refers to the manifest-backed chunked
+For disk KV requests, `disk-kv-cache` refers to the manifest-backed chunked
 or strategy-specific cache roots under `cache_dir/kv_cache_chunked`,
 `cache_dir/kv_cache_streamed_segmented`, or
 `cache_dir/kv_cache_tiered_write_back`, not to legacy `.pt` layer artifacts.
-The request metrics also report `kv_cache_strategy`, and `cache_state` now
+The request metrics also report `kv_cache_strategy`, and `cache_state`
 surfaces the policy id, persisted tokens, persisted artifact count,
 compaction count, cold-store format, hot tokens, and spill counts so the
 reported cache footprint can be interpreted truthfully.
@@ -552,7 +552,7 @@ separately as `kvcompact` instead of being folded into `kvsave`.
 If a repeated request is satisfied from the resident in-process KV snapshot
 instead of rereading disk history, `kvload` can legitimately disappear for that
 step even though disk KV remains the active strategy.
-Resident requests now report `cache_mode="resident-kv"` with no on-disk cache
+Resident requests report `cache_mode="resident-kv"` with no on-disk cache
 size, so the in-memory baseline is not mislabeled as a disk-backed run.
 
 Useful knobs for the primary-target sweeps:
@@ -581,7 +581,7 @@ Only the runtime comparison loads requested model weights. The planning and no-s
 
 The canonical contributor standards live in [docs/guides/python-standards.md](docs/guides/python-standards.md).
 
-This repo is currently being treated as greenfield:
+This repo is treated as greenfield:
 
 - no legacy-only code paths
 - no compatibility scaffolding
@@ -593,7 +593,7 @@ The repo-local standards checker is:
 uv run python scripts/check_python_standards.py
 ```
 
-The current repo-wide remediation matrix lives in
+The repo-wide remediation matrix lives in
 [docs/guides/python-standards-audit.md](docs/guides/python-standards-audit.md).
 
 

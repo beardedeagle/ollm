@@ -33,7 +33,7 @@ from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.catalog import ModelModality
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
-from ollm.runtime.loader import LoadedRuntime
+from ollm.runtime.loaded_runtime import LoadedRuntime
 from ollm.runtime.plan import RuntimePlan, SpecializationState
 from ollm.runtime.reference import ModelReference
 from ollm.runtime.resolver import ModelSourceKind, ResolvedModel
@@ -41,7 +41,10 @@ from tests.benchmark_support import (
     build_request_probe_metrics,
     build_stage_resources,
 )
-from tests.test_runtime_executor import ChunkedPrefillModel, LongMappingTokenizer
+from tests.test_runtime_executor_prefill import (
+    ChunkedPrefillModel,
+    LongMappingTokenizer,
+)
 
 
 class BenchmarkProcessorInputs(dict):

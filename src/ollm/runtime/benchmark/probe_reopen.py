@@ -17,7 +17,7 @@ from ollm.runtime.benchmark.probe_types import (
 )
 from ollm.runtime.benchmark.resources import measure_stage
 from ollm.runtime.config import DEFAULT_SYSTEM_PROMPT, GenerationConfig, RuntimeConfig
-from ollm.runtime.loader import LoadedRuntime
+from ollm.runtime.loaded_runtime import LoadedRuntime
 from ollm.runtime.strategy_selector import DEFAULT_STRATEGY_SELECTOR_PROFILE
 
 
