@@ -16,7 +16,10 @@ from ollm.runtime.benchmark import (
     choose_default_device,
     render_report_json,
 )
-from ollm.runtime.benchmark.history import record_benchmark_history
+from ollm.runtime.benchmark.history import (
+    record_benchmark_history,
+    resolve_benchmark_history_dir,
+)
 from ollm.runtime.benchmark.metadata import (
     probe_comparison_key,
     report_comparison_key,
@@ -33,6 +36,7 @@ from ollm.runtime.benchmark.types import (
     KNOWN_RUNTIME_BENCHMARK_PROFILES,
     resolve_runtime_benchmark_profile,
 )
+from ollm.runtime.settings import load_app_settings
 from ollm.runtime.strategy_selector import DEFAULT_STRATEGY_SELECTOR_PROFILE
 
 
@@ -240,8 +244,13 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     repo_root = Path(__file__).resolve().parents[1]
+    settings = load_app_settings()
     history_codebase_label = resolve_history_codebase_label(
         repo_root, override_label=args.history_codebase_label
+    )
+    resolved_history_dir = resolve_benchmark_history_dir(
+        cli_history_dir=None if args.history_dir is None else Path(args.history_dir),
+        configured_history_dir=settings.benchmark.history_dir,
     )
     prompt_scale_tokens = (
         None
@@ -304,9 +313,7 @@ def main() -> int:
                 repo_root=repo_root,
                 payload=payload,
                 run_kind=probe_definition.run_kind,
-                history_dir=(
-                    None if args.history_dir is None else Path(args.history_dir)
-                ),
+                history_dir=resolved_history_dir,
                 codebase_label=history_codebase_label,
                 comparison_key=probe_comparison_key(
                     codebase_label=history_codebase_label,
@@ -380,7 +387,7 @@ def main() -> int:
             repo_root=repo_root,
             payload=json.loads(rendered),
             run_kind="report",
-            history_dir=None if args.history_dir is None else Path(args.history_dir),
+            history_dir=resolved_history_dir,
             codebase_label=history_codebase_label,
             comparison_key=report_comparison_key(
                 codebase_label=history_codebase_label,

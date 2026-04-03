@@ -7,6 +7,7 @@ from ollm.runtime.config import GenerationConfig, RuntimeConfig
 from ollm.runtime.settings_schema import (
     DEFAULT_SETTINGS_FILE,
     AppSettings,
+    BenchmarkSettings,
     GenerationConfigOverrides,
     GenerationSettings,
     RuntimeConfigOverrides,
@@ -30,6 +31,7 @@ def default_app_settings() -> AppSettings:
             "runtime": RuntimeSettings().model_dump(mode="python"),
             "generation": GenerationSettings().model_dump(mode="python"),
             "server": ServerSettings().model_dump(mode="python"),
+            "benchmark": BenchmarkSettings().model_dump(mode="python"),
         }
     )
 

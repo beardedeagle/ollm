@@ -223,6 +223,14 @@ class ServerSettings(BaseModel):
         return self
 
 
+class BenchmarkSettings(BaseModel):
+    """Default benchmark settings for benchmark-history persistence."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    history_dir: Path | None = None
+
+
 class AppSettings(BaseSettings):
     """Top-level application settings schema for CLI and future server surfaces."""
 
@@ -236,6 +244,7 @@ class AppSettings(BaseSettings):
     runtime: RuntimeSettings = Field(default_factory=RuntimeSettings)
     generation: GenerationSettings = Field(default_factory=GenerationSettings)
     server: ServerSettings = Field(default_factory=ServerSettings)
+    benchmark: BenchmarkSettings = Field(default_factory=BenchmarkSettings)
 
 
 class RuntimeConfigOverrides(BaseModel):

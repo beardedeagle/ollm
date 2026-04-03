@@ -44,6 +44,9 @@ def _write_settings_file(path: Path) -> None:
                 'host = "0.0.0.0"',
                 "port = 9001",
                 "reload = true",
+                "",
+                "[benchmark]",
+                'history_dir = "file-benchmark-history"',
             ]
         )
         + "\n",
@@ -72,6 +75,7 @@ def test_default_app_settings_match_current_runtime_defaults() -> None:
     assert settings.generation.stream is True
     assert settings.server.host == DEFAULT_SERVER_HOST
     assert settings.server.port == DEFAULT_SERVER_PORT
+    assert settings.benchmark.history_dir is None
 
 
 def test_default_app_settings_ignore_ambient_env_sources(
@@ -119,6 +123,7 @@ def test_load_app_settings_reads_nested_environment_sources(monkeypatch) -> None
     monkeypatch.setenv("OLLM_GENERATION__MAX_NEW_TOKENS", "42")
     monkeypatch.setenv("OLLM_GENERATION__STREAM", "false")
     monkeypatch.setenv("OLLM_SERVER__PORT", "8123")
+    monkeypatch.setenv("OLLM_BENCHMARK__HISTORY_DIR", "/tmp/env-benchmark-history")
 
     settings = load_app_settings()
 
@@ -136,6 +141,7 @@ def test_load_app_settings_environment_overrides_config_file(
     _write_settings_file(config_path)
     monkeypatch.setenv("OLLM_RUNTIME__MODEL_REFERENCE", "env-model")
     monkeypatch.setenv("OLLM_GENERATION__MAX_NEW_TOKENS", "11")
+    monkeypatch.setenv("OLLM_BENCHMARK__HISTORY_DIR", "/tmp/env-benchmark-history")
 
     settings = load_app_settings(config_file=config_path)
 

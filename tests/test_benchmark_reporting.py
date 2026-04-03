@@ -18,6 +18,7 @@ from ollm.runtime.benchmark import (
     render_runtime_probe_json,
 )
 from ollm.runtime.benchmark.details import summarize_request_metrics
+from ollm.runtime.benchmark.history import resolve_benchmark_history_dir
 from ollm.runtime.benchmark.probes import (
     OutputScalingCase,
     OutputScalingProbeResult,
@@ -377,3 +378,21 @@ def test_benchmark_runtime_cli_rejects_invalid_prompt_scale_tokens() -> None:
 
     assert completed.returncode != 0
     assert "comma-separated list of positive integers" in completed.stderr
+
+
+def test_resolve_benchmark_history_dir_prefers_cli_over_settings() -> None:
+    resolved = resolve_benchmark_history_dir(
+        cli_history_dir=Path("cli-history"),
+        configured_history_dir=Path("settings-history"),
+    )
+
+    assert resolved == Path("cli-history")
+
+
+def test_resolve_benchmark_history_dir_uses_settings_when_cli_missing() -> None:
+    resolved = resolve_benchmark_history_dir(
+        cli_history_dir=None,
+        configured_history_dir=Path("settings-history"),
+    )
+
+    assert resolved == Path("settings-history")

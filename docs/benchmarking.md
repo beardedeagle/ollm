@@ -16,6 +16,9 @@ summary under `.ollm/benchmark-history/`. If a prior run with the same
 comparison key exists, the CLI appends a comparison summary and emits any
 obvious potential regressions on `stderr` without changing the JSON written to
 `stdout`.
+That history root resolves through the standard precedence contract:
+`--history-dir`, then `OLLM_BENCHMARK__HISTORY_DIR`, then
+`[benchmark].history_dir` in `ollm.toml`, then the built-in repo-root default.
 
 <div class="mermaid">
 flowchart LR
@@ -52,6 +55,19 @@ Use `--no-record-history` only when you explicitly want to skip that ledger.
 The comparison key is based on the actual run shape, including model, device,
 backend, requested strategy override, selector profile, codebase label, and prompt/profile controls, so
 incomparable runs do not get mashed together.
+
+To set the benchmark history root outside the CLI, use either environment or
+config:
+
+```bash
+OLLM_BENCHMARK__HISTORY_DIR=/tmp/ollm-benchmark-history \
+uv run python scripts/benchmark_runtime.py --device cpu
+```
+
+```toml
+[benchmark]
+history_dir = "/tmp/ollm-benchmark-history"
+```
 
 By default, the benchmark harness uses the runtime strategy selector with
 `--strategy-selector-profile balanced`.

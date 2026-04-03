@@ -232,6 +232,9 @@ Runtime benchmarking records a persistent history ledger under
 `codebase_label`, derived from the normalized git `origin` remote unless you
 override it with `--history-codebase-label`, so this fork and any adjacent
 upstream baseline clone cannot silently compare against each other.
+The history root resolves through the standard precedence contract:
+`--history-dir`, then `OLLM_BENCHMARK__HISTORY_DIR`, then
+`[benchmark].history_dir` in `ollm.toml`, then the built-in repo-root default.
 
 The local REST surface is:
 

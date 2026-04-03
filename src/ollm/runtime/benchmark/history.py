@@ -21,6 +21,16 @@ _HISTORY_DIR = Path(".ollm/benchmark-history")
 _LATEST_DIRNAME = "latest"
 
 
+def resolve_benchmark_history_dir(
+    *,
+    cli_history_dir: Path | None,
+    configured_history_dir: Path | None,
+) -> Path | None:
+    if cli_history_dir is not None:
+        return cli_history_dir
+    return configured_history_dir
+
+
 def record_benchmark_history(
     *,
     repo_root: Path,

@@ -13,6 +13,7 @@ from ollm.runtime.settings_schema import (
     DEFAULT_SETTINGS_FILE,
     SETTINGS_PRECEDENCE,
     AppSettings,
+    BenchmarkSettings,
     GenerationConfigOverrides,
     GenerationSettings,
     RuntimeConfigOverrides,
@@ -24,6 +25,7 @@ from ollm.runtime.settings_schema import (
 
 __all__ = [
     "AppSettings",
+    "BenchmarkSettings",
     "DEFAULT_SERVER_HOST",
     "DEFAULT_SERVER_PORT",
     "DEFAULT_SETTINGS_FILE",
