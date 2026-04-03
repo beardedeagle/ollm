@@ -119,8 +119,8 @@ def test_render_runtime_probe_json_round_trips() -> None:
     assert chunked_prefill["strategy_id"] == "optimized-native-text"
     assert chunked_prefill["runtime_eligible"] is True
     assert chunked_prefill["applied"] is True
-    assert chunked_prefill["execution_boundary"] == "post-tokenization"
-    assert chunked_prefill["attention_mask_mode"] == "full-prefix-materialized"
+    assert chunked_prefill["execution_boundary"] == "streamed-prompt-preparation"
+    assert chunked_prefill["attention_mask_mode"] == "lazy-prefix-synthesis"
     gap_inventory = cast(list[object], chunked_prefill["gap_inventory"])
     assert len(gap_inventory) == 3
     adaptation = cast(dict[str, object], request["kv_cache_adaptation"])

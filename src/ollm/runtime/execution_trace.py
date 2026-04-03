@@ -12,7 +12,6 @@ from ollm.runtime.chunked_prefill import ChunkedPrefillScopeSurface
 from ollm.runtime.errors import PromptExecutionError
 from ollm.runtime.generation import (
     build_runtime_generate_kwargs,
-    build_runtime_inputs,
     decode_runtime_response,
     prepare_runtime_generate_inputs,
     validate_runtime_request,
@@ -51,22 +50,19 @@ def execute_request_with_trace(
     if request.generation_config.seed is not None:
         torch.manual_seed(request.generation_config.seed)
 
-    inputs = build_runtime_inputs(runtime, request.messages)
-    prompt_token_count = _count_prompt_tokens(inputs)
     generate_kwargs, generation_config = build_runtime_generate_kwargs(
         runtime, request, streamer
     )
-    prepared_inputs = normalize_generate_inputs(inputs)
     generation_started_at = time.perf_counter()
-    (
-        prepared_inputs,
-        prepared_generate_kwargs,
-        chunked_prefill,
-    ) = prepare_runtime_generate_inputs(
+    prepared_result = prepare_runtime_generate_inputs(
         runtime,
-        prepared_inputs,
+        request,
         generate_kwargs,
     )
+    prompt_token_count = prepared_result.prompt_token_count
+    prepared_inputs = normalize_generate_inputs(prepared_result.inputs)
+    prepared_generate_kwargs = prepared_result.generate_kwargs
+    chunked_prefill = prepared_result.scope
     outputs, effective_generate_kwargs = _generate_outputs(
         runtime=runtime,
         prepared_inputs=prepared_inputs,

@@ -40,20 +40,33 @@ class BenchmarkProcessorInputs(dict):
         return self
 
 
+class BenchmarkProcessorTokenizer:
+    def stream_tokenize_prompt(self, rendered_prompt):
+        del rendered_prompt
+        return ([1, 2, 3],)
+
+
 class BenchmarkProcessor:
     def __init__(self):
         self.inputs = BenchmarkProcessorInputs()
+        self.tokenizer = BenchmarkProcessorTokenizer()
 
     def apply_chat_template(
         self,
         messages,
         add_generation_prompt,
         tokenize,
-        return_dict,
-        return_tensors,
+        return_dict=False,
+        return_tensors=None,
     ):
-        del messages, add_generation_prompt, tokenize, return_dict, return_tensors
+        del messages, add_generation_prompt, return_dict, return_tensors
+        if not tokenize:
+            return "rendered-long-prompt"
         return self.inputs
+
+    def prepare_chunked_prefill_static_inputs(self, messages, device):
+        del messages, device
+        return {}
 
     def batch_decode(self, outputs, skip_special_tokens=False):
         del outputs, skip_special_tokens
@@ -344,9 +357,9 @@ def test_execute_request_with_trace_starts_timing_before_prefill(
         "prepare_runtime_generate_inputs"
     ]
 
-    def wrapped_prepare(runtime, inputs, generate_kwargs):
+    def wrapped_prepare(runtime, request, generate_kwargs):
         order.append("prepare")
-        return original_prepare(runtime, inputs, generate_kwargs)
+        return original_prepare(runtime, request, generate_kwargs)
 
     monkeypatch.setattr(
         "ollm.runtime.execution_trace.time.perf_counter", wrapped_perf_counter

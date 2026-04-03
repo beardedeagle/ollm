@@ -15,7 +15,6 @@ from ollm.runtime.chunked_prefill import (
 )
 from ollm.runtime.generation import (
     build_runtime_generate_kwargs,
-    build_runtime_inputs,
     prepare_runtime_generate_inputs,
 )
 from tests.test_runtime_executor import (
@@ -47,15 +46,13 @@ def test_prepare_runtime_generate_inputs_surfaces_chunked_prefill_scope(
     )
     monkeypatch.setattr("ollm.runtime.generation.DEFAULT_PREFILL_CHUNK_TOKENS", 2)
 
-    inputs = build_runtime_inputs(runtime, request.messages)
     generate_kwargs, _generation_config = build_runtime_generate_kwargs(
         runtime,
         request,
         streamer=None,
     )
-    _prepared_inputs, _prepared_generate_kwargs, chunked_prefill = (
-        prepare_runtime_generate_inputs(runtime, inputs, generate_kwargs)
-    )
+    prepared_result = prepare_runtime_generate_inputs(runtime, request, generate_kwargs)
+    chunked_prefill = prepared_result.scope
 
     assert chunked_prefill.runtime_eligible is True
     assert chunked_prefill.applied is True
@@ -69,14 +66,14 @@ def test_prepare_runtime_generate_inputs_surfaces_chunked_prefill_scope(
         for decision in chunked_prefill.gap_inventory
     }
     assert gap_inventory[ChunkedPrefillGapId.PROMPT_TOKENIZATION_BEFORE_PREFILL] is (
-        ChunkedPrefillRecommendation.DEFER
+        ChunkedPrefillRecommendation.IMPLEMENT
     )
     assert (
         gap_inventory[ChunkedPrefillGapId.FULL_ATTENTION_MASK_BEFORE_PREFILL]
-        is ChunkedPrefillRecommendation.DEFER
+        is ChunkedPrefillRecommendation.IMPLEMENT
     )
     assert gap_inventory[ChunkedPrefillGapId.SEQ2SEQ_SOURCE_PREFILL] is (
-        ChunkedPrefillRecommendation.DEFER
+        ChunkedPrefillRecommendation.IMPLEMENT
     )
 
 
@@ -90,7 +87,7 @@ def test_prepare_runtime_generate_inputs_defers_seq2seq_source_prefill(
     )
     runtime.plan = replace(
         runtime.plan,
-        backend_id="optimized-native",
+        backend_id="transformers-generic",
         generic_model_kind=GenericModelKind.SEQ2SEQ_LM,
     )
     request = build_request(
@@ -99,22 +96,23 @@ def test_prepare_runtime_generate_inputs_defers_seq2seq_source_prefill(
     )
     monkeypatch.setattr("ollm.runtime.generation.DEFAULT_PREFILL_CHUNK_TOKENS", 2)
 
-    inputs = build_runtime_inputs(runtime, request.messages)
     generate_kwargs, _generation_config = build_runtime_generate_kwargs(
         runtime,
         request,
         streamer=None,
     )
-    _prepared_inputs, _prepared_generate_kwargs, chunked_prefill = (
-        prepare_runtime_generate_inputs(runtime, inputs, generate_kwargs)
-    )
+    prepared_result = prepare_runtime_generate_inputs(runtime, request, generate_kwargs)
+    chunked_prefill = prepared_result.scope
 
-    assert chunked_prefill.runtime_eligible is False
-    assert chunked_prefill.applied is False
-    assert chunked_prefill.strategy_id is None
+    assert chunked_prefill.runtime_eligible is True
+    assert chunked_prefill.applied is True
+    assert (
+        chunked_prefill.strategy_id
+        is ChunkedPrefillStrategyId.TRANSFORMERS_GENERIC_SEQ2SEQ_SOURCE
+    )
     assert (
         chunked_prefill.activation_reason
-        == "Seq2seq source prompts cannot use causal-cache chunked prefill."
+        == "Streamed seq2seq source tokens were built incrementally before encoder generation."
     )
 
 

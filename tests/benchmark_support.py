@@ -107,8 +107,10 @@ def build_request_probe_metrics() -> RequestProbeMetrics:
             runtime_eligible=True,
             applied=True,
             activation_reason="Bounded chunked prefill ran before final decode.",
-            execution_boundary=ChunkedPrefillExecutionBoundary.POST_TOKENIZATION,
-            attention_mask_mode=ChunkedPrefillAttentionMaskMode.FULL_PREFIX_MATERIALIZED,
+            execution_boundary=(
+                ChunkedPrefillExecutionBoundary.STREAMED_PROMPT_PREPARATION
+            ),
+            attention_mask_mode=ChunkedPrefillAttentionMaskMode.LAZY_PREFIX_SYNTHESIS,
             gap_inventory=chunked_prefill_gap_inventory(),
         ),
         allocator_gap_mb=20.0,

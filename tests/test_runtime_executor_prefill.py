@@ -27,20 +27,21 @@ class LongMappingTokenizer:
         tokenize,
         add_generation_prompt,
         return_tensors,
-        return_dict,
+        return_dict=False,
     ):
-        del (
-            messages,
-            tokenize,
-            add_generation_prompt,
-            return_tensors,
-        )
+        del messages, add_generation_prompt, return_tensors
+        if not tokenize:
+            return "rendered-long-prompt"
         if not return_dict:
             raise TypeError("return_dict=True required")
         return {
             "input_ids": torch.tensor([[1, 2, 3, 4, 5]]),
             "attention_mask": torch.tensor([[1, 1, 1, 1, 1]]),
         }
+
+    def stream_tokenize_prompt(self, rendered_prompt):
+        del rendered_prompt
+        return ([1, 2], [3, 4], [5])
 
     def decode(self, tensor, skip_special_tokens=False):
         del tensor, skip_special_tokens
@@ -77,37 +78,39 @@ class ChunkedPrefillModel(FakeModel):
         return types.SimpleNamespace(past_key_values=self.prefill_cache)
 
 
-class LongProcessorInputs(dict):
-    def __init__(self, static_key: str):
-        super().__init__(
-            {
-                "input_ids": torch.tensor([[1, 2, 3, 4, 5]]),
-                "attention_mask": torch.tensor([[1, 1, 1, 1, 1]]),
-                static_key: torch.tensor([[[0.25, 0.5]]], dtype=torch.float32),
-            }
-        )
-        self.to_calls: list[tuple[torch.device, torch.dtype | None]] = []
-
-    def to(self, device, dtype=None):
-        self.to_calls.append((device, dtype))
-        return self
-
-
 class LongProcessor:
     def __init__(self, static_key: str):
         self.static_key = static_key
-        self.inputs = LongProcessorInputs(static_key)
+        self.tokenizer = LongMappingTokenizer()
+        self.static_to_calls: list[tuple[torch.device, torch.dtype | None]] = []
 
     def apply_chat_template(
         self,
         messages,
         add_generation_prompt,
         tokenize,
-        return_dict,
-        return_tensors,
+        return_dict=False,
+        return_tensors=None,
     ):
-        del messages, add_generation_prompt, tokenize, return_dict, return_tensors
-        return self.inputs
+        del messages, add_generation_prompt, return_dict, return_tensors
+        if not tokenize:
+            return "rendered-long-prompt"
+        return {
+            "input_ids": torch.tensor([[1, 2, 3, 4, 5]]),
+            "attention_mask": torch.tensor([[1, 1, 1, 1, 1]]),
+            self.static_key: torch.tensor([[[0.25, 0.5]]], dtype=torch.float32),
+        }
+
+    def prepare_chunked_prefill_static_inputs(self, messages, device):
+        del messages
+        self.static_to_calls.append((device, torch.bfloat16))
+        return {
+            self.static_key: torch.tensor(
+                [[[0.25, 0.5]]],
+                device=device,
+                dtype=torch.float32,
+            )
+        }
 
     def batch_decode(self, outputs, skip_special_tokens=False):
         del outputs, skip_special_tokens
@@ -295,7 +298,7 @@ def test_runtime_executor_prefills_long_native_multimodal_prompts_in_chunks(
     response = RuntimeExecutor().execute(runtime, request)
 
     assert response.text == "long-decoded"
-    assert processor.inputs.to_calls == [(torch.device("cpu"), torch.bfloat16)]
+    assert processor.static_to_calls == [(torch.device("cpu"), torch.bfloat16)]
     assert (
         response.metadata["chunked_prefill_strategy_id"]
         == ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_MULTIMODAL.value
@@ -362,7 +365,7 @@ def test_runtime_executor_prefills_long_generic_multimodal_prompts_in_chunks(
     assert torch.equal(generate_pixel_values, torch.tensor([[[0.25, 0.5]]]))
 
 
-def test_runtime_executor_defers_chunked_prefill_for_seq2seq_runtime(
+def test_runtime_executor_streams_seq2seq_source_strategy(
     monkeypatch,
 ) -> None:
     model = ChunkedPrefillModel()
@@ -373,7 +376,7 @@ def test_runtime_executor_defers_chunked_prefill_for_seq2seq_runtime(
     )
     runtime.plan = replace(
         runtime.plan,
-        backend_id="optimized-native",
+        backend_id="transformers-generic",
         generic_model_kind=GenericModelKind.SEQ2SEQ_LM,
     )
     request = build_request(
@@ -385,8 +388,11 @@ def test_runtime_executor_defers_chunked_prefill_for_seq2seq_runtime(
     response = RuntimeExecutor().execute(runtime, request)
 
     assert model.forward_calls == []
-    assert response.metadata["chunked_prefill_strategy_id"] == ""
-    assert response.metadata["chunked_prefill_applied"] == "false"
+    assert (
+        response.metadata["chunked_prefill_strategy_id"]
+        == ChunkedPrefillStrategyId.TRANSFORMERS_GENERIC_SEQ2SEQ_SOURCE.value
+    )
+    assert response.metadata["chunked_prefill_applied"] == "true"
     generate_input_ids = model.generate_kwargs["input_ids"]
     assert isinstance(generate_input_ids, torch.Tensor)
     assert torch.equal(generate_input_ids, torch.tensor([[1, 2, 3, 4, 5]]))

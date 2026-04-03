@@ -15,6 +15,7 @@ from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.catalog import ModelModality
 from ollm.runtime.chunked_prefill import (
     ChunkedPrefillScopeSurface,
+    PreparedChunkedPrefill,
     prepare_chunked_prefill,
 )
 from ollm.runtime.errors import PromptExecutionError
@@ -185,19 +186,15 @@ def build_runtime_generate_kwargs(
 
 def prepare_runtime_generate_inputs(
     runtime: LoadedRuntime,
-    inputs: dict[str, object],
+    request: PromptRequest,
     generate_kwargs: dict[str, object],
-) -> tuple[dict[str, object], dict[str, object], ChunkedPrefillScopeSurface]:
-    prepared = prepare_chunked_prefill(
+) -> PreparedChunkedPrefill:
+    return prepare_chunked_prefill(
         runtime=runtime,
-        inputs=inputs,
+        messages=request.messages,
         generate_kwargs=generate_kwargs,
         chunk_tokens=DEFAULT_PREFILL_CHUNK_TOKENS,
-    )
-    return (
-        prepared.inputs,
-        prepared.generate_kwargs,
-        prepared.scope,
+        eager_input_builder=build_runtime_inputs,
     )
 
 
@@ -242,7 +239,6 @@ class RuntimeExecutor:
         if request.generation_config.seed is not None:
             torch.manual_seed(request.generation_config.seed)
 
-        inputs = build_runtime_inputs(runtime, request.messages)
         streamer = None
         if request.generation_config.stream:
             streamer = BufferedTextStreamer(
@@ -255,16 +251,14 @@ class RuntimeExecutor:
         generate_kwargs, generation_config = build_runtime_generate_kwargs(
             runtime, request, streamer
         )
-        filtered_inputs = normalize_generate_inputs(inputs)
-        (
-            filtered_inputs,
-            generate_kwargs,
-            chunked_prefill,
-        ) = prepare_runtime_generate_inputs(
+        prepared_inputs = prepare_runtime_generate_inputs(
             runtime,
-            filtered_inputs,
+            request,
             generate_kwargs,
         )
+        filtered_inputs = normalize_generate_inputs(prepared_inputs.inputs)
+        generate_kwargs = prepared_inputs.generate_kwargs
+        chunked_prefill = prepared_inputs.scope
 
         with torch.inference_mode():
             with suppress_module_prints(runtime.backend.print_suppression_modules):
