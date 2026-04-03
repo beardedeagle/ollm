@@ -1,7 +1,7 @@
 """Support helpers for chunked prompt-ingestion strategies."""
 
 import re
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from inspect import Parameter, signature
 
 import torch
@@ -200,6 +200,7 @@ def run_causal_prefill_chunk(
     *,
     runtime: LoadedRuntime,
     forward_method,
+    forward_input_filter: Callable[[dict[str, object]], dict[str, object]],
     static_inputs: dict[str, object],
     chunk_ids: list[int],
     prefill_cache: object,
@@ -221,7 +222,7 @@ def run_causal_prefill_chunk(
     )
     if prefill_cache is not None:
         forward_inputs["past_key_values"] = prefill_cache
-    filtered_inputs = filter_supported_forward_inputs(forward_method, forward_inputs)
+    filtered_inputs = forward_input_filter(forward_inputs)
     with torch.inference_mode():
         with suppress_module_prints(runtime.backend.print_suppression_modules):
             outputs = forward_method(**filtered_inputs)
@@ -234,18 +235,22 @@ def run_causal_prefill_chunk(
     return next_cache
 
 
-def filter_supported_forward_inputs(
+def build_forward_input_filter(
     forward_method,
-    inputs: dict[str, object],
-) -> dict[str, object]:
-    method_signature = signature(forward_method)
+) -> Callable[[dict[str, object]], dict[str, object]]:
+    try:
+        method_signature = signature(forward_method)
+    except (TypeError, ValueError):
+        return lambda inputs: inputs
     if any(
         parameter.kind is Parameter.VAR_KEYWORD
         for parameter in method_signature.parameters.values()
     ):
-        return inputs
-    supported_keys = set(method_signature.parameters)
-    return {key: value for key, value in inputs.items() if key in supported_keys}
+        return lambda inputs: inputs
+    supported_keys = frozenset(method_signature.parameters)
+    return lambda inputs: {
+        key: value for key, value in inputs.items() if key in supported_keys
+    }
 
 
 def token_tensor(token_ids: list[int], *, device: torch.device) -> torch.Tensor:

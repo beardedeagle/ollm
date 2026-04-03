@@ -13,6 +13,7 @@ from ollm.runtime.chunked_prefill import (
     ChunkedPrefillRecommendation,
     ChunkedPrefillStrategyId,
 )
+from ollm.runtime.chunked_prefill_support import build_forward_input_filter
 from ollm.runtime.generation import (
     build_runtime_generate_kwargs,
     prepare_runtime_generate_inputs,
@@ -142,3 +143,56 @@ def test_t5_encoder_does_not_expose_cacheable_source_prefill() -> None:
             use_cache=True,
             return_dict=True,
         )
+
+
+def test_build_forward_input_filter_falls_back_for_uninspectable_callable() -> None:
+    class UninspectableForward:
+        @property
+        def __signature__(self):
+            raise ValueError("no signature")
+
+        def __call__(self, **kwargs):
+            return kwargs
+
+    forward_filter = build_forward_input_filter(UninspectableForward())
+    inputs: dict[str, object] = {
+        "input_ids": torch.tensor([[1, 2]]),
+        "attention_mask": torch.tensor([[1, 1]]),
+        "unexpected": "kept",
+    }
+
+    assert forward_filter(inputs) is inputs
+
+
+def test_build_forward_input_filter_inspects_signature_once() -> None:
+    class CountingForward:
+        signature_reads = 0
+
+        @property
+        def __signature__(self):
+            type(self).signature_reads += 1
+            return None
+
+        def __call__(self, *, input_ids, attention_mask):
+            return input_ids, attention_mask
+
+    forward = CountingForward()
+    forward_filter = build_forward_input_filter(forward)
+    first = forward_filter(
+        {
+            "input_ids": torch.tensor([[1, 2]]),
+            "attention_mask": torch.tensor([[1, 1]]),
+            "cache_position": torch.tensor([0, 1]),
+        }
+    )
+    second = forward_filter(
+        {
+            "input_ids": torch.tensor([[3, 4]]),
+            "attention_mask": torch.tensor([[1, 1]]),
+            "cache_position": torch.tensor([2, 3]),
+        }
+    )
+
+    assert CountingForward.signature_reads == 1
+    assert set(first) == {"input_ids", "attention_mask"}
+    assert set(second) == {"input_ids", "attention_mask"}

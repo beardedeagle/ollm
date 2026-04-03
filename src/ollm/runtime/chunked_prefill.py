@@ -8,6 +8,7 @@ from typing import Self
 from ollm.app.types import Message
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.chunked_prefill_support import (
+    build_forward_input_filter,
     ones_attention_mask,
     prepare_static_inputs,
     prompt_token_id_pieces,
@@ -200,6 +201,11 @@ def _prepare_streamed_causal_strategy(
     prefed_token_count = 0
     prefill_cache = generate_kwargs.get("past_key_values")
     forward_method = getattr(runtime.model, "forward", None)
+    forward_input_filter = (
+        None
+        if not callable(forward_method)
+        else build_forward_input_filter(forward_method)
+    )
 
     for token_piece in prompt_token_id_pieces(
         resolve_stream_tokenizer(runtime),
@@ -212,9 +218,11 @@ def _prepare_streamed_causal_strategy(
                 raise PromptExecutionError(
                     f"Chunked prompt-ingestion strategy {strategy_id.value!r} requires a callable forward method."
                 )
+            assert forward_input_filter is not None
             prefill_cache = run_causal_prefill_chunk(
                 runtime=runtime,
                 forward_method=forward_method,
+                forward_input_filter=forward_input_filter,
                 static_inputs=static_inputs,
                 chunk_ids=deferred_tokens[:chunk_tokens],
                 prefill_cache=prefill_cache,
@@ -231,9 +239,11 @@ def _prepare_streamed_causal_strategy(
                     f"Chunked prompt-ingestion strategy {strategy_id.value!r} requires a callable forward method."
                 )
             chunk_size = min(chunk_tokens, len(deferred_tokens) - 1)
+            assert forward_input_filter is not None
             prefill_cache = run_causal_prefill_chunk(
                 runtime=runtime,
                 forward_method=forward_method,
+                forward_input_filter=forward_input_filter,
                 static_inputs=static_inputs,
                 chunk_ids=deferred_tokens[:chunk_size],
                 prefill_cache=prefill_cache,
