@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import cast
 
 import pytest
@@ -24,6 +25,8 @@ def test_openai_responses_accept_multimodal_input_parts(monkeypatch) -> None:
     application_service = build_application_service()
     app = create_server_app(application_service)
     client = build_test_client(app)
+    image_url = (Path(__file__).resolve().parent / "fixtures" / "example.png").as_uri()
+    audio_url = (Path(__file__).resolve().parent / "fixtures" / "example.wav").as_uri()
 
     response = cast(
         JsonResponseProtocol,
@@ -38,11 +41,11 @@ def test_openai_responses_accept_multimodal_input_parts(monkeypatch) -> None:
                             {"type": "input_text", "text": "describe"},
                             {
                                 "type": "input_image",
-                                "image_url": "file:///tmp/example.png",
+                                "image_url": image_url,
                             },
                             {
                                 "type": "input_audio",
-                                "audio_url": "file:///tmp/example.wav",
+                                "audio_url": audio_url,
                             },
                         ],
                     }
@@ -66,6 +69,7 @@ def test_openai_responses_accept_input_file_parts(monkeypatch) -> None:
     application_service = build_application_service()
     app = create_server_app(application_service)
     client = build_test_client(app)
+    file_url = (Path(__file__).resolve().parent / "fixtures" / "example.txt").as_uri()
 
     response = cast(
         JsonResponseProtocol,
@@ -79,7 +83,7 @@ def test_openai_responses_accept_input_file_parts(monkeypatch) -> None:
                         "content": [
                             {
                                 "type": "input_file",
-                                "file_url": "file:///tmp/example.txt",
+                                "file_url": file_url,
                             }
                         ],
                     }
@@ -94,7 +98,7 @@ def test_openai_responses_accept_input_file_parts(monkeypatch) -> None:
     )
     assert response.status_code == 200
     assert runtime_executor.message_batches[0][-1].text_content() == (
-        "[input_file url=file:///tmp/example.txt]"
+        f"[input_file url={file_url}]"
     )
 
 

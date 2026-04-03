@@ -60,13 +60,13 @@ To set the benchmark history root outside the CLI, use either environment or
 config:
 
 ```bash
-OLLM_BENCHMARK__HISTORY_DIR=/tmp/ollm-benchmark-history \
+OLLM_BENCHMARK__HISTORY_DIR=.ollm/custom-benchmark-history \
 uv run python scripts/benchmark_runtime.py --device cpu
 ```
 
 ```toml
 [benchmark]
-history_dir = "/tmp/ollm-benchmark-history"
+history_dir = ".ollm/custom-benchmark-history"
 ```
 
 By default, the benchmark harness uses the runtime strategy selector with

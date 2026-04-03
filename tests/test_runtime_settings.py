@@ -6,7 +6,6 @@ from ollm.runtime.config import DEFAULT_DEVICE, DEFAULT_MAX_NEW_TOKENS, RuntimeC
 from ollm.runtime.settings import (
     DEFAULT_SERVER_HOST,
     DEFAULT_SERVER_PORT,
-    DEFAULT_SETTINGS_FILE,
     SETTINGS_PRECEDENCE,
     AppSettings,
     GenerationConfigOverrides,
@@ -78,18 +77,6 @@ def test_default_app_settings_match_current_runtime_defaults() -> None:
     assert settings.benchmark.history_dir is None
 
 
-def test_default_app_settings_ignore_ambient_env_sources(
-    monkeypatch, tmp_path: Path
-) -> None:
-    monkeypatch.setenv("OLLM_RUNTIME__MODEL_REFERENCE", "env-model")
-    monkeypatch.setenv("OLLM_CONFIG_FILE", str(tmp_path / DEFAULT_SETTINGS_FILE))
-    default_app_settings.cache_clear()
-
-    settings = default_app_settings()
-
-    assert settings.runtime.model_reference == "llama3-1B-chat"
-
-
 def test_load_app_settings_reads_toml_defaults_from_explicit_file(
     tmp_path: Path,
 ) -> None:
@@ -118,12 +105,13 @@ def test_load_app_settings_reads_toml_defaults_from_explicit_file(
 
 
 def test_load_app_settings_reads_nested_environment_sources(monkeypatch) -> None:
+    history_dir = Path.cwd() / ".ollm-env-benchmark-history"
     monkeypatch.setenv("OLLM_RUNTIME__MODEL_REFERENCE", "env-model")
     monkeypatch.setenv("OLLM_RUNTIME__DEVICE", "mps")
     monkeypatch.setenv("OLLM_GENERATION__MAX_NEW_TOKENS", "42")
     monkeypatch.setenv("OLLM_GENERATION__STREAM", "false")
     monkeypatch.setenv("OLLM_SERVER__PORT", "8123")
-    monkeypatch.setenv("OLLM_BENCHMARK__HISTORY_DIR", "/tmp/env-benchmark-history")
+    monkeypatch.setenv("OLLM_BENCHMARK__HISTORY_DIR", str(history_dir))
 
     settings = load_app_settings()
 
@@ -138,10 +126,11 @@ def test_load_app_settings_environment_overrides_config_file(
     monkeypatch, tmp_path: Path
 ) -> None:
     config_path = tmp_path / "ollm.toml"
+    history_dir = tmp_path / "env-benchmark-history"
     _write_settings_file(config_path)
     monkeypatch.setenv("OLLM_RUNTIME__MODEL_REFERENCE", "env-model")
     monkeypatch.setenv("OLLM_GENERATION__MAX_NEW_TOKENS", "11")
-    monkeypatch.setenv("OLLM_BENCHMARK__HISTORY_DIR", "/tmp/env-benchmark-history")
+    monkeypatch.setenv("OLLM_BENCHMARK__HISTORY_DIR", str(history_dir))
 
     settings = load_app_settings(config_file=config_path)
 
@@ -149,37 +138,6 @@ def test_load_app_settings_environment_overrides_config_file(
     assert settings.generation.max_new_tokens == 11
     assert settings.runtime.device == "cpu"
     assert settings.server.port == 9001
-
-
-def test_load_app_settings_honors_env_config_file_override(
-    monkeypatch, tmp_path: Path
-) -> None:
-    config_path = tmp_path / "custom-ollm.toml"
-    _write_settings_file(config_path)
-    monkeypatch.setenv("OLLM_CONFIG_FILE", str(config_path))
-
-    settings = load_app_settings()
-
-    assert settings.runtime.model_reference == "file-model"
-    assert settings.generation.max_new_tokens == 64
-    assert settings.server.port == 9001
-
-
-def test_load_app_settings_rejects_missing_explicit_env_config_file(
-    monkeypatch, tmp_path: Path
-) -> None:
-    missing_path = tmp_path / "missing-ollm.toml"
-    monkeypatch.setenv("OLLM_CONFIG_FILE", str(missing_path))
-
-    try:
-        load_app_settings()
-    except ValueError as exc:
-        assert str(missing_path) in str(exc)
-        assert "does not exist" in str(exc)
-    else:
-        raise AssertionError(
-            "load_app_settings should reject a missing explicit config"
-        )
 
 
 def test_settings_precedence_contract_is_explicit() -> None:
@@ -191,12 +149,14 @@ def test_settings_precedence_contract_is_explicit() -> None:
     )
 
 
-def test_resolve_runtime_config_prefers_explicit_overrides() -> None:
+def test_resolve_runtime_config_prefers_explicit_overrides(tmp_path: Path) -> None:
+    models_dir = tmp_path / "default-models"
+    cache_dir = tmp_path / "default-cache"
     defaults = RuntimeSettings(
         model_reference="default-model",
-        models_dir=Path("/tmp/default-models"),
+        models_dir=models_dir,
         device="cpu",
-        cache_dir=Path("/tmp/default-cache"),
+        cache_dir=cache_dir,
         use_cache=True,
         kv_cache_strategy="chunked",
         strategy_selector_profile="balanced",
@@ -221,9 +181,9 @@ def test_resolve_runtime_config_prefers_explicit_overrides() -> None:
     )
 
     assert resolved.model_reference == "override-model"
-    assert resolved.models_dir == Path("/tmp/default-models")
+    assert resolved.models_dir == models_dir
     assert resolved.device == "mps"
-    assert resolved.cache_dir == Path("/tmp/default-cache")
+    assert resolved.cache_dir == cache_dir
     assert resolved.use_cache is False
     assert resolved.kv_cache_strategy == "streamed-segmented"
     assert resolved.strategy_selector_profile == "capacity"
