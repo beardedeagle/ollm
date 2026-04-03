@@ -14,3 +14,4 @@
 {"id":"int-5cd99253","kind":"field_change","created_at":"2026-04-03T11:52:07.85795Z","actor":"beardedeagle","issue_id":"ollm-6b7","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Completed"}}
 {"id":"int-25387d16","kind":"field_change","created_at":"2026-04-03T13:58:30.61251Z","actor":"beardedeagle","issue_id":"ollm-qm9","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Completed"}}
 {"id":"int-f18a669e","kind":"field_change","created_at":"2026-04-03T13:58:30.652694Z","actor":"beardedeagle","issue_id":"ollm-dnl","extra":{"field":"status","new_value":"closed","old_value":"open","reason":"Completed"}}
+{"id":"int-afebefbb","kind":"field_change","created_at":"2026-04-03T17:19:34.148555Z","actor":"beardedeagle","issue_id":"ollm-6b7","extra":{"field":"status","new_value":"open","old_value":"closed"}}

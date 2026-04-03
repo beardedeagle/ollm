@@ -15,9 +15,12 @@ from ollm.runtime.chunked_prefill import (
     prepare_chunked_prefill,
 )
 from ollm.runtime.chunked_prefill_support import (
+    StreamedTokenBuffer,
     build_forward_input_filter,
     call_processor_for_static_inputs,
+    prompt_token_id_pieces,
     render_prompt_text,
+    stream_tokenizer_piece_batch_limit,
     tokenize_prompt_piece,
 )
 from ollm.runtime.generation import (
@@ -32,6 +35,52 @@ from tests.test_runtime_executor_prefill import (
     ChunkedPrefillModel,
     LongMappingTokenizer,
 )
+
+
+class _CountingPreTokenizer:
+    def pre_tokenize_str(self, rendered_prompt: str):
+        return [(piece, (0, 0)) for piece in rendered_prompt.split("|") if piece]
+
+
+class _CountingBackendTokenizer:
+    def __init__(self) -> None:
+        self.pre_tokenizer = _CountingPreTokenizer()
+
+
+class _CountingBatchTokenizer:
+    def __init__(self) -> None:
+        self.backend_tokenizer = _CountingBackendTokenizer()
+        self.batch_calls = 0
+        self.single_calls = 0
+
+    def apply_chat_template(
+        self,
+        messages,
+        tokenize,
+        add_generation_prompt,
+        return_tensors=None,
+        return_dict=False,
+    ):
+        del messages, add_generation_prompt, return_tensors, return_dict
+        if not tokenize:
+            return "|".join(["aa"] * 16)
+        ids = [1] * 32
+        return {
+            "input_ids": torch.tensor([ids]),
+            "attention_mask": torch.ones((1, len(ids)), dtype=torch.long),
+        }
+
+    def __call__(self, text, add_special_tokens=False, return_attention_mask=False):
+        del add_special_tokens, return_attention_mask
+        if isinstance(text, list):
+            self.batch_calls += 1
+            return {"input_ids": [[1, 2] for _ in text]}
+        self.single_calls += 1
+        return {"input_ids": [1, 2]}
+
+    def decode(self, tensor, skip_special_tokens=False):
+        del tensor, skip_special_tokens
+        return "decoded"
 
 
 def test_prepare_runtime_generate_inputs_surfaces_chunked_prefill_scope(
@@ -121,6 +170,74 @@ def test_prepare_runtime_generate_inputs_defers_seq2seq_source_prefill(
         chunked_prefill.activation_reason
         == "Streamed seq2seq source tokens were built incrementally before encoder generation."
     )
+
+
+def test_prepare_runtime_generate_inputs_batches_seq2seq_source_tokenization(
+    monkeypatch,
+) -> None:
+    tokenizer = _CountingBatchTokenizer()
+    runtime = build_runtime_with_model(
+        CapabilityProfile(support_level=SupportLevel.GENERIC),
+        tokenizer=tokenizer,
+        model=ChunkedPrefillModel(),
+    )
+    runtime.plan = replace(
+        runtime.plan,
+        backend_id="transformers-generic",
+        generic_model_kind=GenericModelKind.SEQ2SEQ_LM,
+    )
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("long prompt")]),
+    )
+    monkeypatch.setattr("ollm.runtime.generation.DEFAULT_PREFILL_CHUNK_TOKENS", 8)
+
+    generate_kwargs, _generation_config = build_runtime_generate_kwargs(
+        runtime,
+        request,
+        streamer=None,
+    )
+    prepared_result = prepare_runtime_generate_inputs(runtime, request, generate_kwargs)
+
+    assert prepared_result.scope.strategy_id is (
+        ChunkedPrefillStrategyId.TRANSFORMERS_GENERIC_SEQ2SEQ_SOURCE
+    )
+    assert tokenizer.batch_calls > 0
+    assert tokenizer.single_calls == 0
+
+
+def test_prepare_runtime_generate_inputs_batches_causal_fallback_tokenization(
+    monkeypatch,
+) -> None:
+    tokenizer = _CountingBatchTokenizer()
+    runtime = build_runtime_with_model(
+        CapabilityProfile(support_level=SupportLevel.GENERIC),
+        tokenizer=tokenizer,
+        model=ChunkedPrefillModel(),
+    )
+    runtime.plan = replace(
+        runtime.plan,
+        backend_id="optimized-native",
+        generic_model_kind=GenericModelKind.CAUSAL_LM,
+    )
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("long prompt")]),
+    )
+    monkeypatch.setattr("ollm.runtime.generation.DEFAULT_PREFILL_CHUNK_TOKENS", 8)
+
+    generate_kwargs, _generation_config = build_runtime_generate_kwargs(
+        runtime,
+        request,
+        streamer=None,
+    )
+    prepared_result = prepare_runtime_generate_inputs(runtime, request, generate_kwargs)
+
+    assert prepared_result.scope.strategy_id is (
+        ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_TEXT
+    )
+    assert tokenizer.batch_calls > 0
+    assert tokenizer.single_calls == 0
 
 
 def test_prepare_runtime_generate_inputs_leaves_boundary_blank_without_strategy(
@@ -268,6 +385,40 @@ def test_tokenize_prompt_piece_disables_special_tokens_in_fallback() -> None:
             raise TypeError(piece_text)
 
     assert tokenize_prompt_piece(EncodeOnlyTokenizer(), "piece") == [7, 8]
+
+
+def test_prompt_token_id_pieces_batches_fallback_tokenizer_calls() -> None:
+    tokenizer = _CountingBatchTokenizer()
+
+    pieces = tuple(
+        prompt_token_id_pieces(
+            tokenizer,
+            "|".join(["aa"] * 16),
+            piece_batch_limit=4,
+        )
+    )
+
+    assert len(pieces) == 16
+    assert tokenizer.batch_calls == 4
+    assert tokenizer.single_calls == 0
+
+
+def test_stream_tokenizer_piece_batch_limit_scales_with_chunk_budget() -> None:
+    assert stream_tokenizer_piece_batch_limit(1) == 1
+    assert stream_tokenizer_piece_batch_limit(8) == 2
+    assert stream_tokenizer_piece_batch_limit(128) == 32
+
+
+def test_streamed_token_buffer_avoids_front_delete_semantics() -> None:
+    buffer = StreamedTokenBuffer()
+    buffer.append_piece([1, 2, 3])
+    buffer.append_piece([4, 5, 6])
+
+    assert buffer.pop_chunk(2) == [1, 2]
+    assert buffer.buffered_token_count == 4
+    assert buffer.pop_chunk(3) == [3, 4, 5]
+    assert buffer.remaining_tokens() == [6]
+    assert buffer.total_token_count == 6
 
 
 def test_render_prompt_text_falls_back_when_processor_signature_differs() -> None:

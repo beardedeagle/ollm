@@ -8,6 +8,7 @@ from typing import Self
 from ollm.app.types import Message
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.chunked_prefill_support import (
+    StreamedTokenBuffer,
     build_forward_input_filter,
     ones_attention_mask,
     prepare_static_inputs,
@@ -15,6 +16,7 @@ from ollm.runtime.chunked_prefill_support import (
     render_prompt_text,
     resolve_stream_tokenizer,
     run_causal_prefill_chunk,
+    stream_tokenizer_piece_batch_limit,
     token_tensor,
 )
 from ollm.runtime.chunked_prefill_support import (
@@ -216,8 +218,7 @@ def _prepare_streamed_causal_strategy(
 ) -> PreparedChunkedPrefill:
     rendered_prompt = render_prompt_text(runtime, messages)
     static_inputs = prepare_static_inputs(runtime, messages)
-    total_prompt_token_count = 0
-    deferred_tokens: list[int] = []
+    buffered_tokens = StreamedTokenBuffer()
     prefilled_token_count = 0
     prefill_cache = generate_kwargs.get("past_key_values")
     forward_method = getattr(runtime.model, "forward", None)
@@ -226,14 +227,15 @@ def _prepare_streamed_causal_strategy(
         if not callable(forward_method)
         else build_forward_input_filter(forward_method)
     )
+    piece_batch_limit = stream_tokenizer_piece_batch_limit(chunk_tokens)
 
     for token_piece in prompt_token_id_pieces(
         resolve_stream_tokenizer(runtime),
         rendered_prompt,
+        piece_batch_limit=piece_batch_limit,
     ):
-        total_prompt_token_count += len(token_piece)
-        deferred_tokens.extend(token_piece)
-        while len(deferred_tokens) > chunk_tokens + 1:
+        buffered_tokens.append_piece(token_piece)
+        while buffered_tokens.buffered_token_count > chunk_tokens + 1:
             if not callable(forward_method):
                 raise PromptExecutionError(
                     f"Chunked prompt-ingestion strategy {strategy_id.value!r} requires a callable forward method."
@@ -244,35 +246,35 @@ def _prepare_streamed_causal_strategy(
                 forward_method=forward_method,
                 forward_input_filter=forward_input_filter,
                 static_inputs=static_inputs,
-                chunk_ids=deferred_tokens[:chunk_tokens],
+                chunk_ids=buffered_tokens.pop_chunk(chunk_tokens),
                 prefill_cache=prefill_cache,
                 prefix_token_count=prefilled_token_count,
                 strategy_label=strategy_id.value,
             )
-            del deferred_tokens[:chunk_tokens]
             prefilled_token_count += chunk_tokens
 
-    if total_prompt_token_count - 1 > chunk_tokens:
-        while len(deferred_tokens) > 1:
+    if buffered_tokens.total_token_count - 1 > chunk_tokens:
+        while buffered_tokens.buffered_token_count > 1:
             if not callable(forward_method):
                 raise PromptExecutionError(
                     f"Chunked prompt-ingestion strategy {strategy_id.value!r} requires a callable forward method."
                 )
-            chunk_size = min(chunk_tokens, len(deferred_tokens) - 1)
+            chunk_size = min(chunk_tokens, buffered_tokens.buffered_token_count - 1)
             assert forward_input_filter is not None
             prefill_cache = run_causal_prefill_chunk(
                 runtime=runtime,
                 forward_method=forward_method,
                 forward_input_filter=forward_input_filter,
                 static_inputs=static_inputs,
-                chunk_ids=deferred_tokens[:chunk_size],
+                chunk_ids=buffered_tokens.pop_chunk(chunk_size),
                 prefill_cache=prefill_cache,
                 prefix_token_count=prefilled_token_count,
                 strategy_label=strategy_id.value,
             )
-            del deferred_tokens[:chunk_size]
             prefilled_token_count += chunk_size
 
+    total_prompt_token_count = buffered_tokens.total_token_count
+    deferred_tokens = buffered_tokens.remaining_tokens()
     if total_prompt_token_count == 0:
         raise PromptExecutionError(
             "Chunked prompt ingestion produced no prompt tokens."
@@ -323,30 +325,34 @@ def _prepare_seq2seq_source_strategy(
     chunk_tokens: int,
 ) -> PreparedChunkedPrefill:
     rendered_prompt = render_prompt_text(runtime, messages)
-    prompt_tokens = [
-        token_id
-        for token_piece in prompt_token_id_pieces(
-            resolve_stream_tokenizer(runtime),
-            rendered_prompt,
-        )
-        for token_id in token_piece
-    ]
-    if not prompt_tokens:
+    prompt_tokens = StreamedTokenBuffer()
+    piece_batch_limit = max(
+        stream_tokenizer_piece_batch_limit(chunk_tokens),
+        min(chunk_tokens, 32),
+    )
+    for token_piece in prompt_token_id_pieces(
+        resolve_stream_tokenizer(runtime),
+        rendered_prompt,
+        piece_batch_limit=piece_batch_limit,
+    ):
+        prompt_tokens.append_piece(token_piece)
+    if prompt_tokens.total_token_count == 0:
         raise PromptExecutionError(
             "Seq2seq source ingestion produced no prompt tokens."
         )
     strategy_id = ChunkedPrefillStrategyId.TRANSFORMERS_GENERIC_SEQ2SEQ_SOURCE
-    applied = len(prompt_tokens) > chunk_tokens
+    applied = prompt_tokens.total_token_count > chunk_tokens
     activation_reason = (
         "Streamed seq2seq source tokens were built incrementally before encoder generation."
         if applied
         else "Prompt length does not exceed the streamed seq2seq source threshold."
     )
+    final_prompt_tokens = prompt_tokens.remaining_tokens()
     return PreparedChunkedPrefill(
         inputs={
-            "input_ids": token_tensor(prompt_tokens, device=runtime.device),
+            "input_ids": token_tensor(final_prompt_tokens, device=runtime.device),
             "attention_mask": ones_attention_mask(
-                token_count=len(prompt_tokens),
+                token_count=prompt_tokens.total_token_count,
                 device=runtime.device,
             ),
         },
@@ -356,7 +362,7 @@ def _prepare_seq2seq_source_strategy(
             runtime_eligible=True,
             activation_reason=activation_reason,
         ).with_activation(applied=applied, activation_reason=activation_reason),
-        prompt_token_count=len(prompt_tokens),
+        prompt_token_count=prompt_tokens.total_token_count,
     )
 
 
