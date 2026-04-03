@@ -425,7 +425,9 @@ def test_find_previous_record_falls_back_to_index_when_sidecar_is_invalid(
     latest_path = next((history_dir / "latest").glob("*.json"))
     latest_path.write_text("{invalid json\n", encoding="utf-8")
 
-    previous = find_previous_record(history_dir / "index.jsonl", comparison_key=comparison_key)
+    previous = find_previous_record(
+        history_dir / "index.jsonl", comparison_key=comparison_key
+    )
 
     assert previous is not None
     assert previous["record_path"] == result["record_path"]

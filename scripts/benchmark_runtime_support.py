@@ -72,7 +72,9 @@ def extract_probe_selector_result(
     *,
     probe_mode: ProbeMode,
 ) -> tuple[str | None, str | None]:
-    request_payload = get_probe_definition(probe_mode).history_request_extractor(payload)
+    request_payload = get_probe_definition(probe_mode).history_request_extractor(
+        payload
+    )
     if request_payload is None:
         return None, None
     return (

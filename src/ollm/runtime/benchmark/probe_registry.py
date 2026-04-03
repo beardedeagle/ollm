@@ -75,7 +75,9 @@ class ProbeDefinition:
     run_kind: str
     runner: Callable[[ProbeInvocation], object]
     renderer: Callable[[object], str]
-    history_request_extractor: Callable[[Mapping[str, object]], Mapping[str, object] | None]
+    history_request_extractor: Callable[
+        [Mapping[str, object]], Mapping[str, object] | None
+    ]
 
 
 def probe_mode_choices() -> tuple[str, ...]:
@@ -222,11 +224,15 @@ def _render_reopen_session_growth_probe(value: object) -> str:
     )
 
 
-def _request_from_cold_probe(payload: Mapping[str, object]) -> Mapping[str, object] | None:
+def _request_from_cold_probe(
+    payload: Mapping[str, object],
+) -> Mapping[str, object] | None:
     return _optional_mapping(payload.get("request"))
 
 
-def _request_from_warm_probe(payload: Mapping[str, object]) -> Mapping[str, object] | None:
+def _request_from_warm_probe(
+    payload: Mapping[str, object],
+) -> Mapping[str, object] | None:
     measured = payload.get("measured_iterations")
     if not isinstance(measured, list) or not measured:
         return None

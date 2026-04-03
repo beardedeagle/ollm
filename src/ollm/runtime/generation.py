@@ -165,7 +165,9 @@ def build_runtime_generate_kwargs(
     if request.runtime_config.use_cache:
         resolved_strategy = request.runtime_config.resolved_kv_cache_strategy()
         resolved_lifecycle = request.runtime_config.resolved_kv_cache_lifecycle()
-        resolved_window_tokens = request.runtime_config.resolved_kv_cache_window_tokens()
+        resolved_window_tokens = (
+            request.runtime_config.resolved_kv_cache_window_tokens()
+        )
         cache_base_dir = request.runtime_config.resolved_cache_dir()
         if resolved_strategy != "resident":
             cache_base_dir = resolve_kv_cache_base_dir(
