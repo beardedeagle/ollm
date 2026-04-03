@@ -21,7 +21,9 @@ def build_catalog_resolved_model(*, model_path: Path | None = None) -> ResolvedM
         reference=ModelReference.parse("llama3-1B-chat"),
         source_kind=ModelSourceKind.BUILTIN,
         normalized_name="llama3-1B-chat",
-        model_path=Path("test-models/llama3-1B-chat") if model_path is None else model_path,
+        model_path=Path("test-models/llama3-1B-chat")
+        if model_path is None
+        else model_path,
         repo_id="repo",
         revision=None,
         catalog_entry=catalog_entry,
