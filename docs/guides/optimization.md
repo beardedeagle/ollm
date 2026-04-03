@@ -15,14 +15,18 @@ Native families:
 - `gpt-oss`
 - `voxtral`
 
-Optimized-native decoder-only text prompts use bounded chunked prefill for
-long prompt ingestion before the final decode step. This is a memory-control
-path, not a blanket latency optimization, so prompt-scaling benchmarks are the
-truthful way to evaluate whether the chunking tradeoff helps on a given host.
-The contract starts after prompt tokenization and full-prefix attention-mask
-construction. Seq2seq, multimodal, and generic Transformers runtimes are
-intentionally outside this feature boundary and would require separate designs
-and benchmark semantics if pursued.
+Supported causal runtime lanes use bounded chunked prefill for long prompt
+ingestion before the final decode step. The current lanes are
+`optimized-native-text`, `optimized-native-multimodal`,
+`transformers-generic-text`, and `transformers-generic-multimodal`. This is a
+memory-control path, not a blanket latency optimization, so prompt-scaling
+benchmarks are the truthful way to evaluate whether the chunking tradeoff helps
+on a given host.
+
+Prompt tokenization and full-prefix attention-mask construction still complete
+before chunking starts, and seq2seq source prompts remain a separate deferred
+lane because encoder-decoder source ingestion is not the same causal-cache
+operation.
 
 ### Transformers-generic
 Used for compatible local or materialized models that can run through the generic Transformers-backed path.

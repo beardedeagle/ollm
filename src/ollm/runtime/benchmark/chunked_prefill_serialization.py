@@ -10,6 +10,7 @@ from ollm.runtime.chunked_prefill import (
     ChunkedPrefillGapId,
     ChunkedPrefillRecommendation,
     ChunkedPrefillScopeSurface,
+    ChunkedPrefillStrategyId,
 )
 
 
@@ -26,12 +27,10 @@ def parse_chunked_prefill(
     payload = cast(Mapping[str, object], value)
     gap_items = require_sequence(payload, "gap_inventory")
     return ChunkedPrefillScopeSurface(
+        strategy_id=_optional_strategy_id(payload, require_string=require_string),
         runtime_eligible=require_bool(payload, "runtime_eligible"),
         applied=require_bool(payload, "applied"),
         activation_reason=require_string(payload, "activation_reason"),
-        supported_backend_id=require_string(payload, "supported_backend_id"),
-        supported_model_kind=require_string(payload, "supported_model_kind"),
-        supported_prompt_kind=require_string(payload, "supported_prompt_kind"),
         execution_boundary=ChunkedPrefillExecutionBoundary(
             require_string(payload, "execution_boundary")
         ),
@@ -61,3 +60,14 @@ def parse_chunked_prefill_gap(
         ),
         rationale=require_string(payload, "rationale"),
     )
+
+
+def _optional_strategy_id(
+    payload: Mapping[str, object],
+    *,
+    require_string,
+) -> ChunkedPrefillStrategyId | None:
+    value = payload.get("strategy_id")
+    if value is None:
+        return None
+    return ChunkedPrefillStrategyId(require_string(payload, "strategy_id"))

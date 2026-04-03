@@ -58,13 +58,15 @@ def execute_request_with_trace(
     )
     prepared_inputs = normalize_generate_inputs(inputs)
     generation_started_at = time.perf_counter()
-    prepared_result = prepare_runtime_generate_inputs(
+    (
+        prepared_inputs,
+        prepared_generate_kwargs,
+        chunked_prefill,
+    ) = prepare_runtime_generate_inputs(
         runtime,
         prepared_inputs,
         generate_kwargs,
     )
-    prepared_inputs = prepared_result.inputs
-    prepared_generate_kwargs = prepared_result.generate_kwargs
     outputs, effective_generate_kwargs = _generate_outputs(
         runtime=runtime,
         prepared_inputs=prepared_inputs,
@@ -93,7 +95,7 @@ def execute_request_with_trace(
         output_token_count=output_token_count,
         response_text=response_text,
         cache_state=cache_state,
-        chunked_prefill=prepared_result.chunked_prefill,
+        chunked_prefill=chunked_prefill,
     )
 
 

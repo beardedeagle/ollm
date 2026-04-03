@@ -1,18 +1,30 @@
-"""Typed scope facts for bounded chunked prefill."""
+"""Chunked-prefill strategy resolution and execution."""
 
 from dataclasses import asdict, dataclass, replace
 from enum import StrEnum
+from inspect import Parameter, signature
 from typing import Self
 
 import torch
 
 from ollm.runtime.capability_discovery import GenericModelKind
+from ollm.runtime.errors import PromptExecutionError
+from ollm.runtime.generation_support import require_tensor
 from ollm.runtime.loaded_runtime import LoadedRuntime
+from ollm.runtime.output_control import suppress_module_prints
+
+
+class ChunkedPrefillStrategyId(StrEnum):
+    OPTIMIZED_NATIVE_TEXT = "optimized-native-text"
+    OPTIMIZED_NATIVE_MULTIMODAL = "optimized-native-multimodal"
+    TRANSFORMERS_GENERIC_TEXT = "transformers-generic-text"
+    TRANSFORMERS_GENERIC_MULTIMODAL = "transformers-generic-multimodal"
 
 
 class ChunkedPrefillGapId(StrEnum):
-    PROMPT_CONSTRUCTION_BEFORE_PREFILL = "prompt-construction-before-prefill"
-    NON_CAUSAL_RUNTIME_EXPANSION = "non-causal-runtime-expansion"
+    PROMPT_TOKENIZATION_BEFORE_PREFILL = "prompt-tokenization-before-prefill"
+    FULL_ATTENTION_MASK_BEFORE_PREFILL = "full-attention-mask-before-prefill"
+    SEQ2SEQ_SOURCE_PREFILL = "seq2seq-source-prefill"
 
 
 class ChunkedPrefillRecommendation(StrEnum):
@@ -43,12 +55,10 @@ class ChunkedPrefillGapDecision:
 
 @dataclass(frozen=True, slots=True)
 class ChunkedPrefillScopeSurface:
+    strategy_id: ChunkedPrefillStrategyId | None
     runtime_eligible: bool
     applied: bool
     activation_reason: str
-    supported_backend_id: str
-    supported_model_kind: str
-    supported_prompt_kind: str
     execution_boundary: ChunkedPrefillExecutionBoundary
     attention_mask_mode: ChunkedPrefillAttentionMaskMode
     gap_inventory: tuple[ChunkedPrefillGapDecision, ...]
@@ -62,48 +72,95 @@ class ChunkedPrefillScopeSurface:
 
     def to_dict(self) -> dict[str, object]:
         return {
+            "strategy_id": None if self.strategy_id is None else self.strategy_id.value,
             "runtime_eligible": self.runtime_eligible,
             "applied": self.applied,
             "activation_reason": self.activation_reason,
-            "supported_backend_id": self.supported_backend_id,
-            "supported_model_kind": self.supported_model_kind,
-            "supported_prompt_kind": self.supported_prompt_kind,
             "execution_boundary": self.execution_boundary.value,
             "attention_mask_mode": self.attention_mask_mode.value,
             "gap_inventory": [decision.to_dict() for decision in self.gap_inventory],
         }
 
 
+@dataclass(frozen=True, slots=True)
+class PreparedChunkedPrefill:
+    inputs: dict[str, object]
+    generate_kwargs: dict[str, object]
+    scope: ChunkedPrefillScopeSurface
+
+
 _CHUNKED_PREFILL_GAP_INVENTORY = (
     ChunkedPrefillGapDecision(
-        gap_id=ChunkedPrefillGapId.PROMPT_CONSTRUCTION_BEFORE_PREFILL,
-        current_behavior=(
-            "Prompt tokenization and full-prefix attention-mask materialization "
-            "complete before chunked prefill begins."
-        ),
-        recommendation=ChunkedPrefillRecommendation.REJECT,
+        gap_id=ChunkedPrefillGapId.PROMPT_TOKENIZATION_BEFORE_PREFILL,
+        current_behavior="Prompt tokenization completes before chunked prefill begins.",
+        recommendation=ChunkedPrefillRecommendation.DEFER,
         rationale=(
-            "Bounded chunked prefill is an execution-stage memory control after "
-            "prompt construction. Streaming prompt construction would be a "
-            "different feature with different tokenizer and processor "
-            "contracts."
+            "Streaming prompt tokenization needs tokenizer-specific boundary "
+            "preservation instead of the current whole-prompt tokenization path."
         ),
     ),
     ChunkedPrefillGapDecision(
-        gap_id=ChunkedPrefillGapId.NON_CAUSAL_RUNTIME_EXPANSION,
+        gap_id=ChunkedPrefillGapId.FULL_ATTENTION_MASK_BEFORE_PREFILL,
         current_behavior=(
-            "Chunked prefill is limited to optimized-native causal text "
-            "runtimes and does not cover seq2seq, multimodal, or "
-            "transformers-generic paths."
+            "A full prefix attention mask is materialized before chunked prefill "
+            "hands off to the final generate step."
         ),
-        recommendation=ChunkedPrefillRecommendation.REJECT,
+        recommendation=ChunkedPrefillRecommendation.DEFER,
         rationale=(
-            "Those runtimes have different encoder, cache, and prompt-shape "
-            "contracts. If pursued, they should ship as separate features "
-            "with their own execution and benchmark semantics."
+            "The current generation handoff still relies on full-prefix masks. "
+            "A lazy mask contract needs backend proof before it can replace that "
+            "shape safely."
+        ),
+    ),
+    ChunkedPrefillGapDecision(
+        gap_id=ChunkedPrefillGapId.SEQ2SEQ_SOURCE_PREFILL,
+        current_behavior=(
+            "Seq2seq source prompts do not use causal-cache chunked prefill."
+        ),
+        recommendation=ChunkedPrefillRecommendation.DEFER,
+        rationale=(
+            "Encoder-decoder source ingestion has no equivalent causal-cache "
+            "prefill contract; it needs a separate encoder strategy."
         ),
     ),
 )
+
+
+def prepare_chunked_prefill(
+    *,
+    runtime: LoadedRuntime,
+    inputs: dict[str, object],
+    generate_kwargs: dict[str, object],
+    chunk_tokens: int,
+) -> PreparedChunkedPrefill:
+    scope = build_chunked_prefill_scope_surface(
+        runtime=runtime,
+        inputs=inputs,
+        chunk_tokens=chunk_tokens,
+    )
+    input_ids_value = inputs.get("input_ids")
+    if not isinstance(input_ids_value, torch.Tensor):
+        return PreparedChunkedPrefill(inputs, generate_kwargs, scope)
+    if input_ids_value.ndim != 2 or input_ids_value.shape[0] != 1:
+        return PreparedChunkedPrefill(inputs, generate_kwargs, scope)
+    prefill_token_count = input_ids_value.shape[1] - 1
+    if prefill_token_count <= chunk_tokens or not scope.runtime_eligible:
+        return PreparedChunkedPrefill(inputs, generate_kwargs, scope)
+    prepared_inputs, prepared_generate_kwargs = _run_causal_chunked_prefill(
+        runtime=runtime,
+        inputs=inputs,
+        generate_kwargs=generate_kwargs,
+        chunk_tokens=chunk_tokens,
+        strategy_id=scope.strategy_id,
+    )
+    return PreparedChunkedPrefill(
+        inputs=prepared_inputs,
+        generate_kwargs=prepared_generate_kwargs,
+        scope=scope.with_activation(
+            applied=True,
+            activation_reason="Bounded chunked prefill ran before final decode.",
+        ),
+    )
 
 
 def build_chunked_prefill_scope_surface(
@@ -114,48 +171,46 @@ def build_chunked_prefill_scope_surface(
 ) -> ChunkedPrefillScopeSurface:
     input_ids = inputs.get("input_ids")
     if not isinstance(input_ids, torch.Tensor):
-        return _surface(
+        return _scope(
+            strategy_id=None,
             runtime_eligible=False,
             activation_reason="Chunked prefill requires tensor-backed input_ids.",
         )
     if input_ids.ndim != 2 or input_ids.shape[0] != 1:
-        return _surface(
+        return _scope(
+            strategy_id=None,
             runtime_eligible=False,
             activation_reason="Chunked prefill requires a single batch row.",
-        )
-    if runtime.processor is not None:
-        return _surface(
-            runtime_eligible=False,
-            activation_reason=(
-                "Chunked prefill is limited to text prompts without a processor."
-            ),
-        )
-    if runtime.plan.backend_id != "optimized-native":
-        return _surface(
-            runtime_eligible=False,
-            activation_reason=(
-                "Chunked prefill is limited to the optimized-native backend."
-            ),
         )
     runtime_kind = (
         runtime.plan.generic_model_kind or runtime.resolved_model.generic_model_kind
     )
-    if runtime_kind is not GenericModelKind.CAUSAL_LM:
-        return _surface(
+    if runtime_kind is GenericModelKind.SEQ2SEQ_LM:
+        return _scope(
+            strategy_id=None,
+            runtime_eligible=False,
+            activation_reason="Seq2seq source prompts cannot use causal-cache chunked prefill.",
+        )
+    strategy_id = _resolve_strategy_id(runtime, runtime_kind)
+    if strategy_id is None:
+        return _scope(
+            strategy_id=None,
             runtime_eligible=False,
             activation_reason=(
-                "Chunked prefill is limited to causal decoder-only text runtimes."
+                "Chunked prefill requires a supported causal runtime strategy."
             ),
         )
     prefill_token_count = int(input_ids.shape[1] - 1)
     if prefill_token_count <= chunk_tokens:
-        return _surface(
+        return _scope(
+            strategy_id=strategy_id,
             runtime_eligible=True,
             activation_reason=(
                 "Prompt length does not exceed the chunked-prefill threshold."
             ),
         )
-    return _surface(
+    return _scope(
+        strategy_id=strategy_id,
         runtime_eligible=True,
         activation_reason="Runtime is eligible for bounded chunked prefill.",
     )
@@ -165,16 +220,144 @@ def chunked_prefill_gap_inventory() -> tuple[ChunkedPrefillGapDecision, ...]:
     return _CHUNKED_PREFILL_GAP_INVENTORY
 
 
-def _surface(
-    *, runtime_eligible: bool, activation_reason: str
+def _resolve_strategy_id(
+    runtime: LoadedRuntime,
+    runtime_kind: GenericModelKind | None,
+) -> ChunkedPrefillStrategyId | None:
+    if runtime.plan.backend_id == "optimized-native":
+        if runtime.processor is not None:
+            return ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_MULTIMODAL
+        if runtime_kind is GenericModelKind.CAUSAL_LM:
+            return ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_TEXT
+        return None
+    if runtime.plan.backend_id == "transformers-generic":
+        if runtime.processor is not None:
+            return ChunkedPrefillStrategyId.TRANSFORMERS_GENERIC_MULTIMODAL
+        if runtime_kind is GenericModelKind.CAUSAL_LM:
+            return ChunkedPrefillStrategyId.TRANSFORMERS_GENERIC_TEXT
+        return None
+    return None
+
+
+def _run_causal_chunked_prefill(
+    *,
+    runtime: LoadedRuntime,
+    inputs: dict[str, object],
+    generate_kwargs: dict[str, object],
+    chunk_tokens: int,
+    strategy_id: ChunkedPrefillStrategyId | None,
+) -> tuple[dict[str, object], dict[str, object]]:
+    forward_method = getattr(runtime.model, "forward", None)
+    if not callable(forward_method):
+        return inputs, generate_kwargs
+    input_ids = require_tensor(inputs["input_ids"])
+    attention_mask = _optional_tensor(inputs.get("attention_mask"))
+    sequence_inputs = _collect_sequence_inputs(inputs, input_ids)
+    static_inputs = _collect_static_inputs(inputs)
+    prefill_cache = generate_kwargs.get("past_key_values")
+    prefill_end = input_ids.shape[1] - 1
+    with torch.inference_mode():
+        with suppress_module_prints(runtime.backend.print_suppression_modules):
+            for chunk_start in range(0, prefill_end, chunk_tokens):
+                chunk_end = min(prefill_end, chunk_start + chunk_tokens)
+                forward_inputs: dict[str, object] = dict(static_inputs)
+                forward_inputs["input_ids"] = input_ids[:, chunk_start:chunk_end]
+                if attention_mask is not None:
+                    forward_inputs["attention_mask"] = attention_mask[:, :chunk_end]
+                for key, value in sequence_inputs.items():
+                    forward_inputs[key] = value[:, chunk_start:chunk_end]
+                if prefill_cache is not None:
+                    forward_inputs["past_key_values"] = prefill_cache
+                forward_inputs["use_cache"] = True
+                forward_inputs["cache_position"] = torch.arange(
+                    chunk_start,
+                    chunk_end,
+                    device=input_ids.device,
+                    dtype=torch.long,
+                )
+                filtered_inputs = _filter_supported_forward_inputs(
+                    forward_method,
+                    forward_inputs,
+                )
+                outputs = forward_method(**filtered_inputs)
+                prefill_cache = getattr(outputs, "past_key_values", None)
+                if prefill_cache is None:
+                    strategy_label = (
+                        "unknown" if strategy_id is None else strategy_id.value
+                    )
+                    raise PromptExecutionError(
+                        "Chunked prefill strategy "
+                        f"{strategy_label!r} requires a runtime that returns "
+                        "past_key_values."
+                    )
+    updated_inputs = dict(static_inputs)
+    updated_inputs["input_ids"] = input_ids[:, -1:]
+    if attention_mask is not None:
+        updated_inputs["attention_mask"] = attention_mask
+    for key, value in sequence_inputs.items():
+        updated_inputs[key] = value[:, -1:]
+    updated_generate_kwargs = dict(generate_kwargs)
+    updated_generate_kwargs["past_key_values"] = prefill_cache
+    return updated_inputs, updated_generate_kwargs
+
+
+def _collect_sequence_inputs(
+    inputs: dict[str, object],
+    input_ids: torch.Tensor,
+) -> dict[str, torch.Tensor]:
+    sequence_inputs: dict[str, torch.Tensor] = {}
+    sequence_length = input_ids.shape[1]
+    for key, value in inputs.items():
+        if key in {"input_ids", "attention_mask"}:
+            continue
+        if (
+            isinstance(value, torch.Tensor)
+            and value.ndim == 2
+            and value.shape[1] == sequence_length
+        ):
+            sequence_inputs[key] = value
+    return sequence_inputs
+
+
+def _collect_static_inputs(inputs: dict[str, object]) -> dict[str, object]:
+    return {
+        key: value
+        for key, value in inputs.items()
+        if key not in {"input_ids", "attention_mask"}
+    }
+
+
+def _filter_supported_forward_inputs(
+    forward_method,
+    inputs: dict[str, object],
+) -> dict[str, object]:
+    method_signature = signature(forward_method)
+    if any(
+        parameter.kind is Parameter.VAR_KEYWORD
+        for parameter in method_signature.parameters.values()
+    ):
+        return inputs
+    supported_keys = set(method_signature.parameters)
+    return {key: value for key, value in inputs.items() if key in supported_keys}
+
+
+def _optional_tensor(value: object) -> torch.Tensor | None:
+    if value is None:
+        return None
+    return require_tensor(value)
+
+
+def _scope(
+    *,
+    strategy_id: ChunkedPrefillStrategyId | None,
+    runtime_eligible: bool,
+    activation_reason: str,
 ) -> ChunkedPrefillScopeSurface:
     return ChunkedPrefillScopeSurface(
+        strategy_id=strategy_id,
         runtime_eligible=runtime_eligible,
         applied=False,
         activation_reason=activation_reason,
-        supported_backend_id="optimized-native",
-        supported_model_kind=GenericModelKind.CAUSAL_LM.value,
-        supported_prompt_kind="text-only",
         execution_boundary=ChunkedPrefillExecutionBoundary.POST_TOKENIZATION,
         attention_mask_mode=ChunkedPrefillAttentionMaskMode.FULL_PREFIX_MATERIALIZED,
         gap_inventory=_CHUNKED_PREFILL_GAP_INVENTORY,

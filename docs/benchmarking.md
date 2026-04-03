@@ -179,8 +179,8 @@ Interpretation notes:
 - output throughput is generated output tokens divided by total generation latency
 - peak RSS includes a source label; long-lived warm/scaling/session probes use stage-local sampled peaks instead of process-lifetime peaks
 - allocator-gap metrics are reported as reserved-minus-allocated style slack when the backend exposes the required counters; unsupported backends serialize them as `null`
-- optimized-native decoder-only prompt-scaling runs exercise bounded chunked prefill on long text prompts, so the prompt-length sweep is the intended place to inspect the memory versus TTFT tradeoff for this feature
-- request metrics also include a `chunked_prefill` section that states whether the active runtime was eligible, whether chunking actually ran, and the explicit rejected non-goals for prompt-construction streaming and non-causal/generic runtime expansion
+- text prompt-scaling runs exercise bounded chunked prefill on the supported text strategy lanes, so the prompt-length sweep is the intended place to inspect the memory versus TTFT tradeoff for this feature
+- request metrics also include a `chunked_prefill` section that states the selected strategy ID, whether the active runtime was eligible, whether chunking actually ran, and the remaining deferred gaps for prompt tokenization, full-prefix attention-mask construction, and seq2seq source ingestion
 
 On loader-streamed families such as optimized Gemma3 on CPU, a long per-turn
 session-growth response can become dominated by repeated safetensor layer reads

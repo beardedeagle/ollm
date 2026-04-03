@@ -5,12 +5,17 @@ from typing import cast
 import torch
 
 from ollm.app.types import ContentPart, Message, MessageRole
+from ollm.runtime.backends.base import BackendRuntime
 from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
 from ollm.runtime.capability_discovery import GenericModelKind
+from ollm.runtime.catalog import ModelModality
+from ollm.runtime.chunked_prefill import ChunkedPrefillStrategyId
 from ollm.runtime.generation import RuntimeExecutor
+from ollm.runtime.loaded_runtime import LoadedRuntime
 from tests.test_runtime_executor import (
     FakeModel,
     build_request,
+    build_runtime,
     build_runtime_with_model,
 )
 
@@ -72,6 +77,102 @@ class ChunkedPrefillModel(FakeModel):
         return types.SimpleNamespace(past_key_values=self.prefill_cache)
 
 
+class LongProcessorInputs(dict):
+    def __init__(self, static_key: str):
+        super().__init__(
+            {
+                "input_ids": torch.tensor([[1, 2, 3, 4, 5]]),
+                "attention_mask": torch.tensor([[1, 1, 1, 1, 1]]),
+                static_key: torch.tensor([[[0.25, 0.5]]], dtype=torch.float32),
+            }
+        )
+        self.to_calls: list[tuple[torch.device, torch.dtype | None]] = []
+
+    def to(self, device, dtype=None):
+        self.to_calls.append((device, dtype))
+        return self
+
+
+class LongProcessor:
+    def __init__(self, static_key: str):
+        self.static_key = static_key
+        self.inputs = LongProcessorInputs(static_key)
+
+    def apply_chat_template(
+        self,
+        messages,
+        add_generation_prompt,
+        tokenize,
+        return_dict,
+        return_tensors,
+    ):
+        del messages, add_generation_prompt, tokenize, return_dict, return_tensors
+        return self.inputs
+
+    def batch_decode(self, outputs, skip_special_tokens=False):
+        del outputs, skip_special_tokens
+        return ["long-decoded"]
+
+
+class ChunkedPrefillMultimodalModel(FakeModel):
+    def __init__(self) -> None:
+        super().__init__()
+        self.forward_calls: list[dict[str, object]] = []
+        self.prefill_cache = object()
+
+    def forward(
+        self,
+        input_ids,
+        attention_mask=None,
+        pixel_values=None,
+        input_features=None,
+        past_key_values=None,
+        use_cache=None,
+        cache_position=None,
+    ):
+        self.forward_calls.append(
+            {
+                "input_ids": input_ids.clone(),
+                "attention_mask": None
+                if attention_mask is None
+                else attention_mask.clone(),
+                "pixel_values": None if pixel_values is None else pixel_values.clone(),
+                "input_features": None
+                if input_features is None
+                else input_features.clone(),
+                "past_key_values": past_key_values,
+                "use_cache": use_cache,
+                "cache_position": None
+                if cache_position is None
+                else cache_position.clone(),
+            }
+        )
+        return types.SimpleNamespace(past_key_values=self.prefill_cache)
+
+
+def build_runtime_with_processor_model(
+    *,
+    capabilities: CapabilityProfile,
+    processor: LongProcessor,
+    model: FakeModel,
+) -> LoadedRuntime:
+    runtime = build_runtime(capabilities)
+    runtime.backend = BackendRuntime(
+        backend_id=runtime.backend.backend_id,
+        model=model,
+        tokenizer=runtime.tokenizer,
+        processor=processor,
+        device=torch.device("cpu"),
+        stats=None,
+        print_suppression_modules=(),
+        create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None, cache_window_tokens=None: (
+            None
+        ),
+        apply_offload=lambda runtime_config: None,
+    )
+    return runtime
+
+
 def test_runtime_executor_prefills_long_causal_prompts_in_chunks(monkeypatch) -> None:
     model = ChunkedPrefillModel()
     runtime = build_runtime_with_model(
@@ -93,6 +194,10 @@ def test_runtime_executor_prefills_long_causal_prompts_in_chunks(monkeypatch) ->
     response = RuntimeExecutor().execute(runtime, request)
 
     assert response.text == "long-decoded"
+    assert (
+        response.metadata["chunked_prefill_strategy_id"]
+        == ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_TEXT.value
+    )
     assert len(model.forward_calls) == 2
     first_call = model.forward_calls[0]
     second_call = model.forward_calls[1]
@@ -123,7 +228,141 @@ def test_runtime_executor_prefills_long_causal_prompts_in_chunks(monkeypatch) ->
     assert model.generate_kwargs["past_key_values"] is model.prefill_cache
 
 
-def test_runtime_executor_skips_chunked_prefill_for_seq2seq_runtime(
+def test_runtime_executor_prefills_long_generic_causal_prompts_in_chunks(
+    monkeypatch,
+) -> None:
+    model = ChunkedPrefillModel()
+    runtime = build_runtime_with_model(
+        CapabilityProfile(support_level=SupportLevel.GENERIC),
+        tokenizer=LongMappingTokenizer(),
+        model=model,
+    )
+    runtime.plan = replace(
+        runtime.plan,
+        backend_id="transformers-generic",
+        generic_model_kind=GenericModelKind.CAUSAL_LM,
+    )
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("long prompt")]),
+    )
+    monkeypatch.setattr("ollm.runtime.generation.DEFAULT_PREFILL_CHUNK_TOKENS", 2)
+
+    response = RuntimeExecutor().execute(runtime, request)
+
+    assert response.text == "long-decoded"
+    assert (
+        response.metadata["chunked_prefill_strategy_id"]
+        == ChunkedPrefillStrategyId.TRANSFORMERS_GENERIC_TEXT.value
+    )
+    assert len(model.forward_calls) == 2
+    generate_input_ids = model.generate_kwargs["input_ids"]
+    assert isinstance(generate_input_ids, torch.Tensor)
+    assert torch.equal(generate_input_ids, torch.tensor([[5]]))
+
+
+def test_runtime_executor_prefills_long_native_multimodal_prompts_in_chunks(
+    monkeypatch,
+) -> None:
+    processor = LongProcessor("pixel_values")
+    model = ChunkedPrefillMultimodalModel()
+    runtime = build_runtime_with_processor_model(
+        capabilities=CapabilityProfile(
+            support_level=SupportLevel.OPTIMIZED,
+            modalities=(ModelModality.TEXT, ModelModality.IMAGE),
+            requires_processor=True,
+        ),
+        processor=processor,
+        model=model,
+    )
+    runtime.plan = replace(
+        runtime.plan,
+        backend_id="optimized-native",
+        generic_model_kind=GenericModelKind.IMAGE_TEXT_TO_TEXT,
+    )
+    request = build_request(
+        runtime.config,
+        Message(
+            role=MessageRole.USER,
+            content=[
+                ContentPart.text("long prompt"),
+                ContentPart.image("image.png"),
+            ],
+        ),
+    )
+    monkeypatch.setattr("ollm.runtime.generation.DEFAULT_PREFILL_CHUNK_TOKENS", 2)
+
+    response = RuntimeExecutor().execute(runtime, request)
+
+    assert response.text == "long-decoded"
+    assert processor.inputs.to_calls == [(torch.device("cpu"), torch.bfloat16)]
+    assert (
+        response.metadata["chunked_prefill_strategy_id"]
+        == ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_MULTIMODAL.value
+    )
+    assert len(model.forward_calls) == 2
+    first_call = model.forward_calls[0]
+    second_call = model.forward_calls[1]
+    first_pixel_values = cast(torch.Tensor, first_call["pixel_values"])
+    second_pixel_values = cast(torch.Tensor, second_call["pixel_values"])
+    assert torch.equal(first_pixel_values, torch.tensor([[[0.25, 0.5]]]))
+    assert torch.equal(second_pixel_values, torch.tensor([[[0.25, 0.5]]]))
+    generate_input_ids = model.generate_kwargs["input_ids"]
+    generate_pixel_values = model.generate_kwargs["pixel_values"]
+    assert isinstance(generate_input_ids, torch.Tensor)
+    assert isinstance(generate_pixel_values, torch.Tensor)
+    assert torch.equal(generate_input_ids, torch.tensor([[5]]))
+    assert torch.equal(generate_pixel_values, torch.tensor([[[0.25, 0.5]]]))
+
+
+def test_runtime_executor_prefills_long_generic_multimodal_prompts_in_chunks(
+    monkeypatch,
+) -> None:
+    processor = LongProcessor("pixel_values")
+    model = ChunkedPrefillMultimodalModel()
+    runtime = build_runtime_with_processor_model(
+        capabilities=CapabilityProfile(
+            support_level=SupportLevel.GENERIC,
+            modalities=(ModelModality.TEXT, ModelModality.IMAGE),
+            requires_processor=True,
+        ),
+        processor=processor,
+        model=model,
+    )
+    runtime.plan = replace(
+        runtime.plan,
+        backend_id="transformers-generic",
+        generic_model_kind=GenericModelKind.IMAGE_TEXT_TO_TEXT,
+    )
+    request = build_request(
+        runtime.config,
+        Message(
+            role=MessageRole.USER,
+            content=[
+                ContentPart.text("long prompt"),
+                ContentPart.image("image.png"),
+            ],
+        ),
+    )
+    monkeypatch.setattr("ollm.runtime.generation.DEFAULT_PREFILL_CHUNK_TOKENS", 2)
+
+    response = RuntimeExecutor().execute(runtime, request)
+
+    assert response.text == "long-decoded"
+    assert (
+        response.metadata["chunked_prefill_strategy_id"]
+        == ChunkedPrefillStrategyId.TRANSFORMERS_GENERIC_MULTIMODAL.value
+    )
+    assert len(model.forward_calls) == 2
+    generate_input_ids = model.generate_kwargs["input_ids"]
+    generate_pixel_values = model.generate_kwargs["pixel_values"]
+    assert isinstance(generate_input_ids, torch.Tensor)
+    assert isinstance(generate_pixel_values, torch.Tensor)
+    assert torch.equal(generate_input_ids, torch.tensor([[5]]))
+    assert torch.equal(generate_pixel_values, torch.tensor([[[0.25, 0.5]]]))
+
+
+def test_runtime_executor_defers_chunked_prefill_for_seq2seq_runtime(
     monkeypatch,
 ) -> None:
     model = ChunkedPrefillModel()
@@ -143,9 +382,11 @@ def test_runtime_executor_skips_chunked_prefill_for_seq2seq_runtime(
     )
     monkeypatch.setattr("ollm.runtime.generation.DEFAULT_PREFILL_CHUNK_TOKENS", 2)
 
-    RuntimeExecutor().execute(runtime, request)
+    response = RuntimeExecutor().execute(runtime, request)
 
     assert model.forward_calls == []
+    assert response.metadata["chunked_prefill_strategy_id"] == ""
+    assert response.metadata["chunked_prefill_applied"] == "false"
     generate_input_ids = model.generate_kwargs["input_ids"]
     assert isinstance(generate_input_ids, torch.Tensor)
     assert torch.equal(generate_input_ids, torch.tensor([[1, 2, 3, 4, 5]]))

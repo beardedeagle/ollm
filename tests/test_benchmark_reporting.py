@@ -116,12 +116,13 @@ def test_render_runtime_probe_json_round_trips() -> None:
     events = cast(dict[str, object], native_runtime_profile["events"])
     assert request["output_tokens"] == 4
     assert request["kv_cache_strategy"] == "chunked"
+    assert chunked_prefill["strategy_id"] == "optimized-native-text"
     assert chunked_prefill["runtime_eligible"] is True
     assert chunked_prefill["applied"] is True
     assert chunked_prefill["execution_boundary"] == "post-tokenization"
     assert chunked_prefill["attention_mask_mode"] == "full-prefix-materialized"
     gap_inventory = cast(list[object], chunked_prefill["gap_inventory"])
-    assert len(gap_inventory) == 2
+    assert len(gap_inventory) == 3
     adaptation = cast(dict[str, object], request["kv_cache_adaptation"])
     assert adaptation["adaptation_mode"] == "observe-only"
     assert adaptation["recommendation_available"] is True
@@ -254,9 +255,9 @@ def test_summarize_request_metrics_includes_native_runtime_profile() -> None:
         "disk-kv-cache",
         "safetensor-io",
     ]
+    assert chunked_prefill["strategy_id"] == "optimized-native-text"
     assert chunked_prefill["runtime_eligible"] is True
     assert chunked_prefill["applied"] is True
-    assert chunked_prefill["supported_backend_id"] == "optimized-native"
     assert cast(dict[str, object], summary["cache"])["kv_cache_strategy"] == "chunked"
     adaptation = cast(
         dict[str, object],

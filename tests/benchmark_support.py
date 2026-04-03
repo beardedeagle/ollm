@@ -10,6 +10,7 @@ from ollm.runtime.chunked_prefill import (
     ChunkedPrefillAttentionMaskMode,
     ChunkedPrefillExecutionBoundary,
     ChunkedPrefillScopeSurface,
+    ChunkedPrefillStrategyId,
     chunked_prefill_gap_inventory,
 )
 
@@ -102,12 +103,10 @@ def build_request_probe_metrics() -> RequestProbeMetrics:
             cold_store_format=None,
         ),
         chunked_prefill=ChunkedPrefillScopeSurface(
+            strategy_id=ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_TEXT,
             runtime_eligible=True,
             applied=True,
             activation_reason="Bounded chunked prefill ran before final decode.",
-            supported_backend_id="optimized-native",
-            supported_model_kind="causal-lm",
-            supported_prompt_kind="text-only",
             execution_boundary=ChunkedPrefillExecutionBoundary.POST_TOKENIZATION,
             attention_mask_mode=ChunkedPrefillAttentionMaskMode.FULL_PREFIX_MATERIALIZED,
             gap_inventory=chunked_prefill_gap_inventory(),
