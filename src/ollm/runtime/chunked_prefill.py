@@ -1,5 +1,6 @@
 """Chunked-prefill strategy resolution and execution."""
 
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, replace
 from enum import StrEnum
 from inspect import Parameter, signature
@@ -89,6 +90,16 @@ class PreparedChunkedPrefill:
     scope: ChunkedPrefillScopeSurface
 
 
+@dataclass(frozen=True, slots=True)
+class ChunkedPrefillStrategy:
+    strategy_id: ChunkedPrefillStrategyId
+    matches: Callable[[LoadedRuntime, GenericModelKind | None], bool]
+    prepare: Callable[
+        [LoadedRuntime, dict[str, object], dict[str, object], int],
+        tuple[dict[str, object], dict[str, object]],
+    ]
+
+
 _CHUNKED_PREFILL_GAP_INVENTORY = (
     ChunkedPrefillGapDecision(
         gap_id=ChunkedPrefillGapId.PROMPT_TOKENIZATION_BEFORE_PREFILL,
@@ -146,12 +157,12 @@ def prepare_chunked_prefill(
     prefill_token_count = input_ids_value.shape[1] - 1
     if prefill_token_count <= chunk_tokens or not scope.runtime_eligible:
         return PreparedChunkedPrefill(inputs, generate_kwargs, scope)
-    prepared_inputs, prepared_generate_kwargs = _run_causal_chunked_prefill(
-        runtime=runtime,
-        inputs=inputs,
-        generate_kwargs=generate_kwargs,
-        chunk_tokens=chunk_tokens,
-        strategy_id=scope.strategy_id,
+    strategy = _require_strategy(scope.strategy_id)
+    prepared_inputs, prepared_generate_kwargs = strategy.prepare(
+        runtime,
+        inputs,
+        generate_kwargs,
+        chunk_tokens,
     )
     return PreparedChunkedPrefill(
         inputs=prepared_inputs,
@@ -191,8 +202,8 @@ def build_chunked_prefill_scope_surface(
             runtime_eligible=False,
             activation_reason="Seq2seq source prompts cannot use causal-cache chunked prefill.",
         )
-    strategy_id = _resolve_strategy_id(runtime, runtime_kind)
-    if strategy_id is None:
+    strategy = _resolve_strategy(runtime, runtime_kind)
+    if strategy is None:
         return _scope(
             strategy_id=None,
             runtime_eligible=False,
@@ -203,14 +214,14 @@ def build_chunked_prefill_scope_surface(
     prefill_token_count = int(input_ids.shape[1] - 1)
     if prefill_token_count <= chunk_tokens:
         return _scope(
-            strategy_id=strategy_id,
+            strategy_id=strategy.strategy_id,
             runtime_eligible=True,
             activation_reason=(
                 "Prompt length does not exceed the chunked-prefill threshold."
             ),
         )
     return _scope(
-        strategy_id=strategy_id,
+        strategy_id=strategy.strategy_id,
         runtime_eligible=True,
         activation_reason="Runtime is eligible for bounded chunked prefill.",
     )
@@ -220,23 +231,129 @@ def chunked_prefill_gap_inventory() -> tuple[ChunkedPrefillGapDecision, ...]:
     return _CHUNKED_PREFILL_GAP_INVENTORY
 
 
-def _resolve_strategy_id(
+def _resolve_strategy(
     runtime: LoadedRuntime,
     runtime_kind: GenericModelKind | None,
-) -> ChunkedPrefillStrategyId | None:
-    if runtime.plan.backend_id == "optimized-native":
-        if runtime.processor is not None:
-            return ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_MULTIMODAL
-        if runtime_kind is GenericModelKind.CAUSAL_LM:
-            return ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_TEXT
-        return None
-    if runtime.plan.backend_id == "transformers-generic":
-        if runtime.processor is not None:
-            return ChunkedPrefillStrategyId.TRANSFORMERS_GENERIC_MULTIMODAL
-        if runtime_kind is GenericModelKind.CAUSAL_LM:
-            return ChunkedPrefillStrategyId.TRANSFORMERS_GENERIC_TEXT
-        return None
+) -> ChunkedPrefillStrategy | None:
+    for strategy in _CHUNKED_PREFILL_STRATEGIES:
+        if strategy.matches(runtime, runtime_kind):
+            return strategy
     return None
+
+
+def _require_strategy(
+    strategy_id: ChunkedPrefillStrategyId | None,
+) -> ChunkedPrefillStrategy:
+    if strategy_id is None:
+        raise PromptExecutionError(
+            "Chunked prefill strategy resolution was required but no strategy was selected."
+        )
+    for strategy in _CHUNKED_PREFILL_STRATEGIES:
+        if strategy.strategy_id is strategy_id:
+            return strategy
+    raise PromptExecutionError(
+        f"Unsupported chunked prefill strategy {strategy_id.value!r}."
+    )
+
+
+def _prepare_optimized_native_text_prefill(
+    runtime: LoadedRuntime,
+    inputs: dict[str, object],
+    generate_kwargs: dict[str, object],
+    chunk_tokens: int,
+) -> tuple[dict[str, object], dict[str, object]]:
+    return _run_causal_chunked_prefill(
+        runtime=runtime,
+        inputs=inputs,
+        generate_kwargs=generate_kwargs,
+        chunk_tokens=chunk_tokens,
+        strategy_id=ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_TEXT,
+    )
+
+
+def _prepare_optimized_native_multimodal_prefill(
+    runtime: LoadedRuntime,
+    inputs: dict[str, object],
+    generate_kwargs: dict[str, object],
+    chunk_tokens: int,
+) -> tuple[dict[str, object], dict[str, object]]:
+    return _run_causal_chunked_prefill(
+        runtime=runtime,
+        inputs=inputs,
+        generate_kwargs=generate_kwargs,
+        chunk_tokens=chunk_tokens,
+        strategy_id=ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_MULTIMODAL,
+    )
+
+
+def _prepare_transformers_generic_text_prefill(
+    runtime: LoadedRuntime,
+    inputs: dict[str, object],
+    generate_kwargs: dict[str, object],
+    chunk_tokens: int,
+) -> tuple[dict[str, object], dict[str, object]]:
+    return _run_causal_chunked_prefill(
+        runtime=runtime,
+        inputs=inputs,
+        generate_kwargs=generate_kwargs,
+        chunk_tokens=chunk_tokens,
+        strategy_id=ChunkedPrefillStrategyId.TRANSFORMERS_GENERIC_TEXT,
+    )
+
+
+def _prepare_transformers_generic_multimodal_prefill(
+    runtime: LoadedRuntime,
+    inputs: dict[str, object],
+    generate_kwargs: dict[str, object],
+    chunk_tokens: int,
+) -> tuple[dict[str, object], dict[str, object]]:
+    return _run_causal_chunked_prefill(
+        runtime=runtime,
+        inputs=inputs,
+        generate_kwargs=generate_kwargs,
+        chunk_tokens=chunk_tokens,
+        strategy_id=ChunkedPrefillStrategyId.TRANSFORMERS_GENERIC_MULTIMODAL,
+    )
+
+
+_CHUNKED_PREFILL_STRATEGIES = (
+    ChunkedPrefillStrategy(
+        strategy_id=ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_TEXT,
+        matches=lambda runtime, runtime_kind: (
+            runtime.plan.backend_id == "optimized-native"
+            and runtime.processor is None
+            and runtime_kind is GenericModelKind.CAUSAL_LM
+        ),
+        prepare=_prepare_optimized_native_text_prefill,
+    ),
+    ChunkedPrefillStrategy(
+        strategy_id=ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_MULTIMODAL,
+        matches=lambda runtime, runtime_kind: (
+            runtime.plan.backend_id == "optimized-native"
+            and runtime.processor is not None
+            and runtime_kind is not GenericModelKind.SEQ2SEQ_LM
+        ),
+        prepare=_prepare_optimized_native_multimodal_prefill,
+    ),
+    ChunkedPrefillStrategy(
+        strategy_id=ChunkedPrefillStrategyId.TRANSFORMERS_GENERIC_TEXT,
+        matches=lambda runtime, runtime_kind: (
+            runtime.plan.backend_id == "transformers-generic"
+            and runtime.processor is None
+            and runtime_kind is GenericModelKind.CAUSAL_LM
+        ),
+        prepare=_prepare_transformers_generic_text_prefill,
+    ),
+    ChunkedPrefillStrategy(
+        strategy_id=ChunkedPrefillStrategyId.TRANSFORMERS_GENERIC_MULTIMODAL,
+        matches=lambda runtime, runtime_kind: (
+            runtime.plan.backend_id == "transformers-generic"
+            and runtime.processor is not None
+            and runtime_kind is not GenericModelKind.SEQ2SEQ_LM
+        ),
+        prepare=_prepare_transformers_generic_multimodal_prefill,
+    ),
+)
 
 
 def _run_causal_chunked_prefill(
