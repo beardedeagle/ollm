@@ -55,13 +55,14 @@ def execute_request_with_trace(
         runtime, request, streamer
     )
     prepared_inputs = normalize_generate_inputs(inputs)
+    generation_started_at = time.perf_counter()
     prepared_inputs, prepared_generate_kwargs = prepare_runtime_generate_inputs(
         runtime,
         request,
         prepared_inputs,
         generate_kwargs,
     )
-    outputs, generation_started_at, effective_generate_kwargs = _generate_outputs(
+    outputs, effective_generate_kwargs = _generate_outputs(
         runtime=runtime,
         prepared_inputs=prepared_inputs,
         prepared_generate_kwargs=prepared_generate_kwargs,
@@ -98,8 +99,7 @@ def _generate_outputs(
     prepared_inputs: dict[str, object],
     prepared_generate_kwargs: dict[str, object],
     generation_config: object,
-) -> tuple[torch.Tensor, float, dict[str, object]]:
-    generation_started_at = time.perf_counter()
+) -> tuple[torch.Tensor, dict[str, object]]:
     try:
         return (
             _run_model_generate(
@@ -108,7 +108,6 @@ def _generate_outputs(
                 prepared_generate_kwargs=prepared_generate_kwargs,
                 generation_config=generation_config,
             ),
-            generation_started_at,
             prepared_generate_kwargs,
         )
     except TypeError as exc:
@@ -123,7 +122,6 @@ def _generate_outputs(
                 prepared_generate_kwargs=retry_generate_kwargs,
                 generation_config=generation_config,
             ),
-            generation_started_at,
             retry_generate_kwargs,
         )
 

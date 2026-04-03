@@ -273,3 +273,71 @@ def test_execute_request_with_trace_tracks_chunked_prefill_prefix_length(
     assert trace.decode_prefix_token_count == 1
     assert trace.output_token_count == 4
     assert len(model.forward_calls) == 2
+
+
+def test_execute_request_with_trace_starts_timing_before_prefill(
+    monkeypatch,
+) -> None:
+    runtime = _build_processor_runtime()
+    runtime.backend = BackendRuntime(
+        backend_id="optimized-native",
+        model=ChunkedPrefillModel(),
+        tokenizer=LongMappingTokenizer(),
+        processor=None,
+        device=torch.device("cpu"),
+        stats=None,
+        print_suppression_modules=(),
+        create_cache=lambda cache_dir, cache_strategy=None, cache_lifecycle=None, cache_window_tokens=None: (
+            None
+        ),
+        apply_offload=lambda runtime_config: None,
+    )
+    runtime.plan = RuntimePlan(
+        resolved_model=runtime.plan.resolved_model,
+        backend_id="optimized-native",
+        model_path=runtime.plan.model_path,
+        support_level=SupportLevel.OPTIMIZED,
+        generic_model_kind=GenericModelKind.CAUSAL_LM,
+        supports_disk_cache=True,
+        supports_cpu_offload=True,
+        supports_gpu_offload=False,
+        specialization_enabled=True,
+        specialization_applied=False,
+        specialization_provider_id="llama-native",
+        specialization_state=SpecializationState.PLANNED,
+        reason="benchmark test",
+    )
+    request = build_prompt_request(
+        runtime_config=runtime.config,
+        generation_config=GenerationConfig(stream=False, max_new_tokens=1),
+        messages=[
+            Message(role=MessageRole.USER, content=[ContentPart.text("hello")]),
+        ],
+    )
+    monkeypatch.setattr("ollm.runtime.generation.DEFAULT_PREFILL_CHUNK_TOKENS", 2)
+    order: list[str] = []
+
+    def wrapped_perf_counter() -> float:
+        order.append("time")
+        return 123.0
+
+    original_prepare = execute_request_with_trace.__globals__[
+        "prepare_runtime_generate_inputs"
+    ]
+
+    def wrapped_prepare(runtime, request, inputs, generate_kwargs):
+        order.append("prepare")
+        return original_prepare(runtime, request, inputs, generate_kwargs)
+
+    monkeypatch.setattr(
+        "ollm.runtime.execution_trace.time.perf_counter", wrapped_perf_counter
+    )
+    monkeypatch.setattr(
+        "ollm.runtime.execution_trace.prepare_runtime_generate_inputs",
+        wrapped_prepare,
+    )
+
+    trace = execute_request_with_trace(runtime=runtime, request=request)
+
+    assert trace.generation_started_at == 123.0
+    assert order.index("time") < order.index("prepare")
