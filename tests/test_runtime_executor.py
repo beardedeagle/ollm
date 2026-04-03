@@ -3,7 +3,12 @@ import types
 import pytest
 import torch
 
-from ollm.app.types import ContentPart, Message, MessageRole, PromptRequest
+from ollm.app.types import (
+    ContentPart,
+    Message,
+    MessageRole,
+    PromptRequest,
+)
 from ollm.runtime.backends.base import BackendRuntime
 from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
 from ollm.runtime.catalog import ModelModality

@@ -36,7 +36,6 @@ def build_cold_probe_details(
 
 def summarize_request_metrics(samples: list[RequestProbeMetrics]) -> dict[str, object]:
     """Summarize request-level runtime probe metrics."""
-
     from ollm.runtime.benchmark.offload_summary import summarize_request_offload
 
     return {
@@ -82,6 +81,7 @@ def summarize_request_metrics(samples: list[RequestProbeMetrics]) -> dict[str, o
                 ]
             ),
         },
+        "chunked_prefill": samples[-1].chunked_prefill.to_dict(),
         "memory": summarize_stage_resources([sample.resources for sample in samples]),
         "cache": {
             "cache_mode": single_optional_string(

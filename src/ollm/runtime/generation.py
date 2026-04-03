@@ -13,6 +13,11 @@ from ollm.kv_cache.matrix import (
 from ollm.kv_cache.state import KVCacheStateSnapshot
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.catalog import ModelModality
+from ollm.runtime.chunked_prefill import (
+    ChunkedPrefillScopeSurface,
+    PreparedChunkedPrefill,
+    prepare_chunked_prefill,
+)
 from ollm.runtime.errors import PromptExecutionError
 from ollm.runtime.generation_config_support import (
     clear_sampling_fields,
@@ -182,75 +187,15 @@ def build_runtime_generate_kwargs(
 def prepare_runtime_generate_inputs(
     runtime: LoadedRuntime,
     request: PromptRequest,
-    inputs: dict[str, object],
     generate_kwargs: dict[str, object],
-) -> tuple[dict[str, object], dict[str, object]]:
-    input_ids_value = inputs.get("input_ids")
-    if not isinstance(input_ids_value, torch.Tensor):
-        return inputs, generate_kwargs
-    if input_ids_value.ndim != 2 or input_ids_value.shape[0] != 1:
-        return inputs, generate_kwargs
-    if runtime.processor is not None:
-        return inputs, generate_kwargs
-    if runtime.plan.backend_id != "optimized-native":
-        return inputs, generate_kwargs
-    runtime_kind = (
-        runtime.plan.generic_model_kind or runtime.resolved_model.generic_model_kind
+) -> PreparedChunkedPrefill:
+    return prepare_chunked_prefill(
+        runtime=runtime,
+        messages=request.messages,
+        generate_kwargs=generate_kwargs,
+        chunk_tokens=DEFAULT_PREFILL_CHUNK_TOKENS,
+        eager_input_builder=build_runtime_inputs,
     )
-    if runtime_kind is not GenericModelKind.CAUSAL_LM:
-        return inputs, generate_kwargs
-    prefill_token_count = input_ids_value.shape[1] - 1
-    if prefill_token_count <= DEFAULT_PREFILL_CHUNK_TOKENS:
-        return inputs, generate_kwargs
-    return _run_chunked_prefill(runtime, inputs, generate_kwargs)
-
-
-def _run_chunked_prefill(
-    runtime: LoadedRuntime,
-    inputs: dict[str, object],
-    generate_kwargs: dict[str, object],
-) -> tuple[dict[str, object], dict[str, object]]:
-    forward_method = getattr(runtime.model, "forward", None)
-    if not callable(forward_method):
-        return inputs, generate_kwargs
-    input_ids = require_tensor(inputs["input_ids"])
-    attention_mask_value = inputs.get("attention_mask")
-    attention_mask = (
-        None if attention_mask_value is None else require_tensor(attention_mask_value)
-    )
-    prefill_cache = generate_kwargs.get("past_key_values")
-    prefill_end = input_ids.shape[1] - 1
-    with torch.inference_mode():
-        with suppress_module_prints(runtime.backend.print_suppression_modules):
-            for chunk_start in range(0, prefill_end, DEFAULT_PREFILL_CHUNK_TOKENS):
-                chunk_end = min(prefill_end, chunk_start + DEFAULT_PREFILL_CHUNK_TOKENS)
-                forward_inputs: dict[str, object] = {
-                    "input_ids": input_ids[:, chunk_start:chunk_end],
-                    "use_cache": True,
-                    "cache_position": torch.arange(
-                        chunk_start,
-                        chunk_end,
-                        device=input_ids.device,
-                        dtype=torch.long,
-                    ),
-                }
-                if attention_mask is not None:
-                    forward_inputs["attention_mask"] = attention_mask[:, :chunk_end]
-                if prefill_cache is not None:
-                    forward_inputs["past_key_values"] = prefill_cache
-                outputs = forward_method(**forward_inputs)
-                prefill_cache = getattr(outputs, "past_key_values", None)
-                if prefill_cache is None:
-                    raise PromptExecutionError(
-                        "Chunked prefill requires a causal runtime that returns past_key_values."
-                    )
-    updated_inputs = dict(inputs)
-    updated_inputs["input_ids"] = input_ids[:, -1:]
-    if attention_mask is not None:
-        updated_inputs["attention_mask"] = attention_mask
-    updated_generate_kwargs = dict(generate_kwargs)
-    updated_generate_kwargs["past_key_values"] = prefill_cache
-    return updated_inputs, updated_generate_kwargs
 
 
 def decode_runtime_response(
@@ -294,7 +239,6 @@ class RuntimeExecutor:
         if request.generation_config.seed is not None:
             torch.manual_seed(request.generation_config.seed)
 
-        inputs = build_runtime_inputs(runtime, request.messages)
         streamer = None
         if request.generation_config.stream:
             streamer = BufferedTextStreamer(
@@ -307,13 +251,14 @@ class RuntimeExecutor:
         generate_kwargs, generation_config = build_runtime_generate_kwargs(
             runtime, request, streamer
         )
-        filtered_inputs = normalize_generate_inputs(inputs)
-        filtered_inputs, generate_kwargs = prepare_runtime_generate_inputs(
+        prepared_inputs = prepare_runtime_generate_inputs(
             runtime,
             request,
-            filtered_inputs,
             generate_kwargs,
         )
+        filtered_inputs = normalize_generate_inputs(prepared_inputs.inputs)
+        generate_kwargs = prepared_inputs.generate_kwargs
+        chunked_prefill = prepared_inputs.scope
 
         with torch.inference_mode():
             with suppress_module_prints(runtime.backend.print_suppression_modules):
@@ -332,7 +277,7 @@ class RuntimeExecutor:
         if streamer is not None and not response_text.strip():
             response_text = streamer.text
         assistant_message = Message.assistant_text(response_text)
-        metadata = self._plan_metadata(runtime, cache_state)
+        metadata = self._plan_metadata(runtime, cache_state, chunked_prefill)
         return PromptResponse(
             text=response_text, assistant_message=assistant_message, metadata=metadata
         )
@@ -341,7 +286,8 @@ class RuntimeExecutor:
         self, runtime: LoadedRuntime, response: PromptResponse
     ) -> PromptResponse:
         metadata = dict(response.metadata)
-        metadata.update(self._plan_metadata(runtime, None))
+        for key, value in self._plan_metadata(runtime, None, None).items():
+            metadata.setdefault(key, value)
         return PromptResponse(
             text=response.text,
             assistant_message=response.assistant_message,
@@ -352,6 +298,7 @@ class RuntimeExecutor:
         self,
         runtime: LoadedRuntime,
         cache_state: KVCacheStateSnapshot | None,
+        chunked_prefill: ChunkedPrefillScopeSurface | None,
     ) -> dict[str, str]:
         metadata = {
             "backend_id": runtime.plan.backend_id or "unknown",
@@ -377,6 +324,30 @@ class RuntimeExecutor:
             ),
             "kv_cache_lifecycle": runtime.config.resolved_kv_cache_lifecycle(),
             "kv_cache_adaptation_mode": runtime.config.resolved_kv_cache_adaptation_mode(),
+            "chunked_prefill_strategy_id": (
+                ""
+                if chunked_prefill is None or chunked_prefill.strategy_id is None
+                else chunked_prefill.strategy_id.value
+            ),
+            "chunked_prefill_runtime_eligible": str(
+                False if chunked_prefill is None else chunked_prefill.runtime_eligible
+            ).lower(),
+            "chunked_prefill_applied": str(
+                False if chunked_prefill is None else chunked_prefill.applied
+            ).lower(),
+            "chunked_prefill_activation_reason": (
+                "" if chunked_prefill is None else chunked_prefill.activation_reason
+            ),
+            "chunked_prefill_execution_boundary": (
+                ""
+                if chunked_prefill is None or chunked_prefill.strategy_id is None
+                else chunked_prefill.execution_boundary.value
+            ),
+            "chunked_prefill_attention_mask_mode": (
+                ""
+                if chunked_prefill is None or chunked_prefill.strategy_id is None
+                else chunked_prefill.attention_mask_mode.value
+            ),
         }
         resolved_window_tokens = runtime.config.resolved_kv_cache_window_tokens()
         if resolved_window_tokens is not None:

@@ -12,6 +12,7 @@ from ollm.runtime.benchmark.probe_execution import (
 from ollm.runtime.capabilities import CapabilityProfile, SupportLevel
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.catalog import ModelModality
+from ollm.runtime.chunked_prefill import ChunkedPrefillStrategyId
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
 from ollm.runtime.execution_trace import execute_request_with_trace
 from ollm.runtime.loaded_runtime import LoadedRuntime
@@ -39,20 +40,33 @@ class BenchmarkProcessorInputs(dict):
         return self
 
 
+class BenchmarkProcessorTokenizer:
+    def stream_tokenize_prompt(self, rendered_prompt):
+        del rendered_prompt
+        return ([1, 2, 3],)
+
+
 class BenchmarkProcessor:
     def __init__(self):
         self.inputs = BenchmarkProcessorInputs()
+        self.tokenizer = BenchmarkProcessorTokenizer()
 
     def apply_chat_template(
         self,
         messages,
         add_generation_prompt,
         tokenize,
-        return_dict,
-        return_tensors,
+        return_dict=False,
+        return_tensors=None,
     ):
-        del messages, add_generation_prompt, tokenize, return_dict, return_tensors
+        del messages, add_generation_prompt, return_dict, return_tensors
+        if not tokenize:
+            return "rendered-long-prompt"
         return self.inputs
+
+    def prepare_chunked_prefill_static_inputs(self, messages, device):
+        del messages, device
+        return {}
 
     def batch_decode(self, outputs, skip_special_tokens=False):
         del outputs, skip_special_tokens
@@ -152,6 +166,11 @@ def test_execute_request_probe_strips_processor_token_type_ids() -> None:
 
     assert execution.response_text == "decoded-benchmark"
     assert "token_type_ids" not in runtime.model.generate_kwargs
+    assert execution.metrics.chunked_prefill.strategy_id is (
+        ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_MULTIMODAL
+    )
+    assert execution.metrics.chunked_prefill.runtime_eligible is False
+    assert execution.metrics.chunked_prefill.applied is False
 
 
 def test_execute_request_probe_uses_chunked_prefill_for_long_causal_prompts(
@@ -199,6 +218,9 @@ def test_execute_request_probe_uses_chunked_prefill_for_long_causal_prompts(
     execution = execute_request_probe(runtime=runtime, request=request)
 
     assert execution.response_text == "long-decoded"
+    assert execution.metrics.chunked_prefill.strategy_id is (
+        ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_TEXT
+    )
     assert len(model.forward_calls) == 2
     generate_input_ids = model.generate_kwargs["input_ids"]
     assert isinstance(generate_input_ids, torch.Tensor)
@@ -222,6 +244,11 @@ def test_execute_request_with_trace_reports_processor_counts() -> None:
     assert trace.decode_prefix_token_count == 3
     assert trace.output_token_count == 1
     assert trace.cache_state is None
+    assert trace.chunked_prefill.strategy_id is (
+        ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_MULTIMODAL
+    )
+    assert trace.chunked_prefill.runtime_eligible is False
+    assert trace.chunked_prefill.applied is False
 
 
 def test_execute_request_with_trace_tracks_chunked_prefill_prefix_length(
@@ -272,6 +299,11 @@ def test_execute_request_with_trace_tracks_chunked_prefill_prefix_length(
     assert trace.prompt_token_count == 5
     assert trace.decode_prefix_token_count == 1
     assert trace.output_token_count == 4
+    assert trace.chunked_prefill.strategy_id is (
+        ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_TEXT
+    )
+    assert trace.chunked_prefill.runtime_eligible is True
+    assert trace.chunked_prefill.applied is True
     assert len(model.forward_calls) == 2
 
 
@@ -325,9 +357,9 @@ def test_execute_request_with_trace_starts_timing_before_prefill(
         "prepare_runtime_generate_inputs"
     ]
 
-    def wrapped_prepare(runtime, request, inputs, generate_kwargs):
+    def wrapped_prepare(runtime, request, generate_kwargs):
         order.append("prepare")
-        return original_prepare(runtime, request, inputs, generate_kwargs)
+        return original_prepare(runtime, request, generate_kwargs)
 
     monkeypatch.setattr(
         "ollm.runtime.execution_trace.time.perf_counter", wrapped_perf_counter

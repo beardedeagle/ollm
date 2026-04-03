@@ -160,12 +160,24 @@ full-history KV in memory. When the bounded
 the recent-context token budget and oldest tokens are evicted once the window
 is exceeded.
 
-On optimized-native decoder-only text runtimes, long prompts are ingested
-through bounded prefill chunks before the final decode step. That keeps prompt
-execution from growing one full prompt-wide activation step at a time on very
-long inputs while preserving the external prompt/chat contract. Prompt-scaling
-benchmarks remain the right place to evaluate the TTFT and memory tradeoff on
-target hardware.
+On the causal runtime lanes that support chunked prefill, long prompts are
+ingested through bounded prefill chunks before the final decode step. The
+current strategy lanes are:
+
+- `optimized-native-text`
+- `optimized-native-multimodal`
+- `transformers-generic-text`
+- `transformers-generic-multimodal`
+- `transformers-generic-seq2seq-source`
+
+That keeps prompt execution from growing one full prompt-wide activation step
+at a time on very long inputs while preserving the external prompt/chat
+contract. Prompt-scaling benchmarks remain the right place to evaluate the
+TTFT and memory tradeoff on target hardware. Prompt tokenization now streams
+from rendered prompt pieces inside the strategy path, prefix attention masks
+are synthesized lazily per chunk, and seq2seq source prompts use the dedicated
+`transformers-generic-seq2seq-source` lane instead of pretending they share the
+causal-cache contract.
 
 Configuration layering uses an explicit precedence contract:
 

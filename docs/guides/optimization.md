@@ -15,10 +15,19 @@ Native families:
 - `gpt-oss`
 - `voxtral`
 
-Optimized-native decoder-only text prompts use bounded chunked prefill for
-long prompt ingestion before the final decode step. This is a memory-control
-path, not a blanket latency optimization, so prompt-scaling benchmarks are the
-truthful way to evaluate whether the chunking tradeoff helps on a given host.
+Supported causal runtime lanes use bounded chunked prefill for long prompt
+ingestion before the final decode step. The current lanes are
+`optimized-native-text`, `optimized-native-multimodal`,
+`transformers-generic-text`, and `transformers-generic-multimodal`.
+Encoder-decoder source prompts use the dedicated
+`transformers-generic-seq2seq-source` lane.
+This is a memory-control path, not a blanket latency optimization, so
+prompt-scaling benchmarks are the truthful way to evaluate whether the chunking
+tradeoff helps on a given host.
+
+Prompt tokenization now streams from rendered prompt pieces inside these
+strategy handlers, and causal lanes synthesize prefix attention masks lazily
+per chunk instead of materializing the full mask before ingestion starts.
 
 ### Transformers-generic
 Used for compatible local or materialized models that can run through the generic Transformers-backed path.

@@ -8,10 +8,9 @@ import torch
 from ollm.app.types import PromptRequest
 from ollm.kv_cache.state import KVCacheStateSnapshot
 from ollm.runtime.capability_discovery import GenericModelKind
-from ollm.runtime.errors import PromptExecutionError
+from ollm.runtime.chunked_prefill import ChunkedPrefillScopeSurface
 from ollm.runtime.generation import (
     build_runtime_generate_kwargs,
-    build_runtime_inputs,
     decode_runtime_response,
     prepare_runtime_generate_inputs,
     validate_runtime_request,
@@ -35,6 +34,7 @@ class RuntimeExecutionTrace:
     output_token_count: int
     response_text: str
     cache_state: KVCacheStateSnapshot | None
+    chunked_prefill: ChunkedPrefillScopeSurface
 
 
 def execute_request_with_trace(
@@ -49,19 +49,19 @@ def execute_request_with_trace(
     if request.generation_config.seed is not None:
         torch.manual_seed(request.generation_config.seed)
 
-    inputs = build_runtime_inputs(runtime, request.messages)
-    prompt_token_count = _count_prompt_tokens(inputs)
     generate_kwargs, generation_config = build_runtime_generate_kwargs(
         runtime, request, streamer
     )
-    prepared_inputs = normalize_generate_inputs(inputs)
     generation_started_at = time.perf_counter()
-    prepared_inputs, prepared_generate_kwargs = prepare_runtime_generate_inputs(
+    prepared_result = prepare_runtime_generate_inputs(
         runtime,
         request,
-        prepared_inputs,
         generate_kwargs,
     )
+    prompt_token_count = prepared_result.prompt_token_count
+    prepared_inputs = normalize_generate_inputs(prepared_result.inputs)
+    prepared_generate_kwargs = prepared_result.generate_kwargs
+    chunked_prefill = prepared_result.scope
     outputs, effective_generate_kwargs = _generate_outputs(
         runtime=runtime,
         prepared_inputs=prepared_inputs,
@@ -90,6 +90,7 @@ def execute_request_with_trace(
         output_token_count=output_token_count,
         response_text=response_text,
         cache_state=cache_state,
+        chunked_prefill=chunked_prefill,
     )
 
 
@@ -140,13 +141,6 @@ def _run_model_generate(
                     **prepared_inputs,
                     **prepared_generate_kwargs,
                 )
-
-
-def _count_prompt_tokens(inputs: dict[str, object]) -> int:
-    input_ids = inputs.get("input_ids")
-    if not isinstance(input_ids, torch.Tensor):
-        raise PromptExecutionError("Benchmark probe expected tensor-backed input_ids")
-    return int(input_ids.shape[0] if input_ids.ndim == 1 else input_ids.shape[-1])
 
 
 def _decode_prefix_token_count(inputs: dict[str, object]) -> int:
