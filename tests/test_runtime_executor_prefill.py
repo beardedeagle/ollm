@@ -424,3 +424,41 @@ def test_runtime_executor_leaves_chunked_prefill_metadata_blank_without_strategy
     assert response.metadata["chunked_prefill_runtime_eligible"] == "false"
     assert response.metadata["chunked_prefill_execution_boundary"] == ""
     assert response.metadata["chunked_prefill_attention_mask_mode"] == ""
+
+
+def test_runtime_executor_falls_back_when_forward_is_unavailable_for_chunking(
+    monkeypatch,
+) -> None:
+    runtime = build_runtime_with_model(
+        CapabilityProfile(support_level=SupportLevel.GENERIC),
+        tokenizer=LongMappingTokenizer(),
+        model=FakeModel(),
+    )
+    runtime.plan = replace(
+        runtime.plan,
+        backend_id="optimized-native",
+        generic_model_kind=GenericModelKind.CAUSAL_LM,
+    )
+    runtime.model.forward = None
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("long prompt")]),
+    )
+    monkeypatch.setattr("ollm.runtime.generation.DEFAULT_PREFILL_CHUNK_TOKENS", 2)
+
+    response = RuntimeExecutor().execute(runtime, request)
+
+    assert response.text == "long-decoded"
+    assert (
+        response.metadata["chunked_prefill_strategy_id"]
+        == ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_TEXT.value
+    )
+    assert response.metadata["chunked_prefill_runtime_eligible"] == "false"
+    assert response.metadata["chunked_prefill_applied"] == "false"
+    assert (
+        response.metadata["chunked_prefill_activation_reason"]
+        == "Chunked prompt-ingestion strategy requires a callable forward method."
+    )
+    generate_input_ids = runtime.model.generate_kwargs["input_ids"]
+    assert isinstance(generate_input_ids, torch.Tensor)
+    assert torch.equal(generate_input_ids, torch.tensor([[1, 2, 3, 4, 5]]))
