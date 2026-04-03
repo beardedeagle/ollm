@@ -108,7 +108,6 @@ def build_runtime_inputs(
         try:
             inputs = runtime.tokenizer.apply_chat_template(
                 transformers_messages,
-                reasoning_effort="minimal",
                 tokenize=True,
                 add_generation_prompt=True,
                 return_tensors="pt",
@@ -117,37 +116,16 @@ def build_runtime_inputs(
             return prepare_text_inputs(inputs, runtime.device)
         except (TypeError, ValueError, AttributeError):
             try:
-                inputs = runtime.tokenizer.apply_chat_template(
+                input_ids = runtime.tokenizer.apply_chat_template(
                     transformers_messages,
                     tokenize=True,
                     add_generation_prompt=True,
                     return_tensors="pt",
-                    return_dict=True,
-                )
-                return prepare_text_inputs(inputs, runtime.device)
+                    return_dict=False,
+                ).to(runtime.device)
+                return prepare_text_inputs(input_ids, runtime.device)
             except (TypeError, ValueError, AttributeError):
-                try:
-                    input_ids = runtime.tokenizer.apply_chat_template(
-                        transformers_messages,
-                        reasoning_effort="minimal",
-                        tokenize=True,
-                        add_generation_prompt=True,
-                        return_tensors="pt",
-                        return_dict=False,
-                    ).to(runtime.device)
-                    return prepare_text_inputs(input_ids, runtime.device)
-                except (TypeError, ValueError, AttributeError):
-                    try:
-                        input_ids = runtime.tokenizer.apply_chat_template(
-                            transformers_messages,
-                            tokenize=True,
-                            add_generation_prompt=True,
-                            return_tensors="pt",
-                            return_dict=False,
-                        ).to(runtime.device)
-                        return prepare_text_inputs(input_ids, runtime.device)
-                    except (TypeError, ValueError, AttributeError):
-                        pass
+                pass
 
     rendered_prompt = render_plain_prompt(messages)
     tokenized = runtime.tokenizer(rendered_prompt, return_tensors="pt")

@@ -19,7 +19,6 @@ class FakeTokenizer:
     def apply_chat_template(
         self,
         messages,
-        reasoning_effort,
         tokenize,
         add_generation_prompt,
         return_tensors,
@@ -27,7 +26,6 @@ class FakeTokenizer:
     ):
         del (
             messages,
-            reasoning_effort,
             tokenize,
             add_generation_prompt,
             return_tensors,
@@ -73,7 +71,6 @@ class MappingTokenizer:
     def apply_chat_template(
         self,
         messages,
-        reasoning_effort,
         tokenize,
         add_generation_prompt,
         return_tensors,
@@ -81,7 +78,6 @@ class MappingTokenizer:
     ):
         del (
             messages,
-            reasoning_effort,
             tokenize,
             add_generation_prompt,
             return_tensors,
@@ -102,7 +98,6 @@ class TensorOnlyChatTemplateTokenizer:
     def apply_chat_template(
         self,
         messages,
-        reasoning_effort,
         tokenize,
         add_generation_prompt,
         return_tensors,
@@ -110,7 +105,6 @@ class TensorOnlyChatTemplateTokenizer:
     ):
         del (
             messages,
-            reasoning_effort,
             tokenize,
             add_generation_prompt,
             return_tensors,
@@ -159,6 +153,28 @@ class RecordingProcessor:
     def batch_decode(self, outputs, skip_special_tokens=False):
         del outputs, skip_special_tokens
         return ["plain-decoded"]
+
+
+class RejectsReasoningEffortTokenizer:
+    def apply_chat_template(
+        self,
+        messages,
+        tokenize,
+        add_generation_prompt,
+        return_tensors,
+        return_dict,
+    ):
+        del messages, tokenize, add_generation_prompt, return_tensors
+        if not return_dict:
+            raise TypeError("return_dict=True required")
+        return {
+            "input_ids": torch.tensor([[1, 2, 3]]),
+            "attention_mask": torch.tensor([[1, 1, 1]]),
+        }
+
+    def decode(self, tensor, skip_special_tokens=False):
+        del tensor, skip_special_tokens
+        return "reasoning-effort-free"
 
 
 class Seq2SeqModel(FakeModel):
@@ -407,6 +423,26 @@ def test_runtime_executor_preserves_attention_mask_from_chat_template_mapping() 
         attention_mask,
         torch.tensor([[1, 1, 1]]),
     )
+
+
+def test_runtime_executor_does_not_force_reasoning_effort() -> None:
+    model = FakeModel()
+    runtime = build_runtime_with_model(
+        CapabilityProfile(support_level=SupportLevel.GENERIC),
+        tokenizer=RejectsReasoningEffortTokenizer(),
+        model=model,
+    )
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("hello")]),
+    )
+
+    response = RuntimeExecutor().execute(runtime, request)
+
+    assert response.text == "reasoning-effort-free"
+    attention_mask = model.generate_kwargs["attention_mask"]
+    assert isinstance(attention_mask, torch.Tensor)
+    assert torch.equal(attention_mask, torch.tensor([[1, 1, 1]]))
 
 
 def test_runtime_executor_synthesizes_attention_mask_for_tensor_chat_template() -> None:
