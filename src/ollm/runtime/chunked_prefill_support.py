@@ -1,7 +1,7 @@
 """Support helpers for chunked prompt-ingestion strategies."""
 
 import re
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from inspect import Parameter, signature
 
 import torch
@@ -101,20 +101,39 @@ def call_processor_for_static_inputs(
     audio_values: list[str],
     device: torch.device,
 ) -> dict[str, object]:
-    processor_signature = signature(processor.__call__)
-    accepts_kwargs = any(
-        parameter.kind is Parameter.VAR_KEYWORD
-        for parameter in processor_signature.parameters.values()
-    )
+    try:
+        processor_signature = signature(processor.__call__)
+    except (TypeError, ValueError):
+        processor_signature = None
+        accepts_kwargs = True
+    else:
+        accepts_kwargs = any(
+            parameter.kind is Parameter.VAR_KEYWORD
+            for parameter in processor_signature.parameters.values()
+        )
     kwargs: dict[str, object] = {"return_tensors": "pt"}
-    if image_values and ("images" in processor_signature.parameters or accepts_kwargs):
+    if image_values and (
+        accepts_kwargs
+        or (
+            processor_signature is not None
+            and "images" in processor_signature.parameters
+        )
+    ):
         kwargs["images"] = image_values
     if audio_values:
-        if "audios" in processor_signature.parameters or accepts_kwargs:
+        if accepts_kwargs or (
+            processor_signature is not None
+            and "audios" in processor_signature.parameters
+        ):
             kwargs["audios"] = audio_values
-        elif "audio" in processor_signature.parameters:
+        elif (
+            processor_signature is not None
+            and "audio" in processor_signature.parameters
+        ):
             kwargs["audio"] = audio_values
-    if "text" in processor_signature.parameters or accepts_kwargs:
+    if accepts_kwargs or (
+        processor_signature is not None and "text" in processor_signature.parameters
+    ):
         kwargs["text"] = [""]
     prepared = processor(**kwargs)
     return move_input_mapping(prepared, device)
@@ -124,9 +143,9 @@ def move_input_mapping(value: object, device: torch.device) -> dict[str, object]
     to_method = getattr(value, "to", None)
     if callable(to_method):
         moved = to_method(device)
-        if isinstance(moved, dict):
+        if isinstance(moved, Mapping):
             return dict(moved)
-    if isinstance(value, dict):
+    if isinstance(value, Mapping):
         result: dict[str, object] = {}
         for key, item in value.items():
             if isinstance(item, torch.Tensor):

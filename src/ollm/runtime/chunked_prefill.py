@@ -198,7 +198,7 @@ def _prepare_streamed_causal_strategy(
     static_inputs = prepare_static_inputs(runtime, messages)
     prompt_tokens: list[int] = []
     deferred_tokens: list[int] = []
-    prefed_token_count = 0
+    prefilled_token_count = 0
     prefill_cache = generate_kwargs.get("past_key_values")
     forward_method = getattr(runtime.model, "forward", None)
     forward_input_filter = (
@@ -226,11 +226,11 @@ def _prepare_streamed_causal_strategy(
                 static_inputs=static_inputs,
                 chunk_ids=deferred_tokens[:chunk_tokens],
                 prefill_cache=prefill_cache,
-                prefix_token_count=prefed_token_count,
+                prefix_token_count=prefilled_token_count,
                 strategy_label=strategy_id.value,
             )
             del deferred_tokens[:chunk_tokens]
-            prefed_token_count += chunk_tokens
+            prefilled_token_count += chunk_tokens
 
     if len(prompt_tokens) - 1 > chunk_tokens:
         while len(deferred_tokens) > 1:
@@ -247,11 +247,11 @@ def _prepare_streamed_causal_strategy(
                 static_inputs=static_inputs,
                 chunk_ids=deferred_tokens[:chunk_size],
                 prefill_cache=prefill_cache,
-                prefix_token_count=prefed_token_count,
+                prefix_token_count=prefilled_token_count,
                 strategy_label=strategy_id.value,
             )
             del deferred_tokens[:chunk_size]
-            prefed_token_count += chunk_size
+            prefilled_token_count += chunk_size
 
     if not prompt_tokens:
         raise PromptExecutionError(
@@ -260,7 +260,7 @@ def _prepare_streamed_causal_strategy(
 
     final_inputs = dict(static_inputs)
     final_generate_kwargs = dict(generate_kwargs)
-    if prefed_token_count > 0:
+    if prefilled_token_count > 0:
         final_inputs["input_ids"] = token_tensor(deferred_tokens, device=runtime.device)
         final_inputs["attention_mask"] = ones_attention_mask(
             token_count=len(prompt_tokens),
