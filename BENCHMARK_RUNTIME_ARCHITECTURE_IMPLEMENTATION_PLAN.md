@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document captures the implementation plan for addressing four structural issues in the runtime benchmark subsystem centered on [scripts/benchmark_runtime.py](/Users/beardedeagle/vcs/github/ollm/scripts/benchmark_runtime.py) and `src/ollm/runtime/benchmark/`.
+This document captures the implementation plan for addressing four structural issues in the runtime benchmark subsystem centered on [scripts/benchmark_runtime.py](scripts/benchmark_runtime.py) and `src/ollm/runtime/benchmark/`.
 
 The goal is to preserve current benchmark behavior and report contracts while improving architectural boundaries, maintainability, and scaling characteristics.
 
@@ -21,7 +21,7 @@ This plan does not change benchmark semantics, output meaning, or supported benc
 
 ### 1. Private Runtime Coupling
 
-The benchmark layer currently calls private executor methods in [src/ollm/runtime/benchmark/probe_execution.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/probe_execution.py), including request validation, input construction, generation kwargs preparation, and response decoding.
+The benchmark layer currently calls private executor methods in [src/ollm/runtime/benchmark/probe_execution.py](src/ollm/runtime/benchmark/probe_execution.py), including request validation, input construction, generation kwargs preparation, and response decoding.
 
 Problems:
 
@@ -33,9 +33,9 @@ Problems:
 
 Probe mode strings such as `cold`, `warm`, `prompt-scaling`, `output-scaling`, `session-growth`, and `reopen-session-growth` are manually coordinated across:
 
-- [scripts/benchmark_runtime.py](/Users/beardedeagle/vcs/github/ollm/scripts/benchmark_runtime.py)
-- [scripts/benchmark_runtime_support.py](/Users/beardedeagle/vcs/github/ollm/scripts/benchmark_runtime_support.py)
-- [src/ollm/runtime/benchmark/targets.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/targets.py)
+- [scripts/benchmark_runtime.py](scripts/benchmark_runtime.py)
+- [scripts/benchmark_runtime_support.py](scripts/benchmark_runtime_support.py)
+- [src/ollm/runtime/benchmark/targets.py](src/ollm/runtime/benchmark/targets.py)
 - the probe parse/render paths under `src/ollm/runtime/benchmark/`
 
 Problems:
@@ -46,7 +46,7 @@ Problems:
 
 ### 3. Overloaded Package Boundary
 
-[src/ollm/runtime/benchmark/__init__.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/__init__.py) currently does too much:
+[src/ollm/runtime/benchmark/__init__.py](src/ollm/runtime/benchmark/__init__.py) currently does too much:
 
 - report orchestration
 - host summary
@@ -62,7 +62,7 @@ Problems:
 
 ### 4. History Lookup Scalability
 
-[src/ollm/runtime/benchmark/history.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/history.py) currently finds the previous comparable record by reverse-reading the full `index.jsonl`.
+[src/ollm/runtime/benchmark/history.py](src/ollm/runtime/benchmark/history.py) currently finds the previous comparable record by reverse-reading the full `index.jsonl`.
 
 Problems:
 
@@ -87,7 +87,7 @@ Introduce a new runtime-level public API for single-request traced execution.
 
 Proposed module:
 
-- [src/ollm/runtime/execution_trace.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/execution_trace.py)
+- [src/ollm/runtime/execution_trace.py](src/ollm/runtime/execution_trace.py)
 
 Proposed responsibilities:
 
@@ -129,7 +129,7 @@ Field intent:
 
 The seam may still internally build and normalize model inputs and generation kwargs, but those stay private to the runtime layer. The benchmark layer should not receive `prepared_inputs`, `prepared_generate_kwargs`, or raw output tensors unless a concrete benchmark requirement emerges that cannot be expressed as a smaller typed field.
 
-Benchmark code in [src/ollm/runtime/benchmark/probe_execution.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/probe_execution.py) should consume only this public seam.
+Benchmark code in [src/ollm/runtime/benchmark/probe_execution.py](src/ollm/runtime/benchmark/probe_execution.py) should consume only this public seam.
 
 ### B. Central Probe Registry
 
@@ -137,7 +137,7 @@ Introduce a typed registry for probe modes.
 
 Proposed module:
 
-- [src/ollm/runtime/benchmark/probe_registry.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/probe_registry.py)
+- [src/ollm/runtime/benchmark/probe_registry.py](src/ollm/runtime/benchmark/probe_registry.py)
 
 Proposed structures:
 
@@ -176,9 +176,9 @@ Split orchestration code out of `__init__.py`.
 
 Proposed modules:
 
-- [src/ollm/runtime/benchmark/report_builder.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/report_builder.py)
-- [src/ollm/runtime/benchmark/host.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/host.py)
-- [src/ollm/runtime/benchmark/fixtures.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/fixtures.py)
+- [src/ollm/runtime/benchmark/report_builder.py](src/ollm/runtime/benchmark/report_builder.py)
+- [src/ollm/runtime/benchmark/host.py](src/ollm/runtime/benchmark/host.py)
+- [src/ollm/runtime/benchmark/fixtures.py](src/ollm/runtime/benchmark/fixtures.py)
 
 Target responsibility split:
 
@@ -219,9 +219,9 @@ Add or strengthen characterization tests before structural edits.
 
 Required coverage:
 
-- CLI invalid argument handling in [tests/test_benchmark_reporting.py](/Users/beardedeagle/vcs/github/ollm/tests/test_benchmark_reporting.py)
+- CLI invalid argument handling in [tests/test_benchmark_reporting.py](tests/test_benchmark_reporting.py)
 - JSON render/parse round-trips for all probe types
-- history comparison behavior in [tests/test_benchmark_history.py](/Users/beardedeagle/vcs/github/ollm/tests/test_benchmark_history.py)
+- history comparison behavior in [tests/test_benchmark_history.py](tests/test_benchmark_history.py)
 - a regression test asserting benchmark code does not depend on `RuntimeExecutor._*` after the seam refactor
 
 Deliverable:
@@ -269,9 +269,9 @@ Changes:
 
 - add `ProbeMode` enum
 - add registry of `ProbeDefinition` entries
-- replace raw string dispatch in [scripts/benchmark_runtime.py](/Users/beardedeagle/vcs/github/ollm/scripts/benchmark_runtime.py)
-- replace `_probe_request_payload()` switch logic in [scripts/benchmark_runtime_support.py](/Users/beardedeagle/vcs/github/ollm/scripts/benchmark_runtime_support.py)
-- update `build_runtime_probe_command()` in [src/ollm/runtime/benchmark/targets.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/targets.py) to use typed modes
+- replace raw string dispatch in [scripts/benchmark_runtime.py](scripts/benchmark_runtime.py)
+- replace `_probe_request_payload()` switch logic in [scripts/benchmark_runtime_support.py](scripts/benchmark_runtime_support.py)
+- update `build_runtime_probe_command()` in [src/ollm/runtime/benchmark/targets.py](src/ollm/runtime/benchmark/targets.py) to use typed modes
 
 Acceptance criteria:
 
@@ -287,7 +287,7 @@ Changes:
 
 - add `execution_trace.py` or equivalent runtime seam
 - move execution internals needed by benchmarks behind public runtime helpers
-- update [src/ollm/runtime/benchmark/probe_execution.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/probe_execution.py) to use the seam
+- update [src/ollm/runtime/benchmark/probe_execution.py](src/ollm/runtime/benchmark/probe_execution.py) to use the seam
 - remove benchmark references to `RuntimeExecutor._validate_request`, `_build_inputs`, `_build_generate_kwargs`, and `_decode_response`
 
 Acceptance criteria:
@@ -300,26 +300,26 @@ Acceptance criteria:
 
 ### New Files
 
-- [src/ollm/runtime/execution_trace.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/execution_trace.py)
-- [src/ollm/runtime/benchmark/probe_registry.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/probe_registry.py)
-- [src/ollm/runtime/benchmark/report_builder.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/report_builder.py)
-- [src/ollm/runtime/benchmark/host.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/host.py)
-- [src/ollm/runtime/benchmark/fixtures.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/fixtures.py)
+- [src/ollm/runtime/execution_trace.py](src/ollm/runtime/execution_trace.py)
+- [src/ollm/runtime/benchmark/probe_registry.py](src/ollm/runtime/benchmark/probe_registry.py)
+- [src/ollm/runtime/benchmark/report_builder.py](src/ollm/runtime/benchmark/report_builder.py)
+- [src/ollm/runtime/benchmark/host.py](src/ollm/runtime/benchmark/host.py)
+- [src/ollm/runtime/benchmark/fixtures.py](src/ollm/runtime/benchmark/fixtures.py)
 
 ### Primary Modified Files
 
-- [scripts/benchmark_runtime.py](/Users/beardedeagle/vcs/github/ollm/scripts/benchmark_runtime.py)
-- [scripts/benchmark_runtime_support.py](/Users/beardedeagle/vcs/github/ollm/scripts/benchmark_runtime_support.py)
-- [src/ollm/runtime/benchmark/__init__.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/__init__.py)
-- [src/ollm/runtime/benchmark/history.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/history.py)
-- [src/ollm/runtime/benchmark/probe_execution.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/probe_execution.py)
-- [src/ollm/runtime/benchmark/targets.py](/Users/beardedeagle/vcs/github/ollm/src/ollm/runtime/benchmark/targets.py)
+- [scripts/benchmark_runtime.py](scripts/benchmark_runtime.py)
+- [scripts/benchmark_runtime_support.py](scripts/benchmark_runtime_support.py)
+- [src/ollm/runtime/benchmark/__init__.py](src/ollm/runtime/benchmark/__init__.py)
+- [src/ollm/runtime/benchmark/history.py](src/ollm/runtime/benchmark/history.py)
+- [src/ollm/runtime/benchmark/probe_execution.py](src/ollm/runtime/benchmark/probe_execution.py)
+- [src/ollm/runtime/benchmark/targets.py](src/ollm/runtime/benchmark/targets.py)
 
 ### Expected Test Updates
 
-- [tests/test_benchmarks.py](/Users/beardedeagle/vcs/github/ollm/tests/test_benchmarks.py)
-- [tests/test_benchmark_reporting.py](/Users/beardedeagle/vcs/github/ollm/tests/test_benchmark_reporting.py)
-- [tests/test_benchmark_history.py](/Users/beardedeagle/vcs/github/ollm/tests/test_benchmark_history.py)
+- [tests/test_benchmarks.py](tests/test_benchmarks.py)
+- [tests/test_benchmark_reporting.py](tests/test_benchmark_reporting.py)
+- [tests/test_benchmark_history.py](tests/test_benchmark_history.py)
 
 ## Risks
 
