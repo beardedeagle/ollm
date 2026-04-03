@@ -15,6 +15,7 @@ site/
 *.egg-info/
 src/ollm.egg-info
 .omx/
+.ollm/
 AGENTS.md
 .pytest_cache/
 .uv-cache/

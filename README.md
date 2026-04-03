@@ -228,10 +228,13 @@ ollm serve
 `ollm serve` resolves its host, port, reload, log-level, and response-store settings through the same `CLI > env > config file > defaults` contract. The default bind is `127.0.0.1`, and the server publishes machine-readable and interactive OpenAPI surfaces at `/openapi.json`, `/docs`, and `/redoc`.
 
 Runtime benchmarking records a persistent history ledger under
-`.omx/logs/benchmark-history/` by default. Each record includes a stable
+`.ollm/benchmark-history/` by default. Each record includes a stable
 `codebase_label`, derived from the normalized git `origin` remote unless you
 override it with `--history-codebase-label`, so this fork and any adjacent
 upstream baseline clone cannot silently compare against each other.
+The history root resolves through the standard precedence contract:
+`--history-dir`, then `OLLM_BENCHMARK__HISTORY_DIR`, then
+`[benchmark].history_dir` in `ollm.toml`, then the built-in repo-root default.
 
 The local REST surface is:
 
@@ -501,11 +504,11 @@ uv run --group docs mkdocs build --strict
 oLLM ships a dedicated runtime benchmark harness:
 
 ```bash
-uv run python scripts/benchmark_runtime.py --device cpu --output .omx/runtime-benchmark.json
+uv run python scripts/benchmark_runtime.py --device cpu --output .ollm/runtime-benchmark.json
 ```
 
 Each run also records its full raw payload plus a normalized summary under
-`.omx/logs/benchmark-history/`, and the CLI compares against the last matching
+`.ollm/benchmark-history/`, and the CLI compares against the last matching
 run shape automatically so obvious latency or accelerator-memory regressions are
 surfaced immediately without changing the JSON emitted to `stdout`.
 

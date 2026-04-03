@@ -22,7 +22,7 @@ def _build_resolved_model(
         reference=ModelReference.parse(raw_reference),
         source_kind=ModelSourceKind.BUILTIN,
         normalized_name=normalized_name,
-        model_path=Path("/tmp/model"),
+        model_path=Path("test-models/model"),
         repo_id=None,
         revision=None,
         catalog_entry=None,

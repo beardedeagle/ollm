@@ -19,7 +19,6 @@ class LongMappingTokenizer:
     def apply_chat_template(
         self,
         messages,
-        reasoning_effort,
         tokenize,
         add_generation_prompt,
         return_tensors,
@@ -27,7 +26,6 @@ class LongMappingTokenizer:
     ):
         del (
             messages,
-            reasoning_effort,
             tokenize,
             add_generation_prompt,
             return_tensors,

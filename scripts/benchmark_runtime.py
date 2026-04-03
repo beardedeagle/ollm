@@ -14,31 +14,29 @@ from benchmark_runtime_support import (
 from ollm.runtime.benchmark import (
     build_runtime_benchmark_report,
     choose_default_device,
-    render_output_scaling_probe_json,
-    render_prompt_scaling_probe_json,
-    render_reopen_session_growth_probe_json,
     render_report_json,
-    render_runtime_probe_json,
-    render_session_growth_probe_json,
-    render_warm_runtime_probe_json,
-    run_output_scaling_probe,
-    run_prompt_scaling_probe,
-    run_reopen_session_growth_probe,
-    run_runtime_probe,
-    run_session_growth_probe,
-    run_warm_runtime_probe,
 )
-from ollm.runtime.benchmark.history import record_benchmark_history
+from ollm.runtime.benchmark.history import (
+    record_benchmark_history,
+    resolve_benchmark_history_dir,
+)
 from ollm.runtime.benchmark.metadata import (
     probe_comparison_key,
     report_comparison_key,
     resolve_history_codebase_label,
+)
+from ollm.runtime.benchmark.probe_registry import (
+    ProbeInvocation,
+    ProbeMode,
+    get_probe_definition,
+    probe_mode_choices,
 )
 from ollm.runtime.benchmark.types import (
     DEFAULT_RUNTIME_BENCHMARK_PROFILE,
     KNOWN_RUNTIME_BENCHMARK_PROFILES,
     resolve_runtime_benchmark_profile,
 )
+from ollm.runtime.settings import load_app_settings
 from ollm.runtime.strategy_selector import DEFAULT_STRATEGY_SELECTOR_PROFILE
 
 
@@ -159,7 +157,12 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument("--probe-runtime", action="store_true", help=argparse.SUPPRESS)
-    parser.add_argument("--probe-mode", default="cold", help=argparse.SUPPRESS)
+    parser.add_argument(
+        "--probe-mode",
+        choices=probe_mode_choices(),
+        default=ProbeMode.COLD.value,
+        help=argparse.SUPPRESS,
+    )
     parser.add_argument("--model", dest="probe_model", help=argparse.SUPPRESS)
     parser.add_argument("--probe-backend", help=argparse.SUPPRESS)
     parser.add_argument(
@@ -241,8 +244,13 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     repo_root = Path(__file__).resolve().parents[1]
+    settings = load_app_settings()
     history_codebase_label = resolve_history_codebase_label(
         repo_root, override_label=args.history_codebase_label
+    )
+    resolved_history_dir = resolve_benchmark_history_dir(
+        cli_history_dir=None if args.history_dir is None else Path(args.history_dir),
+        configured_history_dir=settings.benchmark.history_dir,
     )
     prompt_scale_tokens = (
         None
@@ -268,128 +276,44 @@ def main() -> int:
             raise SystemExit("--probe-runtime requires --model")
         if args.probe_backend is None:
             raise SystemExit("--probe-runtime requires --probe-backend")
+        probe_mode = ProbeMode(args.probe_mode)
         prompt_token_targets = parse_positive_int_list(args.probe_prompt_token_targets)
         output_token_targets = parse_positive_int_list(args.probe_output_token_targets)
         probe_device = choose_default_device() if args.device is None else args.device
-        if args.probe_mode == "cold":
-            probe = run_runtime_probe(
-                model_reference=args.probe_model,
-                models_dir=Path(args.models_dir),
-                device=probe_device,
-                backend=args.probe_backend,
-                use_specialization=not args.probe_no_specialization,
-                kv_cache_strategy=args.probe_kv_cache_strategy,
-                strategy_selector_profile=args.probe_strategy_selector_profile,
-                kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
-                offload_cpu_layers=args.probe_offload_cpu_layers,
-                offload_cpu_policy=args.probe_offload_cpu_policy,
-                offload_gpu_layers=args.probe_offload_gpu_layers,
-                prompt=args.probe_prompt,
-                max_new_tokens=args.probe_max_new_tokens,
-            )
-            rendered_probe = render_runtime_probe_json(probe)
-        elif args.probe_mode == "warm":
-            probe = run_warm_runtime_probe(
-                model_reference=args.probe_model,
-                models_dir=Path(args.models_dir),
-                device=probe_device,
-                backend=args.probe_backend,
-                use_specialization=not args.probe_no_specialization,
-                kv_cache_strategy=args.probe_kv_cache_strategy,
-                strategy_selector_profile=args.probe_strategy_selector_profile,
-                kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
-                offload_cpu_layers=args.probe_offload_cpu_layers,
-                offload_cpu_policy=args.probe_offload_cpu_policy,
-                offload_gpu_layers=args.probe_offload_gpu_layers,
-                prompt=args.probe_prompt,
-                max_new_tokens=args.probe_max_new_tokens,
-                iterations=args.probe_iterations,
-                warmup_iterations=args.probe_warmup_iterations,
-            )
-            rendered_probe = render_warm_runtime_probe_json(probe)
-        elif args.probe_mode == "prompt-scaling":
-            probe = run_prompt_scaling_probe(
-                model_reference=args.probe_model,
-                models_dir=Path(args.models_dir),
-                device=probe_device,
-                backend=args.probe_backend,
-                use_specialization=not args.probe_no_specialization,
-                kv_cache_strategy=args.probe_kv_cache_strategy,
-                strategy_selector_profile=args.probe_strategy_selector_profile,
-                kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
-                offload_cpu_layers=args.probe_offload_cpu_layers,
-                offload_cpu_policy=args.probe_offload_cpu_policy,
-                offload_gpu_layers=args.probe_offload_gpu_layers,
-                prompt_token_targets=prompt_token_targets,
-                max_new_tokens=args.probe_max_new_tokens,
-            )
-            rendered_probe = render_prompt_scaling_probe_json(probe)
-        elif args.probe_mode == "output-scaling":
-            probe = run_output_scaling_probe(
-                model_reference=args.probe_model,
-                models_dir=Path(args.models_dir),
-                device=probe_device,
-                backend=args.probe_backend,
-                use_specialization=not args.probe_no_specialization,
-                kv_cache_strategy=args.probe_kv_cache_strategy,
-                strategy_selector_profile=args.probe_strategy_selector_profile,
-                kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
-                offload_cpu_layers=args.probe_offload_cpu_layers,
-                offload_cpu_policy=args.probe_offload_cpu_policy,
-                offload_gpu_layers=args.probe_offload_gpu_layers,
-                prompt=args.probe_prompt,
-                output_token_targets=output_token_targets,
-            )
-            rendered_probe = render_output_scaling_probe_json(probe)
-        elif args.probe_mode == "session-growth":
-            probe = run_session_growth_probe(
-                model_reference=args.probe_model,
-                models_dir=Path(args.models_dir),
-                device=probe_device,
-                backend=args.probe_backend,
-                use_specialization=not args.probe_no_specialization,
-                kv_cache_strategy=args.probe_kv_cache_strategy,
-                strategy_selector_profile=args.probe_strategy_selector_profile,
-                kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
-                offload_cpu_layers=args.probe_offload_cpu_layers,
-                offload_cpu_policy=args.probe_offload_cpu_policy,
-                offload_gpu_layers=args.probe_offload_gpu_layers,
-                session_turns=args.probe_session_turns,
-                max_new_tokens=args.probe_max_new_tokens,
-            )
-            rendered_probe = render_session_growth_probe_json(probe)
-        elif args.probe_mode == "reopen-session-growth":
-            probe = run_reopen_session_growth_probe(
-                model_reference=args.probe_model,
-                models_dir=Path(args.models_dir),
-                device=probe_device,
-                backend=args.probe_backend,
-                use_specialization=not args.probe_no_specialization,
-                kv_cache_strategy=args.probe_kv_cache_strategy,
-                strategy_selector_profile=args.probe_strategy_selector_profile,
-                kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
-                offload_cpu_layers=args.probe_offload_cpu_layers,
-                offload_cpu_policy=args.probe_offload_cpu_policy,
-                offload_gpu_layers=args.probe_offload_gpu_layers,
-                session_turns=args.probe_session_turns,
-                max_new_tokens=args.probe_max_new_tokens,
-            )
-            rendered_probe = render_reopen_session_growth_probe_json(probe)
-        else:
-            raise SystemExit(f"Unsupported --probe-mode: {args.probe_mode}")
+        invocation = ProbeInvocation(
+            model_reference=args.probe_model,
+            models_dir=Path(args.models_dir),
+            device=probe_device,
+            backend=args.probe_backend,
+            use_specialization=not args.probe_no_specialization,
+            kv_cache_strategy=args.probe_kv_cache_strategy,
+            strategy_selector_profile=args.probe_strategy_selector_profile,
+            kv_cache_window_tokens=args.probe_kv_cache_window_tokens,
+            offload_cpu_layers=args.probe_offload_cpu_layers,
+            offload_cpu_policy=args.probe_offload_cpu_policy,
+            offload_gpu_layers=args.probe_offload_gpu_layers,
+            prompt=args.probe_prompt,
+            max_new_tokens=args.probe_max_new_tokens,
+            iterations=args.probe_iterations,
+            warmup_iterations=args.probe_warmup_iterations,
+            prompt_token_targets=prompt_token_targets,
+            output_token_targets=output_token_targets,
+            session_turns=args.probe_session_turns,
+        )
+        probe_definition = get_probe_definition(probe_mode)
+        probe = probe_definition.runner(invocation)
+        rendered_probe = probe_definition.renderer(probe)
         if not args.no_record_history:
             payload = json.loads(rendered_probe)
             selector_rule_id, selector_applied_strategy = extract_probe_selector_result(
                 payload,
-                probe_mode=args.probe_mode,
+                probe_mode=probe_mode,
             )
             history_result = record_benchmark_history(
                 repo_root=repo_root,
                 payload=payload,
-                run_kind=f"probe-{args.probe_mode}",
-                history_dir=(
-                    None if args.history_dir is None else Path(args.history_dir)
-                ),
+                run_kind=probe_definition.run_kind,
+                history_dir=resolved_history_dir,
                 codebase_label=history_codebase_label,
                 comparison_key=probe_comparison_key(
                     codebase_label=history_codebase_label,
@@ -406,7 +330,7 @@ def main() -> int:
                     offload_cpu_layers=args.probe_offload_cpu_layers,
                     offload_cpu_policy=args.probe_offload_cpu_policy,
                     offload_gpu_layers=args.probe_offload_gpu_layers,
-                    probe_mode=args.probe_mode,
+                    probe_mode=probe_mode.value,
                     prompt=args.probe_prompt,
                     max_new_tokens=args.probe_max_new_tokens,
                     iterations=args.probe_iterations,
@@ -463,7 +387,7 @@ def main() -> int:
             repo_root=repo_root,
             payload=json.loads(rendered),
             run_kind="report",
-            history_dir=None if args.history_dir is None else Path(args.history_dir),
+            history_dir=resolved_history_dir,
             codebase_label=history_codebase_label,
             comparison_key=report_comparison_key(
                 codebase_label=history_codebase_label,

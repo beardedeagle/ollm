@@ -10,7 +10,6 @@ from ollm.kv_cache.matrix import (
     build_kv_cache_adaptation_surface,
     resolve_kv_cache_base_dir,
 )
-from ollm.kv_cache.state import KVCacheStateSnapshot
 from ollm.kv_cache.strategy import is_disk_backed_kv_cache_strategy, kv_cache_root
 from ollm.runtime.benchmark.probe_types import (
     EventTimingSummary,
@@ -19,14 +18,12 @@ from ollm.runtime.benchmark.probe_types import (
     RequestProbeMetrics,
 )
 from ollm.runtime.benchmark.resources import cache_dir_size_mb, measure_stage
-from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.config import GenerationConfig, RuntimeConfig
-from ollm.runtime.errors import PromptExecutionError
-from ollm.runtime.generation import RuntimeExecutor
-from ollm.runtime.generation_config_support import temporary_generation_config
-from ollm.runtime.generation_support import normalize_generate_inputs
+from ollm.runtime.execution_trace import (
+    RuntimeExecutionTrace,
+    execute_request_with_trace,
+)
 from ollm.runtime.loaded_runtime import LoadedRuntime
-from ollm.runtime.output_control import suppress_module_prints
 from ollm.runtime.streaming import BufferedTextStreamer
 from ollm.utils import Stats
 
@@ -91,44 +88,22 @@ def execute_request_probe(
     runtime: LoadedRuntime,
     request: PromptRequest,
 ) -> RequestProbeExecution:
-    executor = RuntimeExecutor()
-    executor._validate_request(runtime, request)
-    inputs = executor._build_inputs(runtime, request.messages)
-    prompt_tokens = _count_prompt_tokens(inputs)
     streamer = TimedBufferedTextStreamer(runtime.tokenizer)
-    generate_kwargs, generation_config = executor._build_generate_kwargs(
-        runtime, request, streamer
-    )
     cache_mode = _cache_mode(runtime, request)
     kv_cache_strategy = _kv_cache_strategy(runtime, request)
     _clear_backend_stats(runtime)
-    normalized_inputs = normalize_generate_inputs(inputs)
-    generation_result, generation_ms, generation_resources = measure_stage(
+    trace_result, generation_ms, generation_resources = measure_stage(
         runtime.config.device,
-        lambda: _generate_outputs(
-            executor,
-            runtime,
-            request,
-            normalized_inputs,
-            generate_kwargs,
-            generation_config,
+        lambda: execute_request_with_trace(
+            runtime=runtime,
+            request=request,
+            streamer=streamer,
         ),
         sample_accelerator_utilization=True,
     )
-    generated = cast(
-        tuple[object, float, dict[str, object], dict[str, object]], generation_result
-    )
-    output_tensor = cast(torch.Tensor, generated[0])
-    generation_started = generated[1]
-    prepared_inputs = generated[2]
-    prepared_generate_kwargs = generated[3]
-    if hasattr(output_tensor, "detach"):
-        output_tensor = output_tensor.detach()
-    cpu_outputs = output_tensor.cpu()
-    response_text = executor._decode_response(runtime, prepared_inputs, cpu_outputs)
-    cache_state = _extract_cache_state_snapshot(
-        prepared_generate_kwargs.get("past_key_values")
-    )
+    trace = cast(RuntimeExecutionTrace, trace_result)
+    response_text = trace.response_text
+    cache_state = trace.cache_state
     offload_cpu_applied_indices = tuple(
         int(layer_idx)
         for layer_idx in runtime.plan.details.get(
@@ -136,17 +111,17 @@ def execute_request_probe(
         ).split(",")
         if layer_idx
     )
-    output_tokens = _count_output_tokens(runtime, prepared_inputs, cpu_outputs)
+    output_tokens = trace.output_token_count
     time_to_first_token_ms = None
     if streamer.token_timestamps:
         time_to_first_token_ms = round(
-            (streamer.token_timestamps[0] - generation_started) * 1000.0,
+            (streamer.token_timestamps[0] - trace.generation_started_at) * 1000.0,
             6,
         )
     prompt_tokens_per_second = None
     if time_to_first_token_ms is not None and time_to_first_token_ms > 0:
         prompt_tokens_per_second = round(
-            prompt_tokens / (time_to_first_token_ms / 1000.0),
+            trace.prompt_token_count / (time_to_first_token_ms / 1000.0),
             6,
         )
     output_tokens_per_second = None
@@ -203,7 +178,7 @@ def execute_request_probe(
             generation_ms=round(generation_ms, 6),
             time_to_first_token_ms=time_to_first_token_ms,
             inter_token_latencies_ms=_inter_token_latencies(streamer.token_timestamps),
-            prompt_tokens=prompt_tokens,
+            prompt_tokens=trace.prompt_token_count,
             prompt_tokens_per_second=prompt_tokens_per_second,
             output_tokens=output_tokens,
             output_tokens_per_second=output_tokens_per_second,
@@ -314,65 +289,6 @@ def _collect_native_runtime_profile(
     )
 
 
-def _generate_outputs(
-    executor: RuntimeExecutor,
-    runtime: LoadedRuntime,
-    request: PromptRequest,
-    inputs: dict[str, object],
-    generate_kwargs: dict[str, object],
-    generation_config: object,
-) -> tuple[object, float, dict[str, object], dict[str, object]]:
-    generation_started = time.perf_counter()
-    prepared_inputs, prepared_generate_kwargs = executor._prepare_generate_inputs(
-        runtime,
-        request,
-        inputs,
-        generate_kwargs,
-    )
-    try:
-        with torch.inference_mode():
-            with suppress_module_prints(runtime.backend.print_suppression_modules):
-                with temporary_generation_config(runtime.model, generation_config):
-                    return (
-                        runtime.model.generate(
-                            **prepared_inputs, **prepared_generate_kwargs
-                        ),
-                        generation_started,
-                        prepared_inputs,
-                        prepared_generate_kwargs,
-                    )
-    except TypeError as exc:
-        if "streamer" not in str(exc):
-            raise
-        retry_kwargs = dict(prepared_generate_kwargs)
-        retry_kwargs.pop("streamer", None)
-        with torch.inference_mode():
-            with suppress_module_prints(runtime.backend.print_suppression_modules):
-                with temporary_generation_config(runtime.model, generation_config):
-                    return (
-                        runtime.model.generate(**prepared_inputs, **retry_kwargs),
-                        generation_started,
-                        prepared_inputs,
-                        retry_kwargs,
-                    )
-
-
-def _count_prompt_tokens(inputs: dict[str, object]) -> int:
-    input_ids = inputs.get("input_ids")
-    if not isinstance(input_ids, torch.Tensor):
-        raise PromptExecutionError("Benchmark probe expected tensor-backed input_ids")
-    return int(input_ids.shape[0] if input_ids.ndim == 1 else input_ids.shape[-1])
-
-
-def _count_output_tokens(
-    runtime: LoadedRuntime, inputs: dict[str, object], outputs: torch.Tensor
-) -> int:
-    input_ids = cast(torch.Tensor, inputs["input_ids"])
-    if runtime.plan.generic_model_kind is GenericModelKind.SEQ2SEQ_LM:
-        return int(outputs.shape[-1])
-    return max(0, int(outputs.shape[-1] - input_ids.shape[-1]))
-
-
 def _cache_mode(runtime: LoadedRuntime, request: PromptRequest) -> str:
     if not request.runtime_config.use_cache:
         return "none"
@@ -408,16 +324,6 @@ def _clip_text(text: str, *, max_chars: int) -> str:
     if len(text) <= max_chars:
         return text
     return text[: max_chars - 3] + "..."
-
-
-def _extract_cache_state_snapshot(value: object) -> KVCacheStateSnapshot | None:
-    snapshot_method = getattr(value, "cache_state_snapshot", None)
-    if not callable(snapshot_method):
-        return None
-    snapshot = snapshot_method()
-    if not isinstance(snapshot, KVCacheStateSnapshot):
-        return None
-    return snapshot
 
 
 def _optional_int_detail(details: dict[str, str], key: str) -> int | None:

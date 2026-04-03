@@ -184,9 +184,11 @@ def test_build_kv_cache_adaptation_surface_pins_resident_baseline() -> None:
     assert surface.recommended_strategy_id == "resident"
 
 
-def test_resolve_kv_cache_base_dir_namespaces_persistent_lifecycle() -> None:
+def test_resolve_kv_cache_base_dir_namespaces_persistent_lifecycle(
+    tmp_path: Path,
+) -> None:
     persistent_dir = resolve_kv_cache_base_dir(
-        cache_dir=Path("/tmp/kv-cache"),
+        cache_dir=tmp_path / "kv-cache",
         lifecycle="persistent",
         model_reference="Qwen/Qwen2.5-7B-Instruct",
         normalized_name="qwen2.5-7b",

@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import cast
 
 from ollm.client import RuntimeClient
+from ollm.runtime.benchmark.probe_registry import ProbeMode, get_probe_definition
 from ollm.runtime.config import RuntimeConfig
 
 
@@ -69,9 +70,11 @@ def emit_history_status(history_result: dict[str, object]) -> None:
 def extract_probe_selector_result(
     payload: Mapping[str, object],
     *,
-    probe_mode: str,
+    probe_mode: ProbeMode,
 ) -> tuple[str | None, str | None]:
-    request_payload = _probe_request_payload(payload, probe_mode=probe_mode)
+    request_payload = get_probe_definition(probe_mode).history_request_extractor(
+        payload
+    )
     if request_payload is None:
         return None, None
     return (
@@ -80,31 +83,6 @@ def extract_probe_selector_result(
             request_payload, "strategy_selector_applied_kv_cache_strategy"
         ),
     )
-
-
-def _probe_request_payload(
-    payload: Mapping[str, object],
-    *,
-    probe_mode: str,
-) -> Mapping[str, object] | None:
-    if probe_mode == "cold":
-        return _optional_mapping(payload.get("request"))
-    if probe_mode == "warm":
-        measured = payload.get("measured_iterations")
-        if not isinstance(measured, list) or not measured:
-            return None
-        return _optional_mapping(measured[0])
-    if probe_mode in {"prompt-scaling", "output-scaling"}:
-        cases = payload.get("cases")
-        if not isinstance(cases, list) or not cases:
-            return None
-        return _optional_mapping(cast(Mapping[str, object], cases[0]).get("request"))
-    if probe_mode in {"session-growth", "reopen-session-growth"}:
-        turns = payload.get("turns")
-        if not isinstance(turns, list) or not turns:
-            return None
-        return _optional_mapping(cast(Mapping[str, object], turns[0]).get("request"))
-    return None
 
 
 def _optional_mapping(value: object) -> Mapping[str, object] | None:

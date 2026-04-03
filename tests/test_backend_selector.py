@@ -10,7 +10,7 @@ from ollm.runtime.resolver import ModelSourceKind, NativeFamily, ResolvedModel
 from ollm.runtime.specialization.passes.base import SpecializationPassId
 
 
-def build_catalog_resolved_model() -> ResolvedModel:
+def build_catalog_resolved_model(*, model_path: Path | None = None) -> ResolvedModel:
     catalog_entry = ModelCatalogEntry(
         model_id="llama3-1B-chat",
         summary="test",
@@ -21,7 +21,9 @@ def build_catalog_resolved_model() -> ResolvedModel:
         reference=ModelReference.parse("llama3-1B-chat"),
         source_kind=ModelSourceKind.BUILTIN,
         normalized_name="llama3-1B-chat",
-        model_path=Path("/tmp/llama3-1B-chat"),
+        model_path=Path("test-models/llama3-1B-chat")
+        if model_path is None
+        else model_path,
         repo_id="repo",
         revision=None,
         catalog_entry=catalog_entry,
@@ -88,12 +90,12 @@ def test_backend_selector_records_explicit_dense_projection_chunk_rows() -> None
     assert plan.details["mlp_chunking_max_rows"] == "2048"
 
 
-def test_backend_selector_routes_catalog_models_with_adapters_to_generic_backend() -> (
-    None
-):
+def test_backend_selector_routes_catalog_models_with_adapters_to_generic_backend(
+    tmp_path: Path,
+) -> None:
     plan = BackendSelector().select(
         build_catalog_resolved_model(),
-        RuntimeConfig(adapter_dir=Path("/tmp/adapter")),
+        RuntimeConfig(adapter_dir=tmp_path / "adapter"),
     )
     assert plan.backend_id == "transformers-generic"
     assert plan.support_level is SupportLevel.GENERIC
@@ -121,13 +123,16 @@ def test_backend_selector_skips_specialization_when_disabled() -> None:
     assert plan.specialization_enabled is False
 
 
-def test_backend_selector_prefers_optimized_native_for_local_native_family() -> None:
-    resolved_model = build_catalog_resolved_model()
+def test_backend_selector_prefers_optimized_native_for_local_native_family(
+    tmp_path: Path,
+) -> None:
+    local_model_path = tmp_path / "llama"
+    resolved_model = build_catalog_resolved_model(model_path=local_model_path)
     resolved_model = ResolvedModel(
-        reference=ModelReference.parse("/tmp/llama"),
+        reference=ModelReference.parse(str(local_model_path)),
         source_kind=ModelSourceKind.LOCAL_PATH,
         normalized_name="llama",
-        model_path=Path("/tmp/llama"),
+        model_path=local_model_path,
         repo_id=None,
         revision=None,
         catalog_entry=None,
