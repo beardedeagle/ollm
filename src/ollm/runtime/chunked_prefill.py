@@ -181,6 +181,24 @@ def prepare_chunked_prefill(
             ),
             prompt_token_count=count_prompt_tokens(inputs),
         )
+    if (
+        strategy.strategy_id
+        is not ChunkedPrefillStrategyId.TRANSFORMERS_GENERIC_SEQ2SEQ_SOURCE
+        and not callable(getattr(runtime.model, "forward", None))
+    ):
+        inputs = eager_input_builder(runtime, messages)
+        return PreparedChunkedPrefill(
+            inputs=inputs,
+            generate_kwargs=generate_kwargs,
+            scope=_scope(
+                strategy_id=strategy.strategy_id,
+                runtime_eligible=False,
+                activation_reason=(
+                    "Chunked prompt-ingestion strategy requires a callable forward method."
+                ),
+            ),
+            prompt_token_count=count_prompt_tokens(inputs),
+        )
     return strategy.prepare(runtime, messages, generate_kwargs, chunk_tokens)
 
 

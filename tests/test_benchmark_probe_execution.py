@@ -169,7 +169,7 @@ def test_execute_request_probe_strips_processor_token_type_ids() -> None:
     assert execution.metrics.chunked_prefill.strategy_id is (
         ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_MULTIMODAL
     )
-    assert execution.metrics.chunked_prefill.runtime_eligible is True
+    assert execution.metrics.chunked_prefill.runtime_eligible is False
     assert execution.metrics.chunked_prefill.applied is False
 
 
@@ -247,7 +247,7 @@ def test_execute_request_with_trace_reports_processor_counts() -> None:
     assert trace.chunked_prefill.strategy_id is (
         ChunkedPrefillStrategyId.OPTIMIZED_NATIVE_MULTIMODAL
     )
-    assert trace.chunked_prefill.runtime_eligible is True
+    assert trace.chunked_prefill.runtime_eligible is False
     assert trace.chunked_prefill.applied is False
 
 

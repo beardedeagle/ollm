@@ -16,6 +16,8 @@ from ollm.runtime.chunked_prefill import (
 )
 from ollm.runtime.chunked_prefill_support import (
     build_forward_input_filter,
+    call_processor_for_static_inputs,
+    render_prompt_text,
     tokenize_prompt_piece,
 )
 from ollm.runtime.generation import (
@@ -119,6 +121,36 @@ def test_prepare_runtime_generate_inputs_defers_seq2seq_source_prefill(
         chunked_prefill.activation_reason
         == "Streamed seq2seq source tokens were built incrementally before encoder generation."
     )
+
+
+def test_prepare_runtime_generate_inputs_leaves_boundary_blank_without_strategy(
+    monkeypatch,
+) -> None:
+    runtime = build_runtime_with_model(
+        CapabilityProfile(support_level=SupportLevel.GENERIC),
+        tokenizer=LongMappingTokenizer(),
+        model=ChunkedPrefillModel(),
+    )
+    runtime.plan = replace(
+        runtime.plan,
+        backend_id="custom-backend",
+        generic_model_kind=GenericModelKind.CAUSAL_LM,
+    )
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("long prompt")]),
+    )
+    monkeypatch.setattr("ollm.runtime.generation.DEFAULT_PREFILL_CHUNK_TOKENS", 2)
+
+    generate_kwargs, _generation_config = build_runtime_generate_kwargs(
+        runtime,
+        request,
+        streamer=None,
+    )
+    prepared_result = prepare_runtime_generate_inputs(runtime, request, generate_kwargs)
+
+    assert prepared_result.scope.strategy_id is None
+    assert prepared_result.scope.runtime_eligible is False
 
 
 def test_t5_encoder_does_not_expose_cacheable_source_prefill() -> None:
@@ -236,3 +268,65 @@ def test_tokenize_prompt_piece_disables_special_tokens_in_fallback() -> None:
             raise TypeError(piece_text)
 
     assert tokenize_prompt_piece(EncodeOnlyTokenizer(), "piece") == [7, 8]
+
+
+def test_render_prompt_text_falls_back_when_processor_signature_differs() -> None:
+    class FragileProcessor:
+        def apply_chat_template(self, messages, tokenize):
+            del messages, tokenize
+            raise TypeError("different signature")
+
+    class FallbackTokenizer:
+        def apply_chat_template(
+            self,
+            messages,
+            tokenize,
+            add_generation_prompt,
+            return_tensors=None,
+            return_dict=False,
+        ):
+            del messages, add_generation_prompt, return_dict, return_tensors
+            if not tokenize:
+                return "tokenizer-rendered"
+            return {
+                "input_ids": torch.tensor([[1, 2, 3]]),
+                "attention_mask": torch.tensor([[1, 1, 1]]),
+            }
+
+    runtime = build_runtime_with_model(
+        CapabilityProfile(support_level=SupportLevel.GENERIC),
+        tokenizer=FallbackTokenizer(),
+        model=ChunkedPrefillModel(),
+    )
+    runtime.backend = replace(
+        runtime.backend,
+        processor=FragileProcessor(),
+        tokenizer=FallbackTokenizer(),
+    )
+
+    rendered = render_prompt_text(
+        runtime,
+        [Message(role=MessageRole.USER, content=[ContentPart.text("hello")])],
+    )
+
+    assert rendered == "tokenizer-rendered"
+
+
+def test_call_processor_for_static_inputs_omits_return_tensors_when_unsupported() -> (
+    None
+):
+    class ReturnTensorsRejectingProcessor:
+        def __call__(self, *, images):
+            assert images == ["image.png"]
+            return {"pixel_values": torch.tensor([[[1.0]]])}
+
+    prepared = call_processor_for_static_inputs(
+        processor=ReturnTensorsRejectingProcessor(),
+        image_values=["image.png"],
+        audio_values=[],
+        device=torch.device("cpu"),
+    )
+
+    pixel_values = prepared["pixel_values"]
+    assert isinstance(pixel_values, torch.Tensor)
+    assert torch.equal(pixel_values, torch.tensor([[[1.0]]]))

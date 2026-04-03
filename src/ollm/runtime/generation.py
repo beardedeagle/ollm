@@ -286,7 +286,8 @@ class RuntimeExecutor:
         self, runtime: LoadedRuntime, response: PromptResponse
     ) -> PromptResponse:
         metadata = dict(response.metadata)
-        metadata.update(self._plan_metadata(runtime, None, None))
+        for key, value in self._plan_metadata(runtime, None, None).items():
+            metadata.setdefault(key, value)
         return PromptResponse(
             text=response.text,
             assistant_message=response.assistant_message,
@@ -339,12 +340,12 @@ class RuntimeExecutor:
             ),
             "chunked_prefill_execution_boundary": (
                 ""
-                if chunked_prefill is None
+                if chunked_prefill is None or chunked_prefill.strategy_id is None
                 else chunked_prefill.execution_boundary.value
             ),
             "chunked_prefill_attention_mask_mode": (
                 ""
-                if chunked_prefill is None
+                if chunked_prefill is None or chunked_prefill.strategy_id is None
                 else chunked_prefill.attention_mask_mode.value
             ),
         }

@@ -23,15 +23,18 @@ def render_prompt_text(runtime: LoadedRuntime, messages: list[Message]) -> str:
     if runtime.processor is not None and hasattr(
         runtime.processor, "apply_chat_template"
     ):
-        rendered = runtime.processor.apply_chat_template(
-            transformers_messages,
-            add_generation_prompt=True,
-            tokenize=False,
-            return_dict=False,
-            return_tensors=None,
-        )
-        if isinstance(rendered, str):
-            return rendered
+        try:
+            rendered = runtime.processor.apply_chat_template(
+                transformers_messages,
+                add_generation_prompt=True,
+                tokenize=False,
+                return_dict=False,
+                return_tensors=None,
+            )
+            if isinstance(rendered, str):
+                return rendered
+        except (TypeError, ValueError, AttributeError):
+            pass
     if hasattr(runtime.tokenizer, "apply_chat_template"):
         try:
             rendered = runtime.tokenizer.apply_chat_template(
@@ -111,7 +114,12 @@ def call_processor_for_static_inputs(
             parameter.kind is Parameter.VAR_KEYWORD
             for parameter in processor_signature.parameters.values()
         )
-    kwargs: dict[str, object] = {"return_tensors": "pt"}
+    kwargs: dict[str, object] = {}
+    if accepts_kwargs or (
+        processor_signature is not None
+        and "return_tensors" in processor_signature.parameters
+    ):
+        kwargs["return_tensors"] = "pt"
     if image_values and (
         accepts_kwargs
         or (

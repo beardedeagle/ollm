@@ -396,3 +396,31 @@ def test_runtime_executor_streams_seq2seq_source_strategy(
     generate_input_ids = model.generate_kwargs["input_ids"]
     assert isinstance(generate_input_ids, torch.Tensor)
     assert torch.equal(generate_input_ids, torch.tensor([[1, 2, 3, 4, 5]]))
+
+
+def test_runtime_executor_leaves_chunked_prefill_metadata_blank_without_strategy(
+    monkeypatch,
+) -> None:
+    model = ChunkedPrefillModel()
+    runtime = build_runtime_with_model(
+        CapabilityProfile(support_level=SupportLevel.GENERIC),
+        tokenizer=LongMappingTokenizer(),
+        model=model,
+    )
+    runtime.plan = replace(
+        runtime.plan,
+        backend_id="custom-backend",
+        generic_model_kind=GenericModelKind.CAUSAL_LM,
+    )
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("long prompt")]),
+    )
+    monkeypatch.setattr("ollm.runtime.generation.DEFAULT_PREFILL_CHUNK_TOKENS", 2)
+
+    response = RuntimeExecutor().execute(runtime, request)
+
+    assert response.metadata["chunked_prefill_strategy_id"] == ""
+    assert response.metadata["chunked_prefill_runtime_eligible"] == "false"
+    assert response.metadata["chunked_prefill_execution_boundary"] == ""
+    assert response.metadata["chunked_prefill_attention_mask_mode"] == ""
