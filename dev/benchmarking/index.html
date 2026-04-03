@@ -2302,17 +2302,20 @@
 
 <h1 id="benchmarking">Benchmarking<a class="headerlink" href="#benchmarking" title="Permanent link">&para;</a></h1>
 <p>oLLM ships a dedicated runtime benchmark harness:</p>
-<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span>--device<span class="w"> </span>cpu<span class="w"> </span>--output<span class="w"> </span>.omx/runtime-benchmark.json
+<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span>--device<span class="w"> </span>cpu<span class="w"> </span>--output<span class="w"> </span>.ollm/runtime-benchmark.json
 </code></pre></div>
 <p>The CLI defaults to the <code>quick</code> benchmark profile for development use. That
 profile limits the run to the requested primary target, skips the family-wide
 matrix and deeper scaling sweeps, and applies tighter per-lane budgets so a
 strategy check cannot silently turn into an hour-long run.</p>
 <p>Every benchmark run also records its full raw payload plus a normalized
-summary under <code>.omx/logs/benchmark-history/</code>. If a prior run with the same
+summary under <code>.ollm/benchmark-history/</code>. If a prior run with the same
 comparison key exists, the CLI appends a comparison summary and emits any
 obvious potential regressions on <code>stderr</code> without changing the JSON written to
-<code>stdout</code>.</p>
+<code>stdout</code>.
+That history root resolves through the standard precedence contract:
+<code>--history-dir</code>, then <code>OLLM_BENCHMARK__HISTORY_DIR</code>, then
+<code>[benchmark].history_dir</code> in <code>ollm.toml</code>, then the built-in repo-root default.</p>
 <div class="mermaid">
 flowchart LR
     A[benchmark_runtime.py] --> B[Runtime planning probes]
@@ -2330,64 +2333,72 @@ different stable grouping:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--device<span class="w"> </span>cpu<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--history-codebase-label<span class="w"> </span>current-fork<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--output<span class="w"> </span>.omx/runtime-benchmark.json
+<span class="w">  </span>--output<span class="w"> </span>.ollm/runtime-benchmark.json
 </code></pre></div>
 <p>Use <code>--profile full</code> only when you explicitly want the heavier matrix:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--profile<span class="w"> </span>full<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--device<span class="w"> </span>cpu<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--output<span class="w"> </span>.omx/runtime-benchmark-full.json
+<span class="w">  </span>--output<span class="w"> </span>.ollm/runtime-benchmark-full.json
 </code></pre></div>
 <p>Use <code>--no-record-history</code> only when you explicitly want to skip that ledger.
 The comparison key is based on the actual run shape, including model, device,
 backend, requested strategy override, selector profile, codebase label, and prompt/profile controls, so
 incomparable runs do not get mashed together.</p>
+<p>To set the benchmark history root outside the CLI, use either environment or
+config:</p>
+<div class="language-bash highlight"><pre><span></span><code><span class="nv">OLLM_BENCHMARK__HISTORY_DIR</span><span class="o">=</span>.ollm/custom-benchmark-history<span class="w"> </span><span class="se">\</span>
+uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span>--device<span class="w"> </span>cpu
+</code></pre></div>
+<div class="language-toml highlight"><pre><span></span><code><span class="k">[benchmark]</span>
+<span class="n">history_dir</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">&quot;.ollm/custom-benchmark-history&quot;</span>
+</code></pre></div>
 <p>By default, the benchmark harness uses the runtime strategy selector with
 <code>--strategy-selector-profile balanced</code>.</p>
 <p>For KV strategy A/B work, pin the preset explicitly:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--device<span class="w"> </span>cpu<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--kv-cache-strategy<span class="w"> </span>streamed-segmented<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--output<span class="w"> </span>.omx/runtime-benchmark-streamed.json
+<span class="w">  </span>--output<span class="w"> </span>.ollm/runtime-benchmark-streamed.json
 </code></pre></div>
 <p>To benchmark the selector path itself, leave <code>--kv-cache-strategy</code> unset and
 change only the selector profile:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--device<span class="w"> </span>cpu<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--strategy-selector-profile<span class="w"> </span>capacity<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--output<span class="w"> </span>.omx/runtime-benchmark-selector-capacity.json
+<span class="w">  </span>--output<span class="w"> </span>.ollm/runtime-benchmark-selector-capacity.json
 </code></pre></div>
 <p>The paged strategy uses the same switch:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--device<span class="w"> </span>cpu<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--kv-cache-strategy<span class="w"> </span>paged<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--output<span class="w"> </span>.omx/runtime-benchmark-paged.json
+<span class="w">  </span>--output<span class="w"> </span>.ollm/runtime-benchmark-paged.json
 </code></pre></div>
 <p>Tiered write-back uses the same switch:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--device<span class="w"> </span>cpu<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--kv-cache-strategy<span class="w"> </span>tiered-write-back<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--output<span class="w"> </span>.omx/runtime-benchmark-tiered.json
+<span class="w">  </span>--output<span class="w"> </span>.ollm/runtime-benchmark-tiered.json
 </code></pre></div>
 <p>The log-structured journal strategy is selected the same way:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--device<span class="w"> </span>cpu<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--kv-cache-strategy<span class="w"> </span>log-structured-journal<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--output<span class="w"> </span>.omx/runtime-benchmark-journal.json
+<span class="w">  </span>--output<span class="w"> </span>.ollm/runtime-benchmark-journal.json
 </code></pre></div>
 <p>Resident mode uses the same switch, but it reports <code>cache_mode="resident-kv"</code>
 and leaves <code>cache_dir_size_mb</code> empty because no on-disk KV root is created:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--device<span class="w"> </span>cpu<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--kv-cache-strategy<span class="w"> </span>resident<span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--output<span class="w"> </span>.omx/runtime-benchmark-resident.json
+<span class="w">  </span>--output<span class="w"> </span>.ollm/runtime-benchmark-resident.json
 </code></pre></div>
 <p>The bounded sliding-window mode requires an explicit window size:</p>
 <div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--device<span class="w"> </span>cpu<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--kv-cache-strategy<span class="w"> </span>sliding-window-ring-buffer<span class="w"> </span><span class="se">\</span>
 <span class="w">  </span>--kv-cache-window-tokens<span class="w"> </span><span class="m">256</span><span class="w"> </span><span class="se">\</span>
-<span class="w">  </span>--output<span class="w"> </span>.omx/runtime-benchmark-sliding-window.json
+<span class="w">  </span>--output<span class="w"> </span>.ollm/runtime-benchmark-sliding-window.json
 </code></pre></div>
 <p>The harness is designed to stay truthful on hardware-constrained machines:</p>
 <ul>
@@ -2542,7 +2553,7 @@ show up under the same <code>disk-kv-cache</code> storage path label.</p>
 latency on that lane, but it materially increases host RSS. Mixed CPU+GPU
 offload remains intentionally unsupported in this slice.
 Cold, warm, prompt-scaling, output-scaling, and session-growth probes all use
-the same persistent benchmark-history ledger, so bounded proof runs remain
+the same persistent benchmark-history ledger under <code>.ollm/benchmark-history/</code>, so bounded proof runs remain
 recorded and comparable instead of becoming ad hoc local artifacts.
 For persistent-KV proof work, <code>--probe-mode reopen-session-growth</code> reloads the
 runtime every turn under <code>kv_cache_lifecycle="persistent"</code> so the resulting
@@ -2554,11 +2565,11 @@ native event totals can exceed the request's top-level wall-clock latency when
 multiple reads overlap.</p>
 <h2 id="hardware-specific-workflow">Hardware-specific workflow<a class="headerlink" href="#hardware-specific-workflow" title="Permanent link">&para;</a></h2>
 <p>For a lightweight non-CUDA baseline:</p>
-<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span>--device<span class="w"> </span>cpu<span class="w"> </span>--output<span class="w"> </span>.omx/runtime-benchmark-cpu.json
+<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span>--device<span class="w"> </span>cpu<span class="w"> </span>--output<span class="w"> </span>.ollm/runtime-benchmark-cpu.json
 </code></pre></div>
 <p>On a CUDA host with a materialized optimized-native target, run the same
 workflow against <code>cuda:0</code> to capture native loader and storage-path behavior:</p>
-<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span>--device<span class="w"> </span>cuda:0<span class="w"> </span>--output<span class="w"> </span>.omx/runtime-benchmark-cuda.json
+<div class="language-bash highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>scripts/benchmark_runtime.py<span class="w"> </span>--device<span class="w"> </span>cuda:0<span class="w"> </span>--output<span class="w"> </span>.ollm/runtime-benchmark-cuda.json
 </code></pre></div>
 <h2 id="adjacent-upstream-baseline-workflow">Adjacent upstream baseline workflow<a class="headerlink" href="#adjacent-upstream-baseline-workflow" title="Permanent link">&para;</a></h2>
 <p>When you want a concept-level baseline against upstream oLLM proper, keep that
