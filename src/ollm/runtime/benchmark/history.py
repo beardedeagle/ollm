@@ -1,5 +1,6 @@
 """Persistent benchmark history and regression comparison helpers."""
 
+import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,7 +17,8 @@ from ollm.runtime.benchmark.metadata import (
     build_history_host_summary,
 )
 
-_HISTORY_DIR = Path(".omx/logs/benchmark-history")
+_HISTORY_DIR = Path(".ollm/benchmark-history")
+_LATEST_DIRNAME = "latest"
 
 
 def record_benchmark_history(
@@ -36,8 +38,10 @@ def record_benchmark_history(
         else history_dir.expanduser().resolve()
     )
     records_dir = resolved_history_dir / "records"
+    latest_dir = resolved_history_dir / _LATEST_DIRNAME
     index_path = resolved_history_dir / "index.jsonl"
     path_mkdir(records_dir, parents=True, exist_ok=True)
+    path_mkdir(latest_dir, parents=True, exist_ok=True)
     generated_at = datetime.now(timezone.utc).isoformat()
     previous = find_previous_record(index_path, comparison_key=comparison_key)
     summary = summarize_benchmark_payload(payload, run_kind=run_kind)
@@ -80,6 +84,7 @@ def record_benchmark_history(
         "git": record["git"],
     }
     _append_jsonl_entry(index_path, index_entry)
+    _write_latest_entry(index_path, comparison_key=comparison_key, entry=index_entry)
     return {
         "record_path": str(record_path),
         "codebase_label": codebase_label,
@@ -93,6 +98,9 @@ def find_previous_record(
 ) -> dict[str, object] | None:
     """Return the last matching benchmark history entry, if any."""
 
+    latest_entry = _read_latest_entry(index_path, comparison_key=comparison_key)
+    if latest_entry is not None:
+        return latest_entry
     if not index_path.exists():
         return None
     for line in reversed(index_path.read_text(encoding="utf-8").splitlines()):
@@ -113,3 +121,44 @@ def _append_jsonl_entry(path: Path, payload: dict[str, object]) -> None:
         path_write_text(path, line, encoding="utf-8")
         return
     path_append_text(path, line, encoding="utf-8")
+
+
+def _comparison_key_digest(comparison_key: dict[str, object]) -> str:
+    rendered = json.dumps(comparison_key, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(rendered.encode("utf-8")).hexdigest()
+
+
+def _latest_entry_path(index_path: Path, *, comparison_key: dict[str, object]) -> Path:
+    return (
+        index_path.parent
+        / _LATEST_DIRNAME
+        / f"{_comparison_key_digest(comparison_key)}.json"
+    )
+
+
+def _read_latest_entry(
+    index_path: Path, *, comparison_key: dict[str, object]
+) -> dict[str, object] | None:
+    latest_path = _latest_entry_path(index_path, comparison_key=comparison_key)
+    if not latest_path.exists():
+        return None
+    try:
+        payload = json.loads(latest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    if payload.get("comparison_key") != comparison_key:
+        return None
+    return payload
+
+
+def _write_latest_entry(
+    index_path: Path,
+    *,
+    comparison_key: dict[str, object],
+    entry: dict[str, object],
+) -> None:
+    latest_path = _latest_entry_path(index_path, comparison_key=comparison_key)
+    rendered_entry = json.dumps(entry, indent=2, sort_keys=True) + "\n"
+    path_write_text(latest_path, rendered_entry, encoding="utf-8")

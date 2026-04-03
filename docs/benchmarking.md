@@ -3,7 +3,7 @@
 oLLM ships a dedicated runtime benchmark harness:
 
 ```bash
-uv run python scripts/benchmark_runtime.py --device cpu --output .omx/runtime-benchmark.json
+uv run python scripts/benchmark_runtime.py --device cpu --output .ollm/runtime-benchmark.json
 ```
 
 The CLI defaults to the `quick` benchmark profile for development use. That
@@ -12,7 +12,7 @@ matrix and deeper scaling sweeps, and applies tighter per-lane budgets so a
 strategy check cannot silently turn into an hour-long run.
 
 Every benchmark run also records its full raw payload plus a normalized
-summary under `.omx/logs/benchmark-history/`. If a prior run with the same
+summary under `.ollm/benchmark-history/`. If a prior run with the same
 comparison key exists, the CLI appends a comparison summary and emits any
 obvious potential regressions on `stderr` without changing the JSON written to
 `stdout`.
@@ -36,7 +36,7 @@ different stable grouping:
 uv run python scripts/benchmark_runtime.py \
   --device cpu \
   --history-codebase-label current-fork \
-  --output .omx/runtime-benchmark.json
+  --output .ollm/runtime-benchmark.json
 ```
 
 Use `--profile full` only when you explicitly want the heavier matrix:
@@ -45,7 +45,7 @@ Use `--profile full` only when you explicitly want the heavier matrix:
 uv run python scripts/benchmark_runtime.py \
   --profile full \
   --device cpu \
-  --output .omx/runtime-benchmark-full.json
+  --output .ollm/runtime-benchmark-full.json
 ```
 
 Use `--no-record-history` only when you explicitly want to skip that ledger.
@@ -62,7 +62,7 @@ For KV strategy A/B work, pin the preset explicitly:
 uv run python scripts/benchmark_runtime.py \
   --device cpu \
   --kv-cache-strategy streamed-segmented \
-  --output .omx/runtime-benchmark-streamed.json
+  --output .ollm/runtime-benchmark-streamed.json
 ```
 
 To benchmark the selector path itself, leave `--kv-cache-strategy` unset and
@@ -72,7 +72,7 @@ change only the selector profile:
 uv run python scripts/benchmark_runtime.py \
   --device cpu \
   --strategy-selector-profile capacity \
-  --output .omx/runtime-benchmark-selector-capacity.json
+  --output .ollm/runtime-benchmark-selector-capacity.json
 ```
 
 The paged strategy uses the same switch:
@@ -81,7 +81,7 @@ The paged strategy uses the same switch:
 uv run python scripts/benchmark_runtime.py \
   --device cpu \
   --kv-cache-strategy paged \
-  --output .omx/runtime-benchmark-paged.json
+  --output .ollm/runtime-benchmark-paged.json
 ```
 
 Tiered write-back uses the same switch:
@@ -90,7 +90,7 @@ Tiered write-back uses the same switch:
 uv run python scripts/benchmark_runtime.py \
   --device cpu \
   --kv-cache-strategy tiered-write-back \
-  --output .omx/runtime-benchmark-tiered.json
+  --output .ollm/runtime-benchmark-tiered.json
 ```
 
 The log-structured journal strategy is selected the same way:
@@ -99,7 +99,7 @@ The log-structured journal strategy is selected the same way:
 uv run python scripts/benchmark_runtime.py \
   --device cpu \
   --kv-cache-strategy log-structured-journal \
-  --output .omx/runtime-benchmark-journal.json
+  --output .ollm/runtime-benchmark-journal.json
 ```
 
 Resident mode uses the same switch, but it reports `cache_mode="resident-kv"`
@@ -109,7 +109,7 @@ and leaves `cache_dir_size_mb` empty because no on-disk KV root is created:
 uv run python scripts/benchmark_runtime.py \
   --device cpu \
   --kv-cache-strategy resident \
-  --output .omx/runtime-benchmark-resident.json
+  --output .ollm/runtime-benchmark-resident.json
 ```
 
 The bounded sliding-window mode requires an explicit window size:
@@ -119,7 +119,7 @@ uv run python scripts/benchmark_runtime.py \
   --device cpu \
   --kv-cache-strategy sliding-window-ring-buffer \
   --kv-cache-window-tokens 256 \
-  --output .omx/runtime-benchmark-sliding-window.json
+  --output .ollm/runtime-benchmark-sliding-window.json
 ```
 
 The harness is designed to stay truthful on hardware-constrained machines:
@@ -292,7 +292,7 @@ So the current local evidence says policy-driven CPU offload can reduce request
 latency on that lane, but it materially increases host RSS. Mixed CPU+GPU
 offload remains intentionally unsupported in this slice.
 Cold, warm, prompt-scaling, output-scaling, and session-growth probes all use
-the same persistent benchmark-history ledger, so bounded proof runs remain
+the same persistent benchmark-history ledger under `.ollm/benchmark-history/`, so bounded proof runs remain
 recorded and comparable instead of becoming ad hoc local artifacts.
 For persistent-KV proof work, `--probe-mode reopen-session-growth` reloads the
 runtime every turn under `kv_cache_lifecycle="persistent"` so the resulting
@@ -309,14 +309,14 @@ multiple reads overlap.
 For a lightweight non-CUDA baseline:
 
 ```bash
-uv run python scripts/benchmark_runtime.py --device cpu --output .omx/runtime-benchmark-cpu.json
+uv run python scripts/benchmark_runtime.py --device cpu --output .ollm/runtime-benchmark-cpu.json
 ```
 
 On a CUDA host with a materialized optimized-native target, run the same
 workflow against `cuda:0` to capture native loader and storage-path behavior:
 
 ```bash
-uv run python scripts/benchmark_runtime.py --device cuda:0 --output .omx/runtime-benchmark-cuda.json
+uv run python scripts/benchmark_runtime.py --device cuda:0 --output .ollm/runtime-benchmark-cuda.json
 ```
 
 ## Adjacent upstream baseline workflow

@@ -7,6 +7,7 @@ from typing import cast
 
 from ollm.runtime.benchmark.history import (
     _append_jsonl_entry,
+    find_previous_record,
     record_benchmark_history,
     summarize_benchmark_payload,
 )
@@ -29,7 +30,7 @@ from tests.benchmark_support import build_request_probe_metrics, build_stage_res
 
 
 def test_record_benchmark_history_compares_with_previous_probe(tmp_path: Path) -> None:
-    history_dir = tmp_path / ".omx" / "logs" / "benchmark-history"
+    history_dir = tmp_path / ".ollm" / "benchmark-history"
     comparison_key = probe_comparison_key(
         codebase_label="github.com/beardedeagle/ollm",
         model_reference="HuggingFaceTB/SmolLM2-1.7B-Instruct",
@@ -89,7 +90,7 @@ def test_record_benchmark_history_compares_with_previous_probe(tmp_path: Path) -
 def test_record_benchmark_history_does_not_compare_across_codebases(
     tmp_path: Path,
 ) -> None:
-    history_dir = tmp_path / ".omx" / "logs" / "benchmark-history"
+    history_dir = tmp_path / ".ollm" / "benchmark-history"
     payload = RuntimeProbeResult(
         load_ms=10.0,
         load_resources=build_stage_resources(),
@@ -303,3 +304,128 @@ def test_append_jsonl_entry_appends_without_rewriting_previous_lines(
 
     lines = index_path.read_text(encoding="utf-8").splitlines()
     assert [json.loads(line) for line in lines] == [first, second]
+
+
+def test_record_benchmark_history_writes_latest_sidecar(tmp_path: Path) -> None:
+    history_dir = tmp_path / ".ollm" / "benchmark-history"
+    comparison_key = probe_comparison_key(
+        codebase_label="github.com/beardedeagle/ollm",
+        model_reference="HuggingFaceTB/SmolLM2-1.7B-Instruct",
+        device="cpu",
+        backend="optimized-native",
+        kv_cache_strategy="chunked",
+        probe_mode="cold",
+        prompt="Say hi.",
+        max_new_tokens=4,
+        iterations=1,
+        warmup_iterations=0,
+        prompt_token_targets=(32, 128, 512),
+        output_token_targets=(16, 64, 128),
+        session_turns=4,
+    )
+    payload = RuntimeProbeResult(
+        load_ms=10.0,
+        load_resources=build_stage_resources(),
+        request=build_request_probe_metrics(),
+    ).to_dict()
+
+    result = record_benchmark_history(
+        repo_root=tmp_path,
+        payload=payload,
+        run_kind="probe-cold",
+        history_dir=history_dir,
+        comparison_key=comparison_key,
+        codebase_label="github.com/beardedeagle/ollm",
+    )
+
+    latest_dir = history_dir / "latest"
+    latest_paths = tuple(latest_dir.glob("*.json"))
+
+    assert len(latest_paths) == 1
+    latest_entry = json.loads(latest_paths[0].read_text(encoding="utf-8"))
+    assert latest_entry["record_path"] == result["record_path"]
+    assert latest_entry["comparison_key"] == comparison_key
+
+
+def test_find_previous_record_uses_latest_sidecar_before_index_scan(
+    tmp_path: Path,
+) -> None:
+    history_dir = tmp_path / ".ollm" / "benchmark-history"
+    comparison_key = probe_comparison_key(
+        codebase_label="github.com/beardedeagle/ollm",
+        model_reference="HuggingFaceTB/SmolLM2-1.7B-Instruct",
+        device="cpu",
+        backend="optimized-native",
+        kv_cache_strategy="chunked",
+        probe_mode="cold",
+        prompt="Say hi.",
+        max_new_tokens=4,
+        iterations=1,
+        warmup_iterations=0,
+        prompt_token_targets=(32, 128, 512),
+        output_token_targets=(16, 64, 128),
+        session_turns=4,
+    )
+    payload = RuntimeProbeResult(
+        load_ms=10.0,
+        load_resources=build_stage_resources(),
+        request=build_request_probe_metrics(),
+    ).to_dict()
+
+    result = record_benchmark_history(
+        repo_root=tmp_path,
+        payload=payload,
+        run_kind="probe-cold",
+        history_dir=history_dir,
+        comparison_key=comparison_key,
+        codebase_label="github.com/beardedeagle/ollm",
+    )
+    index_path = history_dir / "index.jsonl"
+    index_path.unlink()
+
+    previous = find_previous_record(index_path, comparison_key=comparison_key)
+
+    assert previous is not None
+    assert previous["record_path"] == result["record_path"]
+
+
+def test_find_previous_record_falls_back_to_index_when_sidecar_is_invalid(
+    tmp_path: Path,
+) -> None:
+    history_dir = tmp_path / ".ollm" / "benchmark-history"
+    comparison_key = probe_comparison_key(
+        codebase_label="github.com/beardedeagle/ollm",
+        model_reference="HuggingFaceTB/SmolLM2-1.7B-Instruct",
+        device="cpu",
+        backend="optimized-native",
+        kv_cache_strategy="chunked",
+        probe_mode="cold",
+        prompt="Say hi.",
+        max_new_tokens=4,
+        iterations=1,
+        warmup_iterations=0,
+        prompt_token_targets=(32, 128, 512),
+        output_token_targets=(16, 64, 128),
+        session_turns=4,
+    )
+    payload = RuntimeProbeResult(
+        load_ms=10.0,
+        load_resources=build_stage_resources(),
+        request=build_request_probe_metrics(),
+    ).to_dict()
+
+    result = record_benchmark_history(
+        repo_root=tmp_path,
+        payload=payload,
+        run_kind="probe-cold",
+        history_dir=history_dir,
+        comparison_key=comparison_key,
+        codebase_label="github.com/beardedeagle/ollm",
+    )
+    latest_path = next((history_dir / "latest").glob("*.json"))
+    latest_path.write_text("{invalid json\n", encoding="utf-8")
+
+    previous = find_previous_record(history_dir / "index.jsonl", comparison_key=comparison_key)
+
+    assert previous is not None
+    assert previous["record_path"] == result["record_path"]
