@@ -6,6 +6,7 @@ from typing import cast
 
 from ollm.kv_cache.matrix import KVCacheAdaptationSurface
 from ollm.kv_cache.state import KVCacheStateSnapshot
+from ollm.runtime.benchmark.chunked_prefill_serialization import parse_chunked_prefill
 from ollm.runtime.benchmark.probe_types import (
     EventTimingSummary,
     NativeRuntimeProfile,
@@ -244,6 +245,13 @@ def _parse_request_probe_metrics(payload: Mapping[str, object]) -> RequestProbeM
         ),
         cache_dir_size_mb=_optional_float(payload, "cache_dir_size_mb"),
         cache_state=_parse_cache_state(payload.get("cache_state")),
+        chunked_prefill=parse_chunked_prefill(
+            payload.get("chunked_prefill"),
+            require_bool=_require_bool,
+            require_object_mapping=_require_object_mapping,
+            require_sequence=_require_sequence,
+            require_string=_require_string,
+        ),
         allocator_gap_mb=_optional_float(payload, "allocator_gap_mb"),
         allocator_gap_ratio=_optional_float(payload, "allocator_gap_ratio"),
         native_runtime_profile=_parse_native_runtime_profile(
@@ -445,6 +453,13 @@ def _optional_int(payload: Mapping[str, object], key: str) -> int | None:
     if isinstance(value, int):
         return value
     raise ValueError(f"probe field '{key}' must be an integer or null")
+
+
+def _require_bool(payload: Mapping[str, object], key: str) -> bool:
+    value = payload.get(key)
+    if isinstance(value, bool):
+        return value
+    raise ValueError(f"probe field '{key}' must be a boolean")
 
 
 def _require_string(payload: Mapping[str, object], key: str) -> str:

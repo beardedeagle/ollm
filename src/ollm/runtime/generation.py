@@ -13,6 +13,10 @@ from ollm.kv_cache.matrix import (
 from ollm.kv_cache.state import KVCacheStateSnapshot
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.catalog import ModelModality
+from ollm.runtime.chunked_prefill import (
+    ChunkedPrefillScopeSurface,
+    build_chunked_prefill_scope_surface,
+)
 from ollm.runtime.errors import PromptExecutionError
 from ollm.runtime.generation_config_support import (
     clear_sampling_fields,
@@ -37,6 +41,13 @@ class _StatsProtocol(Protocol):
 
 
 DEFAULT_PREFILL_CHUNK_TOKENS = 512
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedRuntimeGenerateInputs:
+    inputs: dict[str, object]
+    generate_kwargs: dict[str, object]
+    chunked_prefill: ChunkedPrefillScopeSurface
 
 
 def validate_runtime_request(runtime: LoadedRuntime, request: PromptRequest) -> None:
@@ -181,28 +192,53 @@ def build_runtime_generate_kwargs(
 
 def prepare_runtime_generate_inputs(
     runtime: LoadedRuntime,
-    request: PromptRequest,
     inputs: dict[str, object],
     generate_kwargs: dict[str, object],
-) -> tuple[dict[str, object], dict[str, object]]:
+) -> PreparedRuntimeGenerateInputs:
+    chunked_prefill = build_chunked_prefill_scope_surface(
+        runtime=runtime,
+        inputs=inputs,
+        chunk_tokens=DEFAULT_PREFILL_CHUNK_TOKENS,
+    )
     input_ids_value = inputs.get("input_ids")
     if not isinstance(input_ids_value, torch.Tensor):
-        return inputs, generate_kwargs
+        return PreparedRuntimeGenerateInputs(
+            inputs=inputs,
+            generate_kwargs=generate_kwargs,
+            chunked_prefill=chunked_prefill,
+        )
     if input_ids_value.ndim != 2 or input_ids_value.shape[0] != 1:
-        return inputs, generate_kwargs
-    if runtime.processor is not None:
-        return inputs, generate_kwargs
-    if runtime.plan.backend_id != "optimized-native":
-        return inputs, generate_kwargs
-    runtime_kind = (
-        runtime.plan.generic_model_kind or runtime.resolved_model.generic_model_kind
-    )
-    if runtime_kind is not GenericModelKind.CAUSAL_LM:
-        return inputs, generate_kwargs
+        return PreparedRuntimeGenerateInputs(
+            inputs=inputs,
+            generate_kwargs=generate_kwargs,
+            chunked_prefill=chunked_prefill,
+        )
     prefill_token_count = input_ids_value.shape[1] - 1
     if prefill_token_count <= DEFAULT_PREFILL_CHUNK_TOKENS:
-        return inputs, generate_kwargs
-    return _run_chunked_prefill(runtime, inputs, generate_kwargs)
+        return PreparedRuntimeGenerateInputs(
+            inputs=inputs,
+            generate_kwargs=generate_kwargs,
+            chunked_prefill=chunked_prefill,
+        )
+    if not chunked_prefill.runtime_eligible:
+        return PreparedRuntimeGenerateInputs(
+            inputs=inputs,
+            generate_kwargs=generate_kwargs,
+            chunked_prefill=chunked_prefill,
+        )
+    prepared_inputs, prepared_generate_kwargs = _run_chunked_prefill(
+        runtime,
+        inputs,
+        generate_kwargs,
+    )
+    return PreparedRuntimeGenerateInputs(
+        inputs=prepared_inputs,
+        generate_kwargs=prepared_generate_kwargs,
+        chunked_prefill=chunked_prefill.with_activation(
+            applied=True,
+            activation_reason="Bounded chunked prefill ran before final decode.",
+        ),
+    )
 
 
 def _run_chunked_prefill(
@@ -308,12 +344,13 @@ class RuntimeExecutor:
             runtime, request, streamer
         )
         filtered_inputs = normalize_generate_inputs(inputs)
-        filtered_inputs, generate_kwargs = prepare_runtime_generate_inputs(
+        prepared_generate_inputs = prepare_runtime_generate_inputs(
             runtime,
-            request,
             filtered_inputs,
             generate_kwargs,
         )
+        filtered_inputs = prepared_generate_inputs.inputs
+        generate_kwargs = prepared_generate_inputs.generate_kwargs
 
         with torch.inference_mode():
             with suppress_module_prints(runtime.backend.print_suppression_modules):

@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass
 from ollm.kv_cache.matrix import KVCacheAdaptationSurface
 from ollm.kv_cache.state import KVCacheStateSnapshot
 from ollm.runtime.benchmark.resources import StageResourceSnapshot
+from ollm.runtime.chunked_prefill import ChunkedPrefillScopeSurface
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +51,7 @@ class RequestProbeMetrics:
     kv_cache_adaptation: KVCacheAdaptationSurface | None
     cache_dir_size_mb: float | None
     cache_state: KVCacheStateSnapshot | None
+    chunked_prefill: ChunkedPrefillScopeSurface
     allocator_gap_mb: float | None
     allocator_gap_ratio: float | None
     native_runtime_profile: NativeRuntimeProfile | None
@@ -71,6 +73,7 @@ class RequestProbeMetrics:
         payload["cache_state"] = (
             None if self.cache_state is None else self.cache_state.to_dict()
         )
+        payload["chunked_prefill"] = self.chunked_prefill.to_dict()
         payload["kv_cache_adaptation"] = (
             None
             if self.kv_cache_adaptation is None

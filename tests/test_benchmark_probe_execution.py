@@ -152,6 +152,8 @@ def test_execute_request_probe_strips_processor_token_type_ids() -> None:
 
     assert execution.response_text == "decoded-benchmark"
     assert "token_type_ids" not in runtime.model.generate_kwargs
+    assert execution.metrics.chunked_prefill.runtime_eligible is False
+    assert execution.metrics.chunked_prefill.applied is False
 
 
 def test_execute_request_probe_uses_chunked_prefill_for_long_causal_prompts(
@@ -222,6 +224,8 @@ def test_execute_request_with_trace_reports_processor_counts() -> None:
     assert trace.decode_prefix_token_count == 3
     assert trace.output_token_count == 1
     assert trace.cache_state is None
+    assert trace.chunked_prefill.runtime_eligible is False
+    assert trace.chunked_prefill.applied is False
 
 
 def test_execute_request_with_trace_tracks_chunked_prefill_prefix_length(
@@ -272,6 +276,8 @@ def test_execute_request_with_trace_tracks_chunked_prefill_prefix_length(
     assert trace.prompt_token_count == 5
     assert trace.decode_prefix_token_count == 1
     assert trace.output_token_count == 4
+    assert trace.chunked_prefill.runtime_eligible is True
+    assert trace.chunked_prefill.applied is True
     assert len(model.forward_calls) == 2
 
 
@@ -325,9 +331,9 @@ def test_execute_request_with_trace_starts_timing_before_prefill(
         "prepare_runtime_generate_inputs"
     ]
 
-    def wrapped_prepare(runtime, request, inputs, generate_kwargs):
+    def wrapped_prepare(runtime, inputs, generate_kwargs):
         order.append("prepare")
-        return original_prepare(runtime, request, inputs, generate_kwargs)
+        return original_prepare(runtime, inputs, generate_kwargs)
 
     monkeypatch.setattr(
         "ollm.runtime.execution_trace.time.perf_counter", wrapped_perf_counter

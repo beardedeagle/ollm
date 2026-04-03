@@ -165,7 +165,9 @@ through bounded prefill chunks before the final decode step. That keeps prompt
 execution from growing one full prompt-wide activation step at a time on very
 long inputs while preserving the external prompt/chat contract. Prompt-scaling
 benchmarks remain the right place to evaluate the TTFT and memory tradeoff on
-target hardware.
+target hardware. This feature starts after prompt tokenization and full-prefix
+attention-mask construction, and it intentionally does not extend that same
+contract to seq2seq, multimodal, or generic Transformers runtimes.
 
 Configuration layering uses an explicit precedence contract:
 

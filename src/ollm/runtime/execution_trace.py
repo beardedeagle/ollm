@@ -8,6 +8,7 @@ import torch
 from ollm.app.types import PromptRequest
 from ollm.kv_cache.state import KVCacheStateSnapshot
 from ollm.runtime.capability_discovery import GenericModelKind
+from ollm.runtime.chunked_prefill import ChunkedPrefillScopeSurface
 from ollm.runtime.errors import PromptExecutionError
 from ollm.runtime.generation import (
     build_runtime_generate_kwargs,
@@ -35,6 +36,7 @@ class RuntimeExecutionTrace:
     output_token_count: int
     response_text: str
     cache_state: KVCacheStateSnapshot | None
+    chunked_prefill: ChunkedPrefillScopeSurface
 
 
 def execute_request_with_trace(
@@ -56,12 +58,13 @@ def execute_request_with_trace(
     )
     prepared_inputs = normalize_generate_inputs(inputs)
     generation_started_at = time.perf_counter()
-    prepared_inputs, prepared_generate_kwargs = prepare_runtime_generate_inputs(
+    prepared_result = prepare_runtime_generate_inputs(
         runtime,
-        request,
         prepared_inputs,
         generate_kwargs,
     )
+    prepared_inputs = prepared_result.inputs
+    prepared_generate_kwargs = prepared_result.generate_kwargs
     outputs, effective_generate_kwargs = _generate_outputs(
         runtime=runtime,
         prepared_inputs=prepared_inputs,
@@ -90,6 +93,7 @@ def execute_request_with_trace(
         output_token_count=output_token_count,
         response_text=response_text,
         cache_state=cache_state,
+        chunked_prefill=prepared_result.chunked_prefill,
     )
 
 

@@ -6,6 +6,12 @@ from ollm.runtime.benchmark.probes import (
     RequestProbeMetrics,
 )
 from ollm.runtime.benchmark.resources import StageResourceSnapshot
+from ollm.runtime.chunked_prefill import (
+    ChunkedPrefillAttentionMaskMode,
+    ChunkedPrefillExecutionBoundary,
+    ChunkedPrefillScopeSurface,
+    chunked_prefill_gap_inventory,
+)
 
 
 def build_stage_resources() -> StageResourceSnapshot:
@@ -94,6 +100,17 @@ def build_request_probe_metrics() -> RequestProbeMetrics:
             eviction_count=0,
             evicted_tokens=0,
             cold_store_format=None,
+        ),
+        chunked_prefill=ChunkedPrefillScopeSurface(
+            runtime_eligible=True,
+            applied=True,
+            activation_reason="Bounded chunked prefill ran before final decode.",
+            supported_backend_id="optimized-native",
+            supported_model_kind="causal-lm",
+            supported_prompt_kind="text-only",
+            execution_boundary=ChunkedPrefillExecutionBoundary.POST_TOKENIZATION,
+            attention_mask_mode=ChunkedPrefillAttentionMaskMode.FULL_PREFIX_MATERIALIZED,
+            gap_inventory=chunked_prefill_gap_inventory(),
         ),
         allocator_gap_mb=20.0,
         allocator_gap_ratio=0.066667,

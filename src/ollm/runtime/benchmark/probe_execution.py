@@ -217,6 +217,7 @@ def execute_request_probe(
             kv_cache_adaptation=kv_cache_adaptation,
             cache_dir_size_mb=cache_dir_size,
             cache_state=cache_state,
+            chunked_prefill=trace.chunked_prefill,
             allocator_gap_mb=allocator_gap_mb,
             allocator_gap_ratio=allocator_gap_ratio,
             native_runtime_profile=native_runtime_profile,

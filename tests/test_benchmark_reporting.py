@@ -33,6 +33,7 @@ from ollm.runtime.benchmark.probes import (
     parse_output_scaling_probe_result,
     parse_prompt_scaling_probe_result,
     parse_reopen_session_growth_probe_result,
+    parse_runtime_probe_result,
     parse_session_growth_probe_result,
     parse_warm_runtime_probe_result,
     render_output_scaling_probe_json,
@@ -101,16 +102,26 @@ def test_render_runtime_probe_json_round_trips() -> None:
         request=build_request_probe_metrics(),
     )
 
-    payload = json.loads(render_runtime_probe_json(probe))
+    rendered = render_runtime_probe_json(probe)
+    payload = json.loads(rendered)
+    parsed = parse_runtime_probe_result(rendered)
 
     assert payload["load_ms"] == 10.0
+    assert parsed.request.chunked_prefill.applied is True
     request = cast(dict[str, object], payload["request"])
     resources = cast(dict[str, object], request["resources"])
     native_runtime_profile = cast(dict[str, object], request["native_runtime_profile"])
     cache_state = cast(dict[str, object], request["cache_state"])
+    chunked_prefill = cast(dict[str, object], request["chunked_prefill"])
     events = cast(dict[str, object], native_runtime_profile["events"])
     assert request["output_tokens"] == 4
     assert request["kv_cache_strategy"] == "chunked"
+    assert chunked_prefill["runtime_eligible"] is True
+    assert chunked_prefill["applied"] is True
+    assert chunked_prefill["execution_boundary"] == "post-tokenization"
+    assert chunked_prefill["attention_mask_mode"] == "full-prefix-materialized"
+    gap_inventory = cast(list[object], chunked_prefill["gap_inventory"])
+    assert len(gap_inventory) == 2
     adaptation = cast(dict[str, object], request["kv_cache_adaptation"])
     assert adaptation["adaptation_mode"] == "observe-only"
     assert adaptation["recommendation_available"] is True
@@ -237,11 +248,15 @@ def test_summarize_request_metrics_includes_native_runtime_profile() -> None:
     summary = summarize_request_metrics([build_request_probe_metrics()])
 
     native_runtime_profile = cast(dict[str, object], summary["native_runtime_profile"])
+    chunked_prefill = cast(dict[str, object], summary["chunked_prefill"])
 
     assert native_runtime_profile["storage_paths"] == [
         "disk-kv-cache",
         "safetensor-io",
     ]
+    assert chunked_prefill["runtime_eligible"] is True
+    assert chunked_prefill["applied"] is True
+    assert chunked_prefill["supported_backend_id"] == "optimized-native"
     assert cast(dict[str, object], summary["cache"])["kv_cache_strategy"] == "chunked"
     adaptation = cast(
         dict[str, object],
