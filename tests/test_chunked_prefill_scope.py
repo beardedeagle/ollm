@@ -12,8 +12,12 @@ from ollm.runtime.chunked_prefill import (
     ChunkedPrefillGapId,
     ChunkedPrefillRecommendation,
     ChunkedPrefillStrategyId,
+    prepare_chunked_prefill,
 )
-from ollm.runtime.chunked_prefill_support import build_forward_input_filter
+from ollm.runtime.chunked_prefill_support import (
+    build_forward_input_filter,
+    tokenize_prompt_piece,
+)
 from ollm.runtime.generation import (
     build_runtime_generate_kwargs,
     prepare_runtime_generate_inputs,
@@ -196,3 +200,39 @@ def test_build_forward_input_filter_inspects_signature_once() -> None:
     assert CountingForward.signature_reads == 1
     assert set(first) == {"input_ids", "attention_mask"}
     assert set(second) == {"input_ids", "attention_mask"}
+
+
+def test_prepare_chunked_prefill_rejects_non_positive_chunk_budget() -> None:
+    runtime = build_runtime_with_model(
+        CapabilityProfile(support_level=SupportLevel.GENERIC),
+        tokenizer=LongMappingTokenizer(),
+        model=ChunkedPrefillModel(),
+    )
+    request = build_request(
+        runtime.config,
+        Message(role=MessageRole.USER, content=[ContentPart.text("long prompt")]),
+    )
+
+    with pytest.raises(ValueError, match="chunk_tokens must be at least 1"):
+        prepare_chunked_prefill(
+            runtime=runtime,
+            messages=request.messages,
+            generate_kwargs={},
+            chunk_tokens=0,
+            eager_input_builder=lambda runtime, messages: {
+                "input_ids": torch.tensor([[1]])
+            },
+        )
+
+
+def test_tokenize_prompt_piece_disables_special_tokens_in_fallback() -> None:
+    class EncodeOnlyTokenizer:
+        def encode(self, piece_text: str, *, add_special_tokens: bool = True):
+            assert piece_text == "piece"
+            assert add_special_tokens is False
+            return [7, 8]
+
+        def __call__(self, piece_text: str):
+            raise TypeError(piece_text)
+
+    assert tokenize_prompt_piece(EncodeOnlyTokenizer(), "piece") == [7, 8]

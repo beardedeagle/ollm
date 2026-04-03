@@ -161,6 +161,8 @@ def prepare_chunked_prefill(
     chunk_tokens: int,
     eager_input_builder: Callable[[LoadedRuntime, list[Message]], dict[str, object]],
 ) -> PreparedChunkedPrefill:
+    if chunk_tokens < 1:
+        raise ValueError("chunk_tokens must be at least 1")
     runtime_kind = (
         runtime.plan.generic_model_kind or runtime.resolved_model.generic_model_kind
     )
@@ -196,7 +198,7 @@ def _prepare_streamed_causal_strategy(
 ) -> PreparedChunkedPrefill:
     rendered_prompt = render_prompt_text(runtime, messages)
     static_inputs = prepare_static_inputs(runtime, messages)
-    prompt_tokens: list[int] = []
+    total_prompt_token_count = 0
     deferred_tokens: list[int] = []
     prefilled_token_count = 0
     prefill_cache = generate_kwargs.get("past_key_values")
@@ -211,7 +213,7 @@ def _prepare_streamed_causal_strategy(
         resolve_stream_tokenizer(runtime),
         rendered_prompt,
     ):
-        prompt_tokens.extend(token_piece)
+        total_prompt_token_count += len(token_piece)
         deferred_tokens.extend(token_piece)
         while len(deferred_tokens) > chunk_tokens + 1:
             if not callable(forward_method):
@@ -232,7 +234,7 @@ def _prepare_streamed_causal_strategy(
             del deferred_tokens[:chunk_tokens]
             prefilled_token_count += chunk_tokens
 
-    if len(prompt_tokens) - 1 > chunk_tokens:
+    if total_prompt_token_count - 1 > chunk_tokens:
         while len(deferred_tokens) > 1:
             if not callable(forward_method):
                 raise PromptExecutionError(
@@ -253,7 +255,7 @@ def _prepare_streamed_causal_strategy(
             del deferred_tokens[:chunk_size]
             prefilled_token_count += chunk_size
 
-    if not prompt_tokens:
+    if total_prompt_token_count == 0:
         raise PromptExecutionError(
             "Chunked prompt ingestion produced no prompt tokens."
         )
@@ -263,7 +265,7 @@ def _prepare_streamed_causal_strategy(
     if prefilled_token_count > 0:
         final_inputs["input_ids"] = token_tensor(deferred_tokens, device=runtime.device)
         final_inputs["attention_mask"] = ones_attention_mask(
-            token_count=len(prompt_tokens),
+            token_count=total_prompt_token_count,
             device=runtime.device,
         )
         final_generate_kwargs["past_key_values"] = prefill_cache
@@ -276,9 +278,9 @@ def _prepare_streamed_causal_strategy(
             activation_reason="Bounded chunked prefill ran before final decode.",
         )
     else:
-        final_inputs["input_ids"] = token_tensor(prompt_tokens, device=runtime.device)
+        final_inputs["input_ids"] = token_tensor(deferred_tokens, device=runtime.device)
         final_inputs["attention_mask"] = ones_attention_mask(
-            token_count=len(prompt_tokens),
+            token_count=total_prompt_token_count,
             device=runtime.device,
         )
         scope = _scope(
@@ -292,7 +294,7 @@ def _prepare_streamed_causal_strategy(
         inputs=final_inputs,
         generate_kwargs=final_generate_kwargs,
         scope=scope,
-        prompt_token_count=len(prompt_tokens),
+        prompt_token_count=total_prompt_token_count,
     )
 
 

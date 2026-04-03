@@ -199,7 +199,11 @@ def tokenize_prompt_piece(tokenizer, piece_text: str) -> list[int]:
             return_attention_mask=False,
         )
     except TypeError:
-        encoded = tokenizer(piece_text)
+        encode_method = getattr(tokenizer, "encode", None)
+        if callable(encode_method):
+            encoded = encode_method(piece_text, add_special_tokens=False)
+        else:
+            encoded = tokenizer(piece_text)
     if isinstance(encoded, dict):
         input_ids = encoded.get("input_ids")
         if isinstance(input_ids, list):

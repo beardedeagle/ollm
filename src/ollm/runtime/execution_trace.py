@@ -9,7 +9,6 @@ from ollm.app.types import PromptRequest
 from ollm.kv_cache.state import KVCacheStateSnapshot
 from ollm.runtime.capability_discovery import GenericModelKind
 from ollm.runtime.chunked_prefill import ChunkedPrefillScopeSurface
-from ollm.runtime.errors import PromptExecutionError
 from ollm.runtime.generation import (
     build_runtime_generate_kwargs,
     decode_runtime_response,
@@ -142,13 +141,6 @@ def _run_model_generate(
                     **prepared_inputs,
                     **prepared_generate_kwargs,
                 )
-
-
-def _count_prompt_tokens(inputs: dict[str, object]) -> int:
-    input_ids = inputs.get("input_ids")
-    if not isinstance(input_ids, torch.Tensor):
-        raise PromptExecutionError("Benchmark probe expected tensor-backed input_ids")
-    return int(input_ids.shape[0] if input_ids.ndim == 1 else input_ids.shape[-1])
 
 
 def _decode_prefix_token_count(inputs: dict[str, object]) -> int:
